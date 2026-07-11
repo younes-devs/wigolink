@@ -46,7 +46,7 @@ export function QrBlock({ code, caption }) {
     }
   return (
     <div className="qr-frame">
-      <svg width="160" height="160" viewBox="0 0 150 150" fill="#1d1a17">{cells}</svg>
+      <svg width="160" height="160" viewBox="0 0 150 150" fill="#16181d">{cells}</svg>
       <div className="qr-code-text">{code}</div>
       {caption && <div className="muted center">{caption}</div>}
     </div>
