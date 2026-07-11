@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
 import DevBar from './DevBar.jsx';
+import SideRail from './SideRail.jsx';
 import Login from './pages/Login.jsx';
 import Feed from './pages/Feed.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
@@ -46,6 +47,7 @@ export default function App() {
       <BrowserRouter>
         <div className="phone">
           <Header />
+          <div className="main-wrap">
           <div className="content">
             {!user ? (
               <Login />
@@ -62,6 +64,8 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             )}
+          </div>
+          {user && <SideRail user={user} />}
           </div>
           {user && <BottomNav user={user} />}
           <DevBar />

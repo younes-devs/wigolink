@@ -477,6 +477,60 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .profile-id h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
 .profile-edit-btn { align-self: flex-start; margin-top: 46px; }
 
+/* Panneau contextuel (grand écran) */
+.side-rail { display: none; }
+.rail-card {
+  background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px; margin-bottom: 14px;
+}
+.rail-card h3 { font-size: 13px; font-weight: 700; letter-spacing: -0.1px; margin-bottom: 12px; text-transform: uppercase; color: var(--ink-soft); font-size: 11.5px; letter-spacing: 0.4px; }
+.rail-corridor { background: linear-gradient(135deg, rgba(10, 108, 245, 0.08), rgba(125, 90, 245, 0.06)), var(--glass); }
+.rail-route {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  font-weight: 700; font-size: 14.5px; letter-spacing: -0.2px; margin-bottom: 14px;
+}
+.rail-route .icon { color: var(--accent); }
+.rail-corridor-stats { display: flex; gap: 10px; }
+.rail-corridor-stats > div {
+  flex: 1; background: rgba(255, 255, 255, 0.7); border-radius: 12px; padding: 10px;
+  text-align: center; border: 1px solid var(--glass-border);
+}
+.rail-corridor-stats b { display: block; font-size: 19px; letter-spacing: -0.4px; }
+.rail-corridor-stats span { font-size: 10.5px; color: var(--ink-soft); font-weight: 550; }
+.rail-note {
+  display: flex; align-items: flex-start; gap: 6px; margin-top: 12px;
+  font-size: 11.5px; color: var(--ink-soft); line-height: 1.45;
+}
+.rail-note .icon { flex: 0 0 auto; margin-top: 1px; }
+.rail-step { display: flex; gap: 10px; margin-bottom: 12px; }
+.rail-step:last-child { margin-bottom: 0; }
+.rail-step-num {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-tint); color: var(--accent);
+  font-size: 11.5px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.rail-step b { font-size: 13px; }
+.rail-step p { font-size: 12px; color: var(--ink-soft); line-height: 1.45; margin-top: 1px; }
+.rail-big { font-size: 26px; font-weight: 750; letter-spacing: -0.6px; margin-bottom: 4px; }
+.rail-muted { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+.rail-list { padding-left: 16px; font-size: 12.5px; line-height: 1.8; }
+.rail-progress {
+  height: 8px; border-radius: 999px; background: rgba(22, 24, 29, 0.08);
+  overflow: hidden; margin-bottom: 8px;
+}
+.rail-progress-bar {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #7d5af5);
+  transition: width 0.4s ease;
+}
+.rail-cta {
+  text-align: center; padding: 6px 8px 2px;
+}
+.rail-cta p { font-size: 13px; color: var(--ink-soft); margin-bottom: 10px; }
+.rail-cta a { text-decoration: none; }
+
 /* ——— Responsive ——— */
 
 /* Tablette (640–899px) : colonne élargie, nav en bas conservée */
@@ -492,7 +546,7 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 /* Desktop (≥900px) : sidebar de navigation à gauche, contenu centré */
 @media (min-width: 900px) {
   #root { display: block; }
-  .phone { max-width: none; margin-left: 248px; box-shadow: none; }
+  .phone { max-width: none; width: auto; margin-left: 248px; box-shadow: none; }
 
   .bottom-nav {
     left: 0; bottom: 0; top: 0; transform: none;
@@ -516,20 +570,31 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   }
   .app-header .tagline { display: none; }
 
+  .main-wrap { display: flex; justify-content: center; gap: 28px; }
   .content {
-    max-width: 720px; margin: 0 auto;
+    max-width: 720px; flex: 1 1 720px; min-width: 0;
     padding: 36px 32px 60px;
   }
   .page-title { font-size: 26px; }
 
-  /* Grille 2 colonnes pour les listes de cartes cliquables */
-  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  /* Grille adaptative pour les listes de cartes cliquables */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
   .card-grid .card, .card-grid a { margin-bottom: 0; height: 100%; }
   .card-grid a .card { height: 100%; }
 
   .devbar-fab { right: 24px; bottom: 24px; }
   .devbar-panel { right: 24px; bottom: 78px; }
   .chat-box { max-height: 420px; }
+}
+
+/* Très grand écran (≥1200px) : panneau contextuel à droite */
+@media (min-width: 1200px) {
+  .side-rail {
+    display: block; width: 300px; flex: 0 0 300px;
+    padding: 36px 24px 60px 0;
+    position: sticky; top: 0; align-self: flex-start;
+    max-height: 100vh; overflow-y: auto;
+  }
 }
 
 /* Desktop non connecté : pas de sidebar, page d'auth centrée */
