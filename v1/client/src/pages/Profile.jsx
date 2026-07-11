@@ -6,11 +6,12 @@ import { Avatar, Icon } from '../Icons.jsx';
 
 export default function Profile() {
   const { user, logout } = useAuth();
-  const [caps, setCaps] = useState(null);
+  const [me, setMe] = useState(null);
 
   useEffect(() => {
-    api('/me').then((d) => setCaps({ maxValue: d.maxValue, maxActive: d.maxActive }));
+    api('/me').then(setMe);
   }, []);
+  const caps = me && { maxValue: me.maxValue, maxActive: me.maxActive };
 
   return (
     <div>
@@ -19,7 +20,8 @@ export default function Profile() {
           <Avatar name={user.name} size={72} />
         </div>
         <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.4px' }}>{user.name}</h1>
-        <div className="muted mb">{user.city || '—'}</div>
+        <div className="muted">{me?.email}{me?.provider === 'google' ? ' · compte Google' : ''}</div>
+        <div className="muted mb">{user.city || ''}</div>
         <TrustBadge user={user} />
       </div>
 

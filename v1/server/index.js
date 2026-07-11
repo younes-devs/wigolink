@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { getDb, save, newId } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, evaluateCategory, detectLeak } from './rules.js';
+import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 
 const app = express();
 app.use(cors());
@@ -34,38 +35,136 @@ function addEvent(tx, type, actorId, meta = {}) {
 
 const code6 = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
-// ---------- Auth (OTP simulé) ----------
-app.post('/api/auth/request-otp', (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: 'Téléphone requis' });
-  const otp = '123456'; // démo : OTP fixe
-  db.otps[phone] = otp;
-  save();
-  res.json({ ok: true, demoHint: 'Code de démo : 123456' });
-});
+// ---------- Auth : email + mot de passe, Google (simulé), reset ----------
+const normEmail = (e) => String(e || '').trim().toLowerCase();
+const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
 
-app.post('/api/auth/verify-otp', (req, res) => {
-  const { phone, otp, name } = req.body;
-  if (db.otps[phone] !== otp) return res.status(400).json({ error: 'Code incorrect' });
-  delete db.otps[phone];
-  let user = db.users.find((u) => u.phone === phone);
-  if (!user) {
-    user = {
-      id: newId('u'), name: name || 'Nouvel utilisateur', phone, city: '',
-      kycStatus: 'none', rating: null, ratingCount: 0, completed: 0, cancelRate: 0,
-      // Plafonds progressifs (PRD §0.3) : nouveau compte = 100 €, 1 transaction active
-      maxValue: 100, maxActive: 1, badges: [], avatar: '🙂', createdAt: Date.now(),
-    };
-    db.users.push(user);
-  }
-  const token = newId('tok') + '-' + code6();
+function makeUser({ name, email, phone, provider, emailVerified, passwordHash }) {
+  return {
+    id: newId('u'), name: name.trim(), email: normEmail(email), phone: phone || '',
+    passwordHash: passwordHash || null, provider, emailVerified: !!emailVerified,
+    city: '', kycStatus: 'none', rating: null, ratingCount: 0, completed: 0, cancelRate: 0,
+    // Plafonds progressifs (PRD §0.3) : nouveau compte = 100 €, 1 transaction active
+    maxValue: 100, maxActive: 1, badges: [], createdAt: Date.now(),
+  };
+}
+
+function openSession(res, user) {
+  const token = newToken();
   db.sessions[token] = user.id;
   save();
   res.json({ token, user: publicUser(user) });
+}
+
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, phone, password } = req.body;
+  const invalid = validRegistration({ name, email, password });
+  if (invalid) return res.status(400).json({ error: invalid });
+  if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
+  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password) });
+  db.users.push(user);
+  const code = sixDigitCode();
+  db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
+  save();
+  // En prod : envoi du code par email (prestataire). En démo, on l'affiche.
+  res.json({ pendingEmail: user.email, demoHint: `Code de vérification (démo) : ${code}` });
+});
+
+app.post('/api/auth/verify-email', (req, res) => {
+  const email = normEmail(req.body.email);
+  const pending = db.pendingVerifications[email];
+  if (!pending || pending.expires < Date.now())
+    return res.status(400).json({ error: 'Code expiré — demandez un nouvel envoi' });
+  if (pending.code !== String(req.body.code || '').trim())
+    return res.status(400).json({ error: 'Code incorrect' });
+  const user = findByEmail(email);
+  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
+  user.emailVerified = true;
+  delete db.pendingVerifications[email];
+  openSession(res, user);
+});
+
+app.post('/api/auth/resend-code', (req, res) => {
+  const email = normEmail(req.body.email);
+  const user = findByEmail(email);
+  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
+  const code = sixDigitCode();
+  db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
+  save();
+  res.json({ ok: true, demoHint: `Code de vérification (démo) : ${code}` });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const email = normEmail(req.body.email);
+  if (rateLimit(`login:${email}`))
+    return res.status(429).json({ error: 'Trop de tentatives — réessayez dans 10 minutes' });
+  const user = findByEmail(email);
+  if (!user || !verifyPassword(req.body.password || '', user.passwordHash))
+    return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  if (!user.emailVerified) {
+    const code = sixDigitCode();
+    db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
+    save();
+    return res.json({ needsVerification: true, pendingEmail: email, demoHint: `Code de vérification (démo) : ${code}` });
+  }
+  openSession(res, user);
+});
+
+// OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
+// (échange du "credential" Google Identity Services contre l'identité vérifiée).
+app.post('/api/auth/google', (req, res) => {
+  const { email, name } = req.body;
+  if (!EMAIL_RE.test(email || '')) return res.status(400).json({ error: 'Email Google invalide' });
+  let user = findByEmail(email);
+  if (!user) {
+    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true });
+    db.users.push(user);
+  }
+  openSession(res, user);
+});
+
+app.post('/api/auth/forgot', (req, res) => {
+  const email = normEmail(req.body.email);
+  const user = findByEmail(email);
+  // Réponse identique que le compte existe ou non (pas d'énumération d'emails)
+  if (user && user.provider !== 'google') {
+    db.resets[email] = { code: '424242', expires: Date.now() + 15 * 60e3 };
+    save();
+  }
+  res.json({ ok: true, demoHint: user?.provider === 'google' ? 'Ce compte utilise Google — connectez-vous avec Google.' : 'Code de réinitialisation (démo) : 424242' });
+});
+
+app.post('/api/auth/reset', (req, res) => {
+  const email = normEmail(req.body.email);
+  const reset = db.resets[email];
+  if (!reset || reset.expires < Date.now())
+    return res.status(400).json({ error: 'Code expiré — refaites une demande' });
+  if (reset.code !== String(req.body.code || '').trim())
+    return res.status(400).json({ error: 'Code incorrect' });
+  if (!req.body.password || req.body.password.length < 8)
+    return res.status(400).json({ error: 'Mot de passe : 8 caractères minimum' });
+  const user = findByEmail(email);
+  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
+  user.passwordHash = hashPassword(req.body.password);
+  user.emailVerified = true;
+  delete db.resets[email];
+  // Sécurité : invalide toutes les sessions existantes du compte
+  for (const [tok, uid] of Object.entries(db.sessions)) if (uid === user.id) delete db.sessions[tok];
+  openSession(res, user);
+});
+
+app.post('/api/auth/logout', auth, (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  delete db.sessions[token];
+  save();
+  res.json({ ok: true });
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), maxValue: req.user.maxValue, maxActive: req.user.maxActive });
+  res.json({
+    user: publicUser(req.user), email: req.user.email, provider: req.user.provider,
+    maxValue: req.user.maxValue, maxActive: req.user.maxActive,
+  });
 });
 
 // KYC simulé (prestataire externe en prod)

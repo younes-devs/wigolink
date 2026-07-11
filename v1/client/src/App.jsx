@@ -32,6 +32,7 @@ export default function App() {
     setUser(u);
   };
   const logout = () => {
+    api('/auth/logout', { method: 'POST' }).catch(() => {}); // invalide la session serveur
     setToken(null);
     setUser(null);
   };

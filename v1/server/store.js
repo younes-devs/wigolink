@@ -70,6 +70,27 @@ function seed() {
 
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : seed();
 
+// Migration : comptes existants sans email/mot de passe (démo : demo1234).
+import { hashPassword } from './auth.js';
+const DEMO_EMAILS = {
+  'u-fatima': 'fatima@demo.salama.app',
+  'u-karim': 'karim@demo.salama.app',
+  'u-mehdi': 'mehdi@demo.salama.app',
+  'u-admin': 'admin@demo.salama.app',
+};
+let migrated = false;
+for (const u of db.users) {
+  if (!u.email) {
+    u.email = DEMO_EMAILS[u.id] || `${u.id}@demo.salama.app`;
+    u.passwordHash = hashPassword('demo1234');
+    u.emailVerified = true;
+    u.provider = 'email';
+    migrated = true;
+  }
+}
+if (!db.resets) { db.resets = {}; migrated = true; }
+if (!db.pendingVerifications) { db.pendingVerifications = {}; migrated = true; }
+
 export function save() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 }
@@ -83,4 +104,4 @@ export function newId(prefix) {
   return `${prefix}-${db.nextId}`;
 }
 
-save();
+if (migrated || !fs.existsSync(DATA_FILE)) save();

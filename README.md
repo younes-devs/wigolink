@@ -27,15 +27,20 @@ npm install
 npm run dev     # API sur :4517 + web sur :5173
 ```
 
-Ouvrir http://localhost:5173. Comptes de démo (code OTP : `123456`) :
+Ouvrir http://localhost:5173. Comptes de démo (mot de passe : `demo1234`) :
 
-| Rôle | Téléphone |
+| Rôle | Email |
 |---|---|
-| Fatima — expéditrice (Casablanca) | `+212600000001` |
-| Karim — voyageur (Bruxelles) | `+32470000002` |
-| Mehdi — destinataire (Bruxelles) | `+32470000003` |
-| Admin — back-office | `+32470000000` |
+| Fatima — expéditrice (Casablanca) | `fatima@demo.salama.app` |
+| Karim — voyageur (Bruxelles) | `karim@demo.salama.app` |
+| Mehdi — destinataire (Bruxelles) | `mehdi@demo.salama.app` |
+| Admin — back-office | `admin@demo.salama.app` |
+
+Authentification complète : inscription email + mot de passe (hash scrypt), vérification
+d'email par code (démo : `123456`), connexion Google (simulée), mot de passe oublié
+(code démo : `424242`, invalide les sessions existantes), déconnexion serveur,
+anti-brute-force sur le login.
 
 Parcours complet : Fatima publie un envoi (liste blanche + écran douane) → Karim accepte (escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
 
-**Simulé en démo (prestataires réels requis en prod)** : OTP SMS, KYC, escrow (Mangopay/Stripe Connect), QR scannables.
+**Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), KYC, escrow (Mangopay/Stripe Connect), QR scannables.
