@@ -15,7 +15,8 @@ const publicUser = (u) =>
   u && {
     id: u.id, name: u.name, city: u.city, kycStatus: u.kycStatus, rating: u.rating,
     ratingCount: u.ratingCount, completed: u.completed, cancelRate: u.cancelRate,
-    badges: u.badges, avatar: u.avatar, isAdmin: !!u.isAdmin,
+    badges: u.badges, photoUrl: u.photoUrl || null, isAdmin: !!u.isAdmin,
+    createdAt: u.createdAt,
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
@@ -163,13 +164,42 @@ app.post('/api/auth/logout', auth, (req, res) => {
 app.get('/api/me', auth, (req, res) => {
   res.json({
     user: publicUser(req.user), email: req.user.email, provider: req.user.provider,
-    maxValue: req.user.maxValue, maxActive: req.user.maxActive,
+    phone: req.user.phone, maxValue: req.user.maxValue, maxActive: req.user.maxActive,
   });
 });
 
 // KYC simulé (prestataire externe en prod)
 app.post('/api/kyc/submit', auth, (req, res) => {
   req.user.kycStatus = 'verified'; // démo : vérification instantanée
+  save();
+  res.json({ user: publicUser(req.user) });
+});
+
+// ---------- Profil ----------
+app.post('/api/profile', auth, (req, res) => {
+  const { name, city, phone } = req.body;
+  if (name !== undefined) {
+    if (String(name).trim().length < 2) return res.status(400).json({ error: 'Nom trop court' });
+    req.user.name = String(name).trim().slice(0, 60);
+  }
+  if (city !== undefined) req.user.city = String(city).trim().slice(0, 60);
+  if (phone !== undefined) req.user.phone = String(phone).trim().slice(0, 20);
+  save();
+  res.json({ user: publicUser(req.user) });
+});
+
+app.post('/api/profile/photo', auth, (req, res) => {
+  const { dataUrl } = req.body;
+  if (dataUrl === null) {
+    req.user.photoUrl = null;
+    save();
+    return res.json({ user: publicUser(req.user) });
+  }
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl || ''))
+    return res.status(400).json({ error: 'Format d\'image invalide (JPEG, PNG ou WebP)' });
+  if (dataUrl.length > 700 * 1024)
+    return res.status(400).json({ error: 'Image trop lourde (500 Ko max après compression)' });
+  req.user.photoUrl = dataUrl;
   save();
   res.json({ user: publicUser(req.user) });
 });

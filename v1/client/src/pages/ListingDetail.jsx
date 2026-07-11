@@ -56,7 +56,7 @@ export default function ListingDetail() {
       <div className="card">
         <h2 style={{ marginBottom: 10 }}><Icon name="user" size={17} />Expéditeur</h2>
         <div className="list-row">
-          <Avatar name={listing.sender?.name} />
+          <Avatar name={listing.sender?.name} photo={listing.sender?.photoUrl} />
           <div className="grow">
             <b>{listing.sender?.name}</b> · {listing.sender?.city}
             <div style={{ marginTop: 6 }}><TrustBadge user={listing.sender} /></div>

@@ -24,6 +24,7 @@ export default function Transactions() {
         </div>
       )}
 
+      <div className="card-grid">
       {txs?.map((t) => (
         <Link key={t.id} to={`/transactions/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="card clickable">
@@ -41,6 +42,7 @@ export default function Transactions() {
           </div>
         </Link>
       ))}
+      </div>
     </div>
   );
 }

@@ -408,7 +408,7 @@ function Chat({ tx, userId }) {
             <div key={gi}>
               {showDay && <div className="chat-day"><span>{day}</span></div>}
               <div className={`msg-group ${mine ? 'mine' : 'theirs'}`}>
-                {!mine && <Avatar name={p?.name} size={28} />}
+                {!mine && <Avatar name={p?.name} photo={p?.photoUrl} size={28} />}
                 <div className="msg-col">
                   {!mine && <div className="msg-author">{p?.name} · {p?.role}</div>}
                   {g.msgs.map((m, mi) => (
@@ -474,7 +474,7 @@ function RateRow({ tx, target, reload }) {
 
   return (
     <div className="list-row mb">
-      <Avatar name={target.u?.name} size={38} />
+      <Avatar name={target.u?.name} photo={target.u?.photoUrl} size={38} />
       <div className="grow">
         <b>{target.u?.name}</b>
         <div className="muted" style={{ fontSize: 12 }}>{target.label}</div>

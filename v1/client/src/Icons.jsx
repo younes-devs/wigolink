@@ -78,8 +78,15 @@ export function CategoryIcon({ categoryId, size = 22 }) {
   );
 }
 
-// Avatar à initiales, teinte déterministe — remplace les émojis.
-export function Avatar({ name = '?', size = 44 }) {
+// Avatar : photo si disponible, sinon initiales avec teinte déterministe.
+export function Avatar({ name = '?', photo = null, size = 44 }) {
+  if (photo) {
+    return (
+      <span className="avatar" style={{ width: size, height: size, overflow: 'hidden' }}>
+        <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </span>
+    );
+  }
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   const initials = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();

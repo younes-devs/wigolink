@@ -24,6 +24,7 @@ export default function Feed() {
         </div>
       )}
 
+      <div className="card-grid">
       {listings?.map((l) => (
         <Link key={l.id} to={`/annonce/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="card clickable">
@@ -44,6 +45,7 @@ export default function Feed() {
           </div>
         </Link>
       ))}
+      </div>
     </div>
   );
 }
