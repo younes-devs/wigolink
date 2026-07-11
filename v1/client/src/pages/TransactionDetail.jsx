@@ -64,7 +64,7 @@ export default function TransactionDetail() {
 
       <StepAction tx={tx} user={user} reload={load} />
       {!['cancelled'].includes(tx.status) && <CustomsRecap txId={tx.id} status={tx.status} />}
-      {!['cancelled', 'released', 'refunded'].includes(tx.status) && <Chat txId={tx.id} userId={user.id} />}
+      {!['cancelled', 'released', 'refunded'].includes(tx.status) && <Chat tx={tx} userId={user.id} />}
       {tx.status === 'released' && <Rating tx={tx} user={user} reload={load} />}
     </div>
   );
@@ -313,15 +313,25 @@ function CustomsRecap({ txId, status }) {
   );
 }
 
-function Chat({ txId, userId }) {
+const DAY_FMT = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+const TIME_FMT = new Intl.DateTimeFormat('fr-BE', { hour: '2-digit', minute: '2-digit' });
+
+function Chat({ tx, userId }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [warning, setWarning] = useState('');
+  const [sending, setSending] = useState(false);
   const boxRef = useRef(null);
 
+  const participants = {
+    [tx.senderId]: { ...tx.sender, role: 'Expéditeur' },
+    [tx.travelerId]: { ...tx.traveler, role: 'Voyageur' },
+    [tx.recipientId]: { ...tx.recipient, role: 'Destinataire' },
+  };
+
   const load = useCallback(() => {
-    api(`/transactions/${txId}/messages`).then((d) => setMessages(d.messages));
-  }, [txId]);
+    api(`/transactions/${tx.id}/messages`).then((d) => setMessages(d.messages));
+  }, [tx.id]);
 
   useEffect(() => {
     load();
@@ -330,37 +340,92 @@ function Chat({ txId, userId }) {
   }, [load]);
 
   useEffect(() => {
-    boxRef.current?.scrollTo(0, boxRef.current.scrollHeight);
+    boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages.length]);
 
   const send = async () => {
-    if (!text.trim()) return;
-    const d = await api(`/transactions/${txId}/messages`, { method: 'POST', body: { text } });
-    setWarning(d.warning || '');
-    setText('');
-    load();
+    const t = text.trim();
+    if (!t || sending) return;
+    setSending(true);
+    try {
+      const d = await api(`/transactions/${tx.id}/messages`, { method: 'POST', body: { text: t } });
+      setWarning(d.warning || '');
+      setText('');
+      load();
+    } finally {
+      setSending(false);
+    }
   };
 
+  // Groupes : messages consécutifs du même auteur à moins de 5 min d'écart
+  const groups = [];
+  for (const m of messages) {
+    const last = groups[groups.length - 1];
+    if (last && last.from === m.from && m.at - last.msgs[last.msgs.length - 1].at < 5 * 60e3) last.msgs.push(m);
+    else groups.push({ from: m.from, msgs: [m] });
+  }
+
+  let lastDay = '';
+
   return (
-    <div className="card">
-      <h2 style={{ marginBottom: 8 }}><Icon name="chat" size={17} />Messagerie</h2>
-      <p className="muted mb" style={{ fontSize: 12 }}>
-        Organisez le rendez-vous (lieu public conseillé). Les coordonnées restent masquées : tout se passe dans l'app.
-      </p>
-      <div className="chat-box" ref={boxRef}>
-        {messages.map((m) => (
-          <div key={m.id} className={`msg ${m.from === userId ? 'mine' : 'theirs'} ${m.flagged ? 'flagged' : ''}`}>
-            {m.text}
-            {m.flagged && <span className="msg-warn">Coordonnées détectées — échange hors app non couvert.</span>}
-          </div>
-        ))}
-        {messages.length === 0 && <div className="muted center">Aucun message.</div>}
+    <div className="card chat-card">
+      <div className="chat-header">
+        <div className="grow">
+          <b>Messagerie</b>
+          <div className="chat-sub"><Icon name="lock" size={11} /> Chiffré côté plateforme · coordonnées masquées</div>
+        </div>
+        <span className="chat-presence" title="Rendez-vous en lieu public conseillé">
+          <Icon name="mapPin" size={13} />Lieu public conseillé
+        </span>
       </div>
+
+      <div className="chat-box" ref={boxRef}>
+        {messages.length === 0 && (
+          <div className="chat-empty">
+            <Icon name="chat" size={26} />
+            <p>Ouvrez la conversation pour organiser le rendez-vous de remise.</p>
+          </div>
+        )}
+        {groups.map((g, gi) => {
+          const mine = g.from === userId;
+          const p = participants[g.from];
+          const day = DAY_FMT.format(new Date(g.msgs[0].at));
+          const showDay = day !== lastDay;
+          lastDay = day;
+          return (
+            <div key={gi}>
+              {showDay && <div className="chat-day"><span>{day}</span></div>}
+              <div className={`msg-group ${mine ? 'mine' : 'theirs'}`}>
+                {!mine && <Avatar name={p?.name} size={28} />}
+                <div className="msg-col">
+                  {!mine && <div className="msg-author">{p?.name} · {p?.role}</div>}
+                  {g.msgs.map((m, mi) => (
+                    <div key={m.id} className={`msg ${mine ? 'mine' : 'theirs'} ${m.flagged ? 'flagged' : ''} ${mi === g.msgs.length - 1 ? 'tail' : ''}`}>
+                      {m.text}
+                      {m.flagged && (
+                        <span className="msg-warn"><Icon name="alert" size={11} /> Coordonnées détectées — échange hors app non couvert</span>
+                      )}
+                    </div>
+                  ))}
+                  <div className="msg-time">{TIME_FMT.format(new Date(g.msgs[g.msgs.length - 1].at))}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {warning && <div className="alert alert-danger"><Icon name="alert" size={17} />{warning}</div>}
-      <div className="row">
-        <input className="chat-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Votre message…"
-          onKeyDown={(e) => e.key === 'Enter' && send()} />
-        <button className="btn btn-primary btn-sm" style={{ flex: '0 0 auto' }} onClick={send} aria-label="Envoyer">
+
+      <div className="chat-composer">
+        <input
+          className="chat-input"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Écrire un message…"
+          onKeyDown={(e) => e.key === 'Enter' && send()}
+        />
+        <button className="chat-send" onClick={send} disabled={!text.trim() || sending} aria-label="Envoyer">
           <Icon name="send" size={17} />
         </button>
       </div>
