@@ -1,7 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Icon } from '../Icons.jsx';
+
+// Redimensionne une image en dataURL JPEG (côté client, max 720px).
+function resizeImage(file, maxPx = 720) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(img.src);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Image de test générée (autofill)
+function placeholderPhoto(label) {
+  const c = document.createElement('canvas');
+  c.width = 480; c.height = 360;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 480, 360);
+  grad.addColorStop(0, '#e8edf5'); grad.addColorStop(1, '#d5dde9');
+  g.fillStyle = grad; g.fillRect(0, 0, 480, 360);
+  g.fillStyle = '#5f646e'; g.font = '600 26px sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, 240, 172);
+  g.font = '13px sans-serif';
+  g.fillText('Photo de test', 240, 205);
+  return c.toDataURL('image/jpeg', 0.8);
+}
 
 // Création de demande d'envoi — parcours ≤ 3 écrans (PRD §6 accessibilité)
 export default function CreateListing() {
@@ -12,8 +46,16 @@ export default function CreateListing() {
   const [form, setForm] = useState({
     title: '', categoryId: '', description: '', weightKg: '', valueEur: '',
     from: 'Casablanca', to: 'Bruxelles', dateFrom: '', dateTo: '', travelerPay: '',
-    recipientPhone: '', customsAccepted: false,
+    recipientPhone: '', customsAccepted: false, photos: [],
   });
+  const fileRef = useRef(null);
+
+  const addPhotos = async (e) => {
+    const files = [...(e.target.files || [])].slice(0, 3 - form.photos.length);
+    const converted = await Promise.all(files.map((f) => resizeImage(f).catch(() => null)));
+    setForm((f) => ({ ...f, photos: [...f.photos, ...converted.filter(Boolean)].slice(0, 3) }));
+    e.target.value = '';
+  };
 
   useEffect(() => { api('/rules').then(setRules); }, []);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -32,6 +74,7 @@ export default function CreateListing() {
     setForm((f) => ({
       ...f, ...p, from: 'Casablanca', to: 'Bruxelles', dateFrom: in7, dateTo: in21,
       recipientPhone: '+32470000003', customsAccepted: false,
+      photos: [placeholderPhoto(p.title)],
     }));
     setStep(2);
   };
@@ -95,7 +138,28 @@ export default function CreateListing() {
               <input type="number" value={form.valueEur} onChange={(e) => set('valueEur', e.target.value)} />
             </div>
           </div>
-          <button className="btn btn-primary" disabled={!form.categoryId || !form.title || !form.valueEur}
+          <div className="field">
+            <label>Photos du produit (obligatoire, 3 max)</label>
+            <div className="photo-picker">
+              {form.photos.map((p, i) => (
+                <div key={i} className="photo-thumb">
+                  <img src={p} alt={`Photo ${i + 1}`} />
+                  <button type="button" onClick={() => set('photos', form.photos.filter((_, j) => j !== i))} aria-label="Retirer">
+                    <Icon name="x" size={12} />
+                  </button>
+                </div>
+              ))}
+              {form.photos.length < 3 && (
+                <button type="button" className="photo-add" onClick={() => fileRef.current?.click()}>
+                  <Icon name="image" size={20} />
+                  Ajouter
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={addPhotos} />
+            <div className="hint">Le voyageur doit voir exactement ce qu'il transportera.</div>
+          </div>
+          <button className="btn btn-primary" disabled={!form.categoryId || !form.title || !form.valueEur || form.photos.length === 0}
             onClick={() => setStep(1)}>Continuer</button>
         </div>
       )}

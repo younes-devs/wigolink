@@ -34,6 +34,20 @@ function addEvent(tx, type, actorId, meta = {}) {
   tx.events.push({ id: newId('e'), type, actorId, meta, at: Date.now() });
 }
 
+// Notifications in-app aux transitions d'état (PRD §4.5)
+function notify(userIds, text, txId = null) {
+  db.notifications = db.notifications || [];
+  for (const uid of new Set(userIds.filter(Boolean))) {
+    db.notifications.push({ id: newId('n'), userId: uid, text, txId, read: false, at: Date.now() });
+  }
+}
+
+const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
+function validPhotos(photos) {
+  if (!Array.isArray(photos)) return false;
+  return photos.every((p) => IMG_RE.test(p) && p.length <= 700 * 1024);
+}
+
 const code6 = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
@@ -165,6 +179,7 @@ app.get('/api/me', auth, (req, res) => {
   res.json({
     user: publicUser(req.user), email: req.user.email, provider: req.user.provider,
     phone: req.user.phone, maxValue: req.user.maxValue, maxActive: req.user.maxActive,
+    trainingDone: !!req.user.trainingDone,
   });
 });
 
@@ -204,17 +219,85 @@ app.post('/api/profile/photo', auth, (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
+// ---------- Notifications ----------
+app.get('/api/notifications', auth, (req, res) => {
+  const mine = (db.notifications || [])
+    .filter((n) => n.userId === req.user.id)
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 30);
+  res.json({ notifications: mine, unread: mine.filter((n) => !n.read).length });
+});
+
+app.post('/api/notifications/read', auth, (req, res) => {
+  for (const n of db.notifications || []) if (n.userId === req.user.id) n.read = true;
+  save();
+  res.json({ ok: true });
+});
+
+// ---------- Formation voyageur (PRD §5.4) ----------
+const TRAINING_ANSWERS = { q1: 'b', q2: 'c', q3: 'a' };
+app.post('/api/training/complete', auth, (req, res) => {
+  const a = req.body.answers || {};
+  const wrong = Object.entries(TRAINING_ANSWERS).filter(([k, v]) => a[k] !== v).map(([k]) => k);
+  if (wrong.length > 0)
+    return res.status(400).json({ error: 'Certaines réponses sont incorrectes — relisez les règles.', wrong });
+  req.user.trainingDone = true;
+  save();
+  res.json({ ok: true });
+});
+
 // ---------- Référentiels ----------
 app.get('/api/rules', (req, res) => {
   res.json({ whitelist: WHITELIST, blacklist: BLACKLIST, customs: CUSTOMS });
 });
 
+// ---------- Trajets voyageur (PRD §2.1) ----------
+app.get('/api/trips/mine', auth, (req, res) => {
+  res.json({ trips: db.trips.filter((t) => t.travelerId === req.user.id) });
+});
+
+app.post('/api/trips', auth, (req, res) => {
+  if (req.user.kycStatus !== 'verified')
+    return res.status(403).json({ error: 'KYC requis' });
+  const { from, to, date, capacityKg } = req.body;
+  if (!from || !to || !date) return res.status(400).json({ error: 'Trajet, sens et date requis' });
+  if (from === to) return res.status(400).json({ error: 'Départ et arrivée identiques' });
+  if (new Date(date) < new Date(new Date().toDateString()))
+    return res.status(400).json({ error: 'La date est déjà passée' });
+  const trip = {
+    id: newId('t'), travelerId: req.user.id, from, to, date,
+    capacityKg: Math.max(1, Math.min(30, Number(capacityKg) || 5)), createdAt: Date.now(),
+  };
+  db.trips.push(trip);
+  save();
+  res.json({ trip });
+});
+
+app.delete('/api/trips/:id', auth, (req, res) => {
+  const i = db.trips.findIndex((t) => t.id === req.params.id && t.travelerId === req.user.id);
+  if (i === -1) return res.status(404).json({ error: 'Trajet introuvable' });
+  db.trips.splice(i, 1);
+  save();
+  res.json({ ok: true });
+});
+
+// Compatibilité annonce ↔ trajet : même sens, fenêtre de dates qui contient la date du vol, poids ≤ capacité.
+function matchesTrip(listing, trip) {
+  return listing.from === trip.from && listing.to === trip.to
+    && listing.dateFrom <= trip.date && trip.date <= listing.dateTo
+    && (!listing.weightKg || listing.weightKg <= trip.capacityKg);
+}
+
 // ---------- Annonces ----------
+// Feed filtré par trajet déclaré (PRD §2.1). ?all=1 pour tout voir.
 app.get('/api/listings', auth, (req, res) => {
-  const listings = db.listings
-    .filter((l) => l.status === 'published' && l.senderId !== req.user.id)
-    .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)) }));
-  res.json({ listings });
+  const open = db.listings
+    .filter((l) => l.status === 'published' && l.senderId !== req.user.id);
+  const myTrips = db.trips.filter((t) => t.travelerId === req.user.id && t.date >= new Date().toISOString().slice(0, 10));
+  const showAll = req.query.all === '1' || myTrips.length === 0;
+  const listings = (showAll ? open : open.filter((l) => myTrips.some((t) => matchesTrip(l, t))))
+    .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)), matched: myTrips.some((t) => matchesTrip(l, t)) }));
+  res.json({ listings, filteredByTrip: !showAll, tripCount: myTrips.length, totalOpen: open.length });
 });
 
 app.get('/api/listings/mine', auth, (req, res) => {
@@ -225,9 +308,14 @@ app.get('/api/listings/mine', auth, (req, res) => {
 app.post('/api/listings', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'KYC requis avant toute transaction' });
-  const { title, categoryId, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone } = req.body;
+  const { title, categoryId, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
   if (!title || !categoryId || !valueEur || !from || !to)
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
+  // Photos obligatoires (PRD §1.1) : le voyageur doit tout voir avant d'accepter.
+  if (!photos || photos.length === 0)
+    return res.status(400).json({ error: 'Au moins une photo du produit est obligatoire' });
+  if (!validPhotos(photos) || photos.length > 3)
+    return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
   if (!customsAccepted)
     return res.status(400).json({ error: 'Acceptation explicite des règles douanières requise' });
   if (Number(valueEur) > req.user.maxValue)
@@ -242,7 +330,7 @@ app.post('/api/listings', auth, (req, res) => {
   const listing = {
     id: newId('l'), senderId: req.user.id, title,
     categoryId, categoryLabel: cat ? cat.label : req.body.categoryLabel || categoryId,
-    icon: cat ? cat.icon : '📦', description, weightKg: Number(weightKg), valueEur: Number(valueEur),
+    icon: cat ? cat.icon : '📦', description, photos: photos || [], weightKg: Number(weightKg), valueEur: Number(valueEur),
     from, to, dateFrom, dateTo, travelerPay: Number(travelerPay), commissionRate: 0.18,
     status: evalRes.verdict === 'gray' ? 'pending_review' : 'published',
     whitelistVerdict: evalRes.verdict, recipientId: recipient?.id || null, createdAt: Date.now(),
@@ -295,6 +383,9 @@ app.get('/api/transactions/:id', auth, (req, res) => {
 app.post('/api/listings/:id/accept', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'KYC requis avant toute transaction' });
+  // Formation courte obligatoire au premier transport (PRD §5.4)
+  if (!req.user.trainingDone && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Formation voyageur requise', needsTraining: true });
   const listing = db.listings.find((l) => l.id === req.params.id);
   if (!listing || listing.status !== 'published')
     return res.status(400).json({ error: 'Annonce indisponible' });
@@ -315,6 +406,7 @@ app.post('/api/listings/:id/accept', auth, (req, res) => {
     sealingVideo: null, events: [], createdAt: Date.now(),
   };
   addEvent(tx, 'accepted', req.user.id, { escrowHeld: total });
+  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], `${req.user.name} transporte « ${listing.title} ». Paiement séquestré.`, tx.id);
   db.transactions.push(tx);
   save();
   res.json({ transaction: txView(req.user)(tx) });
@@ -331,6 +423,7 @@ app.post('/api/transactions/:id/sealing-video', auth, (req, res) => {
   };
   t.status = 'sealed';
   addEvent(t, 'sealed', req.user.id, { simulated: !!req.body.simulated });
+  notify([t.travelerId], `Colis scellé et filmé pour « ${db.listings.find((l) => l.id === t.listingId)?.title} ». Organisez la remise.`, t.id);
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -344,6 +437,7 @@ app.post('/api/transactions/:id/confirm-pickup', auth, (req, res) => {
     return res.status(400).json({ error: 'Code invalide — scannez le QR de l\'expéditeur' });
   t.status = 'in_transit';
   addEvent(t, 'in_transit', req.user.id, { responsibility: 'traveler' });
+  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], 'Colis pris en charge par le voyageur — en transit.', t.id);
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -358,6 +452,7 @@ app.post('/api/transactions/:id/refuse', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === t.listingId);
   if (listing) listing.status = 'published';
   addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
+  notify([t.senderId], 'Le voyageur a refusé le transport (sans pénalité). Votre annonce est republiée et remboursée.', t.id);
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -382,6 +477,8 @@ app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
   if (sender.completed !== undefined) sender.completed += 1;
   if (sender.completed >= 3) { sender.maxValue = 500; sender.maxActive = 3; }
   addEvent(t, 'delivered_and_released', req.user.id, { released: t.escrow.travelerPay });
+  notify([t.travelerId], `Livraison validée — ${t.escrow.travelerPay} € versés sur votre compte.`, t.id);
+  notify([t.senderId], 'Colis livré et validé par le destinataire. Pensez à noter vos partenaires.', t.id);
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -420,6 +517,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   db.disputes.push(dispute);
   db.reviewQueue.push({ id: newId('rq'), type: 'dispute', refId: dispute.id, status: 'open', createdAt: Date.now() });
   addEvent(t, 'dispute_opened', req.user.id, { reason: req.body.reason });
+  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.', t.id);
   save();
   res.json({ dispute });
 });
@@ -512,6 +610,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       t.status = 'refunded'; t.escrow.state = 'refunded';
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
+    notify([t.senderId, t.travelerId, t.recipientId], decision === 'release_traveler' ? 'Litige tranché : paiement versé au voyageur.' : 'Litige tranché : expéditeur remboursé.', t.id);
   }
   save();
   res.json({ ok: true });

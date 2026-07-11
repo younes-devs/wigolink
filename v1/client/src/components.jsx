@@ -1,12 +1,14 @@
 import { NavLink } from 'react-router-dom';
 import { Icon } from './Icons.jsx';
+import Notifications from './Notifications.jsx';
 
-export function Header() {
+export function Header({ user }) {
   return (
     <header className="app-header">
       <div className="brand">
         <span className="brand-mark">S</span>
         <span>Salama</span>
+        {user && <span style={{ marginLeft: 'auto' }}><Notifications /></span>}
       </div>
       <div className="tagline">Envoyez avec confiance · Bruxelles ↔ Casablanca</div>
     </header>

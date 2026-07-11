@@ -41,7 +41,7 @@ d'email par code (démo : `123456`), connexion Google (simulée), mot de passe o
 (code démo : `424242`, invalide les sessions existantes), déconnexion serveur,
 anti-brute-force sur le login.
 
-Parcours complet : Fatima publie un envoi (liste blanche + écran douane) → Karim accepte (escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
+Parcours complet : Fatima publie un envoi (photos obligatoires + liste blanche + écran douane) → l'annonce apparaît dans le feed des voyageurs dont le **trajet déclaré** correspond (sens, dates, capacité kg) → Karim accepte (formation obligatoire au premier transport, puis escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Notifications in-app à chaque transition (cloche dans l'en-tête). Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
 
 **Mode test intégré** : bouton flottant (étincelles, en bas à droite) pour basculer de
 compte en un clic ou créer un utilisateur jetable ; boutons « Remplir (test) » sur les

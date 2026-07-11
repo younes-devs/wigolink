@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
+import Training from '../Training.jsx';
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -10,9 +11,10 @@ export default function ListingDetail() {
   const [listing, setListing] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [training, setTraining] = useState(false);
 
   useEffect(() => {
-    api('/listings').then((d) => setListing(d.listings.find((l) => l.id === id) || 'gone'));
+    api('/listings?all=1').then((d) => setListing(d.listings.find((l) => l.id === id) || 'gone'));
   }, [id]);
 
   const accept = async () => {
@@ -22,7 +24,8 @@ export default function ListingDetail() {
       const d = await api(`/listings/${id}/accept`, { method: 'POST' });
       nav(`/transactions/${d.transaction.id}`);
     } catch (e) {
-      setError(e.message);
+      if (e.data?.needsTraining) setTraining(true);
+      else setError(e.message);
       setBusy(false);
     }
   };
@@ -34,6 +37,14 @@ export default function ListingDetail() {
 
   return (
     <div>
+      {training && (
+        <Training onClose={() => setTraining(false)} onDone={() => { setTraining(false); accept(); }} />
+      )}
+      {listing.photos?.length > 0 && (
+        <div className="photo-strip">
+          {listing.photos.map((p, i) => <img key={i} src={p} alt={`Photo ${i + 1}`} />)}
+        </div>
+      )}
       <div className="card">
         <div className="list-row">
           <CategoryIcon categoryId={listing.categoryId} size={26} />

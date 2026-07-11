@@ -1,37 +1,98 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 
 export default function Feed() {
-  const [listings, setListings] = useState(null);
+  const [data, setData] = useState(null);
+  const [trips, setTrips] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const [addingTrip, setAddingTrip] = useState(false);
 
-  useEffect(() => {
-    api('/listings').then((d) => setListings(d.listings)).catch(() => setListings([]));
-  }, []);
+  const load = useCallback(() => {
+    api(`/listings${showAll ? '?all=1' : ''}`).then(setData).catch(() => setData({ listings: [] }));
+    api('/trips/mine').then((d) => setTrips(d.trips)).catch(() => setTrips([]));
+  }, [showAll]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const removeTrip = async (id) => {
+    await api(`/trips/${id}`, { method: 'DELETE' });
+    load();
+  };
+
+  const listings = data?.listings;
+  const futureTrips = (trips || []).filter((t) => t.date >= new Date().toISOString().slice(0, 10));
 
   return (
     <div>
       <h1 className="page-title">Annonces sur votre trajet</h1>
-      <p className="page-sub">Casablanca → Bruxelles · Transportez, gagnez, en toute sécurité.</p>
+      <p className="page-sub">
+        {data?.filteredByTrip
+          ? `Filtrées selon vos trajets déclarés (${listings?.length ?? '…'} compatibles sur ${data.totalOpen}).`
+          : 'Déclarez votre trajet pour voir les annonces compatibles en premier.'}
+      </p>
 
-      {listings === null && <div className="muted center">Chargement…</div>}
+      {/* Trajets déclarés (PRD §2.1) — la clé du matching */}
+      <div className="card trip-card">
+        <div className="list-row">
+          <Icon name="plane" size={18} />
+          <b className="grow">Mes trajets</b>
+          <button className="btn btn-ghost btn-sm" onClick={() => setAddingTrip(!addingTrip)}>
+            {addingTrip ? 'Fermer' : '+ Déclarer'}
+          </button>
+        </div>
+        {futureTrips.length > 0 && (
+          <div className="trip-chips">
+            {futureTrips.map((t) => (
+              <span key={t.id} className="trip-chip">
+                {t.from} → {t.to} · {new Date(t.date).toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' })} · {t.capacityKg} kg
+                <button onClick={() => removeTrip(t.id)} aria-label="Supprimer"><Icon name="x" size={12} /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        {futureTrips.length === 0 && !addingTrip && (
+          <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
+            Aucun trajet à venir. Déclarez vos dates de voyage pour recevoir les annonces qui correspondent.
+          </p>
+        )}
+        {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); }} />}
+      </div>
+
+      {data?.filteredByTrip !== undefined && futureTrips.length > 0 && (
+        <label className="feed-toggle">
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+          Voir aussi les annonces hors de mes trajets
+        </label>
+      )}
+
+      {listings === undefined && <div className="muted center">Chargement…</div>}
       {listings?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="moon" size={36} />
-          <p className="muted">Aucune annonce disponible pour l'instant sur ce corridor.</p>
+          <p className="muted">
+            {data?.filteredByTrip
+              ? 'Aucune annonce compatible avec vos trajets pour l\'instant.'
+              : 'Aucune annonce disponible pour l\'instant sur ce corridor.'}
+          </p>
         </div>
       )}
 
       <div className="card-grid">
       {listings?.map((l) => (
         <Link key={l.id} to={`/annonce/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="card clickable">
-            <div className="list-row">
-              <CategoryIcon categoryId={l.categoryId} />
+          <div className="card clickable listing-card">
+            {l.photos?.length > 0
+              ? <div className="listing-photo"><img src={l.photos[0]} alt={l.title} loading="lazy" /></div>
+              : <div className="listing-photo listing-photo-empty"><CategoryIcon categoryId={l.categoryId} /></div>}
+            <div className="list-row" style={{ alignItems: 'flex-start' }}>
               <div className="grow">
-                <div style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.2px' }}>{l.title}</div>
+                <div style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.2px' }}>
+                  {l.matched && <span className="pill pill-teal" style={{ marginRight: 6, verticalAlign: 'middle' }}>Sur votre trajet</span>}
+                  {l.title}
+                </div>
                 <div className="muted">{l.from} → {l.to} · {l.weightKg} kg · valeur {l.valueEur} €</div>
                 <div style={{ marginTop: 7 }}>
                   <TrustBadge user={l.sender} />
@@ -46,6 +107,45 @@ export default function Feed() {
         </Link>
       ))}
       </div>
+    </div>
+  );
+}
+
+function TripForm({ onSaved }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({ from: 'Casablanca', to: 'Bruxelles', date: '', capacityKg: 8 });
+  const [err, setErr] = useState('');
+
+  const save = async () => {
+    setErr('');
+    try {
+      await api('/trips', { method: 'POST', body: form });
+      onSaved();
+    } catch (e) { setErr(e.message); }
+  };
+
+  return (
+    <div className="mt">
+      {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
+      <div className="row">
+        <div className="field">
+          <label>Sens</label>
+          <select value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value, to: e.target.value === 'Casablanca' ? 'Bruxelles' : 'Casablanca' })}>
+            <option value="Casablanca">Casablanca → Bruxelles</option>
+            <option value="Bruxelles">Bruxelles → Casablanca</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>Date du vol</label>
+          <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        </div>
+        <div className="field" style={{ maxWidth: 110 }}>
+          <label>Kg dispo</label>
+          <input type="number" min={1} max={30} value={form.capacityKg}
+            onChange={(e) => setForm({ ...form, capacityKg: e.target.value })} />
+        </div>
+      </div>
+      <button className="btn btn-primary btn-sm" onClick={save} disabled={!form.date}>Enregistrer le trajet</button>
     </div>
   );
 }

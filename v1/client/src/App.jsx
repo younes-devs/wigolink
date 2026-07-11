@@ -46,7 +46,7 @@ export default function App() {
     <AuthCtx.Provider value={{ user, login, logout, refreshUser }}>
       <BrowserRouter>
         <div className="phone">
-          <Header />
+          <Header user={user} />
           <div className="main-wrap">
           <div className="content">
             {!user ? (
