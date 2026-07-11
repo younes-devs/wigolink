@@ -143,6 +143,12 @@ export default function Login() {
               <GoogleLogo size={18} />S'inscrire avec Google
             </button>
             <div className="auth-sep"><span>ou par email</span></div>
+            <button type="button" className="autofill-btn mb" onClick={() => {
+              const n = Math.floor(Math.random() * 9000) + 1000;
+              setForm((f) => ({ ...f, name: `Testeur ${n}`, email: `testeur${n}@exemple.com`, phone: `+3247${n}111`, password: 'demo1234', confirm: 'demo1234' }));
+            }}>
+              <Icon name="sparkles" size={13} />Remplir (test)
+            </button>
             <div className="field">
               <label>Nom complet</label>
               <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Prénom Nom" autoComplete="name" />

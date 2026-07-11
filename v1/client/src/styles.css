@@ -412,6 +412,43 @@ body {
 .google-account:hover { background: rgba(22, 24, 29, 0.03); }
 .google-account .grow { flex: 1; }
 
+/* Mode test */
+.devbar-fab {
+  position: fixed; bottom: 84px; right: max(12px, calc(50% - 228px)); z-index: 40;
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--glass-border);
+  background: var(--glass-strong); color: var(--amber);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--shadow-lg); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform 0.1s;
+}
+.devbar-fab:hover { transform: scale(1.08); }
+.devbar-panel {
+  position: fixed; bottom: 134px; right: max(12px, calc(50% - 228px)); z-index: 40;
+  width: 240px; background: #fff; border-radius: 16px;
+  box-shadow: var(--shadow-lg); border: 1px solid var(--hairline);
+  padding: 12px; animation: modal-in 0.15s ease;
+}
+.devbar-title { display: flex; align-items: center; font-size: 13.5px; font-weight: 700; }
+.devbar-hint { font-size: 11px; color: var(--ink-soft); margin: 4px 0 8px; line-height: 1.4; }
+.devbar-account {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 10px; margin-bottom: 4px; border-radius: 10px;
+  border: 1px solid var(--hairline); background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px;
+}
+.devbar-account span { color: var(--ink-soft); font-size: 11.5px; }
+.devbar-account:hover:not(:disabled) { background: var(--accent-tint); border-color: rgba(10, 108, 245, 0.25); }
+.devbar-account:disabled { opacity: 0.55; cursor: default; }
+.devbar-account .pill { margin-left: auto; }
+.autofill-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px dashed rgba(154, 98, 0, 0.4); background: var(--amber-tint);
+  color: var(--amber); font-family: inherit; font-size: 12px; font-weight: 600;
+  border-radius: 8px; padding: 5px 10px; cursor: pointer;
+}
+.autofill-btn:hover { filter: brightness(0.97); }
+
 .empty-state { padding: 30px 16px; }
 .empty-state .icon { color: var(--ink-faint); margin-bottom: 10px; }
 ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: var(--ink); }

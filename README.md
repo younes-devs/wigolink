@@ -43,4 +43,9 @@ anti-brute-force sur le login.
 
 Parcours complet : Fatima publie un envoi (liste blanche + écran douane) → Karim accepte (escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
 
+**Mode test intégré** : bouton flottant (étincelles, en bas à droite) pour basculer de
+compte en un clic ou créer un utilisateur jetable ; boutons « Remplir (test) » sur les
+formulaires d'annonce et d'inscription ; « Code auto (test) » pour les validations QR.
+Désactivable avec `DEMO=false` côté serveur.
+
 **Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), KYC, escrow (Mangopay/Stripe Connect), QR scannables.

@@ -487,5 +487,41 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Mode démo/test (à retirer en production) ----------
+const DEMO = process.env.DEMO !== 'false';
+
+if (DEMO) {
+  // Connexion directe à un compte de démo, sans mot de passe.
+  app.post('/api/dev/impersonate', (req, res) => {
+    const user = findByEmail(req.body.email);
+    if (!user) return res.status(404).json({ error: 'Compte inconnu' });
+    openSession(res, user);
+  });
+
+  // Crée un utilisateur de test aléatoire, vérifié et KYC ok, connecté.
+  app.post('/api/dev/random-user', (req, res) => {
+    const n = Math.floor(Math.random() * 9000) + 1000;
+    const names = ['Salma', 'Youssef', 'Nadia', 'Hamza', 'Leila', 'Adam', 'Sofia', 'Bilal'];
+    const user = makeUser({
+      name: `${names[n % names.length]} T${n}`,
+      email: `test${n}@demo.salama.app`,
+      phone: `+3247${n}000`,
+      provider: 'email',
+      emailVerified: true,
+      passwordHash: hashPassword('demo1234'),
+    });
+    user.kycStatus = 'verified';
+    db.users.push(user);
+    openSession(res, user);
+  });
+
+  // Révèle les codes de validation d'une transaction (impossible en prod).
+  app.get('/api/dev/tx-codes/:id', auth, (req, res) => {
+    const t = db.transactions.find((x) => x.id === req.params.id);
+    if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+    res.json({ pickupCode: t.pickupCode, deliveryCode: t.deliveryCode });
+  });
+}
+
 const PORT = process.env.PORT || 4517;
 app.listen(PORT, () => console.log(`API Salama sur http://localhost:${PORT}`));

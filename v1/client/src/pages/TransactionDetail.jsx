@@ -84,6 +84,12 @@ function StepAction({ tx, user, reload }) {
     } catch (e) { setErr(e.message); }
   };
 
+  // Mode test : récupère le code que l'autre partie devrait présenter.
+  const autofillCode = async (which) => {
+    const d = await api(`/dev/tx-codes/${tx.id}`);
+    setCode(which === 'pickup' ? d.pickupCode : d.deliveryCode);
+  };
+
   if (tx.status === 'cancelled')
     return <div className="alert alert-warn"><Icon name="alert" size={17} />Transport annulé sans pénalité. L'annonce a été republiée.</div>;
   if (tx.status === 'refunded')
@@ -133,6 +139,9 @@ function StepAction({ tx, user, reload }) {
           <div className="field">
             <label>Code affiché sur le téléphone de l'expéditeur</label>
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ABC123" maxLength={6} />
+            <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('pickup')}>
+              <Icon name="sparkles" size={13} />Code auto (test)
+            </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-pickup', { code })} disabled={code.length !== 6}>
             <Icon name="check" size={18} />J'ai vérifié le contenu — prendre en charge
@@ -166,6 +175,9 @@ function StepAction({ tx, user, reload }) {
           <div className="field">
             <label>Code affiché sur le téléphone du voyageur</label>
             <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ABC123" maxLength={6} />
+            <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('delivery')}>
+              <Icon name="sparkles" size={13} />Code auto (test)
+            </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-delivery', { code })} disabled={code.length !== 6}>
             <Icon name="check" size={18} />Colis conforme — valider la livraison

@@ -18,6 +18,24 @@ export default function CreateListing() {
   useEffect(() => { api('/rules').then(setRules); }, []);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Mode test : pré-remplit tout le formulaire avec des données plausibles.
+  const autofill = () => {
+    const picks = [
+      { categoryId: 'miel', title: 'Miel de thym pour la famille', description: 'Deux pots de miel de thym scellés (500 g chacun), achetés à la coopérative.', weightKg: 1.2, valueEur: 40, travelerPay: 12 },
+      { categoryId: 'safran', title: 'Safran de Taliouine', description: 'Boîte scellée de 20 g de safran en filaments, origine Taliouine.', weightKg: 0.1, valueEur: 60, travelerPay: 10 },
+      { categoryId: 'argan', title: "Huile d'argan cosmétique", description: "Deux flacons scellés d'huile d'argan cosmétique pressée à froid (250 ml).", weightKg: 0.8, valueEur: 35, travelerPay: 10 },
+      { categoryId: 'dattes', title: 'Dattes Medjool du bled', description: 'Trois kilos de dattes Medjool en barquettes operculées.', weightKg: 3, valueEur: 45, travelerPay: 14 },
+    ];
+    const p = picks[Math.floor(Math.random() * picks.length)];
+    const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    const in21 = new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10);
+    setForm((f) => ({
+      ...f, ...p, from: 'Casablanca', to: 'Bruxelles', dateFrom: in7, dateTo: in21,
+      recipientPhone: '+32470000003', customsAccepted: false,
+    }));
+    setStep(2);
+  };
+
   if (!rules) return <div className="muted center">Chargement…</div>;
 
   const corridor = form.from === 'Casablanca' ? rules.customs['MA-EU'] : rules.customs['EU-MA'];
@@ -33,7 +51,12 @@ export default function CreateListing() {
 
   return (
     <div>
-      <h1 className="page-title">Nouvel envoi</h1>
+      <div className="list-row">
+        <h1 className="page-title grow">Nouvel envoi</h1>
+        <button className="autofill-btn" onClick={autofill} title="Remplir avec des données de test">
+          <Icon name="sparkles" size={14} />Remplir (test)
+        </button>
+      </div>
       <div className="step-dots">{[0, 1, 2].map((i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
 
       {error && <div className="alert alert-danger">{error}</div>}
