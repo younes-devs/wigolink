@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "salama-api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && node server/index.js"],
+      "port": 4517
+    },
+    {
+      "name": "salama-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && ./node_modules/.bin/vite client --port 5173 --strictPort"],
+      "port": 5173
+    }
+  ]
+}

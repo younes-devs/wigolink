@@ -15,4 +15,27 @@ v1/         V1 MVP — application mobile (à démarrer après validation V0 + P
 
 ## État actuel
 
-Phase A (cadrage juridique) en cours — voir [docs/plan-projet.md](docs/plan-projet.md#3-phase-a--cadrage-juridique--décisions-clés-bloquant-à-faire-en-premier).
+V1 MVP fonctionnel (web app responsive, mode démo) — le volet juridique (Phase A) reste à traiter avant tout lancement public.
+
+## Lancer l'app (v1)
+
+Prérequis : Node ≥ 20 (installé ici via nvm).
+
+```bash
+cd v1
+npm install
+npm run dev     # API sur :4517 + web sur :5173
+```
+
+Ouvrir http://localhost:5173. Comptes de démo (code OTP : `123456`) :
+
+| Rôle | Téléphone |
+|---|---|
+| Fatima — expéditrice (Casablanca) | `+212600000001` |
+| Karim — voyageur (Bruxelles) | `+32470000002` |
+| Mehdi — destinataire (Bruxelles) | `+32470000003` |
+| Admin — back-office | `+32470000000` |
+
+Parcours complet : Fatima publie un envoi (liste blanche + écran douane) → Karim accepte (escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
+
+**Simulé en démo (prestataires réels requis en prod)** : OTP SMS, KYC, escrow (Mangopay/Stripe Connect), QR scannables.
