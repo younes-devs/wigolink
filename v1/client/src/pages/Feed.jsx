@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
+import { CategoryIcon, Icon } from '../Icons.jsx';
 
 export default function Feed() {
   const [listings, setListings] = useState(null);
@@ -17,9 +18,9 @@ export default function Feed() {
 
       {listings === null && <div className="muted center">Chargement…</div>}
       {listings?.length === 0 && (
-        <div className="card center">
-          <div style={{ fontSize: 40 }}>🌙</div>
-          <p className="muted mt">Aucune annonce disponible pour l'instant sur ce corridor.</p>
+        <div className="card center empty-state">
+          <Icon name="moon" size={36} />
+          <p className="muted">Aucune annonce disponible pour l'instant sur ce corridor.</p>
         </div>
       )}
 
@@ -27,17 +28,17 @@ export default function Feed() {
         <Link key={l.id} to={`/annonce/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="card clickable">
             <div className="list-row">
-              <div style={{ fontSize: 34 }}>{l.icon}</div>
+              <CategoryIcon categoryId={l.categoryId} />
               <div className="grow">
-                <div style={{ fontWeight: 800, fontSize: 15 }}>{l.title}</div>
+                <div style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.2px' }}>{l.title}</div>
                 <div className="muted">{l.from} → {l.to} · {l.weightKg} kg · valeur {l.valueEur} €</div>
-                <div className="mt" style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 7 }}>
                   <TrustBadge user={l.sender} />
                 </div>
               </div>
-              <div className="center">
-                <div style={{ fontWeight: 900, color: 'var(--teal)', fontSize: 18 }}>+{l.travelerPay} €</div>
-                <div className="muted" style={{ fontSize: 11 }}>pour vous</div>
+              <div className="center price">
+                +{l.travelerPay} €
+                <small>pour vous</small>
               </div>
             </div>
           </div>

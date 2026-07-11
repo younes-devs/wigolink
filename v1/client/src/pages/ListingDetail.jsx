@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
+import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -27,7 +28,7 @@ export default function ListingDetail() {
   };
 
   if (!listing) return <div className="muted center">Chargement…</div>;
-  if (listing === 'gone') return <div className="alert alert-warn">Cette annonce n'est plus disponible.</div>;
+  if (listing === 'gone') return <div className="alert alert-warn"><Icon name="alert" size={17} />Cette annonce n'est plus disponible.</div>;
 
   const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
 
@@ -35,14 +36,14 @@ export default function ListingDetail() {
     <div>
       <div className="card">
         <div className="list-row">
-          <div style={{ fontSize: 44 }}>{listing.icon}</div>
+          <CategoryIcon categoryId={listing.categoryId} size={26} />
           <div className="grow">
-            <h1 style={{ fontSize: 18, fontWeight: 800 }}>{listing.title}</h1>
+            <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px' }}>{listing.title}</h1>
             <div className="muted">{listing.categoryLabel}</div>
           </div>
         </div>
         <div className="divider" />
-        <p style={{ fontSize: 14, lineHeight: 1.5 }}>{listing.description}</p>
+        <p style={{ fontSize: 14, lineHeight: 1.55 }}>{listing.description}</p>
         <div className="divider" />
         <div className="stat-grid">
           <div><div className="muted">Trajet</div><b>{listing.from} → {listing.to}</b></div>
@@ -53,9 +54,9 @@ export default function ListingDetail() {
       </div>
 
       <div className="card">
-        <h2 style={{ fontSize: 15, marginBottom: 8 }}>Expéditeur</h2>
+        <h2 style={{ marginBottom: 10 }}><Icon name="user" size={17} />Expéditeur</h2>
         <div className="list-row">
-          <div className="avatar-lg">{listing.sender?.avatar}</div>
+          <Avatar name={listing.sender?.name} />
           <div className="grow">
             <b>{listing.sender?.name}</b> · {listing.sender?.city}
             <div style={{ marginTop: 6 }}><TrustBadge user={listing.sender} /></div>
@@ -64,7 +65,7 @@ export default function ListingDetail() {
       </div>
 
       <div className="card">
-        <h2 style={{ fontSize: 15, marginBottom: 8 }}>💰 Votre rémunération</h2>
+        <h2 style={{ marginBottom: 10 }}><Icon name="euro" size={17} />Votre rémunération</h2>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
           <span className="muted">Rémunération voyageur</span><b>{listing.travelerPay} €</b>
         </div>
@@ -74,14 +75,15 @@ export default function ListingDetail() {
         </div>
         <div className="divider" />
         <div className="alert alert-teal" style={{ marginBottom: 0 }}>
-          Le paiement est séquestré dès votre acceptation et versé automatiquement à la livraison validée.
-          Vous pouvez refuser sans pénalité lors de la remise si le contenu ne correspond pas.
+          <Icon name="lock" size={17} />
+          <span>Le paiement est séquestré dès votre acceptation et versé automatiquement à la livraison validée.
+          Vous pouvez refuser sans pénalité lors de la remise si le contenu ne correspond pas.</span>
         </div>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
       <button className="btn btn-primary" onClick={accept} disabled={busy}>
-        {busy ? '…' : '🤝 Accepter ce transport'}
+        {busy ? '…' : 'Accepter ce transport'}
       </button>
     </div>
   );

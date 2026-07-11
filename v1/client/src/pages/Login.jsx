@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
+import { Icon } from '../Icons.jsx';
 
 export default function Login() {
   const { login } = useAuth();
@@ -45,15 +46,15 @@ export default function Login() {
 
   return (
     <div>
-      <div className="center" style={{ padding: '26px 0 18px' }}>
-        <div style={{ fontSize: 56 }}>🕊️</div>
+      <div className="center" style={{ padding: '30px 0 22px' }}>
+        <span className="brand-mark" style={{ width: 56, height: 56, borderRadius: 18, fontSize: 28, marginBottom: 14, display: 'inline-flex' }}>S</span>
         <h1 className="page-title">Bienvenue sur Salama</h1>
-        <p className="page-sub">
+        <p className="page-sub" style={{ marginBottom: 0 }}>
           La façon sûre d'envoyer des produits du terroir entre le Maroc et la Belgique, avec des voyageurs vérifiés.
         </p>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
 
       {step === 'phone' && (
         <div className="card">
@@ -74,7 +75,7 @@ export default function Login() {
 
       {step === 'otp' && (
         <div className="card">
-          {hint && <div className="alert alert-warn">{hint}</div>}
+          {hint && <div className="alert alert-warn"><Icon name="chat" size={17} />{hint}</div>}
           <div className="field">
             <label>Code reçu par SMS</label>
             <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" inputMode="numeric" maxLength={6} />
@@ -87,16 +88,19 @@ export default function Login() {
 
       {step === 'kyc' && (
         <div className="card">
-          <h2 style={{ fontSize: 17, marginBottom: 8 }}>🪪 Vérification d'identité</h2>
+          <h2 style={{ marginBottom: 8 }}><Icon name="shieldCheck" size={18} />Vérification d'identité</h2>
           <p className="muted mb">
             Avant toute transaction, nous vérifions l'identité de chaque membre : pièce d'identité + selfie.
             C'est ce qui rend Salama sûr pour tout le monde.
           </p>
           <div className="alert alert-teal">
-            Mode démo : la vérification est simulée et instantanée. En production, elle passe par un prestataire
-            spécialisé (détection de faux documents + liveness).
+            <Icon name="lock" size={17} />
+            <span>Mode démo : la vérification est simulée et instantanée. En production, elle passe par un prestataire
+            spécialisé (détection de faux documents + liveness).</span>
           </div>
-          <button className="btn btn-teal" onClick={doKyc}>📸 Vérifier mon identité</button>
+          <button className="btn btn-teal" onClick={doKyc}>
+            <Icon name="camera" size={18} />Vérifier mon identité
+          </button>
         </div>
       )}
     </div>

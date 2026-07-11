@@ -1,32 +1,31 @@
 import { NavLink } from 'react-router-dom';
+import { Icon } from './Icons.jsx';
 
 export function Header() {
   return (
     <header className="app-header">
-      <div className="zellige" />
       <div className="brand">
-        <span>🕊️ Salama</span>
+        <span className="brand-mark">S</span>
+        <span>Salama</span>
       </div>
-      <div className="tagline" style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
-        Envoyez avec confiance, Bruxelles ↔ Casablanca
-      </div>
+      <div className="tagline">Envoyez avec confiance · Bruxelles ↔ Casablanca</div>
     </header>
   );
 }
 
 export function BottomNav({ user }) {
   const tabs = [
-    { to: '/', icon: '🧳', label: 'Trajets' },
-    { to: '/envois', icon: '📦', label: 'Mes envois' },
-    { to: '/transactions', icon: '🔄', label: 'En cours' },
-    { to: '/profil', icon: '👤', label: 'Profil' },
+    { to: '/', icon: 'luggage', label: 'Trajets' },
+    { to: '/envois', icon: 'package', label: 'Mes envois' },
+    { to: '/transactions', icon: 'repeat', label: 'En cours' },
+    { to: '/profil', icon: 'user', label: 'Profil' },
   ];
-  if (user?.isAdmin) tabs.push({ to: '/admin', icon: '🛡️', label: 'Admin' });
+  if (user?.isAdmin) tabs.push({ to: '/admin', icon: 'shield', label: 'Admin' });
   return (
     <nav className="bottom-nav">
       {tabs.map((t) => (
         <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <span className="icon">{t.icon}</span>
+          <Icon name={t.icon} size={21} />
           {t.label}
         </NavLink>
       ))}
@@ -47,7 +46,7 @@ export function QrBlock({ code, caption }) {
     }
   return (
     <div className="qr-frame">
-      <svg width="150" height="150" viewBox="0 0 150 150" fill="#2b2118">{cells}</svg>
+      <svg width="160" height="160" viewBox="0 0 150 150" fill="#1d1a17">{cells}</svg>
       <div className="qr-code-text">{code}</div>
       {caption && <div className="muted center">{caption}</div>}
     </div>
@@ -58,10 +57,14 @@ export function TrustBadge({ user }) {
   if (!user) return null;
   return (
     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-      {user.kycStatus === 'verified' && <span className="pill pill-teal">✓ Identité vérifiée</span>}
-      {user.badges?.includes('voyageur-confirme') && <span className="pill pill-saffron">⭐ Voyageur confirmé</span>}
+      {user.kycStatus === 'verified' && (
+        <span className="pill pill-teal"><Icon name="shieldCheck" size={13} />Identité vérifiée</span>
+      )}
+      {user.badges?.includes('voyageur-confirme') && (
+        <span className="pill pill-saffron"><Icon name="star" size={13} filled />Voyageur confirmé</span>
+      )}
       {user.rating != null && (
-        <span className="pill pill-gray">★ {user.rating} ({user.ratingCount})</span>
+        <span className="pill pill-gray"><Icon name="star" size={13} filled />{user.rating} ({user.ratingCount})</span>
       )}
     </span>
   );
@@ -71,7 +74,9 @@ export function Stars({ value, onChange }) {
   return (
     <div className="stars">
       {[1, 2, 3, 4, 5].map((n) => (
-        <span key={n} className={n <= value ? 'on' : ''} onClick={() => onChange(n)}>⭐</span>
+        <span key={n} className={n <= value ? 'on' : ''} onClick={() => onChange(n)}>
+          <Icon name="star" size={26} filled className={n <= value ? 'on' : ''} />
+        </span>
       ))}
     </div>
   );

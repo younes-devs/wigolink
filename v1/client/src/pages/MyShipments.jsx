@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { CategoryIcon, Icon } from '../Icons.jsx';
 
 const LISTING_STATUS = {
   published: { label: 'Publiée — en attente de voyageur', pill: 'pill-saffron' },
@@ -23,14 +24,16 @@ export default function MyShipments() {
           <h1 className="page-title">Mes envois</h1>
           <p className="page-sub" style={{ marginBottom: 0 }}>Vos demandes d'envoi et leur statut.</p>
         </div>
-        <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">+ Nouvel envoi</button></Link>
+        <Link to="/envois/nouveau">
+          <button className="btn btn-primary btn-sm"><Icon name="plus" size={16} />Nouvel envoi</button>
+        </Link>
       </div>
 
       {listings === null && <div className="muted center">Chargement…</div>}
       {listings?.length === 0 && (
-        <div className="card center">
-          <div style={{ fontSize: 40 }}>📦</div>
-          <p className="muted mt">Aucun envoi pour l'instant. Créez votre première demande !</p>
+        <div className="card center empty-state">
+          <Icon name="package" size={36} />
+          <p className="muted">Aucun envoi pour l'instant. Créez votre première demande !</p>
         </div>
       )}
 
@@ -39,7 +42,7 @@ export default function MyShipments() {
         return (
           <div className="card" key={l.id}>
             <div className="list-row">
-              <div style={{ fontSize: 32 }}>{l.icon}</div>
+              <CategoryIcon categoryId={l.categoryId} />
               <div className="grow">
                 <b>{l.title}</b>
                 <div className="muted">{l.from} → {l.to} · {l.valueEur} €</div>

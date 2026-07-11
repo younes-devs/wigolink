@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { StatusPill } from '../components.jsx';
+import { CategoryIcon, Icon } from '../Icons.jsx';
 
 export default function Transactions() {
   const [txs, setTxs] = useState(null);
@@ -17,9 +18,9 @@ export default function Transactions() {
 
       {txs === null && <div className="muted center">Chargement…</div>}
       {txs?.length === 0 && (
-        <div className="card center">
-          <div style={{ fontSize: 40 }}>🔄</div>
-          <p className="muted mt">Aucune transaction. Acceptez une annonce ou publiez un envoi.</p>
+        <div className="card center empty-state">
+          <Icon name="repeat" size={36} />
+          <p className="muted">Aucune transaction. Acceptez une annonce ou publiez un envoi.</p>
         </div>
       )}
 
@@ -27,7 +28,7 @@ export default function Transactions() {
         <Link key={t.id} to={`/transactions/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="card clickable">
             <div className="list-row">
-              <div style={{ fontSize: 32 }}>{t.listing?.icon}</div>
+              <CategoryIcon categoryId={t.listing?.categoryId} />
               <div className="grow">
                 <b>{t.listing?.title}</b>
                 <div className="muted">

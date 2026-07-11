@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
+import { Icon } from '../Icons.jsx';
 
 export default function Admin() {
   const [data, setData] = useState(null);
@@ -16,7 +17,7 @@ export default function Admin() {
     load();
   };
 
-  if (error) return <div className="alert alert-danger">{error}</div>;
+  if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
   if (!data) return <div className="muted center">Chargement…</div>;
 
   const { stats, reviewQueue } = data;
@@ -30,28 +31,39 @@ export default function Admin() {
         <div className="stat"><div className="num">{stats.users}</div><div className="lbl">Membres</div></div>
         <div className="stat"><div className="num">{stats.released}/{stats.transactions}</div><div className="lbl">Transactions livrées</div></div>
         <div className="stat"><div className="num">{stats.escrowHeld.toFixed(0)} €</div><div className="lbl">Escrow séquestré</div></div>
-        <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">Messages signalés 🚩</div></div>
+        <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">Messages signalés</div></div>
       </div>
 
-      <h2 style={{ fontSize: 16, fontWeight: 800, margin: '16px 0 8px' }}>File de revue ({reviewQueue.length})</h2>
-      {reviewQueue.length === 0 && <div className="card muted center">File vide — rien à arbitrer. ✅</div>}
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '18px 0 10px', letterSpacing: '-0.3px' }}>
+        File de revue ({reviewQueue.length})
+      </h2>
+      {reviewQueue.length === 0 && (
+        <div className="card center empty-state">
+          <Icon name="check" size={32} />
+          <p className="muted">File vide — rien à arbitrer.</p>
+        </div>
+      )}
 
       {reviewQueue.map((item) => (
         <div className="card" key={item.id}>
           {item.type === 'listing' && item.listing && (
             <>
-              <span className="pill pill-saffron mb">Zone grise — revue produit</span>
-              <div className="mt"><b>{item.listing.icon} {item.listing.title}</b></div>
+              <span className="pill pill-saffron mb"><Icon name="alert" size={13} />Zone grise — revue produit</span>
+              <div className="mt"><b>{item.listing.title}</b></div>
               <div className="muted mb" style={{ fontSize: 13 }}>{item.listing.description} · {item.listing.valueEur} €</div>
               <div className="row">
-                <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'approve')}>✅ Publier</button>
-                <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'reject')}>❌ Refuser</button>
+                <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'approve')}>
+                  <Icon name="check" size={15} />Publier
+                </button>
+                <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'reject')}>
+                  <Icon name="x" size={15} />Refuser
+                </button>
               </div>
             </>
           )}
           {item.type === 'dispute' && item.dispute && (
             <>
-              <span className="pill pill-danger mb">⚖️ Litige — {item.dispute.txId}</span>
+              <span className="pill pill-danger mb"><Icon name="alert" size={13} />Litige — {item.dispute.txId}</span>
               <div className="mt mb" style={{ fontSize: 13.5 }}>
                 <b>Motif :</b> {item.dispute.reason}
                 {item.dispute.evidence.map((e, i) => (
@@ -59,8 +71,9 @@ export default function Admin() {
                 ))}
               </div>
               <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
-                Grille : état ≠ vidéo de scellage → responsabilité voyageur (rembourser).
-                Conforme à la vidéo mais ≠ annonce → responsabilité expéditeur (payer le voyageur).
+                <Icon name="fileText" size={16} />
+                <span>Grille : état ≠ vidéo de scellage → responsabilité voyageur (rembourser).
+                Conforme à la vidéo mais ≠ annonce → responsabilité expéditeur (payer le voyageur).</span>
               </div>
               <div className="row">
                 <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'release_traveler')}>Payer le voyageur</button>

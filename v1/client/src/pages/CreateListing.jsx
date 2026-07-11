@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { Icon } from '../Icons.jsx';
 
 // Création de demande d'envoi — parcours ≤ 3 écrans (PRD §6 accessibilité)
 export default function CreateListing() {
@@ -44,9 +45,9 @@ export default function CreateListing() {
             <select value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
               <option value="">— Choisir une catégorie autorisée —</option>
               {rules.whitelist.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.label} (max {c.maxQty})</option>
+                <option key={c.id} value={c.id}>{c.label} (max {c.maxQty})</option>
               ))}
-              <option value="autre">❓ Autre (revue humaine avant publication)</option>
+              <option value="autre">Autre (revue humaine avant publication)</option>
             </select>
             <div className="hint">
               Interdits : {rules.blacklist.slice(0, 4).map((b) => b.label.toLowerCase()).join(', ')}…
@@ -125,7 +126,7 @@ export default function CreateListing() {
         <div>
           {/* Écran douane dédié — acceptation explicite, pas une checkbox CGU (PRD §1.3) */}
           <div className="card">
-            <h2 style={{ fontSize: 16, marginBottom: 10 }}>🛃 Règles douanières — {corridor.label}</h2>
+            <h2 style={{ marginBottom: 10 }}><Icon name="fileText" size={17} />Règles douanières — {corridor.label}</h2>
             <div className="alert alert-warn">
               <b>Franchise applicable : {corridor.franchise}</b>
             </div>
@@ -146,7 +147,7 @@ export default function CreateListing() {
             </label>
           </div>
           <button className="btn btn-primary" disabled={!form.customsAccepted} onClick={submit}>
-            📦 Publier ma demande d'envoi
+            Publier ma demande d'envoi
           </button>
         </div>
       )}
