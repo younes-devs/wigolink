@@ -425,6 +425,47 @@ body {
   aspect-ratio: 1; background: #000;
 }
 .scanner-frame video { width: 100%; height: 100%; object-fit: cover; }
+/* Réglages type "Confidentialité" — liste style app native */
+.settings-group { margin-bottom: 12px; }
+.settings-group-title {
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 4px 8px;
+}
+.settings-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px;
+  cursor: pointer; font-family: inherit; text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.settings-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.settings-row-icon {
+  flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px;
+  background: var(--accent-tint); color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.settings-row-title { display: block; font-size: 14px; font-weight: 650; color: var(--ink); letter-spacing: -0.1px; }
+.settings-row-sub { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+.settings-chevron { flex: 0 0 auto; color: var(--ink-faint); transform: rotate(-90deg); }
+
+/* Modale confidentialité */
+.privacy-modal { max-width: 460px; max-height: 85vh; display: flex; flex-direction: column; }
+.privacy-body { padding: 4px 18px 18px; overflow-y: auto; }
+.privacy-item { display: flex; gap: 12px; padding: 14px 0; align-items: flex-start; }
+.privacy-item-icon {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px;
+  background: var(--accent-tint); color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.privacy-item-icon-danger { background: var(--danger-tint); color: var(--danger); }
+.privacy-item-title { font-size: 14px; font-weight: 650; letter-spacing: -0.1px; margin-bottom: 3px; }
+.privacy-item-desc { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
+.privacy-confirm {
+  background: var(--danger-tint); border: 1px solid rgba(217, 45, 32, 0.18);
+  border-radius: 12px; padding: 12px;
+}
+
 /* Tabs */
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: rgba(22, 24, 29, 0.05); border-radius: 12px; padding: 4px; }
 .tabs button {
