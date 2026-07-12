@@ -682,6 +682,71 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
   });
 });
 
+// KPIs de suivi (PRD §8, plan de projet §7) — instrumentés dès la V1, pas après coup.
+app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
+  const now = Date.now();
+  const DAY = 864e5;
+  const released = db.transactions.filter((t) => t.status === 'released');
+
+  // Transactions complétées / mois — moyenne sur l'historique disponible (mois entiers écoulés depuis la 1ère transaction).
+  const firstTxAt = db.transactions.length ? Math.min(...db.transactions.map((t) => t.createdAt)) : now;
+  const monthsElapsed = Math.max(1, (now - firstTxAt) / (30 * DAY));
+  const perMonth = released.length / monthsElapsed;
+
+  // Répartition mensuelle des 6 derniers mois pour affichage en mini-graphe.
+  const monthly = [];
+  for (let i = 5; i >= 0; i--) {
+    const start = new Date(now - i * 30 * DAY);
+    const label = start.toLocaleDateString('fr-BE', { month: 'short' });
+    const from = now - (i + 1) * 30 * DAY, to = now - i * 30 * DAY;
+    monthly.push({ label, count: released.filter((t) => t.escrow?.releasedAt >= from && t.escrow?.releasedAt < to).length });
+  }
+
+  // Taux de litige : parmi les transactions arrivées au moins en transit (litige possible), combien ont été contestées.
+  const disputable = db.transactions.filter((t) => ['in_transit', 'released', 'disputed', 'refunded'].includes(t.status));
+  const disputeRate = disputable.length ? db.disputes.length / disputable.length : 0;
+
+  // Résolution < 7 jours parmi les litiges déjà résolus.
+  const resolved = db.disputes.filter((d) => d.status === 'resolved' && d.resolvedAt);
+  const resolvedFast = resolved.filter((d) => d.resolvedAt - d.createdAt <= 7 * DAY);
+  const resolutionRate = resolved.length ? resolvedFast.length / resolved.length : null;
+
+  // Voyageurs récurrents : parmi les voyageurs ayant au moins 1 transaction, combien en ont 2+.
+  const byTraveler = {};
+  for (const t of db.transactions) byTraveler[t.travelerId] = (byTraveler[t.travelerId] || 0) + 1;
+  const travelerIds = Object.keys(byTraveler);
+  const recurring = travelerIds.filter((id) => byTraveler[id] >= 2).length;
+  const recurringRate = travelerIds.length ? recurring / travelerIds.length : 0;
+
+  // Désintermédiation estimée : messages signalés / total messages échangés.
+  const desintermediationRate = db.messages.length ? db.messages.filter((m) => m.flagged).length / db.messages.length : 0;
+
+  // Délai moyen de matching : annonce publiée → acceptée.
+  const matchDelays = db.transactions.map((t) => {
+    const listing = db.listings.find((l) => l.id === t.listingId);
+    return listing ? t.createdAt - listing.createdAt : null;
+  }).filter((d) => d !== null && d >= 0);
+  const avgMatchHours = matchDelays.length ? (matchDelays.reduce((s, d) => s + d, 0) / matchDelays.length) / 3600e3 : null;
+
+  res.json({
+    kpis: {
+      transactionsPerMonth: { value: Math.round(perMonth * 10) / 10, target: 150, direction: 'above', monthly },
+      disputeRate: { value: disputeRate, target: 0.05, direction: 'below' },
+      resolutionRate: { value: resolutionRate, target: 0.9, direction: 'above', sampleSize: resolved.length },
+      recurringTravelers: { value: recurringRate, target: 0.4, direction: 'above', sampleSize: travelerIds.length },
+      desintermediationRate: { value: desintermediationRate, target: 0.15, direction: 'below', sampleSize: db.messages.length },
+      avgMatchHours: { value: avgMatchHours, target: 72, direction: 'below' },
+      nps: { value: null, target: 50, direction: 'above', note: 'Nécessite un sondage post-transaction — non instrumenté' },
+    },
+    totals: {
+      transactions: db.transactions.length,
+      released: released.length,
+      disputes: db.disputes.length,
+      users: db.users.length,
+    },
+  });
+});
+
 app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
   const item = db.reviewQueue.find((r) => r.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'Introuvable' });
@@ -697,6 +762,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
     const t = db.transactions.find((x) => x.id === d.txId);
     d.status = 'resolved';
     d.resolution = decision; // release_traveler | refund_sender
+    d.resolvedAt = Date.now();
     if (decision === 'release_traveler') {
       t.status = 'released'; t.escrow.state = 'released';
     } else {

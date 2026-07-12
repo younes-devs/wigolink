@@ -497,6 +497,21 @@ body {
 }
 .policy-table tr:last-child td { border-bottom: none; }
 
+/* KPIs admin */
+.kpi-card { padding: 14px 16px; }
+.kpi-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.kpi-dot-good { background: var(--green); box-shadow: 0 0 0 3px var(--green-tint); }
+.kpi-dot-bad { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-tint); }
+.kpi-dot-nodata { background: var(--ink-faint); box-shadow: 0 0 0 3px rgba(22, 24, 29, 0.06); }
+.kpi-title { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650; letter-spacing: -0.1px; }
+.kpi-title .icon { color: var(--ink-soft); }
+.kpi-target { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.kpi-value { font-size: 19px; font-weight: 750; letter-spacing: -0.4px; flex: 0 0 auto; }
+.kpi-bars { display: flex; gap: 8px; align-items: flex-end; height: 72px; margin-top: 14px; padding-top: 8px; }
+.kpi-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; justify-content: flex-end; height: 100%; }
+.kpi-bar { width: 100%; max-width: 22px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #2a80f7, var(--accent-dark)); }
+.kpi-bar-col span { font-size: 9.5px; color: var(--ink-faint); font-weight: 600; text-transform: capitalize; }
+
 /* Tabs */
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: rgba(22, 24, 29, 0.05); border-radius: 12px; padding: 4px; }
 .tabs button {
