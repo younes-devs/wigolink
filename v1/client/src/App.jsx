@@ -15,6 +15,7 @@ import Profile from './pages/Profile.jsx';
 import Admin from './pages/Admin.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import Terms from './pages/Terms.jsx';
+import Kyc from './pages/Kyc.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -66,6 +67,7 @@ export default function App() {
                   <Route path="/transactions" element={<Transactions />} />
                   <Route path="/transactions/:id" element={<TransactionDetail />} />
                   <Route path="/profil" element={<Profile />} />
+                  <Route path="/verification" element={<Kyc />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </>

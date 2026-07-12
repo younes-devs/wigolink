@@ -89,7 +89,10 @@ export default function CreateListing() {
     try {
       const d = await api('/listings', { method: 'POST', body: form });
       nav(d.listing.status === 'pending_review' ? '/envois' : '/envois');
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      if (e.data?.needsKyc) nav('/verification');
+      else setError(e.message);
+    }
   };
 
   return (

@@ -129,6 +129,8 @@ export default function Profile() {
       {msg && <div className="alert alert-teal"><Icon name="check" size={17} />{msg}</div>}
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
 
+      <KycBanner status={me?.kyc?.status || user.kycStatus} />
+
       <div className="stat-grid mb">
         <div className="stat"><div className="num">{user.completed}</div><div className="lbl">Transactions réussies</div></div>
         <div className="stat"><div className="num">{user.rating ?? '—'}</div><div className="lbl">Note moyenne</div></div>
@@ -298,6 +300,27 @@ function PrivacyModal({ onClose, onDeleted, email }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Bandeau de statut de vérification d'identité, affiché sur le profil.
+function KycBanner({ status }) {
+  const cfg = {
+    none: { cls: 'alert-warn', icon: 'shieldCheck', text: "Identité non vérifiée — requise pour envoyer ou transporter.", cta: 'Vérifier mon identité' },
+    rejected: { cls: 'alert-danger', icon: 'alert', text: 'Votre vérification a été rejetée. Vous pouvez soumettre à nouveau.', cta: 'Recommencer' },
+    pending: { cls: 'alert-warn', icon: 'clock', text: 'Vérification en cours — décision sous 24 h.', cta: 'Voir le statut' },
+    verified: { cls: 'alert-teal', icon: 'shieldCheck', text: 'Identité vérifiée.', cta: null },
+    refused: { cls: 'alert-danger', icon: 'x', text: 'Vérification définitivement refusée. Contactez le support.', cta: 'Détails' },
+  }[status] || null;
+  if (!cfg) return null;
+  return (
+    <div className={`alert ${cfg.cls}`} style={{ alignItems: 'center' }}>
+      <Icon name={cfg.icon} size={17} />
+      <span className="grow">{cfg.text}</span>
+      {cfg.cta && (
+        <Link to="/verification"><button className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.06)', color: 'inherit' }}>{cfg.cta}</button></Link>
+      )}
     </div>
   );
 }

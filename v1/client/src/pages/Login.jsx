@@ -5,16 +5,15 @@ import { useAuth } from '../App.jsx';
 import { Icon, GoogleLogo } from '../Icons.jsx';
 
 // Auth complète : connexion / inscription / vérification email / mot de passe oublié.
-// Le KYC (bloquant avant transaction) suit la première connexion.
+// La vérification d'identité est déclenchée à la demande (page dédiée), pas ici.
 export default function Login() {
   const { login } = useAuth();
-  const [mode, setMode] = useState('login'); // login | register | verify | forgot | reset | kyc
+  const [mode, setMode] = useState('login'); // login | register | verify | forgot | reset
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', code: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState(null); // session en attente de KYC
   const [googleOpen, setGoogleOpen] = useState(false);
   const [googleRequireCgu, setGoogleRequireCgu] = useState(false);
   const [googleCguChecked, setGoogleCguChecked] = useState(false);
@@ -28,10 +27,9 @@ export default function Login() {
     try { await fn(); } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
-  const finishAuth = (d) => {
-    if (d.user.kycStatus === 'verified') login(d.token, d.user);
-    else { setPending(d); switchMode('kyc'); }
-  };
+  // La vérification d'identité n'est plus exigée à l'inscription (PRD KYC §2) :
+  // elle est demandée seulement au moment d'une action transactionnelle.
+  const finishAuth = (d) => login(d.token, d.user);
 
   const submitLogin = () => run(async () => {
     const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password } });
@@ -82,27 +80,20 @@ export default function Login() {
     setGoogleOpen(true);
   };
 
-  const doKyc = () => run(async () => {
-    login(pending.token, pending.user); // pose le token pour l'appel KYC
-    const d = await api('/kyc/submit', { method: 'POST' });
-    login(pending.token, d.user);
-  });
-
   return (
     <div className="auth-page">
       <div className="center" style={{ padding: '26px 0 20px' }}>
         <span className="brand-mark auth-logo">CK</span>
         <h1 className="page-title">{
           { login: 'Bon retour', register: 'Créer un compte', verify: 'Vérifiez votre email',
-            forgot: 'Mot de passe oublié', reset: 'Nouveau mot de passe', kyc: "Vérification d'identité" }[mode]
+            forgot: 'Mot de passe oublié', reset: 'Nouveau mot de passe' }[mode]
         }</h1>
         <p className="page-sub" style={{ marginBottom: 0 }}>{
           { login: 'Connectez-vous pour envoyer ou transporter en toute confiance.',
             register: 'Rejoignez la communauté Bruxelles ↔ Casablanca.',
             verify: `Un code à 6 chiffres a été envoyé à ${form.email || 'votre adresse'}.`,
             forgot: 'Indiquez votre email, nous vous envoyons un code de réinitialisation.',
-            reset: 'Saisissez le code reçu et choisissez un nouveau mot de passe.',
-            kyc: 'Dernière étape avant de pouvoir échanger sur CloudKilo.' }[mode]
+            reset: 'Saisissez le code reçu et choisissez un nouveau mot de passe.' }[mode]
         }</p>
       </div>
 
@@ -277,24 +268,6 @@ export default function Login() {
           <button className="btn btn-primary" onClick={submitReset}
             disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}>
             {busy ? '…' : 'Réinitialiser et me connecter'}
-          </button>
-        </div>
-      )}
-
-      {mode === 'kyc' && (
-        <div className="card">
-          <h2 style={{ marginBottom: 8 }}><Icon name="shieldCheck" size={18} />Identité vérifiée obligatoire</h2>
-          <p className="muted mb">
-            Avant toute transaction, nous vérifions l'identité de chaque membre : pièce d'identité + selfie.
-            C'est ce qui rend CloudKilo sûr pour tout le monde.
-          </p>
-          <div className="alert alert-teal">
-            <Icon name="lock" size={17} />
-            <span>Mode démo : la vérification est simulée et instantanée. En production, elle passe par un prestataire
-            spécialisé (détection de faux documents + liveness).</span>
-          </div>
-          <button className="btn btn-teal" onClick={doKyc} disabled={busy}>
-            <Icon name="camera" size={18} />Vérifier mon identité
           </button>
         </div>
       )}

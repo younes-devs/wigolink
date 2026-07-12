@@ -509,6 +509,63 @@ body {
 .policy-ol { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: var(--ink); }
 .policy-ol li { margin-bottom: 4px; }
 
+/* Capture photo (KYC) */
+.capture-modal { max-width: 420px; padding-bottom: 0; }
+.capture-frame { position: relative; background: #000; overflow: hidden; }
+.capture-frame video { width: 100%; display: block; }
+.capture-frame-selfie video { transform: scaleX(-1); aspect-ratio: 3/4; object-fit: cover; }
+.capture-frame-doc video { aspect-ratio: 4/3; object-fit: cover; }
+.capture-guide {
+  position: absolute; pointer-events: none; border: 2px dashed rgba(255,255,255,0.7); border-radius: 14px;
+}
+.capture-frame-selfie .capture-guide { inset: 8% 18%; border-radius: 50%; }
+.capture-frame-doc .capture-guide { inset: 12% 6%; }
+
+/* Parcours KYC utilisateur */
+.kyc-status-icon {
+  width: 64px; height: 64px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+}
+.kyc-ok { background: var(--green-tint); color: var(--green); }
+.kyc-pending { background: var(--amber-tint); color: var(--amber); }
+.kyc-refused { background: var(--danger-tint); color: var(--danger); }
+.kyc-preview {
+  border-radius: 14px; overflow: hidden; border: 1px solid var(--hairline); background: #000;
+}
+.kyc-preview img { width: 100%; display: block; max-height: 320px; object-fit: contain; }
+.kyc-preview-selfie img { transform: scaleX(-1); }
+.kyc-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  height: 180px; border-radius: 14px; border: 1.5px dashed var(--hairline); color: var(--ink-faint);
+  font-size: 12.5px;
+}
+.kyc-review-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.kyc-review-thumb {
+  position: relative; width: 96px; flex: 0 0 auto; text-align: center;
+}
+.kyc-review-thumb img {
+  width: 96px; height: 96px; object-fit: cover; border-radius: 12px; border: 1px solid var(--hairline);
+}
+.kyc-review-thumb span { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 4px; font-weight: 600; }
+.kyc-retake {
+  position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: none;
+  background: rgba(22,24,29,0.7); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.kyc-recap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.kyc-recap > div { display: flex; justify-content: space-between; font-size: 13.5px; }
+.kyc-recap .muted { font-size: 13px; }
+
+/* Back-office KYC */
+.kyc-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.kyc-filter {
+  border: 1px solid var(--hairline); background: var(--glass); border-radius: 999px; padding: 6px 13px;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+}
+.kyc-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.kyc-decision-box { background: rgba(22,24,29,0.03); border-radius: 12px; padding: 14px; }
+.kyc-history-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+.kyc-history-row:last-child { border-bottom: none; }
+.kyc-zoom { max-width: 92vw; max-height: 88vh; border-radius: 12px; box-shadow: var(--shadow-lg); }
+
 /* KPIs admin */
 .kpi-card { padding: 14px 16px; }
 .kpi-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }

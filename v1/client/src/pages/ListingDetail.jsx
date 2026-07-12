@@ -24,7 +24,8 @@ export default function ListingDetail() {
       const d = await api(`/listings/${id}/accept`, { method: 'POST' });
       nav(`/transactions/${d.transaction.id}`);
     } catch (e) {
-      if (e.data?.needsTraining) setTraining(true);
+      if (e.data?.needsKyc) nav('/verification');
+      else if (e.data?.needsTraining) setTraining(true);
       else setError(e.message);
       setBusy(false);
     }

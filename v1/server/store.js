@@ -67,6 +67,10 @@ function seed() {
     // Catégories promues depuis la zone grise après validation admin (§4.2 : moteur de
     // règles éditable côté serveur sans release app).
     customWhitelist: [],
+    // Demandes de vérification d'identité (PRD KYC manuel). Une entrée par soumission.
+    kycSubmissions: [],
+    // Journal des décisions KYC (imputabilité + détection de patterns).
+    kycDecisions: [],
     nextId: 100,
   };
 }
@@ -94,6 +98,8 @@ for (const u of db.users) {
 if (!db.resets) { db.resets = {}; migrated = true; }
 if (!db.pendingVerifications) { db.pendingVerifications = {}; migrated = true; }
 if (!db.customWhitelist) { db.customWhitelist = []; migrated = true; }
+if (!db.kycSubmissions) { db.kycSubmissions = []; migrated = true; }
+if (!db.kycDecisions) { db.kycDecisions = []; migrated = true; }
 
 export function save() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
@@ -162,6 +162,7 @@ export default function Feed() {
 }
 
 function TripForm({ onSaved }) {
+  const nav = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ from: 'Casablanca', to: 'Bruxelles', date: '', capacityKg: 8 });
   const [err, setErr] = useState('');
@@ -171,7 +172,10 @@ function TripForm({ onSaved }) {
     try {
       await api('/trips', { method: 'POST', body: form });
       onSaved();
-    } catch (e) { setErr(e.message); }
+    } catch (e) {
+      if (e.data?.needsKyc) nav('/verification');
+      else setErr(e.message);
+    }
   };
 
   return (

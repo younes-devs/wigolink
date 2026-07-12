@@ -30,7 +30,7 @@ const SECTIONS = [
           <thead><tr><th>Catégorie</th><th>Exemples</th><th>Source</th></tr></thead>
           <tbody>
             <tr><td>Identité</td><td>Nom, email, téléphone, ville, photo de profil</td><td>Vous, à l'inscription</td></tr>
-            <tr><td>Vérification d'identité (KYC)</td><td>Pièce d'identité, selfie de vérification</td><td>Prestataire KYC agréé</td></tr>
+            <tr><td>Vérification d'identité (KYC)</td><td>Pièce d'identité (recto/verso), selfie, nom légal, date de naissance</td><td>Vous, lors de la vérification</td></tr>
             <tr><td>Transaction</td><td>Annonces, photos de produits, valeur déclarée, trajets</td><td>Vous</td></tr>
             <tr><td>Preuve & traçabilité</td><td>Vidéo de scellage, horodatage, géolocalisation au scellage</td><td>Application, avec votre action</td></tr>
             <tr><td>Paiement</td><td>Statut d'escrow, montants — jamais les coordonnées bancaires complètes</td><td>Prestataire de paiement agréé</td></tr>
@@ -40,8 +40,9 @@ const SECTIONS = [
           </tbody>
         </table>
         <p className="policy-note">
-          <Icon name="lock" size={14} /> Vos documents d'identité (pièce, selfie) sont traités et conservés par
-          notre prestataire de vérification agréé — jamais stockés sur nos propres serveurs.
+          <Icon name="lock" size={14} /> Vos documents d'identité (pièce, selfie) sont conservés de façon
+          sécurisée et ne sont accessibles qu'à notre équipe de vérification habilitée, jamais visibles par
+          les autres membres. Ils ne sont pas inclus dans l'export standard de vos données.
         </p>
       </>
     ),

@@ -167,3 +167,70 @@ export function StatusPill({ status }) {
   const s = STATUS_LABELS[status] || { label: status, pill: 'pill-gray' };
   return <span className={`pill ${s.pill}`}>{s.label}</span>;
 }
+
+// Capture photo via caméra in-app exclusivement (PRD KYC §3 : pas d'upload galerie,
+// même règle anti-fraude que la vidéo de scellage). Renvoie un dataURL JPEG redimensionné.
+export function PhotoCapture({ facing = 'user', maxPx = 900, onCapture, onClose, guide }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing }, audio: false,
+        });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; setReady(true); }
+      } catch {
+        setError("Caméra indisponible. Autorisez l'accès à la caméra pour continuer.");
+      }
+    })();
+    return () => { cancelled = true; streamRef.current?.getTracks().forEach((t) => t.stop()); };
+  }, [facing]);
+
+  const shoot = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const scale = Math.min(1, maxPx / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    onCapture(canvas.toDataURL('image/jpeg', 0.82));
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal capture-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <Icon name="camera" size={19} />
+          <b>{guide || 'Prendre la photo'}</b>
+          <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+        {error ? (
+          <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}><Icon name="alert" size={17} />{error}</div>
+        ) : (
+          <>
+            <div className={`capture-frame ${facing === 'user' ? 'capture-frame-selfie' : 'capture-frame-doc'}`}>
+              <video ref={videoRef} autoPlay muted playsInline />
+              <div className="capture-guide" />
+            </div>
+            <div style={{ padding: '12px 16px 16px' }}>
+              <button className="btn btn-primary" onClick={shoot} disabled={!ready}>
+                <Icon name="camera" size={18} />Capturer
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

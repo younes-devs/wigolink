@@ -214,14 +214,80 @@ app.get('/api/me', auth, (req, res) => {
     user: publicUser(req.user), email: req.user.email, provider: req.user.provider,
     phone: req.user.phone, maxValue: req.user.maxValue, maxActive: req.user.maxActive,
     trainingDone: !!req.user.trainingDone,
+    kycStatus: req.user.kycStatus, kyc: kycUserView(req.user),
   });
 });
 
-// KYC simulé (prestataire externe en prod)
+// ---------- KYC manuel (PRD KYC) ----------
+// Statuts : none | pending | verified | rejected | refused
+const MAX_KYC_ATTEMPTS = 3; // au-delà de 3 rejets, passage automatique en 'refused'
+
+// Vue KYC côté utilisateur : sa demande active, sans exposer les décisions internes.
+function kycUserView(user) {
+  const mine = db.kycSubmissions.filter((s) => s.userId === user.id).sort((a, b) => b.submittedAt - a.submittedAt);
+  const latest = mine[0] || null;
+  const rejectedCount = mine.filter((s) => s.status === 'rejected').length;
+  return {
+    status: user.kycStatus || 'none',
+    latestDecisionReason: latest && ['rejected', 'refused'].includes(latest.status) ? latest.decisionReason : null,
+    submittedAt: latest?.submittedAt || null,
+    attempts: mine.length,
+    canResubmit: user.kycStatus === 'rejected' && rejectedCount < MAX_KYC_ATTEMPTS,
+    documentType: latest?.documentType || null,
+  };
+}
+
+function computeAge(birthDate) {
+  const b = new Date(birthDate);
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age -= 1;
+  return age;
+}
+
 app.post('/api/kyc/submit', auth, (req, res) => {
-  req.user.kycStatus = 'verified'; // démo : vérification instantanée
+  if (req.user.kycStatus === 'verified')
+    return res.status(400).json({ error: 'Votre identité est déjà vérifiée' });
+  if (req.user.kycStatus === 'pending')
+    return res.status(400).json({ error: 'Une demande est déjà en cours de vérification' });
+  if (req.user.kycStatus === 'refused')
+    return res.status(403).json({ error: 'Vérification définitivement refusée — contactez le support' });
+
+  const { legalName, birthDate, documentType, selfiePhoto, idFrontPhoto, idBackPhoto } = req.body;
+
+  if (!legalName || String(legalName).trim().length < 3)
+    return res.status(400).json({ error: 'Nom légal complet requis' });
+  if (!['id_card', 'passport'].includes(documentType))
+    return res.status(400).json({ error: 'Type de document invalide' });
+
+  const age = computeAge(birthDate);
+  if (age === null) return res.status(400).json({ error: 'Date de naissance invalide' });
+  if (age < 18) return res.status(400).json({ error: 'Vous devez avoir 18 ans ou plus' });
+
+  if (!validPhotos([selfiePhoto])) return res.status(400).json({ error: 'Selfie invalide (JPEG/PNG/WebP, 500 Ko max)' });
+  if (!validPhotos([idFrontPhoto])) return res.status(400).json({ error: 'Photo du recto invalide' });
+  if (documentType === 'id_card' && !validPhotos([idBackPhoto]))
+    return res.status(400).json({ error: 'Photo du verso invalide (obligatoire pour une carte d\'identité)' });
+
+  // Garde-fou anti-fraude : au-delà de la limite de tentatives, on refuse d'accepter
+  // une nouvelle soumission automatiquement (le compte reste 'rejected', support requis).
+  const rejectedCount = db.kycSubmissions.filter((s) => s.userId === req.user.id && s.status === 'rejected').length;
+  if (rejectedCount >= MAX_KYC_ATTEMPTS)
+    return res.status(403).json({ error: 'Nombre maximum de tentatives atteint — contactez le support' });
+
+  const submission = {
+    id: newId('kyc'), userId: req.user.id, submittedAt: Date.now(),
+    legalName: String(legalName).trim().slice(0, 120),
+    birthDate, age, documentType,
+    selfiePhoto, idFrontPhoto, idBackPhoto: documentType === 'id_card' ? idBackPhoto : null,
+    status: 'pending', reviewedBy: null, reviewedAt: null, decisionReason: null,
+  };
+  db.kycSubmissions.push(submission);
+  req.user.kycStatus = 'pending';
   save();
-  res.json({ user: publicUser(req.user) });
+  res.json({ kyc: kycUserView(req.user) });
 });
 
 // ---------- Profil ----------
@@ -265,6 +331,13 @@ app.get('/api/profile/export', auth, (req, res) => {
     transactions: db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid)),
     messages: db.messages.filter((m) => m.from === uid),
     disputes: db.disputes.filter((d) => d.openedBy === uid),
+    // Métadonnées KYC sans les images (données biométriques sensibles — non incluses
+    // dans l'export standard, PRD KYC §6 ; communiquées séparément sur demande justifiée).
+    kyc: db.kycSubmissions.filter((s) => s.userId === uid).map((s) => ({
+      id: s.id, submittedAt: s.submittedAt, status: s.status,
+      legalName: s.legalName, birthDate: s.birthDate, documentType: s.documentType,
+      reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
+    })),
   };
   res.setHeader('Content-Disposition', `attachment; filename="cloudkilo-donnees-${uid}.json"`);
   res.json(data);
@@ -288,6 +361,11 @@ app.post('/api/profile/delete', auth, (req, res) => {
   req.user.passwordHash = null;
   req.user.provider = 'deleted';
   req.user.deletedAt = Date.now();
+  // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
+  // anonymisée pour l'audit de conformité, sans les photos.
+  for (const s of db.kycSubmissions) {
+    if (s.userId === uid) { s.selfiePhoto = null; s.idFrontPhoto = null; s.idBackPhoto = null; s.legalName = '(supprimé)'; }
+  }
   for (const [tok, id] of Object.entries(db.sessions)) if (id === uid) delete db.sessions[tok];
   save();
   res.json({ ok: true });
@@ -332,7 +410,7 @@ app.get('/api/trips/mine', auth, (req, res) => {
 
 app.post('/api/trips', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'KYC requis' });
+    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
   const { from, to, date, capacityKg } = req.body;
   if (!from || !to || !date) return res.status(400).json({ error: 'Trajet, sens et date requis' });
   if (from === to) return res.status(400).json({ error: 'Départ et arrivée identiques' });
@@ -441,7 +519,7 @@ app.post('/api/listings/:id/cancel', auth, (req, res) => {
 
 app.post('/api/listings', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'KYC requis avant toute transaction' });
+    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
   const { title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
   if (!title || !rawCategoryId || !valueEur || !from || !to)
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
@@ -529,7 +607,7 @@ app.get('/api/transactions/:id', auth, (req, res) => {
 // Acceptation par le voyageur → escrow séquestré immédiatement (PRD §2.3)
 app.post('/api/listings/:id/accept', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'KYC requis avant toute transaction' });
+    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
   // Formation courte obligatoire au premier transport (PRD §5.4)
   if (!req.user.trainingDone && !req.user.isAdmin)
     return res.status(403).json({ error: 'Formation voyageur requise', needsTraining: true });
@@ -782,6 +860,130 @@ app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
   db.customWhitelist.splice(i, 1);
   save();
   res.json({ ok: true });
+});
+
+// ---------- Back-office KYC (PRD KYC §5) ----------
+const KYC_SLA_MS = 24 * 3600e3;
+
+// Résumé d'une soumission pour la vue liste (sans les photos — allège la charge).
+function kycSummary(s) {
+  const u = findUser(s.userId);
+  const priorRejects = db.kycSubmissions.filter(
+    (x) => x.userId === s.userId && x.status === 'rejected' && x.submittedAt < s.submittedAt
+  ).length;
+  return {
+    id: s.id, userId: s.userId, submittedAt: s.submittedAt, status: s.status,
+    legalName: s.legalName, documentType: s.documentType, age: s.age,
+    reviewedBy: s.reviewedBy, reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
+    user: u ? { name: u.name, email: u.email, createdAt: u.createdAt, kycStatus: u.kycStatus } : null,
+    priorRejects,
+    overdue: s.status === 'pending' && (Date.now() - s.submittedAt) > KYC_SLA_MS,
+  };
+}
+
+// File KYC. ?status=pending|verified|rejected|refused|all (défaut: pending), ?q= recherche nom/email.
+app.get('/api/admin/kyc', auth, adminOnly, (req, res) => {
+  const filter = req.query.status || 'pending';
+  const q = String(req.query.q || '').toLowerCase().trim();
+  const statusMap = { pending: 'pending', verified: 'approved', rejected: 'rejected', refused: 'refused' };
+
+  let list = [...db.kycSubmissions];
+  if (filter !== 'all') list = list.filter((s) => s.status === statusMap[filter]);
+  if (q) {
+    list = list.filter((s) => {
+      const u = findUser(s.userId);
+      return s.legalName.toLowerCase().includes(q) || (u && u.email.toLowerCase().includes(q));
+    });
+  }
+  // FIFO pour les demandes en attente (équité), antichronologique pour l'historique.
+  list.sort((a, b) => (filter === 'pending' ? a.submittedAt - b.submittedAt : b.submittedAt - a.submittedAt));
+
+  const pending = db.kycSubmissions.filter((s) => s.status === 'pending');
+  const reviewed = db.kycSubmissions.filter((s) => s.reviewedAt);
+  const avgReviewMs = reviewed.length
+    ? reviewed.reduce((sum, s) => sum + (s.reviewedAt - s.submittedAt), 0) / reviewed.length
+    : null;
+
+  res.json({
+    submissions: list.map(kycSummary),
+    stats: {
+      pending: pending.length,
+      overdue: pending.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS).length,
+      verified: db.users.filter((u) => u.kycStatus === 'verified').length,
+      avgReviewHours: avgReviewMs !== null ? Math.round(avgReviewMs / 3600e3 * 10) / 10 : null,
+    },
+  });
+});
+
+// Détail complet d'une soumission (avec photos) — réservé admin.
+app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
+  const s = db.kycSubmissions.find((x) => x.id === req.params.id);
+  if (!s) return res.status(404).json({ error: 'Demande introuvable' });
+  const u = findUser(s.userId);
+  const history = db.kycDecisions
+    .filter((d) => d.userId === s.userId)
+    .sort((a, b) => b.at - a.at)
+    .map((d) => ({ ...d, adminName: findUser(d.adminId)?.name || d.adminId }));
+  res.json({
+    submission: {
+      ...s,
+      user: u ? {
+        name: u.name, email: u.email, createdAt: u.createdAt, kycStatus: u.kycStatus,
+        phone: u.phone, city: u.city,
+      } : null,
+      priorRejects: db.kycSubmissions.filter((x) => x.userId === s.userId && x.status === 'rejected' && x.submittedAt < s.submittedAt).length,
+    },
+    history,
+  });
+});
+
+// Décision admin : approve | reject | refuse (motif obligatoire pour reject/refuse).
+app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
+  const s = db.kycSubmissions.find((x) => x.id === req.params.id);
+  if (!s) return res.status(404).json({ error: 'Demande introuvable' });
+  if (s.status !== 'pending') return res.status(400).json({ error: 'Cette demande a déjà été traitée' });
+
+  const { decision, reason } = req.body; // approve | reject | refuse
+  if (!['approve', 'reject', 'refuse'].includes(decision))
+    return res.status(400).json({ error: 'Décision invalide' });
+  if (['reject', 'refuse'].includes(decision) && (!reason || String(reason).trim().length < 5))
+    return res.status(400).json({ error: 'Motif obligatoire (5 caractères minimum)' });
+
+  const user = findUser(s.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  const cleanReason = reason ? String(reason).trim().slice(0, 500) : null;
+  s.reviewedBy = req.user.id;
+  s.reviewedAt = Date.now();
+  s.decisionReason = cleanReason;
+
+  if (decision === 'approve') {
+    s.status = 'approved';
+    user.kycStatus = 'verified';
+    notify([user.id], 'Votre identité a été vérifiée. Vous pouvez maintenant envoyer et transporter.');
+  } else if (decision === 'reject') {
+    s.status = 'rejected';
+    const rejectedCount = db.kycSubmissions.filter((x) => x.userId === user.id && x.status === 'rejected').length;
+    // Passage automatique en refus définitif au-delà de la limite (PRD §7).
+    if (rejectedCount >= MAX_KYC_ATTEMPTS) {
+      user.kycStatus = 'refused';
+      notify([user.id], 'Votre vérification a été refusée définitivement après plusieurs tentatives. Contactez le support.');
+    } else {
+      user.kycStatus = 'rejected';
+      notify([user.id], `Votre vérification a été rejetée : ${cleanReason}. Vous pouvez soumettre à nouveau.`);
+    }
+  } else { // refuse
+    s.status = 'refused';
+    user.kycStatus = 'refused';
+    notify([user.id], `Votre vérification a été définitivement refusée : ${cleanReason}. Contactez le support.`);
+  }
+
+  db.kycDecisions.push({
+    id: newId('kycd'), submissionId: s.id, userId: user.id, adminId: req.user.id,
+    decision, reason: cleanReason, at: Date.now(),
+  });
+  save();
+  res.json({ ok: true, status: user.kycStatus });
 });
 
 // KPIs de suivi (PRD §8, plan de projet §7) — instrumentés dès la V1, pas après coup.
