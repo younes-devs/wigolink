@@ -10,7 +10,7 @@
     {
       "name": "salama-web",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && ./node_modules/.bin/vite client --port 5173 --strictPort"],
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && ./node_modules/.bin/vite client --port 5173 --strictPort --host"],
       "port": 5173
     }
   ]
