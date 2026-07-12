@@ -44,7 +44,7 @@ export default function CreateListing() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
-    title: '', categoryId: '', description: '', weightKg: '', valueEur: '',
+    title: '', categoryId: '', categoryLabel: '', description: '', weightKg: '', valueEur: '',
     from: 'Casablanca', to: 'Bruxelles', dateFrom: '', dateTo: '', travelerPay: '',
     recipientPhone: '', customsAccepted: false, photos: [],
   });
@@ -119,6 +119,17 @@ export default function CreateListing() {
               Interdits : {rules.blacklist.slice(0, 4).map((b) => b.label.toLowerCase()).join(', ')}…
             </div>
           </div>
+          {form.categoryId === 'autre' && (
+            <div className="field">
+              <label>Quel type de produit ?</label>
+              <input value={form.categoryLabel} onChange={(e) => set('categoryLabel', e.target.value)}
+                placeholder="Ex. : Confiture d'abricots artisanale" />
+              <div className="hint">
+                Un membre de notre équipe valide cette catégorie avant publication. Une fois approuvée,
+                les envois suivants du même type seront publiés directement.
+              </div>
+            </div>
+          )}
           <div className="field">
             <label>Titre de l'annonce</label>
             <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Ex. : Huile d'argan pour ma fille" />
@@ -159,7 +170,9 @@ export default function CreateListing() {
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={addPhotos} />
             <div className="hint">Le voyageur doit voir exactement ce qu'il transportera.</div>
           </div>
-          <button className="btn btn-primary" disabled={!form.categoryId || !form.title || !form.valueEur || form.photos.length === 0}
+          <button className="btn btn-primary"
+            disabled={!form.categoryId || !form.title || !form.valueEur || form.photos.length === 0
+              || (form.categoryId === 'autre' && !form.categoryLabel.trim())}
             onClick={() => setStep(1)}>Continuer</button>
         </div>
       )}

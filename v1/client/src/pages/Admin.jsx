@@ -5,7 +5,7 @@ import { Icon } from '../Icons.jsx';
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('review'); // review | kpis
+  const [tab, setTab] = useState('review'); // review | kpis | categories
 
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
@@ -13,15 +13,15 @@ export default function Admin() {
 
   useEffect(() => { load(); }, [load]);
 
-  const decide = async (id, decision) => {
-    await api(`/admin/review/${id}`, { method: 'POST', body: { decision } });
+  const decide = async (id, decision, extra = {}) => {
+    await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
     load();
   };
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
   if (!data) return <div className="muted center">Chargement…</div>;
 
-  const { stats, reviewQueue } = data;
+  const { stats, reviewQueue, customWhitelist } = data;
 
   return (
     <div>
@@ -33,6 +33,7 @@ export default function Admin() {
           File de revue {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
         <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
+        <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
       </div>
 
       <div className="stat-grid mb">
@@ -54,19 +55,7 @@ export default function Admin() {
           {reviewQueue.map((item) => (
             <div className="card" key={item.id}>
               {item.type === 'listing' && item.listing && (
-                <>
-                  <span className="pill pill-saffron mb"><Icon name="alert" size={13} />Zone grise — revue produit</span>
-                  <div className="mt"><b>{item.listing.title}</b></div>
-                  <div className="muted mb" style={{ fontSize: 13 }}>{item.listing.description} · {item.listing.valueEur} €</div>
-                  <div className="row">
-                    <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'approve')}>
-                      <Icon name="check" size={15} />Publier
-                    </button>
-                    <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'reject')}>
-                      <Icon name="x" size={15} />Refuser
-                    </button>
-                  </div>
-                </>
+                <ListingReviewCard item={item} decide={decide} />
               )}
               {item.type === 'dispute' && item.dispute && (
                 <>
@@ -101,6 +90,88 @@ export default function Admin() {
       )}
 
       {tab === 'kpis' && <KpiPanel />}
+      {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
+    </div>
+  );
+}
+
+// Revue d'une annonce en zone grise : l'approbation demande une quantité max, car
+// approuver promeut la catégorie en liste blanche pour tous les envois suivants.
+function ListingReviewCard({ item, decide }) {
+  const [maxQty, setMaxQty] = useState('');
+  const [approving, setApproving] = useState(false);
+
+  return (
+    <>
+      <span className="pill pill-saffron mb"><Icon name="alert" size={13} />Zone grise — {item.listing.categoryLabel}</span>
+      <div className="mt"><b>{item.listing.title}</b></div>
+      <div className="muted mb" style={{ fontSize: 13 }}>{item.listing.description} · {item.listing.valueEur} €</div>
+
+      {!approving ? (
+        <div className="row">
+          <button className="btn btn-teal btn-sm" onClick={() => setApproving(true)}>
+            <Icon name="check" size={15} />Publier
+          </button>
+          <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'reject')}>
+            <Icon name="x" size={15} />Refuser
+          </button>
+        </div>
+      ) : (
+        <div className="mt">
+          <div className="field">
+            <label>Quantité max autorisée pour « {item.listing.categoryLabel} »</label>
+            <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} placeholder="Ex. : 3 kg, 2 L, 500 g…" autoFocus />
+            <div className="hint">
+              Cette catégorie sera ajoutée à la liste blanche : les prochains envois similaires seront publiés directement.
+            </div>
+          </div>
+          <div className="row">
+            <button className="btn btn-ghost btn-sm" onClick={() => setApproving(false)}>Annuler</button>
+            <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'approve', { maxQty })} disabled={!maxQty.trim()}>
+              <Icon name="check" size={15} />Approuver et promouvoir
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CategoriesPanel({ customWhitelist, reload }) {
+  const remove = async (id) => {
+    if (!confirm('Retirer cette catégorie de la liste blanche ? Les prochains envois repasseront en revue humaine.')) return;
+    await api(`/admin/whitelist/${id}`, { method: 'DELETE' });
+    reload();
+  };
+
+  return (
+    <div>
+      <div className="alert alert-teal">
+        <Icon name="fileText" size={17} />
+        <span>
+          Catégories promues depuis la zone grise après validation admin — publiées directement, sans repasser
+          en revue. La liste blanche de base (huile d'argan, miel, safran…) reste définie dans le code.
+        </span>
+      </div>
+      {customWhitelist.length === 0 && (
+        <div className="card center empty-state">
+          <Icon name="package" size={32} />
+          <p className="muted">Aucune catégorie promue pour l'instant.</p>
+        </div>
+      )}
+      {customWhitelist.map((c) => (
+        <div className="card" key={c.id}>
+          <div className="list-row">
+            <div className="grow">
+              <b>{c.label}</b>
+              <div className="muted" style={{ fontSize: 12.5 }}>
+                Max {c.maxQty} · ajoutée le {new Date(c.addedAt).toLocaleDateString('fr-BE')} (annonce {c.addedFrom})
+              </div>
+            </div>
+            <button className="btn btn-danger-ghost btn-sm" onClick={() => remove(c.id)}>Retirer</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

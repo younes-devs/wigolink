@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { getDb, save, newId } from './store.js';
-import { WHITELIST, BLACKLIST, CUSTOMS, evaluateCategory, detectLeak } from './rules.js';
+import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 
 const app = express();
@@ -48,7 +48,38 @@ function validPhotos(photos) {
   return photos.every((p) => IMG_RE.test(p) && p.length <= 700 * 1024);
 }
 
+// Liste blanche effective = base statique + catégories promues depuis la zone grise
+// après validation admin (évite de rejuger indéfiniment le même produit — §4.2).
+const combinedWhitelist = () => [...WHITELIST, ...db.customWhitelist];
+
+function evaluateCategoryDynamic(categoryId) {
+  const white = combinedWhitelist().find((c) => c.id === categoryId);
+  if (white) return { verdict: 'whitelisted', category: white };
+  const black = BLACKLIST.find((c) => c.id === categoryId);
+  if (black) return { verdict: 'blacklisted', category: black };
+  return { verdict: 'gray' };
+}
+
+// Plage Unicode des diacritiques combinants (U+0300-U+036F), construite par code
+// point pour éviter tout souci d'encodage de caractère combinant dans le fichier source.
+const DIACRITICS_RE = new RegExp(`[\\u0300-\\u036f]`, 'g');
+function slugify(s) {
+  return String(s || '')
+    .normalize('NFD').replace(DIACRITICS_RE, '') // retire les accents
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'produit';
+}
+
 const code6 = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+
+// Nombre positif (ou nul si allowZero) — rejette NaN, chaînes non numériques et valeurs négatives.
+function positiveNumber(v, { allowZero = false } = {}) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || (!allowZero && n === 0)) return null;
+  return n;
+}
 
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
@@ -291,7 +322,7 @@ app.post('/api/training/complete', auth, (req, res) => {
 
 // ---------- Référentiels ----------
 app.get('/api/rules', (req, res) => {
-  res.json({ whitelist: WHITELIST, blacklist: BLACKLIST, customs: CUSTOMS });
+  res.json({ whitelist: combinedWhitelist(), blacklist: BLACKLIST, customs: CUSTOMS });
 });
 
 // ---------- Trajets voyageur (PRD §2.1) ----------
@@ -367,15 +398,25 @@ app.put('/api/listings/:id', auth, (req, res) => {
   const { title, description, weightKg, valueEur, dateFrom, dateTo, travelerPay, photos } = req.body;
   if (title !== undefined) listing.title = String(title).trim().slice(0, 120);
   if (description !== undefined) listing.description = String(description).trim().slice(0, 1000);
-  if (weightKg !== undefined) listing.weightKg = Number(weightKg);
+  if (weightKg !== undefined) {
+    const n = positiveNumber(weightKg);
+    if (n === null) return res.status(400).json({ error: 'Poids invalide' });
+    listing.weightKg = n;
+  }
   if (valueEur !== undefined) {
-    if (Number(valueEur) > req.user.maxValue)
+    const n = positiveNumber(valueEur);
+    if (n === null) return res.status(400).json({ error: 'Valeur déclarée invalide' });
+    if (n > req.user.maxValue)
       return res.status(400).json({ error: `Plafond dépassé : votre compte est limité à ${req.user.maxValue} € par envoi` });
-    listing.valueEur = Number(valueEur);
+    listing.valueEur = n;
   }
   if (dateFrom !== undefined) listing.dateFrom = dateFrom;
   if (dateTo !== undefined) listing.dateTo = dateTo;
-  if (travelerPay !== undefined) listing.travelerPay = Number(travelerPay);
+  if (travelerPay !== undefined) {
+    const n = positiveNumber(travelerPay);
+    if (n === null) return res.status(400).json({ error: 'Rémunération voyageur invalide' });
+    listing.travelerPay = n;
+  }
   if (photos !== undefined) {
     if (photos.length === 0) return res.status(400).json({ error: 'Au moins une photo est obligatoire' });
     if (!validPhotos(photos) || photos.length > 3)
@@ -401,8 +442,8 @@ app.post('/api/listings/:id/cancel', auth, (req, res) => {
 app.post('/api/listings', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'KYC requis avant toute transaction' });
-  const { title, categoryId, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
-  if (!title || !categoryId || !valueEur || !from || !to)
+  const { title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
+  if (!title || !rawCategoryId || !valueEur || !from || !to)
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
   // Photos obligatoires (PRD §1.1) : le voyageur doit tout voir avant d'accepter.
   if (!photos || photos.length === 0)
@@ -411,20 +452,30 @@ app.post('/api/listings', auth, (req, res) => {
     return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
   if (!customsAccepted)
     return res.status(400).json({ error: 'Acceptation explicite des règles douanières requise' });
-  if (Number(valueEur) > req.user.maxValue)
+  const valueNum = positiveNumber(valueEur);
+  const weightNum = positiveNumber(weightKg);
+  const payNum = positiveNumber(travelerPay);
+  if (valueNum === null) return res.status(400).json({ error: 'Valeur déclarée invalide' });
+  if (weightNum === null) return res.status(400).json({ error: 'Poids invalide' });
+  if (payNum === null) return res.status(400).json({ error: 'Rémunération voyageur invalide' });
+  if (valueNum > req.user.maxValue)
     return res.status(400).json({ error: `Plafond dépassé : votre compte est limité à ${req.user.maxValue} € par envoi` });
 
-  const evalRes = evaluateCategory(categoryId);
+  // Catégorie "Autre" : le libellé libre saisi par l'expéditeur devient sa propre
+  // catégorie (slug dédié), évaluée pour elle-même — pas un fourre-tout partagé.
+  const categoryId = rawCategoryId === 'autre' && rawCategoryLabel ? slugify(rawCategoryLabel) : rawCategoryId;
+
+  const evalRes = evaluateCategoryDynamic(categoryId);
   if (evalRes.verdict === 'blacklisted')
     return res.status(400).json({ error: `Catégorie refusée : ${evalRes.category.reason}`, verdict: 'blacklisted' });
 
-  const cat = WHITELIST.find((c) => c.id === categoryId);
+  const cat = combinedWhitelist().find((c) => c.id === categoryId);
   const recipient = recipientPhone ? db.users.find((u) => u.phone === recipientPhone) : null;
   const listing = {
     id: newId('l'), senderId: req.user.id, title,
-    categoryId, categoryLabel: cat ? cat.label : req.body.categoryLabel || categoryId,
-    icon: cat ? cat.icon : '📦', description, photos: photos || [], weightKg: Number(weightKg), valueEur: Number(valueEur),
-    from, to, dateFrom, dateTo, travelerPay: Number(travelerPay), commissionRate: 0.18,
+    categoryId, categoryLabel: cat ? cat.label : rawCategoryLabel || categoryId,
+    icon: cat ? cat.icon : '📦', description, photos: photos || [], weightKg: weightNum, valueEur: valueNum,
+    from, to, dateFrom, dateTo, travelerPay: payNum, commissionRate: 0.18,
     status: evalRes.verdict === 'gray' ? 'pending_review' : 'published',
     whitelistVerdict: evalRes.verdict, recipientId: recipient?.id || null, createdAt: Date.now(),
   };
@@ -720,7 +771,17 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
         .reduce((s, t) => s + t.escrow.amount, 0),
     },
     disputes: db.disputes,
+    customWhitelist: db.customWhitelist,
   });
+});
+
+// Retire une catégorie promue (repasse en zone grise pour les prochains envois).
+app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
+  const i = db.customWhitelist.findIndex((c) => c.id === req.params.id);
+  if (i === -1) return res.status(404).json({ error: 'Catégorie introuvable' });
+  db.customWhitelist.splice(i, 1);
+  save();
+  res.json({ ok: true });
 });
 
 // KPIs de suivi (PRD §8, plan de projet §7) — instrumentés dès la V1, pas après coup.
@@ -791,12 +852,24 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
 app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
   const item = db.reviewQueue.find((r) => r.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'Introuvable' });
-  const { decision } = req.body; // approve | reject
+  const { decision, maxQty } = req.body; // approve | reject
   item.status = 'closed';
   item.decision = decision;
   if (item.type === 'listing') {
     const l = db.listings.find((x) => x.id === item.refId);
-    if (l) l.status = decision === 'approve' ? 'published' : 'rejected';
+    if (l) {
+      l.status = decision === 'approve' ? 'published' : 'rejected';
+      // Promotion en liste blanche : les envois suivants de cette catégorie
+      // passeront directement, sans repasser en revue humaine à chaque fois.
+      if (decision === 'approve' && l.whitelistVerdict === 'gray'
+          && !combinedWhitelist().some((c) => c.id === l.categoryId)) {
+        db.customWhitelist.push({
+          id: l.categoryId, label: l.categoryLabel,
+          maxQty: String(maxQty || 'Usage personnel (à confirmer)').slice(0, 40),
+          icon: '📦', addedFrom: l.id, addedAt: Date.now(),
+        });
+      }
+    }
   }
   if (item.type === 'dispute') {
     const d = db.disputes.find((x) => x.id === item.refId);

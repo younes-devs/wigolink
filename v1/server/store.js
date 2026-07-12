@@ -64,6 +64,9 @@ function seed() {
     reviewQueue: [],
     otps: {},
     sessions: {},
+    // Catégories promues depuis la zone grise après validation admin (§4.2 : moteur de
+    // règles éditable côté serveur sans release app).
+    customWhitelist: [],
     nextId: 100,
   };
 }
@@ -90,6 +93,7 @@ for (const u of db.users) {
 }
 if (!db.resets) { db.resets = {}; migrated = true; }
 if (!db.pendingVerifications) { db.pendingVerifications = {}; migrated = true; }
+if (!db.customWhitelist) { db.customWhitelist = []; migrated = true; }
 
 export function save() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
