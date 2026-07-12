@@ -5,10 +5,10 @@ import { Icon } from './Icons.jsx';
 // Barre de test (mode démo) : bascule de compte en un clic et création
 // d'utilisateurs jetables — à retirer en production.
 const ACCOUNTS = [
-  { email: 'fatima@demo.salama.app', label: 'Fatima', role: 'Expéditrice' },
-  { email: 'karim@demo.salama.app', label: 'Karim', role: 'Voyageur' },
-  { email: 'mehdi@demo.salama.app', label: 'Mehdi', role: 'Destinataire' },
-  { email: 'admin@demo.salama.app', label: 'Admin', role: 'Back-office' },
+  { email: 'fatima@demo.cloudkilo.app', label: 'Fatima', role: 'Expéditrice' },
+  { email: 'karim@demo.cloudkilo.app', label: 'Karim', role: 'Voyageur' },
+  { email: 'mehdi@demo.cloudkilo.app', label: 'Mehdi', role: 'Destinataire' },
+  { email: 'admin@demo.cloudkilo.app', label: 'Admin', role: 'Back-office' },
 ];
 
 export default function DevBar() {

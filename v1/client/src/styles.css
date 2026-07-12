@@ -1,4 +1,4 @@
-/* ——— Salama design system · liquid glass ——— */
+/* ——— CloudKilo design system · liquid glass ——— */
 :root {
   --bg-0: #f5f6f8;
   --bg-1: #eceef2;
@@ -72,7 +72,7 @@ body {
   width: 28px; height: 28px; border-radius: 9px;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 800; letter-spacing: 0;
+  font-size: 11.5px; font-weight: 800; letter-spacing: -0.3px;
   box-shadow: 0 2px 8px rgba(10, 108, 245, 0.35);
 }
 .app-header .tagline { font-size: 12px; color: var(--ink-soft); margin-top: 3px; font-weight: 450; }
@@ -363,7 +363,7 @@ body {
 /* Auth */
 .auth-logo {
   width: 56px !important; height: 56px !important; border-radius: 18px !important;
-  font-size: 28px !important; margin-bottom: 14px; display: inline-flex !important;
+  font-size: 21px !important; margin-bottom: 14px; display: inline-flex !important;
 }
 .auth-switch { text-align: center; font-size: 13.5px; color: var(--ink-soft); margin: 4px 0 10px; }
 .link-btn {

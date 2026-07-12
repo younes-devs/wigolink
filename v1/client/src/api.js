@@ -1,9 +1,9 @@
-let token = localStorage.getItem('salama_token') || null;
+let token = localStorage.getItem('cloudkilo_token') || null;
 
 export function setToken(t) {
   token = t;
-  if (t) localStorage.setItem('salama_token', t);
-  else localStorage.removeItem('salama_token');
+  if (t) localStorage.setItem('cloudkilo_token', t);
+  else localStorage.removeItem('cloudkilo_token');
 }
 
 export function getToken() {

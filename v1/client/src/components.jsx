@@ -8,8 +8,8 @@ export function Header({ user }) {
   return (
     <header className="app-header">
       <div className="brand">
-        <span className="brand-mark">S</span>
-        <span>Salama</span>
+        <span className="brand-mark">CK</span>
+        <span>CloudKilo</span>
         {user && <span style={{ marginLeft: 'auto' }}><Notifications /></span>}
       </div>
       <div className="tagline">Envoyez avec confiance · Bruxelles ↔ Casablanca</div>
@@ -42,7 +42,7 @@ export function QrBlock({ code, caption }) {
   const [dataUrl, setDataUrl] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    QRCode.toDataURL(`salama:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
+    QRCode.toDataURL(`cloudkilo:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
       .then((url) => { if (!cancelled) setDataUrl(url); });
     return () => { cancelled = true; };
   }, [code]);
@@ -76,7 +76,7 @@ export function QrScanner({ onDetected, onClose }) {
           if (stopped) return;
           try {
             const codes = await detector.detect(videoRef.current);
-            const hit = codes.find((c) => c.rawValue?.startsWith('salama:'));
+            const hit = codes.find((c) => c.rawValue?.startsWith('cloudkilo:'));
             if (hit) { onDetected(hit.rawValue.slice(7)); return; }
           } catch { /* frame illisible, on retente */ }
           raf = requestAnimationFrame(tick);

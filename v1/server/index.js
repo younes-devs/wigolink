@@ -232,7 +232,7 @@ app.get('/api/profile/export', auth, (req, res) => {
     messages: db.messages.filter((m) => m.from === uid),
     disputes: db.disputes.filter((d) => d.openedBy === uid),
   };
-  res.setHeader('Content-Disposition', `attachment; filename="salama-donnees-${uid}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="cloudkilo-donnees-${uid}.json"`);
   res.json(data);
 });
 
@@ -247,7 +247,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
   // Anonymisation plutôt que suppression physique : préserve l'intégrité des transactions passées
   // (traçabilité douanière/litiges) tout en effaçant les données personnelles identifiantes.
   req.user.name = 'Compte supprimé';
-  req.user.email = `deleted-${uid}@salama.invalid`;
+  req.user.email = `deleted-${uid}@cloudkilo.invalid`;
   req.user.phone = '';
   req.user.city = '';
   req.user.photoUrl = null;
@@ -726,7 +726,7 @@ if (DEMO) {
     const names = ['Salma', 'Youssef', 'Nadia', 'Hamza', 'Leila', 'Adam', 'Sofia', 'Bilal'];
     const user = makeUser({
       name: `${names[n % names.length]} T${n}`,
-      email: `test${n}@demo.salama.app`,
+      email: `test${n}@demo.cloudkilo.app`,
       phone: `+3247${n}000`,
       provider: 'email',
       emailVerified: true,
@@ -746,4 +746,4 @@ if (DEMO) {
 }
 
 const PORT = process.env.PORT || 4517;
-app.listen(PORT, () => console.log(`API Salama sur http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`API CloudKilo sur http://localhost:${PORT}`));

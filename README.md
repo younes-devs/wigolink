@@ -1,4 +1,4 @@
-# Salama (nom provisoire)
+# CloudKilo (nom provisoire)
 
 Plateforme de transport collaboratif Belgique/France ↔ Maroc — mise en relation sécurisée entre expéditeurs et voyageurs, avec paiement séquestré, vérification d'identité et preuve vidéo.
 
@@ -31,10 +31,10 @@ Ouvrir http://localhost:5173. Comptes de démo (mot de passe : `demo1234`) :
 
 | Rôle | Email |
 |---|---|
-| Fatima — expéditrice (Casablanca) | `fatima@demo.salama.app` |
-| Karim — voyageur (Bruxelles) | `karim@demo.salama.app` |
-| Mehdi — destinataire (Bruxelles) | `mehdi@demo.salama.app` |
-| Admin — back-office | `admin@demo.salama.app` |
+| Fatima — expéditrice (Casablanca) | `fatima@demo.cloudkilo.app` |
+| Karim — voyageur (Bruxelles) | `karim@demo.cloudkilo.app` |
+| Mehdi — destinataire (Bruxelles) | `mehdi@demo.cloudkilo.app` |
+| Admin — back-office | `admin@demo.cloudkilo.app` |
 
 Authentification complète : inscription email + mot de passe (hash scrypt), vérification
 d'email par code (démo : `123456`), connexion Google (simulée), mot de passe oublié

@@ -79,7 +79,7 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="center" style={{ padding: '26px 0 20px' }}>
-        <span className="brand-mark auth-logo">S</span>
+        <span className="brand-mark auth-logo">CK</span>
         <h1 className="page-title">{
           { login: 'Bon retour', register: 'Créer un compte', verify: 'Vérifiez votre email',
             forgot: 'Mot de passe oublié', reset: 'Nouveau mot de passe', kyc: "Vérification d'identité" }[mode]
@@ -90,7 +90,7 @@ export default function Login() {
             verify: `Un code à 6 chiffres a été envoyé à ${form.email || 'votre adresse'}.`,
             forgot: 'Indiquez votre email, nous vous envoyons un code de réinitialisation.',
             reset: 'Saisissez le code reçu et choisissez un nouveau mot de passe.',
-            kyc: 'Dernière étape avant de pouvoir échanger sur Salama.' }[mode]
+            kyc: 'Dernière étape avant de pouvoir échanger sur CloudKilo.' }[mode]
         }</p>
       </div>
 
@@ -131,7 +131,7 @@ export default function Login() {
             <button className="link-btn" onClick={() => switchMode('register')}>Créer un compte</button>
           </p>
           <p className="muted center" style={{ fontSize: 11.5 }}>
-            Comptes de démo : fatima@ / karim@ / mehdi@ / admin@demo.salama.app — mot de passe <b>demo1234</b>
+            Comptes de démo : fatima@ / karim@ / mehdi@ / admin@demo.cloudkilo.app — mot de passe <b>demo1234</b>
           </p>
         </>
       )}
@@ -267,7 +267,7 @@ export default function Login() {
           <h2 style={{ marginBottom: 8 }}><Icon name="shieldCheck" size={18} />Identité vérifiée obligatoire</h2>
           <p className="muted mb">
             Avant toute transaction, nous vérifions l'identité de chaque membre : pièce d'identité + selfie.
-            C'est ce qui rend Salama sûr pour tout le monde.
+            C'est ce qui rend CloudKilo sûr pour tout le monde.
           </p>
           <div className="alert alert-teal">
             <Icon name="lock" size={17} />

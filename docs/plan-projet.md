@@ -1,4 +1,4 @@
-# Plan de projet — « Salama » (nom provisoire)
+# Plan de projet — « CloudKilo » (nom provisoire)
 ### Basé sur PRD v1.0 · Juillet 2026
 
 ---
@@ -166,4 +166,4 @@ Vanity metrics à ignorer explicitement : téléchargements, inscriptions sans t
 
 ---
 
-*Document de planification dérivé du PRD "Salama" v1.0 (juillet 2026). À mettre à jour après chaque revue de phase.*
+*Document de planification dérivé du PRD "CloudKilo" v1.0 (juillet 2026). À mettre à jour après chaque revue de phase.*
