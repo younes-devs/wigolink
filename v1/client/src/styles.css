@@ -524,6 +524,23 @@ body {
 .kpi-bar { width: 100%; max-width: 22px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #2a80f7, var(--accent-dark)); }
 .kpi-bar-col span { font-size: 9.5px; color: var(--ink-faint); font-weight: 600; text-transform: capitalize; }
 
+/* Litiges */
+.sla-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.sla-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 650; color: var(--ink-soft);
+  background: rgba(22, 24, 29, 0.05); border-radius: 999px; padding: 5px 10px;
+}
+.sla-chip-over { background: var(--danger-tint); color: var(--danger); }
+.evidence-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.evidence-item {
+  background: rgba(22, 24, 29, 0.03); border-radius: 12px; padding: 10px 12px;
+  border: 1px solid var(--hairline);
+}
+.evidence-item img { width: 100%; max-width: 220px; border-radius: 10px; display: block; margin-bottom: 8px; }
+.evidence-item p { font-size: 13px; line-height: 1.5; color: var(--ink); }
+.evidence-time { display: block; font-size: 10.5px; color: var(--ink-faint); margin-top: 4px; }
+
 /* Tabs */
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: rgba(22, 24, 29, 0.05); border-radius: 12px; padding: 4px; }
 .tabs button {

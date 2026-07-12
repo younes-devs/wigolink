@@ -63,6 +63,7 @@ export default function TransactionDetail() {
       </div>
 
       <StepAction tx={tx} user={user} reload={load} />
+      {tx.status === 'disputed' && <DisputePanel txId={tx.id} />}
       {!['cancelled'].includes(tx.status) && <CustomsRecap txId={tx.id} status={tx.status} />}
       {!['cancelled', 'released', 'refunded'].includes(tx.status) && <Chat tx={tx} userId={user.id} />}
       {tx.status === 'released' && <Rating tx={tx} user={user} reload={load} />}
@@ -102,6 +103,7 @@ function StepAction({ tx, user, reload }) {
         <span>Litige en cours d'arbitrage. L'escrow est gelé. Notre équipe tranche selon la grille de décision (première réponse sous 24 h).</span>
       </div>
     );
+  // Le détail du litige (motif, preuves, échéances) est affiché par <DisputePanel> plus bas.
 
   return (
     <div>
@@ -495,6 +497,120 @@ function RateRow({ tx, target, reload }) {
         <div className="muted" style={{ fontSize: 12 }}>{target.label}</div>
       </div>
       {already ? <span className="pill pill-teal"><Icon name="check" size={13} />Noté</span> : <Stars value={stars} onChange={rate} />}
+    </div>
+  );
+}
+
+const SLA_FMT = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function timeLeftLabel(deadline) {
+  const ms = deadline - Date.now();
+  if (ms <= 0) return 'Délai dépassé';
+  const h = Math.floor(ms / 3600e3);
+  if (h < 24) return `${h} h restantes`;
+  return `${Math.floor(h / 24)} j restants`;
+}
+
+function DisputePanel({ txId }) {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+  const [text, setText] = useState('');
+  const [photo, setPhoto] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  const load = useCallback(() => {
+    api(`/transactions/${txId}/dispute`).then((r) => setD(r.dispute)).catch((e) => setError(e.message));
+  }, [txId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onPhotoPick = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 640 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      setPhoto(canvas.toDataURL('image/jpeg', 0.8));
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+    e.target.value = '';
+  };
+
+  const submit = async () => {
+    if (!text.trim() && !photo) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/disputes/${d.id}/evidence`, { method: 'POST', body: { text: text.trim(), photo } });
+      setText(''); setPhoto(null);
+      load();
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+
+  if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
+  if (!d) return null;
+
+  const evidenceOpen = Date.now() < d.evidenceDeadline;
+
+  return (
+    <div className="card">
+      <h2 style={{ marginBottom: 8 }}><Icon name="alert" size={17} />Dossier du litige</h2>
+      <p style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 10 }}><b>Motif initial :</b> {d.reason}</p>
+
+      <div className="sla-row">
+        <div className={`sla-chip ${evidenceOpen ? '' : 'sla-chip-over'}`}>
+          <Icon name="clock" size={13} />
+          Preuves : {timeLeftLabel(d.evidenceDeadline)}
+        </div>
+        <div className="sla-chip">
+          <Icon name="clock" size={13} />
+          Résolution visée : {SLA_FMT.format(d.resolutionTarget)}
+        </div>
+      </div>
+
+      {d.evidence.length > 0 && (
+        <div className="evidence-list">
+          {d.evidence.map((e, i) => (
+            <div className="evidence-item" key={i}>
+              {e.photo && <img src={e.photo} alt="Preuve" />}
+              {e.text && <p>{e.text}</p>}
+              <span className="evidence-time">{SLA_FMT.format(e.at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {evidenceOpen ? (
+        <div className="mt">
+          {photo && (
+            <div className="photo-thumb mb">
+              <img src={photo} alt="Aperçu" />
+              <button type="button" onClick={() => setPhoto(null)} aria-label="Retirer"><Icon name="x" size={12} /></button>
+            </div>
+          )}
+          <div className="field">
+            <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
+              placeholder="Ajouter un commentaire ou une précision…" />
+          </div>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onPhotoPick} />
+          <div className="row">
+            <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
+              <Icon name="image" size={15} />Ajouter une photo
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={submit} disabled={busy || (!text.trim() && !photo)}>
+              {busy ? '…' : 'Envoyer la preuve'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="muted" style={{ fontSize: 12.5 }}>Le délai de soumission des preuves est dépassé — le dossier est entre les mains de notre équipe.</p>
+      )}
     </div>
   );
 }

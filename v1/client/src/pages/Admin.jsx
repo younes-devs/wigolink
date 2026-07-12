@@ -73,10 +73,17 @@ export default function Admin() {
                   <span className="pill pill-danger mb"><Icon name="alert" size={13} />Litige — {item.dispute.txId}</span>
                   <div className="mt mb" style={{ fontSize: 13.5 }}>
                     <b>Motif :</b> {item.dispute.reason}
-                    {item.dispute.evidence.map((e, i) => (
-                      <div key={i} className="muted mt" style={{ fontSize: 12.5 }}>Preuve : {e.text}</div>
-                    ))}
                   </div>
+                  {item.dispute.evidence.length > 0 && (
+                    <div className="evidence-list">
+                      {item.dispute.evidence.map((e, i) => (
+                        <div key={i} className="evidence-item">
+                          {e.photo && <img src={e.photo} alt="Preuve" />}
+                          {e.text && <p>{e.text}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
                     <Icon name="fileText" size={16} />
                     <span>Grille : état ≠ vidéo de scellage → responsabilité voyageur (rembourser).

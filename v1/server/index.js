@@ -600,30 +600,66 @@ app.post('/api/transactions/:id/rate', auth, (req, res) => {
 });
 
 // ---------- Litiges (PRD §3 Phase 6, §4.6) ----------
+const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
+const EVIDENCE_WINDOW_MS = 72 * 3600e3; // 72h pour soumettre des preuves (PRD §3 Phase 6)
+const RESOLUTION_TARGET_MS = 7 * 864e5; // cible 7 jours (PRD §4.6)
+
+function disputeView(d, t) {
+  return {
+    ...d,
+    evidenceDeadline: d.createdAt + EVIDENCE_WINDOW_MS,
+    resolutionTarget: d.createdAt + RESOLUTION_TARGET_MS,
+  };
+}
+
 app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || !['in_transit', 'released'].includes(t.status))
     return res.status(400).json({ error: 'Litige impossible à ce stade' });
+  if (!isPartyToTx(t, req.user.id))
+    return res.status(403).json({ error: 'Réservé aux parties de la transaction' });
+  if (!req.body.reason || String(req.body.reason).trim().length < 10)
+    return res.status(400).json({ error: 'Merci de détailler le motif (10 caractères minimum)' });
   t.status = 'disputed';
   t.escrow.state = 'frozen';
   const dispute = {
-    id: newId('d'), txId: t.id, openedBy: req.user.id, reason: req.body.reason,
+    id: newId('d'), txId: t.id, openedBy: req.user.id, reason: String(req.body.reason).trim().slice(0, 2000),
     evidence: [], status: 'open', createdAt: Date.now(),
   };
   db.disputes.push(dispute);
   db.reviewQueue.push({ id: newId('rq'), type: 'dispute', refId: dispute.id, status: 'open', createdAt: Date.now() });
-  addEvent(t, 'dispute_opened', req.user.id, { reason: req.body.reason });
+  addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
   notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.', t.id);
   save();
-  res.json({ dispute });
+  res.json({ dispute: disputeView(dispute, t) });
+});
+
+// Consultation d'un litige par les parties de la transaction concernée (ou l'admin).
+app.get('/api/transactions/:id/dispute', auth, (req, res) => {
+  const t = db.transactions.find((x) => x.id === req.params.id);
+  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Non autorisé' });
+  const d = db.disputes.find((x) => x.txId === t.id);
+  if (!d) return res.status(404).json({ error: 'Aucun litige pour cette transaction' });
+  res.json({ dispute: disputeView(d, t) });
 });
 
 app.post('/api/disputes/:id/evidence', auth, (req, res) => {
   const d = db.disputes.find((x) => x.id === req.params.id);
   if (!d || d.status !== 'open') return res.status(400).json({ error: 'Litige clos ou introuvable' });
-  d.evidence.push({ by: req.user.id, text: req.body.text, at: Date.now() });
+  const t = db.transactions.find((x) => x.id === d.txId);
+  if (!t || (!isPartyToTx(t, req.user.id) && !req.user.isAdmin))
+    return res.status(403).json({ error: 'Réservé aux parties du litige' });
+  const text = String(req.body.text || '').trim().slice(0, 2000);
+  const { photo } = req.body;
+  if (!text && !photo) return res.status(400).json({ error: 'Ajoutez un commentaire ou une photo' });
+  if (photo) {
+    if (!validPhotos([photo])) return res.status(400).json({ error: 'Photo invalide (JPEG/PNG/WebP, 500 Ko max)' });
+  }
+  d.evidence.push({ by: req.user.id, text: text || null, photo: photo || null, at: Date.now() });
   save();
-  res.json({ dispute: d });
+  res.json({ dispute: disputeView(d, t) });
 });
 
 // ---------- Messagerie (PRD §4.5) ----------
@@ -669,7 +705,9 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
     reviewQueue: db.reviewQueue.filter((r) => r.status === 'open').map((r) => ({
       ...r,
       listing: r.type === 'listing' ? db.listings.find((l) => l.id === r.refId) : null,
-      dispute: r.type === 'dispute' ? db.disputes.find((d) => d.id === r.refId) : null,
+      dispute: r.type === 'dispute'
+        ? (() => { const d = db.disputes.find((x) => x.id === r.refId); return d ? disputeView(d) : null; })()
+        : null,
     })),
     stats: {
       users: db.users.length,
