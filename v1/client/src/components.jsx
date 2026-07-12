@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import QRCode from 'qrcode';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
 
@@ -35,22 +37,89 @@ export function BottomNav({ user }) {
   );
 }
 
-// Faux QR décoratif déterministe (démo — un vrai QR en prod)
+// QR code réel encodant le code de transaction (préfixé pour le distinguer au scan).
 export function QrBlock({ code, caption }) {
-  const cells = [];
-  let h = 0;
-  for (const c of code) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  for (let y = 0; y < 15; y++)
-    for (let x = 0; x < 15; x++) {
-      h = (h * 1103515245 + 12345) >>> 0;
-      const corner = (x < 4 && y < 4) || (x > 10 && y < 4) || (x < 4 && y > 10);
-      if (corner || (h & 3) === 0) cells.push(<rect key={`${x}-${y}`} x={x * 10} y={y * 10} width="9" height="9" rx="1.5" />);
-    }
+  const [dataUrl, setDataUrl] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(`salama:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
+      .then((url) => { if (!cancelled) setDataUrl(url); });
+    return () => { cancelled = true; };
+  }, [code]);
   return (
     <div className="qr-frame">
-      <svg width="160" height="160" viewBox="0 0 150 150" fill="#16181d">{cells}</svg>
+      {dataUrl ? <img src={dataUrl} width={160} height={160} alt={`QR ${code}`} /> : <div style={{ width: 160, height: 160 }} />}
       <div className="qr-code-text">{code}</div>
       {caption && <div className="muted center">{caption}</div>}
+    </div>
+  );
+}
+
+// Scanner caméra (BarcodeDetector natif). Retombe silencieusement sur la saisie
+// manuelle si l'API n'est pas supportée (Safari, contexte non sécurisé…).
+export function QrScanner({ onDetected, onClose }) {
+  const videoRef = useRef(null);
+  const [error, setError] = useState('');
+  const [supported, setSupported] = useState(true);
+
+  useEffect(() => {
+    if (!('BarcodeDetector' in window)) { setSupported(false); return; }
+    let stream, raf, stopped = false;
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (stopped) { stream.getTracks().forEach((t) => t.stop()); return; }
+        videoRef.current.srcObject = stream;
+        const tick = async () => {
+          if (stopped) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            const hit = codes.find((c) => c.rawValue?.startsWith('salama:'));
+            if (hit) { onDetected(hit.rawValue.slice(7)); return; }
+          } catch { /* frame illisible, on retente */ }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      } catch {
+        setError("Caméra indisponible — utilisez la saisie manuelle.");
+      }
+    })();
+
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [onDetected]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal scanner-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <Icon name="qr" size={19} />
+          <b>Scanner le QR</b>
+          <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+        {!supported && (
+          <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}>
+            <Icon name="alert" size={17} />
+            <span>Le scan caméra n'est pas pris en charge par ce navigateur. Utilisez la saisie manuelle du code.</span>
+          </div>
+        )}
+        {supported && error && (
+          <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}><Icon name="alert" size={17} />{error}</div>
+        )}
+        {supported && !error && (
+          <div className="scanner-frame">
+            <video ref={videoRef} autoPlay muted playsInline />
+            <div className="scanner-reticle" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

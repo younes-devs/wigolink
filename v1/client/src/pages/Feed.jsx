@@ -4,18 +4,32 @@ import { api } from '../api';
 import { TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 
+const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
+
 export default function Feed() {
   const [data, setData] = useState(null);
   const [trips, setTrips] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [addingTrip, setAddingTrip] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [rules, setRules] = useState(null);
 
   const load = useCallback(() => {
-    api(`/listings${showAll ? '?all=1' : ''}`).then(setData).catch(() => setData({ listings: [] }));
+    const params = new URLSearchParams();
+    if (showAll) params.set('all', '1');
+    if (filters.category) params.set('category', filters.category);
+    if (filters.minPrice) params.set('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
+    if (filters.q) params.set('q', filters.q);
+    api(`/listings?${params}`).then(setData).catch(() => setData({ listings: [] }));
     api('/trips/mine').then((d) => setTrips(d.trips)).catch(() => setTrips([]));
-  }, [showAll]);
+  }, [showAll, filters]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api('/rules').then(setRules).catch(() => {}); }, []);
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   const removeTrip = async (id) => {
     await api(`/trips/${id}`, { method: 'DELETE' });
@@ -66,6 +80,42 @@ export default function Feed() {
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Voir aussi les annonces hors de mes trajets
         </label>
+      )}
+
+      <div className="list-row mb">
+        <input className="chat-input grow" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+          placeholder="Rechercher un produit…" />
+        <button className="btn btn-ghost btn-sm" style={{ flex: '0 0 auto', position: 'relative' }} onClick={() => setFiltersOpen(!filtersOpen)}>
+          <Icon name="fileText" size={15} />Filtres
+          {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+        </button>
+      </div>
+
+      {filtersOpen && (
+        <div className="card">
+          <div className="row">
+            <div className="field">
+              <label>Catégorie</label>
+              <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
+                <option value="">Toutes</option>
+                {rules?.whitelist.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="row">
+            <div className="field">
+              <label>Rémunération min (€)</label>
+              <input type="number" min={0} value={filters.minPrice} onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Rémunération max (€)</label>
+              <input type="number" min={0} value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} />
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <button className="link-btn" onClick={() => setFilters(EMPTY_FILTERS)}>Réinitialiser les filtres</button>
+          )}
+        </div>
       )}
 
       {listings === undefined && <div className="muted center">Chargement…</div>}

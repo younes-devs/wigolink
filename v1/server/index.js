@@ -219,6 +219,46 @@ app.post('/api/profile/photo', auth, (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
+// ---------- RGPD : export et suppression de compte (PRD §6) ----------
+app.get('/api/profile/export', auth, (req, res) => {
+  const uid = req.user.id;
+  const { passwordHash, ...userSafe } = req.user;
+  const data = {
+    exportedAt: new Date().toISOString(),
+    user: userSafe,
+    listings: db.listings.filter((l) => l.senderId === uid),
+    trips: db.trips.filter((t) => t.travelerId === uid),
+    transactions: db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid)),
+    messages: db.messages.filter((m) => m.from === uid),
+    disputes: db.disputes.filter((d) => d.openedBy === uid),
+  };
+  res.setHeader('Content-Disposition', `attachment; filename="salama-donnees-${uid}.json"`);
+  res.json(data);
+});
+
+app.post('/api/profile/delete', auth, (req, res) => {
+  const uid = req.user.id;
+  const activeTx = db.transactions.filter(
+    (t) => [t.senderId, t.travelerId, t.recipientId].includes(uid) && !CLOSED_STATUSES.includes(t.status)
+  );
+  if (activeTx.length > 0)
+    return res.status(400).json({ error: `Impossible : ${activeTx.length} transaction(s) encore en cours. Terminez-les d'abord.` });
+
+  // Anonymisation plutôt que suppression physique : préserve l'intégrité des transactions passées
+  // (traçabilité douanière/litiges) tout en effaçant les données personnelles identifiantes.
+  req.user.name = 'Compte supprimé';
+  req.user.email = `deleted-${uid}@salama.invalid`;
+  req.user.phone = '';
+  req.user.city = '';
+  req.user.photoUrl = null;
+  req.user.passwordHash = null;
+  req.user.provider = 'deleted';
+  req.user.deletedAt = Date.now();
+  for (const [tok, id] of Object.entries(db.sessions)) if (id === uid) delete db.sessions[tok];
+  save();
+  res.json({ ok: true });
+});
+
 // ---------- Notifications ----------
 app.get('/api/notifications', auth, (req, res) => {
   const mine = (db.notifications || [])
@@ -290,9 +330,17 @@ function matchesTrip(listing, trip) {
 
 // ---------- Annonces ----------
 // Feed filtré par trajet déclaré (PRD §2.1). ?all=1 pour tout voir.
+// Filtres optionnels : ?category=, ?minPrice=, ?maxPrice=, ?q= (titre)
 app.get('/api/listings', auth, (req, res) => {
-  const open = db.listings
+  let open = db.listings
     .filter((l) => l.status === 'published' && l.senderId !== req.user.id);
+
+  const { category, minPrice, maxPrice, q } = req.query;
+  if (category) open = open.filter((l) => l.categoryId === category);
+  if (minPrice) open = open.filter((l) => l.travelerPay >= Number(minPrice));
+  if (maxPrice) open = open.filter((l) => l.travelerPay <= Number(maxPrice));
+  if (q) open = open.filter((l) => l.title.toLowerCase().includes(String(q).toLowerCase()));
+
   const myTrips = db.trips.filter((t) => t.travelerId === req.user.id && t.date >= new Date().toISOString().slice(0, 10));
   const showAll = req.query.all === '1' || myTrips.length === 0;
   const listings = (showAll ? open : open.filter((l) => myTrips.some((t) => matchesTrip(l, t))))
@@ -303,6 +351,48 @@ app.get('/api/listings', auth, (req, res) => {
 app.get('/api/listings/mine', auth, (req, res) => {
   const listings = db.listings.filter((l) => l.senderId === req.user.id);
   res.json({ listings });
+});
+
+// Modification d'une annonce tant qu'aucun voyageur ne l'a acceptée (statut 'published' ou 'pending_review').
+app.put('/api/listings/:id', auth, (req, res) => {
+  const listing = db.listings.find((l) => l.id === req.params.id);
+  if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
+  if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
+  if (!['published', 'pending_review'].includes(listing.status))
+    return res.status(400).json({ error: 'Cette annonce ne peut plus être modifiée (déjà acceptée)' });
+
+  const { title, description, weightKg, valueEur, dateFrom, dateTo, travelerPay, photos } = req.body;
+  if (title !== undefined) listing.title = String(title).trim().slice(0, 120);
+  if (description !== undefined) listing.description = String(description).trim().slice(0, 1000);
+  if (weightKg !== undefined) listing.weightKg = Number(weightKg);
+  if (valueEur !== undefined) {
+    if (Number(valueEur) > req.user.maxValue)
+      return res.status(400).json({ error: `Plafond dépassé : votre compte est limité à ${req.user.maxValue} € par envoi` });
+    listing.valueEur = Number(valueEur);
+  }
+  if (dateFrom !== undefined) listing.dateFrom = dateFrom;
+  if (dateTo !== undefined) listing.dateTo = dateTo;
+  if (travelerPay !== undefined) listing.travelerPay = Number(travelerPay);
+  if (photos !== undefined) {
+    if (photos.length === 0) return res.status(400).json({ error: 'Au moins une photo est obligatoire' });
+    if (!validPhotos(photos) || photos.length > 3)
+      return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
+    listing.photos = photos;
+  }
+  save();
+  res.json({ listing });
+});
+
+// Retrait d'une annonce par l'expéditeur, tant qu'aucun voyageur ne l'a acceptée.
+app.post('/api/listings/:id/cancel', auth, (req, res) => {
+  const listing = db.listings.find((l) => l.id === req.params.id);
+  if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
+  if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
+  if (!['published', 'pending_review'].includes(listing.status))
+    return res.status(400).json({ error: 'Cette annonce ne peut plus être retirée (déjà acceptée)' });
+  listing.status = 'cancelled';
+  save();
+  res.json({ listing });
 });
 
 app.post('/api/listings', auth, (req, res) => {
@@ -345,9 +435,12 @@ app.post('/api/listings', auth, (req, res) => {
 
 // ---------- Transactions (machine à états) ----------
 // accepted → sealed → in_transit → delivered → released | disputed
+const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
 app.get('/api/transactions', auth, (req, res) => {
   const mine = db.transactions
     .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
+    .filter((t) => (req.query.history === '1' ? CLOSED_STATUSES.includes(t.status) : !CLOSED_STATUSES.includes(t.status)))
+    .sort((a, b) => b.createdAt - a.createdAt)
     .map(txView(req.user));
   res.json({ transactions: mine });
 });

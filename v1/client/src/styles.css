@@ -418,6 +418,34 @@ body {
 .google-account:hover { background: rgba(22, 24, 29, 0.03); }
 .google-account .grow { flex: 1; }
 
+/* Scanner QR */
+.scanner-modal { max-width: 380px; padding-bottom: 16px; }
+.scanner-frame {
+  position: relative; margin: 0 16px; border-radius: 16px; overflow: hidden;
+  aspect-ratio: 1; background: #000;
+}
+.scanner-frame video { width: 100%; height: 100%; object-fit: cover; }
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; background: rgba(22, 24, 29, 0.05); border-radius: 12px; padding: 4px; }
+.tabs button {
+  flex: 1; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  padding: 8px; border-radius: 9px; transition: background 0.15s, color 0.15s;
+}
+.tabs button.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+
+.filter-count {
+  position: absolute; top: -6px; right: -6px;
+  min-width: 16px; height: 16px; border-radius: 999px; padding: 0 4px;
+  background: var(--accent); color: #fff; font-size: 9.5px; font-weight: 700;
+  line-height: 16px; text-align: center;
+}
+.scanner-reticle {
+  position: absolute; inset: 14%; border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 18px; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 /* Mode test */
 .devbar-fab {
   position: fixed; bottom: 84px; right: max(12px, calc(50% - 228px)); z-index: 40;

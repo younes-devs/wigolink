@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
-import { QrBlock, Stars, StatusPill } from '../components.jsx';
+import { QrBlock, QrScanner, Stars, StatusPill } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 
 const STEPS = [
@@ -74,6 +74,7 @@ function StepAction({ tx, user, reload }) {
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [disputeReason, setDisputeReason] = useState('');
+  const [scanning, setScanning] = useState(false);
   const role = tx.myRole;
 
   const act = async (path, body = {}) => {
@@ -136,9 +137,12 @@ function StepAction({ tx, user, reload }) {
             <span>Avant de valider : ouvrez le colis, inspectez le contenu, comparez avec l'annonce et la vidéo.
             <b> Valider transfère la responsabilité sur vous.</b></span>
           </div>
+          <button type="button" className="btn btn-ghost mb" onClick={() => setScanning(true)}>
+            <Icon name="qr" size={18} />Scanner le QR de l'expéditeur
+          </button>
           <div className="field">
-            <label>Code affiché sur le téléphone de l'expéditeur</label>
-            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ABC123" maxLength={6} />
+            <label>Ou saisir le code manuellement</label>
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
             <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('pickup')}>
               <Icon name="sparkles" size={13} />Code auto (test)
             </button>
@@ -149,6 +153,10 @@ function StepAction({ tx, user, reload }) {
           <button className="btn btn-danger-ghost" onClick={() => act('refuse', { reason: 'Contenu non conforme' })}>
             Refuser sans pénalité
           </button>
+          {scanning && (
+            <QrScanner onClose={() => setScanning(false)}
+              onDetected={(c) => { setCode(c); setScanning(false); }} />
+          )}
         </div>
       )}
       {tx.status === 'sealed' && role === 'recipient' && (
@@ -172,9 +180,12 @@ function StepAction({ tx, user, reload }) {
             <Icon name="alert" size={17} />
             <span>Inspectez le colis et comparez-le à la vidéo de scellage ci-dessous avant de valider.</span>
           </div>
+          <button type="button" className="btn btn-ghost mb" onClick={() => setScanning(true)}>
+            <Icon name="qr" size={18} />Scanner le QR du voyageur
+          </button>
           <div className="field">
-            <label>Code affiché sur le téléphone du voyageur</label>
-            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ABC123" maxLength={6} />
+            <label>Ou saisir le code manuellement</label>
+            <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
             <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('delivery')}>
               <Icon name="sparkles" size={13} />Code auto (test)
             </button>
@@ -182,6 +193,10 @@ function StepAction({ tx, user, reload }) {
           <button className="btn btn-teal mb" onClick={() => act('confirm-delivery', { code })} disabled={code.length !== 6}>
             <Icon name="check" size={18} />Colis conforme — valider la livraison
           </button>
+          {scanning && (
+            <QrScanner onClose={() => setScanning(false)}
+              onDetected={(c) => { setCode(c); setScanning(false); }} />
+          )}
           <div className="field">
             <input value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}
               placeholder="Décrivez le problème (obligatoire pour contester)" />

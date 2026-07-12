@@ -6,21 +6,30 @@ import { CategoryIcon, Icon } from '../Icons.jsx';
 
 export default function Transactions() {
   const [txs, setTxs] = useState(null);
+  const [tab, setTab] = useState('current'); // current | history
 
   useEffect(() => {
-    api('/transactions').then((d) => setTxs(d.transactions));
-  }, []);
+    setTxs(null);
+    api(`/transactions${tab === 'history' ? '?history=1' : ''}`).then((d) => setTxs(d.transactions));
+  }, [tab]);
 
   return (
     <div>
-      <h1 className="page-title">Transactions en cours</h1>
+      <h1 className="page-title">Transactions</h1>
       <p className="page-sub">Chaque étape exige la validation des deux parties.</p>
+
+      <div className="tabs">
+        <button className={tab === 'current' ? 'active' : ''} onClick={() => setTab('current')}>En cours</button>
+        <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>Historique</button>
+      </div>
 
       {txs === null && <div className="muted center">Chargement…</div>}
       {txs?.length === 0 && (
         <div className="card center empty-state">
-          <Icon name="repeat" size={36} />
-          <p className="muted">Aucune transaction. Acceptez une annonce ou publiez un envoi.</p>
+          <Icon name={tab === 'history' ? 'clock' : 'repeat'} size={36} />
+          <p className="muted">
+            {tab === 'history' ? 'Aucune transaction terminée pour l\'instant.' : 'Aucune transaction en cours. Acceptez une annonce ou publiez un envoi.'}
+          </p>
         </div>
       )}
 

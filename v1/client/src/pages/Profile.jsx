@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../api';
+import { api, getToken } from '../api';
 import { useAuth } from '../App.jsx';
 import { TrustBadge } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
@@ -154,9 +154,66 @@ export default function Profile() {
         </ul>
       </div>
 
+      <PrivacySection onDeleted={logout} />
+
       <button className="btn btn-ghost" onClick={logout}>
         <Icon name="logout" size={17} />Se déconnecter
       </button>
+    </div>
+  );
+}
+
+// RGPD (PRD §6) : export des données personnelles et droit à l'effacement.
+function PrivacySection({ onDeleted }) {
+  const [confirming, setConfirming] = useState(false);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const exportData = async () => {
+    const res = await fetch('/api/profile/export', { headers: { Authorization: `Bearer ${getToken()}` } });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'salama-mes-donnees.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const deleteAccount = async () => {
+    setErr(''); setBusy(true);
+    try {
+      await api('/profile/delete', { method: 'POST' });
+      onDeleted();
+    } catch (e) { setErr(e.message); setBusy(false); }
+  };
+
+  return (
+    <div className="card">
+      <h2 style={{ marginBottom: 8 }}><Icon name="fileText" size={17} />Vos données</h2>
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 14 }}>
+        Conformément au RGPD, vous pouvez exporter l'ensemble de vos données ou demander la suppression de votre compte.
+      </p>
+      <button className="btn btn-ghost mb" onClick={exportData}>
+        <Icon name="fileText" size={17} />Exporter mes données (JSON)
+      </button>
+
+      {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
+
+      {!confirming ? (
+        <button className="btn btn-danger-ghost" onClick={() => setConfirming(true)}>
+          <Icon name="trash" size={17} />Supprimer mon compte
+        </button>
+      ) : (
+        <div className="alert alert-danger" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+          <span><b>Cette action est définitive.</b> Vos données personnelles seront anonymisées ; l'historique des transactions passées est conservé pour des raisons légales (traçabilité douanière, litiges).</span>
+          <div className="row">
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>Annuler</button>
+            <button className="btn btn-danger-ghost btn-sm" onClick={deleteAccount} disabled={busy}>
+              {busy ? '…' : 'Confirmer la suppression'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
