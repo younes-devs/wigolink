@@ -14,6 +14,7 @@ import TransactionDetail from './pages/TransactionDetail.jsx';
 import Profile from './pages/Profile.jsx';
 import Admin from './pages/Admin.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import Terms from './pages/Terms.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -50,22 +51,26 @@ export default function App() {
           <Header user={user} />
           <div className="main-wrap">
           <div className="content">
-            {!user ? (
-              <Login />
-            ) : (
-              <Routes>
-                <Route path="/" element={<Feed />} />
-                <Route path="/annonce/:id" element={<ListingDetail />} />
-                <Route path="/envois" element={<MyShipments />} />
-                <Route path="/envois/nouveau" element={<CreateListing />} />
-                <Route path="/transactions" element={<Transactions />} />
-                <Route path="/transactions/:id" element={<TransactionDetail />} />
-                <Route path="/profil" element={<Profile />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/confidentialite" element={<PrivacyPolicy />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            )}
+            <Routes>
+              {/* Pages légales publiques : accessibles avant connexion (lien depuis l'inscription) */}
+              <Route path="/confidentialite" element={<PrivacyPolicy />} />
+              <Route path="/cgu" element={<Terms />} />
+              {!user ? (
+                <Route path="*" element={<Login />} />
+              ) : (
+                <>
+                  <Route path="/" element={<Feed />} />
+                  <Route path="/annonce/:id" element={<ListingDetail />} />
+                  <Route path="/envois" element={<MyShipments />} />
+                  <Route path="/envois/nouveau" element={<CreateListing />} />
+                  <Route path="/transactions" element={<Transactions />} />
+                  <Route path="/transactions/:id" element={<TransactionDetail />} />
+                  <Route path="/profil" element={<Profile />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </>
+              )}
+            </Routes>
           </div>
           {user && <SideRail user={user} />}
           </div>

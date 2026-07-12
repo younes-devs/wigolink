@@ -417,6 +417,16 @@ body {
 }
 .google-account:hover { background: rgba(22, 24, 29, 0.03); }
 .google-account .grow { flex: 1; }
+.google-account:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cgu-check {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 12px; color: var(--ink-soft); line-height: 1.5;
+  margin-bottom: 14px; cursor: pointer;
+}
+.cgu-check input { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 1px; }
+.cgu-check a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.cgu-check a:hover { text-decoration: underline; }
 
 /* Scanner QR */
 .scanner-modal { max-width: 380px; padding-bottom: 16px; }
@@ -496,6 +506,8 @@ body {
   text-transform: uppercase; letter-spacing: 0.3px; color: var(--ink-soft);
 }
 .policy-table tr:last-child td { border-bottom: none; }
+.policy-ol { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: var(--ink); }
+.policy-ol li { margin-bottom: 4px; }
 
 /* KPIs admin */
 .kpi-card { padding: 14px 16px; }

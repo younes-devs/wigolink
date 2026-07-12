@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Icon, GoogleLogo } from '../Icons.jsx';
@@ -15,6 +16,9 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(null); // session en attente de KYC
   const [googleOpen, setGoogleOpen] = useState(false);
+  const [googleRequireCgu, setGoogleRequireCgu] = useState(false);
+  const [googleCguChecked, setGoogleCguChecked] = useState(false);
+  const [cguAccepted, setCguAccepted] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const switchMode = (m) => { setMode(m); setError(''); setHint(''); };
@@ -37,7 +41,8 @@ export default function Login() {
 
   const submitRegister = () => run(async () => {
     if (form.password !== form.confirm) throw new Error('Les mots de passe ne correspondent pas');
-    const d = await api('/auth/register', { method: 'POST', body: form });
+    if (!cguAccepted) throw new Error('Vous devez accepter les Conditions Générales d\'Utilisation');
+    const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted } });
     setHint(d.demoHint);
     switchMode('verify');
   });
@@ -65,10 +70,17 @@ export default function Login() {
   });
 
   const googleSignIn = (email, name) => run(async () => {
+    if (googleRequireCgu && !googleCguChecked) throw new Error('Vous devez accepter les Conditions Générales d\'Utilisation');
     setGoogleOpen(false);
-    const d = await api('/auth/google', { method: 'POST', body: { email, name } });
+    const d = await api('/auth/google', { method: 'POST', body: { email, name, cguAccepted: googleCguChecked || !googleRequireCgu } });
     finishAuth(d);
   });
+
+  const openGoogle = (requireCgu) => {
+    setGoogleRequireCgu(requireCgu);
+    setGoogleCguChecked(false);
+    setGoogleOpen(true);
+  };
 
   const doKyc = () => run(async () => {
     login(pending.token, pending.user); // pose le token pour l'appel KYC
@@ -122,7 +134,7 @@ export default function Login() {
               {busy ? '…' : 'Se connecter'}
             </button>
             <div className="auth-sep"><span>ou</span></div>
-            <button className="btn btn-google" onClick={() => setGoogleOpen(true)} disabled={busy}>
+            <button className="btn btn-google" onClick={() => openGoogle(false)} disabled={busy}>
               <GoogleLogo size={18} />Continuer avec Google
             </button>
           </div>
@@ -139,7 +151,7 @@ export default function Login() {
       {mode === 'register' && (
         <>
           <div className="card">
-            <button className="btn btn-google mb" onClick={() => setGoogleOpen(true)} disabled={busy}>
+            <button className="btn btn-google mb" onClick={() => openGoogle(true)} disabled={busy}>
               <GoogleLogo size={18} />S'inscrire avec Google
             </button>
             <div className="auth-sep"><span>ou par email</span></div>
@@ -184,8 +196,15 @@ export default function Login() {
                 Encore {8 - form.password.length} caractère(s) minimum.
               </div>
             )}
+            <label className="cgu-check">
+              <input type="checkbox" checked={cguAccepted} onChange={(e) => setCguAccepted(e.target.checked)} />
+              <span>
+                J'accepte les <Link to="/cgu" target="_blank">Conditions Générales d'Utilisation</Link> et j'ai
+                lu la <Link to="/confidentialite" target="_blank">Politique de confidentialité</Link>.
+              </span>
+            </label>
             <button className="btn btn-primary" onClick={submitRegister}
-              disabled={busy || !form.name || !form.email || form.password.length < 8 || !form.confirm}>
+              disabled={busy || !form.name || !form.email || form.password.length < 8 || !form.confirm || !cguAccepted}>
               {busy ? '…' : 'Créer mon compte'}
             </button>
           </div>
@@ -293,11 +312,21 @@ export default function Login() {
             <p className="muted" style={{ fontSize: 12, padding: '0 16px 10px' }}>
               Simulation du sélecteur Google (démo — OAuth réel en production).
             </p>
+            {googleRequireCgu && (
+              <label className="cgu-check" style={{ margin: '0 16px 10px' }}>
+                <input type="checkbox" checked={googleCguChecked} onChange={(e) => setGoogleCguChecked(e.target.checked)} />
+                <span>
+                  J'accepte les <Link to="/cgu" target="_blank">CGU</Link> et la{' '}
+                  <Link to="/confidentialite" target="_blank">politique de confidentialité</Link>.
+                </span>
+              </label>
+            )}
             {[
               { email: 'yasmine.demo@gmail.com', name: 'Yasmine D.' },
               { email: 'omar.demo@gmail.com', name: 'Omar T.' },
             ].map((a) => (
-              <button key={a.email} className="google-account" onClick={() => googleSignIn(a.email, a.name)}>
+              <button key={a.email} className="google-account" onClick={() => googleSignIn(a.email, a.name)}
+                disabled={googleRequireCgu && !googleCguChecked}>
                 <span className="avatar" style={{ width: 34, height: 34, fontSize: 13, background: '#e8f0fe', color: '#1a73e8' }}>
                   {a.name[0]}
                 </span>
@@ -307,7 +336,7 @@ export default function Login() {
                 </span>
               </button>
             ))}
-            <GoogleCustom onPick={googleSignIn} />
+            <GoogleCustom onPick={googleSignIn} disabled={googleRequireCgu && !googleCguChecked} />
           </div>
         </div>
       )}
@@ -315,14 +344,14 @@ export default function Login() {
   );
 }
 
-function GoogleCustom({ onPick }) {
+function GoogleCustom({ onPick, disabled }) {
   const [email, setEmail] = useState('');
   return (
     <div style={{ display: 'flex', gap: 8, padding: '10px 16px 16px' }}>
       <input className="chat-input" value={email} onChange={(e) => setEmail(e.target.value)}
         placeholder="Autre adresse Gmail…" type="email" />
       <button className="btn btn-primary btn-sm" style={{ flex: '0 0 auto' }}
-        disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)}
+        disabled={disabled || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)}
         onClick={() => onPick(email, email.split('@')[0])}>
         OK
       </button>

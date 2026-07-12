@@ -54,13 +54,14 @@ const code6 = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
 
-function makeUser({ name, email, phone, provider, emailVerified, passwordHash }) {
+function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt }) {
   return {
     id: newId('u'), name: name.trim(), email: normEmail(email), phone: phone || '',
     passwordHash: passwordHash || null, provider, emailVerified: !!emailVerified,
     city: '', kycStatus: 'none', rating: null, ratingCount: 0, completed: 0, cancelRate: 0,
     // Plafonds progressifs (PRD §0.3) : nouveau compte = 100 €, 1 transaction active
     maxValue: 100, maxActive: 1, badges: [], createdAt: Date.now(),
+    cguAcceptedAt: cguAcceptedAt || null,
   };
 }
 
@@ -72,11 +73,12 @@ function openSession(res, user) {
 }
 
 app.post('/api/auth/register', (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, cguAccepted } = req.body;
   const invalid = validRegistration({ name, email, password });
   if (invalid) return res.status(400).json({ error: invalid });
+  if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
   if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
-  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password) });
+  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now() });
   db.users.push(user);
   const code = sixDigitCode();
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
@@ -128,11 +130,12 @@ app.post('/api/auth/login', (req, res) => {
 // OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
 // (échange du "credential" Google Identity Services contre l'identité vérifiée).
 app.post('/api/auth/google', (req, res) => {
-  const { email, name } = req.body;
+  const { email, name, cguAccepted } = req.body;
   if (!EMAIL_RE.test(email || '')) return res.status(400).json({ error: 'Email Google invalide' });
   let user = findByEmail(email);
   if (!user) {
-    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true });
+    if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
+    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true, cguAcceptedAt: Date.now() });
     db.users.push(user);
   }
   openSession(res, user);

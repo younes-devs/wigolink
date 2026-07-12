@@ -170,7 +170,15 @@ function PrivacySection({ onDeleted, email }) {
   return (
     <>
       <div className="settings-group">
-        <div className="settings-group-title">Confidentialité et données</div>
+        <div className="settings-group-title">Légal et données</div>
+        <Link to="/cgu" className="settings-row" style={{ marginBottom: 8 }}>
+          <span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span>
+          <span className="grow">
+            <span className="settings-row-title">Conditions générales d'utilisation</span>
+            <span className="settings-row-sub">Fonctionnement de la plateforme, responsabilités, litiges</span>
+          </span>
+          <Icon name="chevronDown" size={16} className="settings-chevron" />
+        </Link>
         <Link to="/confidentialite" className="settings-row" style={{ marginBottom: 8 }}>
           <span className="settings-row-icon"><Icon name="fileText" size={17} /></span>
           <span className="grow">
