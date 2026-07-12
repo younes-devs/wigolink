@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, getToken } from '../api';
 import { useAuth } from '../App.jsx';
 import { TrustBadge } from '../components.jsx';
@@ -170,10 +171,18 @@ function PrivacySection({ onDeleted, email }) {
     <>
       <div className="settings-group">
         <div className="settings-group-title">Confidentialité et données</div>
+        <Link to="/confidentialite" className="settings-row" style={{ marginBottom: 8 }}>
+          <span className="settings-row-icon"><Icon name="fileText" size={17} /></span>
+          <span className="grow">
+            <span className="settings-row-title">Politique de confidentialité</span>
+            <span className="settings-row-sub">Ce que nous collectons, pourquoi, et vos droits RGPD</span>
+          </span>
+          <Icon name="chevronDown" size={16} className="settings-chevron" />
+        </Link>
         <button className="settings-row" onClick={() => setOpen(true)}>
           <span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span>
           <span className="grow">
-            <span className="settings-row-title">Confidentialité et données (RGPD)</span>
+            <span className="settings-row-title">Gérer mes données</span>
             <span className="settings-row-sub">Exporter vos données ou supprimer votre compte</span>
           </span>
           <Icon name="chevronDown" size={16} className="settings-chevron" />

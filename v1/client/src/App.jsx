@@ -13,6 +13,7 @@ import Transactions from './pages/Transactions.jsx';
 import TransactionDetail from './pages/TransactionDetail.jsx';
 import Profile from './pages/Profile.jsx';
 import Admin from './pages/Admin.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="/transactions/:id" element={<TransactionDetail />} />
                 <Route path="/profil" element={<Profile />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/confidentialite" element={<PrivacyPolicy />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             )}
