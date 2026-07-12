@@ -52,4 +52,24 @@ Le récapitulatif douane est mis en cache localement dès son premier chargement
 reste consultable sans réseau — avec un bandeau explicite « hors ligne » — plus un export PDF
 téléchargeable en un clic.
 
-**Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), KYC, escrow (Mangopay/Stripe Connect), QR scannables.
+**Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), escrow (Mangopay/Stripe Connect), QR scannables. Le KYC est un vrai flux manuel (soumission + revue admin), voir [docs/prd-kyc.md](docs/prd-kyc.md).
+
+## Tester sur téléphone (accès caméra)
+
+Les navigateurs bloquent l'accès caméra (`getUserMedia`) sur les origines non sécurisées —
+seuls `https://` et `http://localhost` sont autorisés. Pour tester le KYC ou la vidéo de
+scellage depuis un téléphone sur le même réseau Wi-Fi, il faut donc servir l'app en HTTPS :
+
+```bash
+cd v1
+mkdir -p .cert
+openssl req -x509 -newkey rsa:2048 -keyout .cert/key.pem -out .cert/cert.pem \
+  -days 825 -nodes -subj "/CN=cloudkilo-dev" \
+  -addext "subjectAltName=IP:<IP_DE_TON_PC>,IP:127.0.0.1,DNS:localhost"
+```
+
+Remplace `<IP_DE_TON_PC>` par l'IP locale de ta machine (`hostname -I`). `npm run dev`
+détecte automatiquement `v1/.cert/` et bascule Vite en HTTPS. Ouvre ensuite
+`https://<IP_DE_TON_PC>:5173` depuis le téléphone — le navigateur affiche un avertissement
+de certificat non fiable (normal, c'est un certificat auto-signé de dev) : accepter/continuer
+une fois suffit, puis la demande d'autorisation caméra fonctionne normalement.
