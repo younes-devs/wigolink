@@ -48,4 +48,8 @@ compte en un clic ou créer un utilisateur jetable ; boutons « Remplir (test) �
 formulaires d'annonce et d'inscription ; « Code auto (test) » pour les validations QR.
 Désactivable avec `DEMO=false` côté serveur.
 
+Le récapitulatif douane est mis en cache localement dès son premier chargement (localStorage) et
+reste consultable sans réseau — avec un bandeau explicite « hors ligne » — plus un export PDF
+téléchargeable en un clic.
+
 **Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), KYC, escrow (Mangopay/Stripe Connect), QR scannables.

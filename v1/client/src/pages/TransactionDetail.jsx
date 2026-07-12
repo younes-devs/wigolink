@@ -308,26 +308,97 @@ function SealingVideo({ tx, reload }) {
   );
 }
 
+const recapCacheKey = (txId) => `cloudkilo_recap_${txId}`;
+
 function CustomsRecap({ txId, status }) {
   const [recap, setRecap] = useState(null);
   const [open, setOpen] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
+  // Mise en cache proactive dès que le colis est scellé : le récapitulatif reste
+  // consultable sans réseau (contrôle douanier en zone blanche, avion, etc.).
   useEffect(() => {
-    if (open && !recap) api(`/transactions/${txId}/customs-recap`).then((d) => setRecap(d.recap));
-  }, [open, recap, txId]);
+    api(`/transactions/${txId}/customs-recap`)
+      .then((d) => {
+        setRecap(d.recap);
+        setFromCache(false);
+        try { localStorage.setItem(recapCacheKey(txId), JSON.stringify(d.recap)); } catch { /* stockage plein, tant pis */ }
+      })
+      .catch(() => {
+        const cached = localStorage.getItem(recapCacheKey(txId));
+        if (cached) { setRecap(JSON.parse(cached)); setFromCache(true); }
+      });
+  }, [txId, status]);
+
+  const downloadPdf = async () => {
+    if (!recap) return;
+    setPdfBusy(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const left = 48;
+      let y = 56;
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.text('CloudKilo — Récapitulatif douane', left, y); y += 22;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(110);
+      doc.text(`Généré le ${new Date().toLocaleString('fr-BE')} · Transaction ${recap.txId}`, left, y); y += 28;
+      doc.setDrawColor(220); doc.line(left, y, 547, y); y += 24;
+
+      const row = (label, value) => {
+        doc.setTextColor(90); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+        doc.text(label, left, y);
+        doc.setTextColor(20); doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+        const lines = doc.splitTextToSize(String(value), 380);
+        doc.text(lines, left + 150, y);
+        y += 18 * lines.length + 6;
+      };
+
+      row('Produit', `${recap.product} (${recap.category})`);
+      row('Description', recap.description || '—');
+      row('Valeur déclarée', `${recap.valueEur} €`);
+      row('Poids', `${recap.weightKg} kg`);
+      row('Expéditeur', `${recap.sender?.name} — identité vérifiée`);
+      row('Voyageur', `${recap.traveler?.name} — identité vérifiée`);
+      if (recap.sealedAt) row('Scellé le', new Date(recap.sealedAt).toLocaleString('fr-BE'));
+      row('Corridor', recap.corridor.label);
+      row('Franchise applicable', recap.corridor.franchise);
+
+      y += 8; doc.setDrawColor(220); doc.line(left, y, 547, y); y += 20;
+      doc.setFontSize(9); doc.setTextColor(130);
+      doc.text(doc.splitTextToSize(
+        "Ce document atteste d'une transaction enregistrée sur la plateforme CloudKilo, avec identités vérifiées " +
+        'des deux parties et preuve vidéo de scellage. Il ne constitue pas une déclaration en douane officielle.',
+        499
+      ), left, y);
+
+      doc.save(`cloudkilo-douane-${recap.txId}.pdf`);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   return (
     <div className="card">
       <div className="list-row" onClick={() => setOpen(!open)} style={{ cursor: 'pointer' }}>
         <Icon name="fileText" size={19} />
         <div className="grow"><b>Récapitulatif douane</b>
-          <div className="muted" style={{ fontSize: 12 }}>À montrer en cas de contrôle — accessible hors ligne.</div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            {recap ? (fromCache ? 'Version hors ligne — à jour au dernier chargement.' : 'À montrer en cas de contrôle — disponible hors ligne.') : 'À montrer en cas de contrôle.'}
+          </div>
         </div>
         <Icon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
       </div>
       {open && recap && (
         <div className="mt" style={{ fontSize: 13.5, lineHeight: 1.7 }}>
           <div className="divider" />
+          {fromCache && (
+            <div className="alert alert-warn" style={{ marginBottom: 12 }}>
+              <Icon name="alert" size={16} />
+              <span>Hors ligne : affichage de la dernière version enregistrée sur cet appareil.</span>
+            </div>
+          )}
           <b>Transaction :</b> {recap.txId}<br />
           <b>Produit :</b> {recap.product} ({recap.category})<br />
           <b>Description :</b> {recap.description}<br />
@@ -336,8 +407,12 @@ function CustomsRecap({ txId, status }) {
           <b>Voyageur :</b> {recap.traveler?.name} (identité vérifiée)<br />
           {recap.sealedAt && <><b>Scellé le :</b> {new Date(recap.sealedAt).toLocaleString('fr-BE')}<br /></>}
           <b>Franchise :</b> {recap.corridor.franchise}
+          <button className="btn btn-ghost btn-sm mt" onClick={downloadPdf} disabled={pdfBusy}>
+            <Icon name="fileText" size={15} />{pdfBusy ? 'Génération…' : 'Télécharger en PDF'}
+          </button>
         </div>
       )}
+      {open && !recap && <p className="muted mt">Aucune version disponible (jamais chargée en ligne sur cet appareil).</p>}
     </div>
   );
 }
