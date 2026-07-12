@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
-import { TrustBadge } from '../components.jsx';
+import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 import Training from '../Training.jsx';
 
@@ -12,6 +12,7 @@ export default function ListingDetail() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [training, setTraining] = useState(false);
+  const [needsKyc, setNeedsKyc] = useState(false);
 
   useEffect(() => {
     api('/listings?all=1').then((d) => setListing(d.listings.find((l) => l.id === id) || 'gone'));
@@ -24,7 +25,7 @@ export default function ListingDetail() {
       const d = await api(`/listings/${id}/accept`, { method: 'POST' });
       nav(`/transactions/${d.transaction.id}`);
     } catch (e) {
-      if (e.data?.needsKyc) nav('/verification');
+      if (e.data?.needsKyc) setNeedsKyc(true);
       else if (e.data?.needsTraining) setTraining(true);
       else setError(e.message);
       setBusy(false);
@@ -94,6 +95,7 @@ export default function ListingDetail() {
       </div>
 
       {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
+      {needsKyc && <KycRequiredNotice />}
       <button className="btn btn-primary" onClick={accept} disabled={busy}>
         {busy ? '…' : 'Accepter ce transport'}
       </button>

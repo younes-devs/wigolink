@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
@@ -163,35 +163,56 @@ export const STATUS_LABELS = {
   cancelled: { label: 'Annulé', pill: 'pill-gray' },
 };
 
+// Message affiché quand une action exige une identité vérifiée — jamais de redirection
+// silencieuse : l'utilisateur voit pourquoi il est bloqué et choisit d'y aller.
+export function KycRequiredNotice() {
+  return (
+    <div className="alert alert-warn" style={{ alignItems: 'center' }}>
+      <Icon name="shieldCheck" size={17} />
+      <span className="grow">Vérification d'identité requise pour cette action.</span>
+      <Link to="/verification">
+        <button className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.06)', color: 'inherit' }}>
+          Aller vérifier
+        </button>
+      </Link>
+    </div>
+  );
+}
+
 export function StatusPill({ status }) {
   const s = STATUS_LABELS[status] || { label: status, pill: 'pill-gray' };
   return <span className={`pill ${s.pill}`}>{s.label}</span>;
 }
 
+// Demande l'accès caméra — à appeler directement dans le gestionnaire de clic qui
+// ouvre la capture (pas dans un useEffect différé) : Safari iOS et plusieurs
+// navigateurs mobiles n'affichent la boîte de dialogue système d'autorisation que
+// si l'appel a lieu de façon synchrone dans le geste utilisateur (le clic), sinon
+// l'accès échoue silencieusement et l'utilisateur croit devoir l'activer lui-même
+// dans les réglages du téléphone.
+export async function requestCameraStream(facing) {
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
+}
+
 // Capture photo via caméra in-app exclusivement (PRD KYC §3 : pas d'upload galerie,
 // même règle anti-fraude que la vidéo de scellage). Renvoie un dataURL JPEG redimensionné.
-export function PhotoCapture({ facing = 'user', maxPx = 900, onCapture, onClose, guide }) {
+// `stream` doit être obtenu via requestCameraStream() au moment du clic déclencheur —
+// c'est ce qui fait apparaître automatiquement la demande d'autorisation du téléphone.
+export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError, onCapture, onClose, guide }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const [error, setError] = useState('');
+  const streamRef = useRef(stream || null);
+  const [error, setError] = useState(streamError || '');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing }, audio: false,
-        });
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; setReady(true); }
-      } catch {
-        setError("Caméra indisponible. Autorisez l'accès à la caméra pour continuer.");
-      }
-    })();
-    return () => { cancelled = true; streamRef.current?.getTracks().forEach((t) => t.stop()); };
-  }, [facing]);
+    if (streamError) { setError(streamError); return; }
+    if (stream && videoRef.current) {
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      setReady(true);
+    }
+    return () => { streamRef.current?.getTracks().forEach((t) => t.stop()); };
+  }, [stream, streamError]);
 
   const shoot = () => {
     const video = videoRef.current;

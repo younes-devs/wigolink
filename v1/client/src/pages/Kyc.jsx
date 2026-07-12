@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
-import { PhotoCapture } from '../components.jsx';
+import { PhotoCapture, requestCameraStream } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
@@ -79,6 +79,8 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
   const [form, setForm] = useState({ legalName: '', birthDate: '', documentType: 'id_card' });
   const [photos, setPhotos] = useState({ selfiePhoto: null, idFrontPhoto: null, idBackPhoto: null });
   const [capturing, setCapturing] = useState(null); // 'selfie' | 'front' | 'back'
+  const [captureStream, setCaptureStream] = useState(null);
+  const [captureError, setCaptureError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -92,6 +94,25 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
     selfie: { facing: 'user', key: 'selfiePhoto', guide: 'Selfie — visage bien visible', maxPx: 700 },
     front: { facing: 'environment', key: 'idFrontPhoto', guide: "Pièce d'identité — recto", maxPx: 1100 },
     back: { facing: 'environment', key: 'idBackPhoto', guide: "Pièce d'identité — verso", maxPx: 1100 },
+  };
+
+  // Demande la caméra dès le clic (synchrone dans le geste utilisateur) : c'est ce qui
+  // déclenche la boîte de dialogue native du téléphone, pas un texte demandant à
+  // l'utilisateur d'autoriser manuellement l'accès dans ses réglages.
+  const openCapture = async (name) => {
+    setCapturing(name);
+    setCaptureStream(null);
+    setCaptureError('');
+    try {
+      const stream = await requestCameraStream(captureConfig[name].facing);
+      setCaptureStream(stream);
+    } catch {
+      setCaptureError("Accès à la caméra refusé ou indisponible. Vérifiez l'autorisation caméra de CloudKilo dans les réglages de votre téléphone.");
+    }
+  };
+  const closeCapture = () => {
+    captureStream?.getTracks().forEach((t) => t.stop());
+    setCapturing(null); setCaptureStream(null); setCaptureError('');
   };
 
   const age = form.birthDate ? computeAge(form.birthDate) : null;
@@ -162,7 +183,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
         <PhotoStep
           cfg={captureConfig[stepName]}
           photo={photos[captureConfig[stepName].key]}
-          onRetake={() => setCapturing(stepName)}
+          onRetake={() => openCapture(stepName)}
           onNext={next} onPrev={prev}
         />
       )}
@@ -171,9 +192,9 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
         <>
           <h2 style={{ marginBottom: 12 }}><Icon name="shieldCheck" size={17} />Vérifiez avant d'envoyer</h2>
           <div className="kyc-review-grid">
-            <ReviewThumb label="Selfie" photo={photos.selfiePhoto} onRetake={() => setCapturing('selfie')} />
-            <ReviewThumb label="Recto" photo={photos.idFrontPhoto} onRetake={() => setCapturing('front')} />
-            {needsBack && <ReviewThumb label="Verso" photo={photos.idBackPhoto} onRetake={() => setCapturing('back')} />}
+            <ReviewThumb label="Selfie" photo={photos.selfiePhoto} onRetake={() => openCapture('selfie')} />
+            <ReviewThumb label="Recto" photo={photos.idFrontPhoto} onRetake={() => openCapture('front')} />
+            {needsBack && <ReviewThumb label="Verso" photo={photos.idBackPhoto} onRetake={() => openCapture('back')} />}
           </div>
           <div className="kyc-recap">
             <div><span className="muted">Nom légal</span><b>{form.legalName}</b></div>
@@ -196,8 +217,10 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
           facing={captureConfig[capturing].facing}
           maxPx={captureConfig[capturing].maxPx}
           guide={captureConfig[capturing].guide}
-          onClose={() => setCapturing(null)}
-          onCapture={(dataUrl) => { setPhotos((p) => ({ ...p, [captureConfig[capturing].key]: dataUrl })); setCapturing(null); }}
+          stream={captureStream}
+          streamError={captureError}
+          onClose={closeCapture}
+          onCapture={(dataUrl) => { setPhotos((p) => ({ ...p, [captureConfig[capturing].key]: dataUrl })); setCapturing(null); setCaptureStream(null); }}
         />
       )}
     </div>

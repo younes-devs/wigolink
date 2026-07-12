@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { TrustBadge } from '../components.jsx';
+import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 
 const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
@@ -162,18 +162,18 @@ export default function Feed() {
 }
 
 function TripForm({ onSaved }) {
-  const nav = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ from: 'Casablanca', to: 'Bruxelles', date: '', capacityKg: 8 });
   const [err, setErr] = useState('');
+  const [needsKyc, setNeedsKyc] = useState(false);
 
   const save = async () => {
-    setErr('');
+    setErr(''); setNeedsKyc(false);
     try {
       await api('/trips', { method: 'POST', body: form });
       onSaved();
     } catch (e) {
-      if (e.data?.needsKyc) nav('/verification');
+      if (e.data?.needsKyc) setNeedsKyc(true);
       else setErr(e.message);
     }
   };
@@ -181,6 +181,7 @@ function TripForm({ onSaved }) {
   return (
     <div className="mt">
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
+      {needsKyc && <KycRequiredNotice />}
       <div className="row">
         <div className="field">
           <label>Sens</label>

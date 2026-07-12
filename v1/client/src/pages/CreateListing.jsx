@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { KycRequiredNotice } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 
 // Redimensionne une image en dataURL JPEG (côté client, max 720px).
@@ -43,6 +44,7 @@ export default function CreateListing() {
   const [rules, setRules] = useState(null);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
+  const [needsKyc, setNeedsKyc] = useState(false);
   const [form, setForm] = useState({
     title: '', categoryId: '', categoryLabel: '', description: '', weightKg: '', valueEur: '',
     from: 'Casablanca', to: 'Bruxelles', dateFrom: '', dateTo: '', travelerPay: '',
@@ -85,12 +87,12 @@ export default function CreateListing() {
   const selectedCat = rules.whitelist.find((c) => c.id === form.categoryId);
 
   const submit = async () => {
-    setError('');
+    setError(''); setNeedsKyc(false);
     try {
       const d = await api('/listings', { method: 'POST', body: form });
       nav(d.listing.status === 'pending_review' ? '/envois' : '/envois');
     } catch (e) {
-      if (e.data?.needsKyc) nav('/verification');
+      if (e.data?.needsKyc) setNeedsKyc(true);
       else setError(e.message);
     }
   };
@@ -249,6 +251,7 @@ export default function CreateListing() {
               J'ai lu et j'accepte explicitement ces règles et responsabilités.
             </label>
           </div>
+          {needsKyc && <KycRequiredNotice />}
           <button className="btn btn-primary" disabled={!form.customsAccepted} onClick={submit}>
             Publier ma demande d'envoi
           </button>
