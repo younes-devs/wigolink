@@ -389,6 +389,34 @@ function CustomsRecap({ txId, status }) {
   const [open, setOpen] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const toast = useToast();
+
+  // Partage du récap (PRD UI/UX U13) : partage natif si dispo (mobile), sinon copie
+  // du texte dans le presse-papier — pratique pour l'envoyer au voyageur avant le vol.
+  const shareRecap = async () => {
+    if (!recap) return;
+    const text = [
+      'Récapitulatif douane Wigofly',
+      `Produit : ${recap.product} (${recap.category})`,
+      `Valeur déclarée : ${recap.valueEur} € · Poids : ${recap.weightKg} kg`,
+      `Expéditeur : ${recap.sender?.name} (identité vérifiée)`,
+      `Voyageur : ${recap.traveler?.name} (identité vérifiée)`,
+      `Franchise : ${recap.corridor.franchise}`,
+      `Transaction : ${recap.txId}`,
+    ].join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Récapitulatif douane Wigofly', text }); }
+      catch { /* partage annulé par l'utilisateur — rien à faire */ }
+      return;
+    }
+    // Pas de partage natif (desktop) : repli sur le presse-papier, avec retour explicite.
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Récapitulatif copié dans le presse-papier');
+    } catch {
+      toast.error('Copie impossible — utilisez le PDF à la place');
+    }
+  };
 
   // Mise en cache proactive dès que le colis est scellé : le récapitulatif reste
   // consultable sans réseau (contrôle douanier en zone blanche, avion, etc.).
@@ -481,9 +509,14 @@ function CustomsRecap({ txId, status }) {
           <b>Voyageur :</b> {recap.traveler?.name} (identité vérifiée)<br />
           {recap.sealedAt && <><b>Scellé le :</b> {new Date(recap.sealedAt).toLocaleString('fr-BE')}<br /></>}
           <b>Franchise :</b> {recap.corridor.franchise}
-          <button className="btn btn-ghost btn-sm mt" onClick={downloadPdf} disabled={pdfBusy}>
-            <Icon name="fileText" size={15} />{pdfBusy ? 'Génération…' : 'Télécharger en PDF'}
-          </button>
+          <div className="row mt" style={{ gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={downloadPdf} disabled={pdfBusy}>
+              <Icon name="fileText" size={15} />{pdfBusy ? 'Génération…' : 'PDF'}
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={shareRecap}>
+              <Icon name="share" size={15} />Partager
+            </button>
+          </div>
         </div>
       )}
       {open && !recap && <p className="muted mt">Aucune version disponible (jamais chargée en ligne sur cet appareil).</p>}
