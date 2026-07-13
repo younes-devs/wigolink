@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
+import { SkeletonList } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 const LISTING_STATUS = {
   published: { label: 'Publiée — en attente de voyageur', pill: 'pill-saffron' },
@@ -15,6 +17,7 @@ const EDITABLE = ['published', 'pending_review'];
 export default function MyShipments() {
   const [listings, setListings] = useState(null);
   const [editing, setEditing] = useState(null);
+  const toast = useToast();
 
   const load = () => api('/listings/mine').then((d) => setListings(d.listings));
   useEffect(() => { load(); }, []);
@@ -23,6 +26,7 @@ export default function MyShipments() {
     if (!confirm('Retirer cette annonce ? Cette action est définitive.')) return;
     await api(`/listings/${id}/cancel`, { method: 'POST' });
     load();
+    toast.info('Annonce retirée');
   };
 
   return (
@@ -37,7 +41,7 @@ export default function MyShipments() {
         </Link>
       </div>
 
-      {listings === null && <div className="muted center">Chargement…</div>}
+      {listings === null && <SkeletonList count={2} avatar={true} />}
       {listings?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="package" size={36} />
@@ -72,7 +76,7 @@ export default function MyShipments() {
 
       {editing && (
         <EditListingModal listing={editing} onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }} />
+          onSaved={() => { setEditing(null); load(); toast.success('Annonce mise à jour'); }} />
       )}
     </div>
   );
@@ -140,7 +144,7 @@ function EditListingModal({ listing, onClose, onSaved }) {
             <input type="number" value={form.travelerPay} onChange={(e) => setForm({ ...form, travelerPay: e.target.value })} />
           </div>
           <button className="btn btn-primary" onClick={save} disabled={busy || !form.title}>
-            {busy ? '…' : 'Enregistrer'}
+            {busy ? <span className="spinner" /> : 'Enregistrer'}
           </button>
         </div>
       </div>

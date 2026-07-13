@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
+import { SkeletonCard } from '../Skeleton.jsx';
 import Training from '../Training.jsx';
 
 export default function ListingDetail() {
@@ -32,7 +33,7 @@ export default function ListingDetail() {
     }
   };
 
-  if (!listing) return <div className="muted center">Chargement…</div>;
+  if (!listing) return <SkeletonCard lines={4} />;
   if (listing === 'gone') return <div className="alert alert-warn"><Icon name="alert" size={17} />Cette annonce n'est plus disponible.</div>;
 
   const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
@@ -97,7 +98,7 @@ export default function ListingDetail() {
       {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
       {needsKyc && <KycRequiredNotice />}
       <button className="btn btn-primary" onClick={accept} disabled={busy}>
-        {busy ? '…' : 'Accepter ce transport'}
+        {busy ? <span className="spinner" /> : 'Accepter ce transport'}
       </button>
     </div>
   );

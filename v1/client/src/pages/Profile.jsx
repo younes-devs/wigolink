@@ -291,7 +291,7 @@ function PrivacyModal({ onClose, onDeleted, email }) {
                     </button>
                     <button className="btn btn-danger-ghost btn-sm" onClick={deleteAccount}
                       disabled={busy || confirmText !== email}>
-                      {busy ? '…' : 'Confirmer définitivement'}
+                      {busy ? <span className="spinner" /> : 'Confirmer définitivement'}
                     </button>
                   </div>
                 </div>

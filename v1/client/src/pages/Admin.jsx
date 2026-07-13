@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import { Icon } from '../Icons.jsx';
+import { SkeletonCard, SkeletonList, SkeletonStatGrid } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('review'); // review | kyc | kpis | categories
+  const toast = useToast();
 
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
@@ -16,10 +19,20 @@ export default function Admin() {
   const decide = async (id, decision, extra = {}) => {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
     load();
+    toast.success('Décision enregistrée', 2200);
   };
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
-  if (!data) return <div className="muted center">Chargement…</div>;
+  if (!data) {
+    return (
+      <div>
+        <h1 className="page-title">Back-office</h1>
+        <p className="page-sub">Revue humaine, litiges, KPIs et surveillance fraude.</p>
+        <SkeletonStatGrid />
+        <SkeletonList count={3} avatar={false} />
+      </div>
+    );
+  }
 
   const { stats, reviewQueue, customWhitelist } = data;
 
@@ -225,7 +238,7 @@ function KycPanel() {
         ))}
       </div>
 
-      {!data && <div className="muted center">Chargement…</div>}
+      {!data && <SkeletonList count={4} avatar={false} lines={1} />}
       {data?.submissions.length === 0 && (
         <div className="card center empty-state">
           <Icon name="shieldCheck" size={32} />
@@ -285,7 +298,7 @@ function KycDetail({ id, onBack, onDecided }) {
   };
 
   if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
-  if (!data) return <div className="muted center">Chargement…</div>;
+  if (!data) return <SkeletonCard lines={4} />;
   const s = data.submission;
   const done = s.status !== 'pending';
 
@@ -353,7 +366,7 @@ function KycDetail({ id, onBack, onDecided }) {
               <button className="btn btn-ghost btn-sm" onClick={() => setAction(null)}>Annuler</button>
               <button className={`btn btn-sm ${action === 'refuse' ? 'btn-danger-ghost' : 'btn-primary'}`}
                 onClick={() => decide(action)} disabled={busy || reason.trim().length < 5}>
-                {busy ? '…' : action === 'reject' ? 'Confirmer le rejet' : 'Confirmer le refus définitif'}
+                {busy ? <span className="spinner" /> : action === 'reject' ? 'Confirmer le rejet' : 'Confirmer le refus définitif'}
               </button>
             </div>
           </div>
@@ -408,7 +421,7 @@ function KpiPanel() {
 
   useEffect(() => { api('/admin/kpis').then(setD); }, []);
 
-  if (!d) return <div className="muted center">Chargement…</div>;
+  if (!d) return <SkeletonList count={4} avatar={false} lines={1} />;
   const { kpis, totals } = d;
 
   return (

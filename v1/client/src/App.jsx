@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
+import { ToastProvider } from './Toast.jsx';
 import DevBar from './DevBar.jsx';
 import SideRail from './SideRail.jsx';
 import Login from './pages/Login.jsx';
@@ -19,6 +20,16 @@ import Kyc from './pages/Kyc.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
+
+// Remonte en haut de la page à chaque changement de route — évite de rester scrollé
+// au milieu d'un écran précédent en arrivant sur une nouvelle page.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [pathname]);
+  return null;
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -43,11 +54,22 @@ export default function App() {
   };
   const refreshUser = () => api('/me').then((d) => setUser(d.user));
 
-  if (loading) return <div className="phone"><div className="content center mt">Chargement…</div></div>;
+  if (loading) {
+    return (
+      <div className="phone">
+        <div className="boot-splash">
+          <span className="brand-mark boot-logo">CK</span>
+          <span className="spinner boot-spinner" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthCtx.Provider value={{ user, login, logout, refreshUser }}>
+      <ToastProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <div className="phone">
           <Header user={user} />
           <div className="main-wrap">
@@ -80,6 +102,7 @@ export default function App() {
           <DevBar />
         </div>
       </BrowserRouter>
+      </ToastProvider>
     </AuthCtx.Provider>
   );
 }

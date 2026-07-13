@@ -4,18 +4,21 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { PhotoCapture, requestCameraStream } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
+import { SkeletonCard } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
 // Accès complet à la navigation ; cette page n'est requise que pour transacter.
 export default function Kyc() {
   const nav = useNavigate();
   const { refreshUser } = useAuth();
+  const toast = useToast();
   const [me, setMe] = useState(null);
 
   const load = () => api('/me').then(setMe);
   useEffect(() => { load(); }, []);
 
-  if (!me) return <div className="muted center">Chargement…</div>;
+  if (!me) return <SkeletonCard lines={3} />;
   const status = me.kyc?.status || 'none';
 
   return (
@@ -65,7 +68,7 @@ export default function Kyc() {
           rejected={status === 'rejected'}
           rejectReason={me.kyc?.latestDecisionReason}
           canResubmit={status === 'none' || me.kyc?.canResubmit}
-          onDone={async () => { await load(); await refreshUser(); }}
+          onDone={async () => { await load(); await refreshUser(); toast.success('Vérification envoyée — réponse sous 24h'); }}
         />
       )}
     </div>

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { KycRequiredNotice } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
+import { SkeletonCard } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 // Redimensionne une image en dataURL JPEG (côté client, max 720px).
 function resizeImage(file, maxPx = 720) {
@@ -41,6 +43,7 @@ function placeholderPhoto(label) {
 // Création de demande d'envoi — parcours ≤ 3 écrans (PRD §6 accessibilité)
 export default function CreateListing() {
   const nav = useNavigate();
+  const toast = useToast();
   const [rules, setRules] = useState(null);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -81,7 +84,7 @@ export default function CreateListing() {
     setStep(2);
   };
 
-  if (!rules) return <div className="muted center">Chargement…</div>;
+  if (!rules) return <SkeletonCard lines={3} />;
 
   const corridor = form.from === 'Casablanca' ? rules.customs['MA-EU'] : rules.customs['EU-MA'];
   const selectedCat = rules.whitelist.find((c) => c.id === form.categoryId);
@@ -90,7 +93,8 @@ export default function CreateListing() {
     setError(''); setNeedsKyc(false);
     try {
       const d = await api('/listings', { method: 'POST', body: form });
-      nav(d.listing.status === 'pending_review' ? '/envois' : '/envois');
+      nav('/envois');
+      toast.success(d.listing.status === 'pending_review' ? 'Envoi soumis, en revue avant publication' : 'Annonce publiée !');
     } catch (e) {
       if (e.data?.needsKyc) setNeedsKyc(true);
       else setError(e.message);

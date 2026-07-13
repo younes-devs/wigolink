@@ -4,6 +4,8 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { QrBlock, QrScanner, Stars, StatusPill } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
+import { SkeletonCard } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 const STEPS = [
   { key: 'accepted', title: 'Accord & escrow', desc: 'Paiement séquestré chez notre prestataire.' },
@@ -30,7 +32,7 @@ export default function TransactionDetail() {
   }, [load]);
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
-  if (!tx) return <div className="muted center">Chargement…</div>;
+  if (!tx) return <SkeletonCard lines={3} />;
 
   const stepIdx = ORDER.indexOf(tx.status);
 
@@ -71,18 +73,28 @@ export default function TransactionDetail() {
   );
 }
 
+const ACTION_TOASTS = {
+  'confirm-pickup': ['success', 'Prise en charge confirmée'],
+  'confirm-delivery': ['success', 'Livraison validée — paiement libéré'],
+  refuse: ['info', 'Transport refusé, sans pénalité'],
+  dispute: ['info', 'Litige ouvert — notre équipe va l\'examiner'],
+};
+
 function StepAction({ tx, user, reload }) {
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [disputeReason, setDisputeReason] = useState('');
   const [scanning, setScanning] = useState(false);
   const role = tx.myRole;
+  const toast = useToast();
 
   const act = async (path, body = {}) => {
     setErr('');
     try {
       await api(`/transactions/${tx.id}/${path}`, { method: 'POST', body });
       reload();
+      const t = ACTION_TOASTS[path];
+      if (t) toast[t[0]](t[1]);
     } catch (e) { setErr(e.message); }
   };
 
@@ -593,6 +605,7 @@ function DisputePanel({ txId }) {
   const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
+  const toast = useToast();
 
   const load = useCallback(() => {
     api(`/transactions/${txId}/dispute`).then((r) => setD(r.dispute)).catch((e) => setError(e.message));
@@ -625,6 +638,7 @@ function DisputePanel({ txId }) {
       await api(`/disputes/${d.id}/evidence`, { method: 'POST', body: { text: text.trim(), photo } });
       setText(''); setPhoto(null);
       load();
+      toast.success('Preuve envoyée');
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
@@ -679,7 +693,7 @@ function DisputePanel({ txId }) {
               <Icon name="image" size={15} />Ajouter une photo
             </button>
             <button className="btn btn-primary btn-sm" onClick={submit} disabled={busy || (!text.trim() && !photo)}>
-              {busy ? '…' : 'Envoyer la preuve'}
+              {busy ? <span className="spinner" /> : 'Envoyer la preuve'}
             </button>
           </div>
         </div>

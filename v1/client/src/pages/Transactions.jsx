@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { StatusPill } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
+import { SkeletonList } from '../Skeleton.jsx';
 
 export default function Transactions() {
   const [txs, setTxs] = useState(null);
@@ -23,7 +24,7 @@ export default function Transactions() {
         <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>Historique</button>
       </div>
 
-      {txs === null && <div className="muted center">Chargement…</div>}
+      {txs === null && <SkeletonList count={3} />}
       {txs?.length === 0 && (
         <div className="card center empty-state">
           <Icon name={tab === 'history' ? 'clock' : 'repeat'} size={36} />

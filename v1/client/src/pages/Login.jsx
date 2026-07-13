@@ -122,7 +122,7 @@ export default function Login() {
               <button type="button" className="link-btn" onClick={() => switchMode('forgot')}>Mot de passe oublié ?</button>
             </div>
             <button className="btn btn-primary" onClick={submitLogin} disabled={busy || !form.email || !form.password}>
-              {busy ? '…' : 'Se connecter'}
+              {busy ? <span className="spinner" /> : 'Se connecter'}
             </button>
             <div className="auth-sep"><span>ou</span></div>
             <button className="btn btn-google" onClick={() => openGoogle(false)} disabled={busy}>
@@ -196,7 +196,7 @@ export default function Login() {
             </label>
             <button className="btn btn-primary" onClick={submitRegister}
               disabled={busy || !form.name || !form.email || form.password.length < 8 || !form.confirm || !cguAccepted}>
-              {busy ? '…' : 'Créer mon compte'}
+              {busy ? <span className="spinner" /> : 'Créer mon compte'}
             </button>
           </div>
           <p className="auth-switch">
@@ -214,7 +214,7 @@ export default function Login() {
               placeholder="000000" inputMode="numeric" maxLength={6} autoFocus />
           </div>
           <button className="btn btn-primary mb" onClick={submitVerify} disabled={busy || form.code.length !== 6}>
-            {busy ? '…' : 'Vérifier mon email'}
+            {busy ? <span className="spinner" /> : 'Vérifier mon email'}
           </button>
           <button className="btn btn-ghost" onClick={resendCode} disabled={busy}>Renvoyer le code</button>
           <p className="auth-switch" style={{ marginTop: 12 }}>
@@ -233,7 +233,7 @@ export default function Login() {
               placeholder="vous@exemple.com" autoComplete="email" autoFocus />
           </div>
           <button className="btn btn-primary mb" onClick={submitForgot} disabled={busy || !form.email}>
-            {busy ? '…' : 'Envoyer le code'}
+            {busy ? <span className="spinner" /> : 'Envoyer le code'}
           </button>
           <p className="auth-switch">
             <button className="link-btn" onClick={() => switchMode('login')}>
@@ -267,7 +267,7 @@ export default function Login() {
           </div>
           <button className="btn btn-primary" onClick={submitReset}
             disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}>
-            {busy ? '…' : 'Réinitialiser et me connecter'}
+            {busy ? <span className="spinner" /> : 'Réinitialiser et me connecter'}
           </button>
         </div>
       )}

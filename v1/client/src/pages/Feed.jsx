@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
+import { SkeletonList } from '../Skeleton.jsx';
+import { useToast } from '../Toast.jsx';
 
 const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
 
@@ -31,9 +33,12 @@ export default function Feed() {
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
+  const toast = useToast();
+
   const removeTrip = async (id) => {
     await api(`/trips/${id}`, { method: 'DELETE' });
     load();
+    toast.info('Trajet retiré');
   };
 
   const listings = data?.listings;
@@ -72,7 +77,7 @@ export default function Feed() {
             Aucun trajet à venir. Déclarez vos dates de voyage pour recevoir les annonces qui correspondent.
           </p>
         )}
-        {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); }} />}
+        {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); toast.success('Trajet déclaré avec succès'); }} />}
       </div>
 
       {data?.filteredByTrip !== undefined && futureTrips.length > 0 && (
@@ -118,7 +123,7 @@ export default function Feed() {
         </div>
       )}
 
-      {listings === undefined && <div className="muted center">Chargement…</div>}
+      {listings === undefined && <SkeletonList count={3} avatar={false} />}
       {listings?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="moon" size={36} />
