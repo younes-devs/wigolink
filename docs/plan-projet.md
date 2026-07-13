@@ -1,4 +1,4 @@
-# Plan de projet — « Wigofly » (nom provisoire)
+# Plan de projet — « Wigofly »
 ### Basé sur PRD v1.0 · Juillet 2026
 
 ---

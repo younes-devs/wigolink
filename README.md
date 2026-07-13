@@ -1,4 +1,4 @@
-# Wigofly (nom provisoire)
+# Wigofly
 
 Plateforme de transport collaboratif Belgique/France ↔ Maroc — mise en relation sécurisée entre expéditeurs et voyageurs, avec paiement séquestré, vérification d'identité et preuve vidéo.
 
@@ -37,8 +37,9 @@ Ouvrir http://localhost:5173. Comptes de démo (mot de passe : `demo1234`) :
 | Admin — back-office | `admin@demo.wigofly.app` |
 
 Authentification complète : inscription email + mot de passe (hash scrypt), vérification
-d'email par code (démo : `123456`), connexion Google (simulée), mot de passe oublié
-(code démo : `424242`, invalide les sessions existantes), déconnexion serveur,
+d'email par code à 6 chiffres (aléatoire, jamais prévisible — affiché à l'écran uniquement en
+mode `DEMO=true`, faute de prestataire email branché), connexion Google (simulée), mot de passe
+oublié (même mécanisme de code, invalide les sessions existantes), déconnexion serveur,
 anti-brute-force sur le login.
 
 Parcours complet : Fatima publie un envoi (photos obligatoires + liste blanche + écran douane) → l'annonce apparaît dans le feed des voyageurs dont le **trajet déclaré** correspond (sens, dates, capacité kg) → Karim accepte (formation obligatoire au premier transport, puis escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Notifications in-app à chaque transition (cloche dans l'en-tête). Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).

@@ -216,9 +216,9 @@ inscriptions ou transactions — même logique que le reste du plan (§8 du plan
    Impacte l'architecture de pré-rendu (T3).
 2. Qui rédige le contenu éditorial (guide, blog) — interne ou prestataire ? Impacte le rythme
    de publication.
-3. Le nom de marque définitif (question A6 du plan de projet, toujours ouverte) doit être
-   tranché avant toute stratégie de mots-clés de marque — inutile de optimiser sur un nom
-   provisoire.
+3. Nom de marque retenu : Wigofly. La disponibilité INPI/BOIP et des domaines .ma/.be (question
+   A6 du plan de projet) reste à vérifier formellement avant toute communication publique large,
+   mais la stratégie de mots-clés de marque peut désormais s'appuyer dessus.
 
 ---
 

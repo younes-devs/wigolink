@@ -1,6 +1,6 @@
 # PRD — Plateforme de transport collaboratif Belgique/France ↔ Maroc
 ### Product Requirements Document · v1.0 · Juillet 2026
-*Nom de code provisoire : « Wigofly » (à valider)*
+*Nom de marque : « Wigofly »*
 
 ---
 
