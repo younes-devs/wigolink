@@ -573,3 +573,49 @@ test('suppression de compte (RGPD) : bloquée si transaction active, anonymise s
   const loginWithOldEmail = await api('/auth/login', { method: 'POST', body: { email: sender.email, password: 'demo1234' } });
   assert.equal(loginWithOldEmail.status, 401);
 });
+
+test('export RGPD : contient mes données, jamais le hash du mot de passe', async () => {
+  const fatima = tokens.fatima;
+  const exported = await api('/profile/export', { token: fatima });
+  assert.equal(exported.status, 200);
+  assert.equal(exported.body.user.id, 'u-fatima');
+  assert.equal('passwordHash' in exported.body.user, false, 'le hash du mot de passe ne doit jamais apparaître dans un export');
+  assert.ok(Array.isArray(exported.body.listings));
+  assert.ok(exported.body.listings.every((l) => l.senderId === 'u-fatima'), 'ne doit contenir que les annonces de l\'utilisateur');
+});
+
+test('notifications : marquées lues correctement, scopées au bon utilisateur', async () => {
+  const fatima = tokens.fatima;
+  // Voyageur dédié, pas karim : à ce stade de la suite il a déjà 3 transactions actives
+  // (maxActive) laissées non résolues par d'autres tests — même leçon que le test
+  // d'édition d'annonce plus haut.
+  const karim = (await registerKycVerifiedUser(tokens.admin, 'NotifVoyageur')).token;
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Notifications test', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.1,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  // Accepter déclenche une notification pour l'expéditeur (fatima), pas pour le voyageur lui-même.
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+
+  const before = await api('/notifications', { token: fatima });
+  assert.equal(before.status, 200);
+  assert.ok(before.body.unread > 0, 'fatima doit avoir au moins une notification non lue après acceptation');
+
+  await api('/notifications/read', { method: 'POST', token: fatima });
+  const after = await api('/notifications', { token: fatima });
+  assert.equal(after.body.unread, 0);
+
+  // Les notifications d'un autre utilisateur, non concerné par cette transaction,
+  // ne doivent jamais contenir cette annonce.
+  const mehdiNotifs = await api('/notifications', { token: tokens.mehdi });
+  assert.equal(mehdiNotifs.status, 200);
+  assert.ok(mehdiNotifs.body.notifications.every((n) => n.txId !== accepted.body.transaction.id));
+});
