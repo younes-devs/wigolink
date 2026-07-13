@@ -14,7 +14,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Wigofly" />
-    <!-- Thème (PRD UI/UX U9) : appliqué avant le rendu pour éviter le flash clair→sombre. -->
+    <!-- Thème (U9) + langue/RTL (U14) : appliqués avant le rendu pour éviter tout flash. -->
     <script>
       (function () {
         var t = localStorage.getItem('wigofly_theme');
@@ -22,6 +22,10 @@
           t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.dataset.theme = t;
+        var l = localStorage.getItem('wigofly_lang');
+        if (l !== 'fr' && l !== 'ar') l = 'fr';
+        document.documentElement.lang = l;
+        document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
       })();
     </script>
     <title>Wigofly — Envoyez avec confiance</title>

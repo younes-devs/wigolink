@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icons.jsx';
+import { t, useLang } from './i18n.js';
 
 // Onboarding premier lancement (PRD UI/UX U1) — 2 écrans max, skippable, une seule fois
 // par compte. Explique le parcours sécurisé puis route directement vers l'action choisie.
@@ -11,13 +12,14 @@ export function shouldOnboard(user) {
 }
 
 const STEPS = [
-  { icon: 'lock', title: 'Paiement séquestré', text: "L'argent est bloqué dès l'accord, jamais versé avant la livraison confirmée." },
-  { icon: 'video', title: 'Preuve vidéo', text: 'Le contenu du colis est filmé au moment de la remise au voyageur.' },
-  { icon: 'shieldCheck', title: 'Double validation', text: 'Chaque remise et livraison est confirmée par les deux parties, par QR.' },
-  { icon: 'euro', title: 'Versement automatique', text: 'Le voyageur est payé automatiquement une fois la livraison validée.' },
+  { icon: 'lock', k: 'escrow' },
+  { icon: 'video', k: 'video' },
+  { icon: 'shieldCheck', k: 'validation' },
+  { icon: 'euro', k: 'pay' },
 ];
 
 export default function Onboarding({ user, onClose }) {
+  useLang();
   const nav = useNavigate();
   const [screen, setScreen] = useState(0);
 
@@ -30,54 +32,52 @@ export default function Onboarding({ user, onClose }) {
   return (
     <div className="onboard-overlay">
       <div className="onboard-card">
-        <button className="onboard-skip" onClick={() => finish(null)}>Passer</button>
+        <button className="onboard-skip" onClick={() => finish(null)}>{t('onboard.skip')}</button>
 
         {screen === 0 && (
           <div className="onboard-screen">
             <img className="onboard-logo" src="/assets/logo-mark-192.png" alt="Wigofly" />
-            <h1 className="onboard-title">Bienvenue sur Wigofly</h1>
-            <p className="onboard-sub">
-              Envoyer entre la Belgique et le Maroc, en sécurité — voici comment on vous protège à chaque étape.
-            </p>
+            <h1 className="onboard-title">{t('onboard.welcome')}</h1>
+            <p className="onboard-sub">{t('onboard.intro')}</p>
             <div className="onboard-steps">
-              {STEPS.map((s, i) => (
-                <div className="onboard-step" key={i}>
+              {STEPS.map((s) => (
+                <div className="onboard-step" key={s.k}>
                   <div className="onboard-step-icon"><Icon name={s.icon} size={19} /></div>
                   <div>
-                    <b>{s.title}</b>
-                    <div className="onboard-step-text">{s.text}</div>
+                    <b>{t(`onboard.${s.k}.t`)}</b>
+                    <div className="onboard-step-text">{t(`onboard.${s.k}.d`)}</div>
                   </div>
                 </div>
               ))}
             </div>
             <button className="btn btn-primary" onClick={() => setScreen(1)}>
-              Continuer<Icon name="arrowRight" size={17} />
+              {t('onboard.continue')}<Icon name="arrowRight" size={17} />
             </button>
           </div>
         )}
 
         {screen === 1 && (
           <div className="onboard-screen">
-            <h1 className="onboard-title">Que voulez-vous faire ?</h1>
-            <p className="onboard-sub">Vous pourrez faire les deux à tout moment.</p>
+            <h1 className="onboard-title">{t('onboard.q')}</h1>
+            <p className="onboard-sub">{t('onboard.q.sub')}</p>
             <button className="onboard-choice" onClick={() => finish('/envois/nouveau')}>
               <div className="onboard-choice-icon"><Icon name="package" size={24} /></div>
               <div className="grow">
-                <b>Envoyer un colis</b>
-                <div className="onboard-step-text">Publiez ce que vous voulez faire livrer au Maroc ou en Belgique.</div>
+                <b>{t('onboard.send.t')}</b>
+                <div className="onboard-step-text">{t('onboard.send.d')}</div>
               </div>
               <Icon name="arrowRight" size={18} />
             </button>
             <button className="onboard-choice" onClick={() => finish('/')}>
               <div className="onboard-choice-icon"><Icon name="luggage" size={24} /></div>
               <div className="grow">
-                <b>Transporter et gagner</b>
-                <div className="onboard-step-text">Déclarez votre trajet et transportez des colis contre rémunération.</div>
+                <b>{t('onboard.carry.t')}</b>
+                <div className="onboard-step-text">{t('onboard.carry.d')}</div>
               </div>
               <Icon name="arrowRight" size={18} />
             </button>
             <button className="link-btn onboard-back" onClick={() => setScreen(0)}>
-              <Icon name="arrowLeft" size={14} />Retour
+              <Icon name="arrowLeft" size={14} />{t('onboard.back')}
             </button>
           </div>
         )}

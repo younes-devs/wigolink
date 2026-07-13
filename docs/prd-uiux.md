@@ -79,7 +79,7 @@ tronqué, zéro action invisible sans scroll).
 
 | # | Exigence | Critère d'acceptation |
 |---|---|---|
-| U14 | **i18n socle** : extraction des chaînes + bascule FR/AR (RTL) — l'arabe d'abord, le public cible étant la diaspora marocaine ; NL ensuite (Belgique) | Layout RTL non cassé sur les 5 écrans principaux |
+| U14 | **i18n socle** : mécanisme t() + bascule FR/AR (RTL) — l'arabe d'abord, le public cible étant la diaspora marocaine ; NL ensuite (Belgique) | Layout RTL non cassé sur les 5 écrans principaux. **Livré (socle)** : mécanisme t() sans dépendance, dictionnaires FR/AR, sélecteur de langue persisté, dir=rtl appliqué avant le rendu, et surfaces de premier contact traduites (onboarding, navigation, en-tête, réglages). **Suivi** : extraction des chaînes écran par écran de l'app authentifiée (feed, formulaires, transactions, admin) + NL. |
 | U15 | **Photos sur les annonces de démo** : le seed n'a pas de photos, donc la démo montre des icônes de catégorie au lieu du vrai rendu photo du feed — trompeur en présentation | Les annonces seed ont 1–2 photos réalistes |
 | U16 | **Micro-animations de progression** : confettis/checkmark animé à la libération de l'escrow (le moment de gratification du produit), transition de la timeline à chaque étape franchie | Respecte `prefers-reduced-motion` |
 | U17 | **Undo sur actions réversibles** : le retrait d'annonce affiche un toast « Annonce retirée — Annuler » (5 s) au lieu d'être définitif immédiatement | Pattern toast-undo disponible dans Toast.jsx |

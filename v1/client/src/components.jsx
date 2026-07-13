@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
+import { t, useLang } from './i18n.js';
 
 // Fil d'étapes libellé (PRD UI/UX U2) — remplace les points anonymes : on voit ce qui vient
 // et on peut revenir en arrière sur une étape déjà franchie.
@@ -54,6 +55,7 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Confirmer', canc
 }
 
 export function Header({ user }) {
+  useLang();
   return (
     <header className="app-header">
       <div className="brand">
@@ -61,27 +63,28 @@ export function Header({ user }) {
           <img className="brand-mark" src="/assets/logo-mark-192.png" alt="Wigofly" />
           <span>Wigofly</span>
         </Link>
-        {user && <span style={{ marginLeft: 'auto' }}><Notifications /></span>}
+        {user && <span className="header-notif"><Notifications /></span>}
       </div>
-      <div className="tagline">Envoyez avec confiance · Bruxelles ↔ Casablanca</div>
+      <div className="tagline">{t('header.tagline')}</div>
     </header>
   );
 }
 
 export function BottomNav({ user }) {
+  useLang();
   const tabs = [
-    { to: '/', icon: 'luggage', label: 'Trajets' },
-    { to: '/envois', icon: 'package', label: 'Mes envois' },
-    { to: '/transactions', icon: 'repeat', label: 'En cours' },
-    { to: '/profil', icon: 'user', label: 'Profil' },
+    { to: '/', icon: 'luggage', label: t('nav.trips') },
+    { to: '/envois', icon: 'package', label: t('nav.shipments') },
+    { to: '/transactions', icon: 'repeat', label: t('nav.transactions') },
+    { to: '/profil', icon: 'user', label: t('nav.profile') },
   ];
-  if (user?.isAdmin) tabs.push({ to: '/admin', icon: 'shield', label: 'Admin' });
+  if (user?.isAdmin) tabs.push({ to: '/admin', icon: 'shield', label: t('nav.admin') });
   return (
     <nav className="bottom-nav">
-      {tabs.map((t) => (
-        <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <Icon name={t.icon} size={21} />
-          {t.label}
+      {tabs.map((tab) => (
+        <NavLink key={tab.to} to={tab.to} end={tab.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+          <Icon name={tab.icon} size={21} />
+          {tab.label}
         </NavLink>
       ))}
     </nav>

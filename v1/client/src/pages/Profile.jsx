@@ -5,6 +5,7 @@ import { useAuth } from '../App.jsx';
 import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { getTheme, setTheme } from '../theme.js';
+import { t, useLang, getLang, setLang, LANGS } from '../i18n.js';
 
 const MEMBER_FMT = new Intl.DateTimeFormat('fr-BE', { month: 'long', year: 'numeric' });
 
@@ -171,20 +172,31 @@ export default function Profile() {
   );
 }
 
-// Bascule clair/sombre (PRD UI/UX U9)
+// Bascule clair/sombre (U9) + langue (U14)
 function AppearanceSection() {
+  useLang();
   const [theme, setThemeState] = useState(getTheme());
-  const choose = (t) => { setTheme(t); setThemeState(t); };
+  const [lang, setLangState] = useState(getLang());
+  const chooseTheme = (v) => { setTheme(v); setThemeState(v); };
+  const chooseLang = (v) => { setLang(v); setLangState(v); };
   return (
     <div className="card">
-      <h2 style={{ marginBottom: 12 }}><Icon name="moon" size={17} />Apparence</h2>
+      <h2 style={{ marginBottom: 12 }}><Icon name="moon" size={17} />{t('appearance.title')}</h2>
+      <div className="theme-toggle mb">
+        <button className={`theme-opt ${theme === 'light' ? 'active' : ''}`} onClick={() => chooseTheme('light')}>
+          <Icon name="star" size={15} />{t('appearance.light')}
+        </button>
+        <button className={`theme-opt ${theme === 'dark' ? 'active' : ''}`} onClick={() => chooseTheme('dark')}>
+          <Icon name="moon" size={15} />{t('appearance.dark')}
+        </button>
+      </div>
+      <h2 style={{ margin: '4px 0 12px' }}><Icon name="mapPin" size={17} />{t('lang.title')}</h2>
       <div className="theme-toggle">
-        <button className={`theme-opt ${theme === 'light' ? 'active' : ''}`} onClick={() => choose('light')}>
-          <Icon name="star" size={15} />Clair
-        </button>
-        <button className={`theme-opt ${theme === 'dark' ? 'active' : ''}`} onClick={() => choose('dark')}>
-          <Icon name="moon" size={15} />Sombre
-        </button>
+        {LANGS.map((l) => (
+          <button key={l.code} className={`theme-opt ${lang === l.code ? 'active' : ''}`} onClick={() => chooseLang(l.code)}>
+            {l.label}
+          </button>
+        ))}
       </div>
     </div>
   );
