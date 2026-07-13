@@ -4,17 +4,34 @@ import { Icon } from '../Icons.jsx';
 import { SkeletonCard, SkeletonList, SkeletonStatGrid } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
 
+// Compte total des signaux de fraude, tous types confondus — sert au badge du menu
+// pour qu'un admin sache qu'il y a quelque chose à regarder sans devoir cliquer à l'aveugle.
+function fraudSignalCount(f) {
+  if (!f) return 0;
+  return f.linkedAccounts.length + f.repeatPairs.length + f.flaggedMessaging.length
+    + f.abnormalCancel.length + f.disputeProne.length + f.kycRepeatRejections.length;
+}
+
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('review'); // review | kyc | kpis | fraud | categories
+  const [fraud, setFraud] = useState(null);
+  const [fraudError, setFraudError] = useState('');
   const toast = useToast();
 
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
   }, []);
+  const loadFraud = useCallback(() => {
+    api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
+  }, []);
 
   useEffect(() => { load(); }, [load]);
+  // Chargé au montage (pas seulement à l'ouverture de l'onglet) pour pouvoir afficher
+  // un badge de compte sur le bouton "Fraude" — un admin ne devrait pas avoir à cliquer
+  // à l'aveugle pour découvrir qu'il y a des signaux à regarder.
+  useEffect(() => { loadFraud(); }, [loadFraud]);
 
   const decide = async (id, decision, extra = {}) => {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
@@ -47,7 +64,9 @@ export default function Admin() {
         </button>
         <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>Identités</button>
         <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
-        <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>Fraude</button>
+        <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
+          Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
+        </button>
         <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
       </div>
 
@@ -106,7 +125,7 @@ export default function Admin() {
 
       {tab === 'kyc' && <KycPanel />}
       {tab === 'kpis' && <KpiPanel />}
-      {tab === 'fraud' && <FraudPanel />}
+      {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
       {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
     </div>
   );
@@ -536,13 +555,15 @@ function FraudSection({ icon, title, help, empty, children, count }) {
   );
 }
 
-function FraudPanel() {
-  const [d, setD] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => { api('/admin/fraud').then(setD).catch((e) => setError(e.message)); }, []);
-
-  if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
+function FraudPanel({ data: d, error, reload }) {
+  if (error) {
+    return (
+      <div className="alert alert-danger">
+        <Icon name="alert" size={17} />{error}
+        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>Réessayer</button>
+      </div>
+    );
+  }
   if (!d) return <SkeletonList count={4} avatar={false} lines={2} />;
 
   return (
