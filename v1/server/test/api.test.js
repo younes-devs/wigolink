@@ -699,3 +699,95 @@ test('mot de passe oublié : pas d\'énumération, code exact requis, sessions i
   const meWithOldToken = await api('/me', { token: originalToken });
   assert.equal(meWithOldToken.status, 401);
 });
+
+test('trajets : le feed se filtre sur le trajet déclaré du voyageur (PRD §2.1)', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'TrajetVoyageur');
+  // Date fixe dans la fenêtre des annonces ci-dessous (2026-08-01 → 2026-08-25), plutôt
+  // qu'un décalage relatif à aujourd'hui qui pourrait tomber hors fenêtre selon la date
+  // d'exécution des tests.
+  const futureDate = '2026-08-10';
+
+  const matching = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Colis compatible', categoryId: 'dattes', categoryLabel: 'Dattes',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 2,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-25',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const nonMatching = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Colis incompatible (autre sens)', categoryId: 'dattes', categoryLabel: 'Dattes',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 2,
+      valueEur: 20, from: 'Bruxelles', to: 'Casablanca', dateFrom: '2026-08-01', dateTo: '2026-08-25',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+
+  // Avant toute déclaration de trajet, le feed montre tout (rien à filtrer sur).
+  const beforeTrip = await api('/listings', { token: traveler.token });
+  assert.equal(beforeTrip.body.filteredByTrip, false);
+
+  const trip = await api('/trips', { method: 'POST', token: traveler.token, body: { from: 'Casablanca', to: 'Bruxelles', date: futureDate, capacityKg: 5 } });
+  assert.equal(trip.status, 200);
+
+  const filtered = await api('/listings', { token: traveler.token });
+  assert.equal(filtered.body.filteredByTrip, true);
+  const filteredIds = filtered.body.listings.map((l) => l.id);
+  assert.ok(filteredIds.includes(matching.body.listing.id), 'l\'annonce compatible doit apparaître');
+  assert.ok(!filteredIds.includes(nonMatching.body.listing.id), 'l\'annonce incompatible ne doit pas apparaître');
+
+  const unfiltered = await api('/listings?all=1', { token: traveler.token });
+  const unfilteredIds = unfiltered.body.listings.map((l) => l.id);
+  assert.ok(unfilteredIds.includes(matching.body.listing.id));
+  assert.ok(unfilteredIds.includes(nonMatching.body.listing.id), '?all=1 doit tout montrer, y compris l\'incompatible');
+
+  // Après suppression du trajet, plus rien à filtrer : retour au feed complet par défaut.
+  await api(`/trips/${trip.body.trip.id}`, { method: 'DELETE', token: traveler.token });
+  const afterDelete = await api('/listings', { token: traveler.token });
+  assert.equal(afterDelete.body.filteredByTrip, false);
+});
+
+test('retrait d\'annonce (avant acceptation) : réservé à l\'expéditeur, bloqué après acceptation', async () => {
+  const fatima = tokens.fatima;
+  const mehdi = tokens.mehdi;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'RetraitVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Retrait annonce test', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const listingId = listing.body.listing.id;
+
+  const outsiderCancel = await api(`/listings/${listingId}/cancel`, { method: 'POST', token: mehdi });
+  assert.equal(outsiderCancel.status, 403);
+
+  const secondListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Retrait annonce test 2', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${secondListing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+  const cancelAfterAccept = await api(`/listings/${secondListing.body.listing.id}/cancel`, { method: 'POST', token: fatima });
+  assert.equal(cancelAfterAccept.status, 400);
+
+  const ownerCancel = await api(`/listings/${listingId}/cancel`, { method: 'POST', token: fatima });
+  assert.equal(ownerCancel.status, 200);
+  assert.equal(ownerCancel.body.listing.status, 'cancelled');
+});
