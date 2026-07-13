@@ -388,6 +388,56 @@ body {
 .step-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(22, 24, 29, 0.15); transition: all 0.2s; }
 .step-dots i.on { background: var(--accent); width: 22px; border-radius: 5px; }
 
+/* Onboarding premier lancement (PRD UI/UX U1) */
+.onboard-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(45, 190, 235, 0.35), transparent 55%),
+    radial-gradient(120% 90% at 100% 10%, rgba(125, 90, 245, 0.32), transparent 55%),
+    linear-gradient(160deg, #0a1a3d, #0a3d8f 60%, #0a6cf5);
+  animation: boot-fade 0.3s ease both;
+}
+.onboard-card {
+  position: relative; width: 100%; max-width: 400px;
+  background: #fff; border-radius: 24px; padding: 30px 24px 24px;
+  box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto;
+}
+.onboard-skip {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  min-height: 32px; padding: 0 6px;
+}
+.onboard-screen { display: flex; flex-direction: column; animation: content-in 0.25s ease both; }
+.onboard-logo { width: 54px; height: auto; margin: 0 auto 14px; }
+.onboard-title { font-size: 22px; font-weight: 750; letter-spacing: -0.5px; text-align: center; margin-bottom: 6px; }
+.onboard-sub { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; text-align: center; margin-bottom: 20px; }
+.onboard-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+.onboard-step { display: flex; gap: 13px; align-items: flex-start; }
+.onboard-step-icon {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-tint); color: var(--accent);
+}
+.onboard-step b { font-size: 14px; }
+.onboard-step-text { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; margin-top: 2px; }
+.onboard-choice {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  background: var(--glass-strong); border: 1.5px solid var(--hairline); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px; cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s, transform 0.06s;
+}
+.onboard-choice:hover { border-color: var(--accent); }
+.onboard-choice:active { transform: scale(0.99); }
+.onboard-choice-icon {
+  flex: 0 0 auto; width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
+}
+.onboard-choice b { font-size: 15px; }
+.onboard-back { align-self: center; margin-top: 6px; }
+
 /* Fil d'étapes libellé (PRD UI/UX U2) */
 .stepper { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 4px; }
 .stepper-step {

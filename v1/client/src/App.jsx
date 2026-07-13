@@ -17,6 +17,7 @@ import Admin from './pages/Admin.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import Terms from './pages/Terms.jsx';
 import Kyc from './pages/Kyc.jsx';
+import Onboarding, { shouldOnboard } from './Onboarding.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -34,6 +35,7 @@ function ScrollToTop() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(!!getToken());
+  const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -42,6 +44,9 @@ export default function App() {
       .catch(() => setToken(null))
       .finally(() => setLoading(false));
   }, []);
+
+  // Onboarding premier lancement (PRD UI/UX U1) — une seule fois par compte.
+  useEffect(() => { setOnboarding(shouldOnboard(user)); }, [user]);
 
   const login = (token, u) => {
     setToken(token);
@@ -99,6 +104,7 @@ export default function App() {
           {user && <SideRail user={user} />}
           </div>
           {user && <BottomNav user={user} />}
+          {user && onboarding && <Onboarding user={user} onClose={() => setOnboarding(false)} />}
           <DevBar />
         </div>
       </BrowserRouter>
