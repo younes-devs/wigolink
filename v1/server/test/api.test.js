@@ -534,3 +534,42 @@ test('modification d\'annonce : réservée à l\'expéditeur, bloquée une fois 
   const editAfterAccept = await api(`/listings/${listingId}`, { method: 'PUT', token: fatima, body: { title: 'Trop tard' } });
   assert.equal(editAfterAccept.status, 400);
 });
+
+test('suppression de compte (RGPD) : bloquée si transaction active, anonymise sinon', async () => {
+  const admin = tokens.admin;
+  const sender = await registerKycVerifiedUser(admin, 'RgpdExpediteur');
+  const traveler = await registerKycVerifiedUser(admin, 'RgpdVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: sender.token,
+    body: {
+      title: 'RGPD test', categoryId: 'amlou', categoryLabel: 'Amlou',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+
+  // Transaction encore active (ni livrée, ni annulée, ni remboursée) : suppression bloquée.
+  const blockedDelete = await api('/profile/delete', { method: 'POST', token: sender.token });
+  assert.equal(blockedDelete.status, 400);
+  assert.match(blockedDelete.body.error, /en cours/);
+
+  // Le voyageur refuse (sans pénalité) : la transaction passe en statut terminal 'cancelled',
+  // ce qui débloque la suppression du compte de l'expéditeur.
+  const refused = await api(`/transactions/${accepted.body.transaction.id}/refuse`, { method: 'POST', token: traveler.token, body: { reason: 'RGPD test cleanup' } });
+  assert.equal(refused.status, 200);
+
+  const deleted = await api('/profile/delete', { method: 'POST', token: sender.token });
+  assert.equal(deleted.status, 200);
+
+  // Anonymisée, pas juste marquée : la session est invalidée et l'ancien email ne reconnecte plus.
+  const meAfterDelete = await api('/me', { token: sender.token });
+  assert.equal(meAfterDelete.status, 401);
+
+  const loginWithOldEmail = await api('/auth/login', { method: 'POST', body: { email: sender.email, password: 'demo1234' } });
+  assert.equal(loginWithOldEmail.status, 401);
+});
