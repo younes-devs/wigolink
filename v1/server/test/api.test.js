@@ -166,7 +166,10 @@ test('dashboard fraude : réservé aux admins', async () => {
 });
 
 test('anti brute-force : le login se bloque après trop de tentatives', async () => {
-  const email = 'fatima@demo.wigofly.app';
+  // Email dédié à ce test, jamais réutilisé ailleurs dans la suite : rateLimit() est
+  // vérifié avant même de chercher l'utilisateur, donc épuiser le quota d'un compte de
+  // démo partagé (ex. fatima) ferait échouer tous les tests suivants qui s'y connectent.
+  const email = 'rate-limit-test@exemple.com';
   let last;
   for (let i = 0; i < 11; i++) {
     last = await api('/auth/login', { method: 'POST', body: { email, password: 'mauvais-mot-de-passe' } });
@@ -216,4 +219,61 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
 
   const meAfterApproval = await api('/me', { token });
   assert.equal(meAfterApproval.body.user.kycStatus, 'verified');
+});
+
+test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)', async () => {
+  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const karim = await loginAs('karim@demo.wigofly.app');
+  const mehdi = await loginAs('mehdi@demo.wigofly.app');
+  const admin = await loginAs('admin@demo.wigofly.app');
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Litige test', categoryId: 'dattes', categoryLabel: 'Dattes',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 25, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 9, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  const tx = accepted.body.transaction;
+
+  await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', token: fatima, body: { simulated: true } });
+  const pickupCode = (await api(`/transactions/${tx.id}`, { token: fatima })).body.transaction.pickupCode;
+  await api(`/transactions/${tx.id}/confirm-pickup`, { method: 'POST', token: karim, body: { code: pickupCode } });
+
+  // Un tiers ne peut pas ouvrir de litige sur une transaction qui ne le concerne pas.
+  const outsiderDispute = await api(`/transactions/${tx.id}/dispute`, { method: 'POST', token: mehdi, body: { reason: 'Je tente ma chance ici' } });
+  assert.equal(outsiderDispute.status, 403);
+
+  const opened = await api(`/transactions/${tx.id}/dispute`, {
+    method: 'POST', token: fatima, body: { reason: 'Le contenu livré ne correspond pas à la vidéo de scellage' },
+  });
+  assert.equal(opened.status, 200);
+  const disputeId = opened.body.dispute.id;
+
+  const txAfterOpen = await api(`/transactions/${tx.id}`, { token: fatima });
+  assert.equal(txAfterOpen.body.transaction.status, 'disputed');
+  assert.equal(txAfterOpen.body.transaction.escrow.state, 'frozen');
+
+  // Le voyageur (partie au litige) peut soumettre une preuve ; un tiers ne peut pas.
+  const outsiderEvidence = await api(`/disputes/${disputeId}/evidence`, { method: 'POST', token: mehdi, body: { text: 'Je m\'incruste' } });
+  assert.equal(outsiderEvidence.status, 403);
+
+  const evidence = await api(`/disputes/${disputeId}/evidence`, { method: 'POST', token: karim, body: { text: 'Voici ma version des faits' } });
+  assert.equal(evidence.status, 200);
+  assert.equal(evidence.body.dispute.evidence.length, 1);
+
+  const overview = await api('/admin/overview', { token: admin });
+  const queueItem = overview.body.reviewQueue.find((r) => r.type === 'dispute' && r.refId === disputeId);
+  assert.ok(queueItem, 'le litige doit apparaître dans la file de revue admin');
+
+  const decide = await api(`/admin/review/${queueItem.id}`, { method: 'POST', token: admin, body: { decision: 'refund_sender' } });
+  assert.equal(decide.status, 200);
+
+  const txAfterResolution = await api(`/transactions/${tx.id}`, { token: fatima });
+  assert.equal(txAfterResolution.body.transaction.status, 'refunded');
+  assert.equal(txAfterResolution.body.transaction.escrow.state, 'refunded');
 });
