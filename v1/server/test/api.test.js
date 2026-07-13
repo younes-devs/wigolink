@@ -164,3 +164,56 @@ test('dashboard fraude : réservé aux admins', async () => {
   assert.ok(Array.isArray(asAdmin.body.linkedAccounts));
   assert.ok(Array.isArray(asAdmin.body.repeatPairs));
 });
+
+test('anti brute-force : le login se bloque après trop de tentatives', async () => {
+  const email = 'fatima@demo.wigofly.app';
+  let last;
+  for (let i = 0; i < 11; i++) {
+    last = await api('/auth/login', { method: 'POST', body: { email, password: 'mauvais-mot-de-passe' } });
+  }
+  assert.equal(last.status, 429);
+});
+
+test('KYC : soumission puis approbation admin fait passer le statut à vérifié', async () => {
+  const n = Math.floor(Math.random() * 1e6);
+  const email = `kyctest${n}@exemple.com`;
+  const reg = await api('/auth/register', {
+    method: 'POST',
+    body: { name: 'Testeur KYC', email, password: 'demo1234', cguAccepted: true },
+  });
+  assert.equal(reg.status, 200);
+  const code = reg.body.demoHint.match(/\d{6}/)[0];
+
+  const verify = await api('/auth/verify-email', { method: 'POST', body: { email, code } });
+  assert.equal(verify.status, 200);
+  const token = verify.body.token;
+
+  const me = await api('/me', { token });
+  assert.equal(me.body.user.kycStatus, 'none');
+
+  const submit = await api('/kyc/submit', {
+    method: 'POST', token,
+    body: {
+      legalName: 'Testeur KYC Complet', birthDate: '1990-01-01', documentType: 'passport',
+      selfiePhoto: TINY_PNG, idFrontPhoto: TINY_PNG,
+    },
+  });
+  assert.equal(submit.status, 200, JSON.stringify(submit.body));
+
+  const meAfterSubmit = await api('/me', { token });
+  assert.equal(meAfterSubmit.body.user.kycStatus, 'pending');
+
+  const admin = await loginAs('admin@demo.wigofly.app');
+  const queue = await api('/admin/kyc?status=pending', { token: admin });
+  assert.equal(queue.status, 200);
+  const submission = queue.body.submissions.find((s) => s.user?.email === email);
+  assert.ok(submission, 'la soumission doit apparaître dans la file admin');
+
+  const decide = await api(`/admin/kyc/${submission.id}/decide`, {
+    method: 'POST', token: admin, body: { decision: 'approve' },
+  });
+  assert.equal(decide.status, 200);
+
+  const meAfterApproval = await api('/me', { token });
+  assert.equal(meAfterApproval.body.user.kycStatus, 'verified');
+});
