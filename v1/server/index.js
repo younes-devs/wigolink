@@ -768,6 +768,11 @@ app.post('/api/transactions/:id/rate', auth, (req, res) => {
   if (t.ratings.some((r) => r.by === req.user.id && r.target === targetId))
     return res.status(400).json({ error: 'Déjà noté' });
   const comment = String(req.body.comment || '').trim().slice(0, 400);
+  // Un avis est visible de tout utilisateur connecté (bien plus exposé qu'un message de
+  // chat privé) — contrairement au chat, qui avertit mais laisse passer, on rejette ici
+  // plutôt que d'exposer publiquement une coordonnée de contact (PRD §4.5).
+  if (comment && detectLeak(comment))
+    return res.status(400).json({ error: "L'avis ne peut pas contenir de coordonnées de contact (téléphone, email, WhatsApp…)" });
   t.ratings.push({ by: req.user.id, target: targetId, stars: n, comment: comment || null, at: Date.now() });
   const prev = (target.rating || 0) * target.ratingCount;
   target.ratingCount += 1;
