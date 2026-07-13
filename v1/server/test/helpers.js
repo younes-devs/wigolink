@@ -73,3 +73,31 @@ export async function completeTraining(token) {
   const { status } = await api('/training/complete', { method: 'POST', token, body: { answers: { q1: 'b', q2: 'c', q3: 'a' } } });
   if (status !== 200) throw new Error(`Échec de la formation voyageur (${status})`);
 }
+
+// Crée un compte tout neuf, KYC vérifié via une vraie soumission + approbation admin
+// (pas un raccourci qui court-circuiterait le flux) — utile aux tests qui doivent
+// observer un compte depuis son tout premier état (plafonds par défaut, 0 transaction).
+export async function registerKycVerifiedUser(adminToken, namePrefix = 'Testeur') {
+  const n = Math.floor(Math.random() * 1e9);
+  const email = `${namePrefix.toLowerCase()}${n}@exemple.com`;
+  const reg = await api('/auth/register', { method: 'POST', body: { name: `${namePrefix} ${n}`, email, password: 'demo1234', cguAccepted: true } });
+  if (reg.status !== 200) throw new Error(`Échec inscription (${reg.status}): ${JSON.stringify(reg.body)}`);
+  const code = reg.body.demoHint.match(/\d{6}/)[0];
+  const verify = await api('/auth/verify-email', { method: 'POST', body: { email, code } });
+  if (verify.status !== 200) throw new Error(`Échec vérification email (${verify.status})`);
+  const token = verify.body.token;
+
+  const submit = await api('/kyc/submit', {
+    method: 'POST', token,
+    body: { legalName: `${namePrefix} ${n} Complet`, birthDate: '1990-01-01', documentType: 'passport', selfiePhoto: TINY_PNG, idFrontPhoto: TINY_PNG },
+  });
+  if (submit.status !== 200) throw new Error(`Échec soumission KYC (${submit.status}): ${JSON.stringify(submit.body)}`);
+
+  const queue = await api('/admin/kyc?status=pending', { token: adminToken });
+  const submission = queue.body.submissions.find((s) => s.user?.email === email);
+  if (!submission) throw new Error('Soumission KYC introuvable dans la file admin');
+  const decide = await api(`/admin/kyc/${submission.id}/decide`, { method: 'POST', token: adminToken, body: { decision: 'approve' } });
+  if (decide.status !== 200) throw new Error(`Échec approbation KYC (${decide.status})`);
+
+  return { token, email };
+}

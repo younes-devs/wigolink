@@ -4,7 +4,7 @@
 // mémoire de qui a testé quoi la dernière fois.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer, stopServer, api, loginAs, completeTraining, TINY_PNG } from './helpers.js';
+import { startServer, stopServer, api, loginAs, completeTraining, registerKycVerifiedUser, TINY_PNG } from './helpers.js';
 
 before(startServer);
 after(stopServer);
@@ -319,4 +319,55 @@ test('zone grise : catégorie inconnue → revue humaine → promotion en liste 
   assert.equal(secondListing.status, 200);
   assert.equal(secondListing.body.listing.whitelistVerdict, 'whitelisted');
   assert.equal(secondListing.body.listing.status, 'published');
+});
+
+// Fait vivre une transaction du bout à bout jusqu'à released — factorisé car le test des
+// plafonds progressifs a besoin d'en rejouer plusieurs pour un même voyageur.
+async function runFullCycle(senderToken, travelerToken, categoryId, categoryLabel) {
+  const listing = await api('/listings', {
+    method: 'POST', token: senderToken,
+    body: {
+      title: `Cycle complet ${categoryId}`, categoryId, categoryLabel,
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  if (listing.status !== 200) throw new Error(`Échec création annonce (${listing.status}): ${JSON.stringify(listing.body)}`);
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: travelerToken });
+  if (accepted.status !== 200) throw new Error(`Échec acceptation (${accepted.status}): ${JSON.stringify(accepted.body)}`);
+  const tx = accepted.body.transaction;
+  await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', token: senderToken, body: { simulated: true } });
+  const pickupCode = (await api(`/transactions/${tx.id}`, { token: senderToken })).body.transaction.pickupCode;
+  await api(`/transactions/${tx.id}/confirm-pickup`, { method: 'POST', token: travelerToken, body: { code: pickupCode } });
+  const deliveryCode = (await api(`/transactions/${tx.id}`, { token: travelerToken })).body.transaction.deliveryCode;
+  const delivered = await api(`/transactions/${tx.id}/confirm-delivery`, { method: 'POST', token: senderToken, body: { code: deliveryCode } });
+  if (delivered.status !== 200) throw new Error(`Échec livraison (${delivered.status}): ${JSON.stringify(delivered.body)}`);
+  return delivered.body.transaction;
+}
+
+test('plafonds progressifs : relevés automatiquement après 3 transactions réussies', async () => {
+  const admin = await loginAs('admin@demo.wigofly.app');
+  const sender = await registerKycVerifiedUser(admin, 'Expediteur');
+  const traveler = await registerKycVerifiedUser(admin, 'Voyageur');
+  await completeTraining(traveler.token);
+
+  const meBefore = await api('/me', { token: traveler.token });
+  assert.equal(meBefore.body.maxValue, 100);
+  assert.equal(meBefore.body.maxActive, 1);
+
+  // Deux premiers cycles : encore sous le seuil de 3, les plafonds ne bougent pas.
+  await runFullCycle(sender.token, traveler.token, 'miel', 'Miel');
+  const meAfterOne = await api('/me', { token: traveler.token });
+  assert.equal(meAfterOne.body.maxValue, 100);
+
+  await runFullCycle(sender.token, traveler.token, 'miel', 'Miel');
+  const meAfterTwo = await api('/me', { token: traveler.token });
+  assert.equal(meAfterTwo.body.maxValue, 100);
+
+  // Troisième cycle : franchit le seuil, les plafonds sont relevés (PRD §0.3).
+  await runFullCycle(sender.token, traveler.token, 'miel', 'Miel');
+  const meAfterThree = await api('/me', { token: traveler.token });
+  assert.equal(meAfterThree.body.maxValue, 500);
+  assert.equal(meAfterThree.body.maxActive, 3);
 });
