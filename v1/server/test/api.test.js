@@ -663,3 +663,39 @@ test('retrait d\'une catégorie de la liste blanche : réservé aux admins, repa
   assert.equal(secondListing.body.listing.whitelistVerdict, 'gray');
   assert.equal(secondListing.body.listing.status, 'pending_review');
 });
+
+test('mot de passe oublié : pas d\'énumération, code exact requis, sessions invalidées', async () => {
+  const n = Math.floor(Math.random() * 1e9);
+  const email = `resettest${n}@exemple.com`;
+  const reg = await api('/auth/register', { method: 'POST', body: { name: 'Testeur Reset', email, password: 'ancien-mdp1', cguAccepted: true } });
+  const verifyCode = reg.body.demoHint.match(/\d{6}/)[0];
+  const verify = await api('/auth/verify-email', { method: 'POST', body: { email, code: verifyCode } });
+  const originalToken = verify.body.token;
+
+  // Réponse identique (200, ok:true) que le compte existe ou non — pas d'énumération d'emails.
+  const forgotUnknown = await api('/auth/forgot', { method: 'POST', body: { email: 'personne-ici@exemple.com' } });
+  assert.equal(forgotUnknown.status, 200);
+  assert.equal(forgotUnknown.body.ok, true);
+
+  const forgot = await api('/auth/forgot', { method: 'POST', body: { email } });
+  assert.equal(forgot.status, 200);
+  const resetCode = forgot.body.demoHint.match(/\d{6}/)[0];
+
+  // Un code incorrect est rejeté.
+  const badCode = await api('/auth/reset', { method: 'POST', body: { email, code: '000000', password: 'nouveau-mdp1' } });
+  assert.equal(badCode.status, 400);
+
+  const reset = await api('/auth/reset', { method: 'POST', body: { email, code: resetCode, password: 'nouveau-mdp1' } });
+  assert.equal(reset.status, 200);
+  assert.ok(reset.body.token);
+
+  // L'ancien mot de passe ne fonctionne plus, le nouveau oui.
+  const loginOldPwd = await api('/auth/login', { method: 'POST', body: { email, password: 'ancien-mdp1' } });
+  assert.equal(loginOldPwd.status, 401);
+  const loginNewPwd = await api('/auth/login', { method: 'POST', body: { email, password: 'nouveau-mdp1' } });
+  assert.equal(loginNewPwd.status, 200);
+
+  // La session ouverte avant la réinitialisation est invalidée (vol de session après fuite de mot de passe).
+  const meWithOldToken = await api('/me', { token: originalToken });
+  assert.equal(meWithOldToken.status, 401);
+});
