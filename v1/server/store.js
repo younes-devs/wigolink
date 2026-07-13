@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DATA_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data.json');
+// Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
+// data.json du dev/démo en cours) — voir server/test/.
+const DATA_FILE = process.env.DATA_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data.json');
 
 function seed() {
   const now = Date.now();
