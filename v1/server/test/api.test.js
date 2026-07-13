@@ -249,6 +249,7 @@ test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)',
     },
   });
   const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   const tx = accepted.body.transaction;
 
   await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', token: fatima, body: { simulated: true } });
@@ -398,6 +399,7 @@ test('refus sans pénalité : republie l\'annonce et rembourse l\'escrow', async
     },
   });
   const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   const tx = accepted.body.transaction;
 
   // Réservé au voyageur : l'expéditeur ne peut pas refuser sa propre transaction.
@@ -429,6 +431,7 @@ test('messagerie : le partage de coordonnées est détecté et signalé', async 
     },
   });
   const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   const tx = accepted.body.transaction;
 
   const cleanMsg = await api(`/transactions/${tx.id}/messages`, { method: 'POST', token: fatima, body: { text: 'On se voit où pour la remise ?' } });
@@ -462,6 +465,7 @@ test('récapitulatif douane : contenu correct, réservé aux parties', async () 
     },
   });
   const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   const tx = accepted.body.transaction;
 
   const outsider = await api(`/transactions/${tx.id}/customs-recap`, { token: mehdi });
