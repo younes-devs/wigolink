@@ -31,6 +31,11 @@ export default function Transactions() {
           <p className="muted">
             {tab === 'history' ? 'Aucune transaction terminée pour l\'instant.' : 'Aucune transaction en cours. Acceptez une annonce ou publiez un envoi.'}
           </p>
+          {/* État vide actionnable (PRD UI/UX U12) */}
+          <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+            <Link to="/"><button className="btn btn-primary btn-sm">Voir les annonces</button></Link>
+            <Link to="/envois/nouveau"><button className="btn btn-ghost btn-sm">Publier un envoi</button></Link>
+          </div>
         </div>
       )}
 

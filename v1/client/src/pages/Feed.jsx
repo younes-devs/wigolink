@@ -132,6 +132,16 @@ export default function Feed() {
               ? 'Aucune annonce compatible avec vos trajets pour l\'instant.'
               : 'Aucune annonce disponible pour l\'instant sur ce corridor.'}
           </p>
+          {/* État vide actionnable (PRD UI/UX U12) : proposer le geste qui le résout. */}
+          {activeFilterCount > 0 ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setFilters(EMPTY_FILTERS)}>Réinitialiser les filtres</button>
+          ) : data?.filteredByTrip && !showAll ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAll(true)}>Voir toutes les annonces</button>
+          ) : futureTrips.length === 0 ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setAddingTrip(true)}>Déclarer un trajet</button>
+          ) : (
+            <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">Publier un envoi</button></Link>
+          )}
         </div>
       )}
 

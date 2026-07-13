@@ -812,8 +812,10 @@ body {
 }
 .autofill-btn:hover { filter: brightness(0.97); }
 
-.empty-state { padding: 30px 16px; }
-.empty-state .icon { color: var(--ink-faint); margin-bottom: 10px; }
+.empty-state { padding: 30px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.empty-state .icon { color: var(--ink-faint); margin-bottom: 0; }
+.empty-state p { margin: 0; }
+.empty-state .btn { width: auto; }
 ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: var(--ink); }
 
 /* Profil */

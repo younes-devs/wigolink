@@ -47,6 +47,7 @@ export default function MyShipments() {
         <div className="card center empty-state">
           <Icon name="package" size={36} />
           <p className="muted">Aucun envoi pour l'instant. Créez votre première demande !</p>
+          <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm"><Icon name="plus" size={15} />Publier un envoi</button></Link>
         </div>
       )}
 
