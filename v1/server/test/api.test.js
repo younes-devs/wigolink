@@ -6,7 +6,18 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startServer, stopServer, api, loginAs, completeTraining, registerKycVerifiedUser, TINY_PNG } from './helpers.js';
 
-before(startServer);
+// Comptes de démo connectés une seule fois pour toute la suite : rateLimit() compte
+// aussi les connexions réussies (pas seulement les échecs), donc chaque test qui se
+// reconnecte à la volée grignote le même quota partagé — au-delà d'une dizaine de tests,
+// ça déclenchait un vrai 429 sur des identifiants pourtant corrects.
+const tokens = {};
+before(async () => {
+  await startServer();
+  tokens.fatima = await loginAs('fatima@demo.wigofly.app');
+  tokens.karim = await loginAs('karim@demo.wigofly.app');
+  tokens.mehdi = await loginAs('mehdi@demo.wigofly.app');
+  tokens.admin = await loginAs('admin@demo.wigofly.app');
+});
 after(stopServer);
 
 test('GET /api/config répond', async () => {
@@ -28,9 +39,9 @@ test('connexion : identifiants valides vs invalides', async () => {
 });
 
 test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const karim = await loginAs('karim@demo.wigofly.app');
-  const mehdi = await loginAs('mehdi@demo.wigofly.app'); // tiers, non partie à la transaction
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
+  const mehdi = tokens.mehdi; // tiers, non partie à la transaction
   await completeTraining(karim);
 
   const listing = await api('/listings', {
@@ -56,7 +67,7 @@ test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {
 });
 
 test('un expéditeur ne peut pas accepter sa propre annonce', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const fatima = tokens.fatima;
   await completeTraining(fatima);
   const listing = await api('/listings', {
     method: 'POST', token: fatima,
@@ -75,7 +86,7 @@ test('un expéditeur ne peut pas accepter sa propre annonce', async () => {
 });
 
 test('une catégorie en liste noire est refusée à la publication', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const fatima = tokens.fatima;
   const res = await api('/listings', {
     method: 'POST', token: fatima,
     body: {
@@ -90,8 +101,8 @@ test('une catégorie en liste noire est refusée à la publication', async () =>
 });
 
 test('parcours complet : annonce → escrow → scellage → double validation → livraison → notation', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const karim = await loginAs('karim@demo.wigofly.app');
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
   await completeTraining(karim); // idempotent — indépendant de l'ordre des tests précédents
 
   const listing = await api('/listings', {
@@ -153,8 +164,8 @@ test('parcours complet : annonce → escrow → scellage → double validation �
 });
 
 test('dashboard fraude : réservé aux admins', async () => {
-  const karim = await loginAs('karim@demo.wigofly.app');
-  const admin = await loginAs('admin@demo.wigofly.app');
+  const karim = tokens.karim;
+  const admin = tokens.admin;
 
   const asTraveler = await api('/admin/fraud', { token: karim });
   assert.equal(asTraveler.status, 403);
@@ -206,7 +217,7 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
   const meAfterSubmit = await api('/me', { token });
   assert.equal(meAfterSubmit.body.user.kycStatus, 'pending');
 
-  const admin = await loginAs('admin@demo.wigofly.app');
+  const admin = tokens.admin;
   const queue = await api('/admin/kyc?status=pending', { token: admin });
   assert.equal(queue.status, 200);
   const submission = queue.body.submissions.find((s) => s.user?.email === email);
@@ -222,10 +233,10 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
 });
 
 test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const karim = await loginAs('karim@demo.wigofly.app');
-  const mehdi = await loginAs('mehdi@demo.wigofly.app');
-  const admin = await loginAs('admin@demo.wigofly.app');
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
+  const mehdi = tokens.mehdi;
+  const admin = tokens.admin;
   await completeTraining(karim);
 
   const listing = await api('/listings', {
@@ -279,8 +290,8 @@ test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)',
 });
 
 test('zone grise : catégorie inconnue → revue humaine → promotion en liste blanche', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const admin = await loginAs('admin@demo.wigofly.app');
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
   const categoryId = `confiture-maison-${Date.now()}`;
 
   const firstListing = await api('/listings', {
@@ -347,7 +358,7 @@ async function runFullCycle(senderToken, travelerToken, categoryId, categoryLabe
 }
 
 test('plafonds progressifs : relevés automatiquement après 3 transactions réussies', async () => {
-  const admin = await loginAs('admin@demo.wigofly.app');
+  const admin = tokens.admin;
   const sender = await registerKycVerifiedUser(admin, 'Expediteur');
   const traveler = await registerKycVerifiedUser(admin, 'Voyageur');
   await completeTraining(traveler.token);
@@ -373,8 +384,8 @@ test('plafonds progressifs : relevés automatiquement après 3 transactions réu
 });
 
 test('refus sans pénalité : republie l\'annonce et rembourse l\'escrow', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const karim = await loginAs('karim@demo.wigofly.app');
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
   await completeTraining(karim);
 
   const listing = await api('/listings', {
@@ -404,8 +415,8 @@ test('refus sans pénalité : republie l\'annonce et rembourse l\'escrow', async
 });
 
 test('messagerie : le partage de coordonnées est détecté et signalé', async () => {
-  const fatima = await loginAs('fatima@demo.wigofly.app');
-  const karim = await loginAs('karim@demo.wigofly.app');
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
   await completeTraining(karim);
 
   const listing = await api('/listings', {
@@ -430,7 +441,49 @@ test('messagerie : le partage de coordonnées est détecté et signalé', async 
   assert.equal(leakedMsg.body.message.flagged, true);
   assert.ok(leakedMsg.body.warning);
 
-  const mehdi = await loginAs('mehdi@demo.wigofly.app');
+  const mehdi = tokens.mehdi;
   const outsiderRead = await api(`/transactions/${tx.id}/messages`, { token: mehdi });
   assert.equal(outsiderRead.status, 403);
+});
+
+test('récapitulatif douane : contenu correct, réservé aux parties', async () => {
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
+  const mehdi = tokens.mehdi;
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Douane test', categoryId: 'argan', categoryLabel: "Huile d'argan",
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 2,
+      valueEur: 40, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  const tx = accepted.body.transaction;
+
+  const outsider = await api(`/transactions/${tx.id}/customs-recap`, { token: mehdi });
+  assert.equal(outsider.status, 403);
+
+  const recap = await api(`/transactions/${tx.id}/customs-recap`, { token: karim });
+  assert.equal(recap.status, 200);
+  assert.equal(recap.body.recap.valueEur, 40);
+  assert.equal(recap.body.recap.weightKg, 2);
+  assert.ok(recap.body.recap.corridor, 'la franchise douanière du corridor doit être incluse');
+});
+
+test('KPIs admin : réservés aux admins, forme correcte', async () => {
+  const karim = tokens.karim;
+  const admin = tokens.admin;
+
+  const asTraveler = await api('/admin/kpis', { token: karim });
+  assert.equal(asTraveler.status, 403);
+
+  const asAdmin = await api('/admin/kpis', { token: admin });
+  assert.equal(asAdmin.status, 200);
+  assert.ok('disputeRate' in asAdmin.body.kpis);
+  assert.ok('transactionsPerMonth' in asAdmin.body.kpis);
+  assert.equal(typeof asAdmin.body.totals.transactions, 'number');
 });
