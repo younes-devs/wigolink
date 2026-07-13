@@ -1020,3 +1020,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 @keyframes boot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 .boot-spinner { width: 22px; height: 22px; border-color: rgba(10,108,245,0.18); border-top-color: var(--accent); }
+
+/* Statut de géolocalisation au scellage (PRD §3.2) */
+.geo-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--ink-soft); font-weight: 550;
+  background: rgba(22, 24, 29, 0.04); border-radius: 10px;
+  padding: 8px 11px; margin-bottom: 12px;
+}

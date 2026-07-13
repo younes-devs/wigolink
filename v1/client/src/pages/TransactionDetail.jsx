@@ -258,11 +258,32 @@ function SealingVideo({ tx, reload }) {
   const [recording, setRecording] = useState(false);
   const [stream, setStream] = useState(null);
   const [err, setErr] = useState('');
+  const [geoStatus, setGeoStatus] = useState('idle'); // idle | locating | ok | denied
   const recRef = useRef(null);
   const chunksRef = useRef([]);
+  const geoRef = useRef(null);
+
+  // Demandée en parallèle de la caméra, au même clic (PRD §3.2 : horodatage +
+  // géolocalisation). Best-effort : un refus ou un délai dépassé ne bloque jamais
+  // le scellage, la position n'est qu'une preuve supplémentaire, pas une condition.
+  const captureGeo = () => new Promise((resolve) => {
+    if (!navigator.geolocation) { setGeoStatus('denied'); resolve(null); return; }
+    setGeoStatus('locating');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const g = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)} m)`;
+        geoRef.current = g;
+        setGeoStatus('ok');
+        resolve(g);
+      },
+      () => { setGeoStatus('denied'); resolve(null); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
 
   const start = async () => {
     setErr('');
+    captureGeo();
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       setStream(s);
@@ -281,7 +302,7 @@ function SealingVideo({ tx, reload }) {
           r.onload = () => ok(r.result);
           r.readAsDataURL(blob);
         });
-        await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', body: { dataUrl } });
+        await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', body: { dataUrl, geo: geoRef.current } });
         reload();
       };
       rec.start();
@@ -299,7 +320,8 @@ function SealingVideo({ tx, reload }) {
   };
 
   const simulate = async () => {
-    await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', body: { simulated: true } });
+    const geo = await captureGeo();
+    await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', body: { simulated: true, geo } });
     reload();
   };
 
@@ -312,6 +334,14 @@ function SealingVideo({ tx, reload }) {
       </p>
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
       <video ref={videoRef} className="video-preview mb" autoPlay muted playsInline style={{ display: recording ? 'block' : 'none', maxHeight: 240 }} />
+      {geoStatus !== 'idle' && (
+        <div className="geo-status">
+          <Icon name="mapPin" size={13} />
+          {geoStatus === 'locating' && 'Localisation en cours…'}
+          {geoStatus === 'ok' && `Position capturée — ${geoRef.current}`}
+          {geoStatus === 'denied' && "Position indisponible (n'empêche pas le scellage)"}
+        </div>
+      )}
       {!recording
         ? <button className="btn btn-primary mb" onClick={start}><Icon name="camera" size={18} />Démarrer l'enregistrement</button>
         : <button className="btn btn-danger-ghost mb" onClick={stop}>Terminer et envoyer</button>}
