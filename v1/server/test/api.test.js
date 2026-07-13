@@ -371,3 +371,66 @@ test('plafonds progressifs : relevés automatiquement après 3 transactions réu
   assert.equal(meAfterThree.body.maxValue, 500);
   assert.equal(meAfterThree.body.maxActive, 3);
 });
+
+test('refus sans pénalité : republie l\'annonce et rembourse l\'escrow', async () => {
+  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const karim = await loginAs('karim@demo.wigofly.app');
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Refus test', categoryId: 'epices', categoryLabel: 'Épices',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 18, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  const tx = accepted.body.transaction;
+
+  // Réservé au voyageur : l'expéditeur ne peut pas refuser sa propre transaction.
+  const senderRefuse = await api(`/transactions/${tx.id}/refuse`, { method: 'POST', token: fatima, body: { reason: 'test' } });
+  assert.equal(senderRefuse.status, 403);
+
+  const refused = await api(`/transactions/${tx.id}/refuse`, { method: 'POST', token: karim, body: { reason: 'Contenu ne correspond pas à la description' } });
+  assert.equal(refused.status, 200);
+  assert.equal(refused.body.transaction.status, 'cancelled');
+  assert.equal(refused.body.transaction.escrow.state, 'refunded');
+
+  const mine = await api('/listings/mine', { token: fatima });
+  const listingAfter = mine.body.listings.find((l) => l.id === listing.body.listing.id);
+  assert.equal(listingAfter.status, 'published');
+});
+
+test('messagerie : le partage de coordonnées est détecté et signalé', async () => {
+  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const karim = await loginAs('karim@demo.wigofly.app');
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Messagerie test', categoryId: 'huiles-essentielles', categoryLabel: 'Huiles essentielles',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.5,
+      valueEur: 22, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  const tx = accepted.body.transaction;
+
+  const cleanMsg = await api(`/transactions/${tx.id}/messages`, { method: 'POST', token: fatima, body: { text: 'On se voit où pour la remise ?' } });
+  assert.equal(cleanMsg.status, 200);
+  assert.equal(cleanMsg.body.message.flagged, false);
+  assert.equal(cleanMsg.body.warning, null);
+
+  const leakedMsg = await api(`/transactions/${tx.id}/messages`, { method: 'POST', token: karim, body: { text: 'Appelle-moi au 0612345678 direct' } });
+  assert.equal(leakedMsg.status, 200); // le chat avertit mais ne bloque pas (contrairement aux avis)
+  assert.equal(leakedMsg.body.message.flagged, true);
+  assert.ok(leakedMsg.body.warning);
+
+  const mehdi = await loginAs('mehdi@demo.wigofly.app');
+  const outsiderRead = await api(`/transactions/${tx.id}/messages`, { token: mehdi });
+  assert.equal(outsiderRead.status, 403);
+});
