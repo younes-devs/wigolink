@@ -18,6 +18,7 @@ export default function Admin() {
   const [tab, setTab] = useState('review'); // review | kyc | kpis | fraud | categories
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
+  const [kycPending, setKycPending] = useState(null);
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -28,10 +29,12 @@ export default function Admin() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  // Chargé au montage (pas seulement à l'ouverture de l'onglet) pour pouvoir afficher
-  // un badge de compte sur le bouton "Fraude" — un admin ne devrait pas avoir à cliquer
-  // à l'aveugle pour découvrir qu'il y a des signaux à regarder.
+  // Chargés au montage (pas seulement à l'ouverture de l'onglet) pour pouvoir afficher un
+  // badge de compte sur les boutons "Fraude" et "Identités" — un admin ne devrait pas avoir
+  // à cliquer à l'aveugle pour découvrir qu'il y a quelque chose à traiter. Requête légère,
+  // découplée du fetch propre à KycPanel (filtres/recherche) qui reste inchangé.
   useEffect(() => { loadFraud(); }, [loadFraud]);
+  useEffect(() => { api('/admin/kyc?status=pending').then((d) => setKycPending(d.stats?.pending ?? 0)).catch(() => {}); }, []);
 
   const decide = async (id, decision, extra = {}) => {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
@@ -62,7 +65,9 @@ export default function Admin() {
         <button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>
           File de revue {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
-        <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>Identités</button>
+        <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>
+          Identités {kycPending > 0 ? `(${kycPending})` : ''}
+        </button>
         <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
         <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
           Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
