@@ -41,6 +41,31 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://cloudkilo.app/produits/epices</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://cloudkilo.app/produits/amlou</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://cloudkilo.app/produits/huiles-essentielles</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://cloudkilo.app/produits/dattes</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://cloudkilo.app/produits/cosmetiques</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://cloudkilo.app/cgu</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
