@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
@@ -18,6 +18,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import Terms from './pages/Terms.jsx';
 import Kyc from './pages/Kyc.jsx';
 import Onboarding, { shouldOnboard } from './Onboarding.jsx';
+import NotFound from './pages/NotFound.jsx';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -96,7 +97,7 @@ export default function App() {
                   <Route path="/profil" element={<Profile />} />
                   <Route path="/verification" element={<Kyc />} />
                   <Route path="/admin" element={<Admin />} />
-                  <Route path="*" element={<Navigate to="/" />} />
+                  <Route path="*" element={<NotFound />} />
                 </>
               )}
             </Routes>
