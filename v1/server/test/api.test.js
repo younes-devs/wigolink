@@ -619,3 +619,47 @@ test('notifications : marquées lues correctement, scopées au bon utilisateur',
   assert.equal(mehdiNotifs.status, 200);
   assert.ok(mehdiNotifs.body.notifications.every((n) => n.txId !== accepted.body.transaction.id));
 });
+
+test('retrait d\'une catégorie de la liste blanche : réservé aux admins, repasse en zone grise', async () => {
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
+  const admin = tokens.admin;
+  const categoryId = `confiture-retrait-${Date.now()}`;
+
+  const firstListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Retrait test', categoryId, categoryLabel: 'Confiture retrait',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const overview = await api('/admin/overview', { token: admin });
+  const queueItem = overview.body.reviewQueue.find((r) => r.type === 'listing' && r.refId === firstListing.body.listing.id);
+  await api(`/admin/review/${queueItem.id}`, { method: 'POST', token: admin, body: { decision: 'approve', maxQty: '2 pots' } });
+
+  const overviewAfterApprove = await api('/admin/overview', { token: admin });
+  const promoted = overviewAfterApprove.body.customWhitelist.find((c) => c.id === categoryId);
+  assert.ok(promoted, 'la catégorie doit apparaître dans la liste blanche promue');
+
+  // Réservé aux admins.
+  const outsiderDelete = await api(`/admin/whitelist/${promoted.id}`, { method: 'DELETE', token: karim });
+  assert.equal(outsiderDelete.status, 403);
+
+  const del = await api(`/admin/whitelist/${promoted.id}`, { method: 'DELETE', token: admin });
+  assert.equal(del.status, 200);
+
+  // Une fois retirée, un nouvel envoi dans cette catégorie repasse en zone grise.
+  const secondListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Retrait test 2', categoryId, categoryLabel: 'Confiture retrait',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(secondListing.body.listing.whitelistVerdict, 'gray');
+  assert.equal(secondListing.body.listing.status, 'pending_review');
+});
