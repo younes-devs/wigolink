@@ -465,6 +465,21 @@ body {
 .stepper-step:first-child::before { display: none; }
 .stepper-step.done::before, .stepper-step.active::before { background: var(--accent); }
 
+/* Chips de catégories du feed (PRD UI/UX U11) */
+.cat-chips {
+  display: flex; gap: 8px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 4px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cat-chips::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex: 0 0 auto; border: 1px solid var(--hairline); background: var(--glass-strong);
+  color: var(--ink-soft); border-radius: 999px; padding: 7px 14px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+  white-space: nowrap; transition: all 0.15s;
+}
+.cat-chip:hover { border-color: var(--accent); color: var(--ink); }
+.cat-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* Aide à la tarification (PRD UI/UX U7) */
 .pay-suggest { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; flex-wrap: wrap; }
 .pay-chip {

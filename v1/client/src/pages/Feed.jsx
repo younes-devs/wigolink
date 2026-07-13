@@ -123,6 +123,20 @@ export default function Feed() {
         </div>
       )}
 
+      {/* Chips de catégories (PRD UI/UX U11) : filtrer en 1 tap */}
+      {rules?.whitelist?.length > 0 && (
+        <div className="cat-chips">
+          <button className={`cat-chip ${!filters.category ? 'active' : ''}`}
+            onClick={() => setFilters({ ...filters, category: '' })}>Toutes</button>
+          {rules.whitelist.map((c) => (
+            <button key={c.id} className={`cat-chip ${filters.category === c.id ? 'active' : ''}`}
+              onClick={() => setFilters({ ...filters, category: filters.category === c.id ? '' : c.id })}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {listings === undefined && <SkeletonList count={3} avatar={false} />}
       {listings?.length === 0 && (
         <div className="card center empty-state">

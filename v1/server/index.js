@@ -493,7 +493,12 @@ app.get('/api/listings', auth, (req, res) => {
   if (category) open = open.filter((l) => l.categoryId === category);
   if (minPrice) open = open.filter((l) => l.travelerPay >= Number(minPrice));
   if (maxPrice) open = open.filter((l) => l.travelerPay <= Number(maxPrice));
-  if (q) open = open.filter((l) => l.title.toLowerCase().includes(String(q).toLowerCase()));
+  // Recherche élargie (PRD UI/UX U11) : titre + description + libellé de catégorie.
+  if (q) {
+    const needle = String(q).toLowerCase();
+    open = open.filter((l) =>
+      `${l.title} ${l.description || ''} ${l.categoryLabel || ''}`.toLowerCase().includes(needle));
+  }
 
   const myTrips = db.trips.filter((t) => t.travelerId === req.user.id && t.date >= new Date().toISOString().slice(0, 10));
   const showAll = req.query.all === '1' || myTrips.length === 0;

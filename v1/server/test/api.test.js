@@ -791,3 +791,29 @@ test('retrait d\'annonce (avant acceptation) : réservé à l\'expéditeur, bloq
   assert.equal(ownerCancel.status, 200);
   assert.equal(ownerCancel.body.listing.status, 'cancelled');
 });
+
+test('recherche élargie : couvre titre, description et catégorie (PRD UI/UX U11)', async () => {
+  const fatima = tokens.fatima;
+  const karim = tokens.karim;
+  const uniq = `zephyr${Date.now()}`;
+
+  // Le mot unique n'apparaît QUE dans la description, jamais dans le titre.
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Huile argan recherche', categoryId: 'argan', categoryLabel: "Huile d'argan",
+      description: `Bouteille scellée, mention ${uniq} pour le test de recherche`, weightKg: 1,
+      valueEur: 30, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(listing.status, 200);
+
+  const found = await api(`/listings?all=1&q=${uniq}`, { token: karim });
+  assert.equal(found.status, 200);
+  assert.ok(found.body.listings.some((l) => l.id === listing.body.listing.id),
+    'un mot présent seulement dans la description doit être trouvé');
+
+  const notFound = await api('/listings?all=1&q=motquinexistenullepart', { token: karim });
+  assert.ok(!notFound.body.listings.some((l) => l.id === listing.body.listing.id));
+});
