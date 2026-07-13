@@ -128,7 +128,25 @@ body {
   border: 1px solid rgba(217, 45, 32, 0.3);
 }
 .btn-danger-ghost:hover { background: var(--danger-tint); }
+.btn-danger {
+  background: linear-gradient(180deg, #e5433a, var(--danger)); color: #fff;
+  box-shadow: 0 1px 2px rgba(217, 45, 32, 0.4), 0 6px 16px rgba(217, 45, 32, 0.25);
+}
+.btn-danger:hover { filter: brightness(1.05); }
 .btn-sm { padding: 9px 15px; font-size: 13.5px; width: auto; border-radius: 10px; }
+
+/* Dialogue de confirmation (design system) — remplace confirm() natif */
+.confirm-modal { max-width: 340px; padding: 22px 22px 18px; text-align: center; }
+.confirm-icon {
+  width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-tint); color: var(--accent);
+}
+.confirm-icon-danger { background: var(--danger-tint); color: var(--danger); }
+.confirm-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 6px; }
+.confirm-message { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 18px; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-actions .btn { flex: 1; }
 
 /* Forms */
 .field { margin-bottom: 15px; }
@@ -359,6 +377,48 @@ body {
 .step-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; }
 .step-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(22, 24, 29, 0.15); transition: all 0.2s; }
 .step-dots i.on { background: var(--accent); width: 22px; border-radius: 5px; }
+
+/* Fil d'étapes libellé (PRD UI/UX U2) */
+.stepper { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 4px; }
+.stepper-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0; font-family: inherit; cursor: default;
+  position: relative; color: var(--ink-faint);
+}
+.stepper-step.done { cursor: pointer; color: var(--ink-soft); }
+.stepper-step.active { color: var(--accent); }
+.stepper-dot {
+  width: 30px; height: 30px; border-radius: 50%; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: rgba(22, 24, 29, 0.07); color: var(--ink-faint);
+  border: 2px solid transparent; transition: all 0.2s;
+}
+.stepper-step.done .stepper-dot { background: var(--accent); color: #fff; }
+.stepper-step.active .stepper-dot { background: #fff; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+.stepper-label { font-size: 12px; font-weight: 600; letter-spacing: -0.1px; }
+/* Trait de liaison entre les pastilles */
+.stepper-step::before {
+  content: ''; position: absolute; top: 15px; left: -50%; width: 100%; height: 2px;
+  background: rgba(22, 24, 29, 0.08);
+}
+.stepper-step:first-child::before { display: none; }
+.stepper-step.done::before, .stepper-step.active::before { background: var(--accent); }
+
+/* Aide à la tarification (PRD UI/UX U7) */
+.pay-suggest { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; flex-wrap: wrap; }
+.pay-chip {
+  border: 1px solid var(--accent); color: var(--accent); background: var(--accent-tint);
+  border-radius: 999px; padding: 4px 13px; font-size: 12.5px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background 0.15s;
+}
+.pay-chip:hover { background: rgba(10, 108, 245, 0.16); }
+
+/* Liste noire complète (modal, PRD UI/UX U3) */
+.blacklist-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.blacklist-list li { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; }
+.blacklist-list li .icon { flex: 0 0 auto; margin-top: 2px; color: var(--danger); }
+
 /* Auth */
 .auth-page { padding-top: 4px; }
 .auth-hero {

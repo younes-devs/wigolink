@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import { Icon } from '../Icons.jsx';
+import { ConfirmDialog } from '../components.jsx';
 import { SkeletonCard, SkeletonList, SkeletonStatGrid } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
 
@@ -179,8 +180,8 @@ function ListingReviewCard({ item, decide }) {
 }
 
 function CategoriesPanel({ customWhitelist, reload }) {
+  const [confirming, setConfirming] = useState(null);
   const remove = async (id) => {
-    if (!confirm('Retirer cette catégorie de la liste blanche ? Les prochains envois repasseront en revue humaine.')) return;
     await api(`/admin/whitelist/${id}`, { method: 'DELETE' });
     reload();
   };
@@ -209,10 +210,19 @@ function CategoriesPanel({ customWhitelist, reload }) {
                 Max {c.maxQty} · ajoutée le {new Date(c.addedAt).toLocaleDateString('fr-BE')} (annonce {c.addedFrom})
               </div>
             </div>
-            <button className="btn btn-danger-ghost btn-sm" onClick={() => remove(c.id)}>Retirer</button>
+            <button className="btn btn-danger-ghost btn-sm" onClick={() => setConfirming(c.id)}>Retirer</button>
           </div>
         </div>
       ))}
+      {confirming && (
+        <ConfirmDialog
+          title="Retirer cette catégorie ?"
+          message="Les prochains envois de ce type repasseront en revue humaine avant publication."
+          confirmLabel="Retirer" danger icon="trash"
+          onConfirm={() => remove(confirming)}
+          onClose={() => setConfirming(null)}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
+import { ConfirmDialog } from '../components.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
 
@@ -17,13 +18,13 @@ const EDITABLE = ['published', 'pending_review'];
 export default function MyShipments() {
   const [listings, setListings] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [confirming, setConfirming] = useState(null); // id de l'annonce à retirer
   const toast = useToast();
 
   const load = () => api('/listings/mine').then((d) => setListings(d.listings));
   useEffect(() => { load(); }, []);
 
   const cancel = async (id) => {
-    if (!confirm('Retirer cette annonce ? Cette action est définitive.')) return;
     await api(`/listings/${id}/cancel`, { method: 'POST' });
     load();
     toast.info('Annonce retirée');
@@ -66,7 +67,7 @@ export default function MyShipments() {
               {canEdit && (
                 <div className="list-row" style={{ marginLeft: 'auto', gap: 8 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setEditing(l)}>Modifier</button>
-                  <button className="btn btn-danger-ghost btn-sm" onClick={() => cancel(l.id)}>Retirer</button>
+                  <button className="btn btn-danger-ghost btn-sm" onClick={() => setConfirming(l.id)}>Retirer</button>
                 </div>
               )}
             </div>
@@ -77,6 +78,16 @@ export default function MyShipments() {
       {editing && (
         <EditListingModal listing={editing} onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); load(); toast.success('Annonce mise à jour'); }} />
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title="Retirer cette annonce ?"
+          message="Elle ne sera plus visible par les voyageurs. Cette action est définitive."
+          confirmLabel="Retirer" danger icon="trash"
+          onConfirm={() => cancel(confirming)}
+          onClose={() => setConfirming(null)}
+        />
       )}
     </div>
   );

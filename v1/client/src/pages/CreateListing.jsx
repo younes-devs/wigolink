@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { KycRequiredNotice } from '../components.jsx';
+import { KycRequiredNotice, Stepper } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+
+// Fourchette de rémunération suggérée selon le poids (PRD UI/UX U7) — repère simple
+// pour ne pas laisser l'expéditeur fixer un prix à l'aveugle. ~3–5 €/kg, plancher 8 €.
+function suggestedPay(weightKg) {
+  const w = Number(weightKg) || 0;
+  const low = Math.max(8, Math.round(w * 3));
+  const high = Math.max(12, Math.round(w * 5));
+  return { low, high };
+}
 
 // Redimensionne une image en dataURL JPEG (côté client, max 720px).
 function resizeImage(file, maxPx = 720) {
@@ -48,6 +57,7 @@ export default function CreateListing() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [needsKyc, setNeedsKyc] = useState(false);
+  const [showBlacklist, setShowBlacklist] = useState(false);
   const [form, setForm] = useState({
     title: '', categoryId: '', categoryLabel: '', description: '', weightKg: '', valueEur: '',
     from: 'Casablanca', to: 'Bruxelles', dateFrom: '', dateTo: '', travelerPay: '',
@@ -109,7 +119,7 @@ export default function CreateListing() {
           <Icon name="sparkles" size={14} />Remplir (test)
         </button>
       </div>
-      <div className="step-dots">{[0, 1, 2].map((i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
+      <Stepper labels={['Colis', 'Trajet & prix', 'Douane']} current={step} onGo={setStep} />
 
       {error && <div className="alert alert-danger">{error}</div>}
 
@@ -125,7 +135,10 @@ export default function CreateListing() {
               <option value="autre">Autre (revue humaine avant publication)</option>
             </select>
             <div className="hint">
-              Interdits : {rules.blacklist.slice(0, 4).map((b) => b.label.toLowerCase()).join(', ')}…
+              Certains produits sont interdits (compléments, médicaments, produits non scellés…).{' '}
+              <button type="button" className="link-btn" onClick={() => setShowBlacklist(true)}>
+                Voir la liste complète
+              </button>
             </div>
           </div>
           {form.categoryId === 'autre' && (
@@ -214,6 +227,16 @@ export default function CreateListing() {
           <div className="field">
             <label>Rémunération proposée au voyageur (€)</label>
             <input type="number" value={form.travelerPay} onChange={(e) => set('travelerPay', e.target.value)} />
+            {(() => {
+              const { low, high } = suggestedPay(form.weightKg);
+              return (
+                <div className="pay-suggest">
+                  <span className="muted">Suggéré pour {form.weightKg || '?'} kg :</span>
+                  <button type="button" className="pay-chip" onClick={() => set('travelerPay', low)}>{low} €</button>
+                  <button type="button" className="pay-chip" onClick={() => set('travelerPay', high)}>{high} €</button>
+                </div>
+              );
+            })()}
             {form.travelerPay > 0 && (
               <div className="hint">
                 + commission plateforme 18 % ({Math.round(form.travelerPay * 0.18 * 100) / 100} €) —
@@ -259,6 +282,33 @@ export default function CreateListing() {
           <button className="btn btn-primary" disabled={!form.customsAccepted} onClick={submit}>
             Publier ma demande d'envoi
           </button>
+        </div>
+      )}
+
+      {showBlacklist && (
+        <div className="modal-backdrop" onClick={() => setShowBlacklist(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <Icon name="alert" size={19} />
+              <b>Produits interdits</b>
+              <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={() => setShowBlacklist(false)}>
+                <Icon name="x" size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '0 16px 16px' }}>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                Ces produits ne peuvent pas être transportés via Wigofly, pour des raisons douanières ou de sécurité.
+              </p>
+              <ul className="blacklist-list">
+                {rules.blacklist.map((b) => (
+                  <li key={b.id}>
+                    <Icon name="x" size={14} />
+                    <span><b>{b.label}</b>{b.reason ? ` — ${b.reason}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>

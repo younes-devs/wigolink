@@ -42,6 +42,9 @@ PATHS.eye = <><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 
 PATHS.eyeOff = <><path d="M10.7 5.1A10.6 10.6 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61" /><path d="M2 2l20 20" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>;
 PATHS.key = <><path d="m15.5 7.5 3 3L22 7l-3-3" /><path d="m21 2-9.6 9.6" /><circle cx="7.5" cy="15.5" r="5.5" /></>;
 PATHS.arrowLeft = <path d="m12 19-7-7 7-7M5 12h14" />;
+PATHS.arrowRight = <path d="M5 12h14M12 5l7 7-7 7" />;
+PATHS.share = <><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v13" /></>;
+PATHS.info = <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></>;
 
 // Logo Google officiel (multicolore, fill)
 export function GoogleLogo({ size = 18 }) {

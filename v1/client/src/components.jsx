@@ -4,6 +4,55 @@ import QRCode from 'qrcode';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
 
+// Fil d'étapes libellé (PRD UI/UX U2) — remplace les points anonymes : on voit ce qui vient
+// et on peut revenir en arrière sur une étape déjà franchie.
+export function Stepper({ labels, current, onGo }) {
+  return (
+    <nav className="stepper" aria-label="Progression">
+      {labels.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        const clickable = done && onGo;
+        return (
+          <button key={i} type="button" className={`stepper-step ${active ? 'active' : ''} ${done ? 'done' : ''}`}
+            onClick={clickable ? () => onGo(i) : undefined} disabled={!clickable}
+            aria-current={active ? 'step' : undefined}>
+            <span className="stepper-dot">{done ? <Icon name="check" size={13} /> : i + 1}</span>
+            <span className="stepper-label">{label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+// Dialogue de confirmation du design system — remplace le confirm() natif (PRD UI/UX U5).
+// Fermeture par Échap, clic sur le fond, ou bouton Annuler ; focus initial sur l'action.
+export function ConfirmDialog({ title, message, confirmLabel = 'Confirmer', cancelLabel = 'Annuler', danger = false, icon = 'alert', onConfirm, onClose }) {
+  const confirmRef = useRef(null);
+  useEffect(() => {
+    confirmRef.current?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal confirm-modal" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className={`confirm-icon ${danger ? 'confirm-icon-danger' : ''}`}><Icon name={icon} size={22} /></div>
+        <h2 className="confirm-title">{title}</h2>
+        {message && <p className="confirm-message">{message}</p>}
+        <div className="confirm-actions">
+          <button className="btn btn-ghost" onClick={onClose}>{cancelLabel}</button>
+          <button ref={confirmRef} className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+            onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Header({ user }) {
   return (
     <header className="app-header">
