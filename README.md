@@ -1,5 +1,7 @@
 # Wigofly
 
+[![Tests](https://github.com/crypt0pwn/cloudkilo/actions/workflows/test.yml/badge.svg)](https://github.com/crypt0pwn/cloudkilo/actions/workflows/test.yml)
+
 Plateforme de transport collaboratif Belgique/France ↔ Maroc — mise en relation sécurisée entre expéditeurs et voyageurs, avec paiement séquestré, vérification d'identité et preuve vidéo.
 
 Voir [docs/prd.md](docs/prd.md) pour le PRD complet et [docs/plan-projet.md](docs/plan-projet.md) pour le plan de projet et le phasage.
@@ -54,6 +56,21 @@ reste consultable sans réseau — avec un bandeau explicite « hors ligne » �
 téléchargeable en un clic.
 
 **Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), escrow (Mangopay/Stripe Connect), QR scannables. Le KYC est un vrai flux manuel (soumission + revue admin), voir [docs/prd-kyc.md](docs/prd-kyc.md).
+
+## Tests
+
+```bash
+cd v1
+npm test
+```
+
+Suite d'intégration boîte noire (`node:test`, aucune dépendance ajoutée) : démarre une vraie
+instance de l'API sur un port et un fichier de données dédiés (jamais le `data.json` de dev/démo),
+et rejoue les scénarios critiques — connexion, IDOR, auto-acceptation, liste noire, parcours complet
+annonce → escrow → scellage → double validation → livraison → notation, dashboard fraude, anti
+brute-force, KYC, litiges, promotion zone grise → liste blanche, plafonds progressifs, refus sans
+pénalité, détection de fuite en messagerie. Lancée automatiquement sur chaque push/PR vers `main`
+(voir `.github/workflows/test.yml`).
 
 ## Tester sur téléphone (accès caméra)
 
