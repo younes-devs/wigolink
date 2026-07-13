@@ -14,6 +14,26 @@ const STEPS = [
   { key: 'released', title: 'Livraison & paiement', desc: 'Double validation finale, escrow libéré.' },
 ];
 const ORDER = ['accepted', 'sealed', 'in_transit', 'released'];
+// Événement qui marque l'entrée dans chaque étape (PRD UI/UX U10) — pour dater la timeline.
+const STEP_EVENT = { accepted: 'accepted', sealed: 'sealed', in_transit: 'in_transit', released: 'delivered_and_released' };
+
+// Durée écoulée compacte (« 2 min », « 3 h », « 5 j », « quelques instants »).
+function sinceText(ts) {
+  if (!ts) return '';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'quelques instants';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h`;
+  return `${Math.floor(h / 24)} j`;
+}
+// Temps relatif (« à l'instant », « il y a 2 h »).
+function relativeTime(ts) {
+  if (!ts) return '';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  return s < 60 ? "à l'instant" : `il y a ${sinceText(ts)}`;
+}
 
 export default function TransactionDetail() {
   const { id } = useParams();
@@ -35,6 +55,9 @@ export default function TransactionDetail() {
   if (!tx) return <SkeletonCard lines={3} />;
 
   const stepIdx = ORDER.indexOf(tx.status);
+  const eventAt = (type) => tx.events?.find((e) => e.type === type)?.at || null;
+  // Depuis quand on attend sur l'étape courante (dernier événement enregistré).
+  const lastEventAt = tx.events?.length ? tx.events[tx.events.length - 1].at : tx.createdAt;
 
   return (
     <div>
@@ -48,13 +71,22 @@ export default function TransactionDetail() {
 
       <div className="card">
         <div className="timeline">
-          {STEPS.map((s, i) => (
-            <div key={s.key} className={`tl-step ${stepIdx > i || tx.status === 'released' ? 'done' : stepIdx === i ? 'current' : ''}`}>
-              <div className="dot" />
-              <div className="tl-title">{s.title}</div>
-              <div className="tl-desc">{s.desc}</div>
-            </div>
-          ))}
+          {STEPS.map((s, i) => {
+            const done = stepIdx > i || tx.status === 'released';
+            const current = stepIdx === i && tx.status !== 'released';
+            const doneAt = done ? eventAt(STEP_EVENT[s.key]) : null;
+            return (
+              <div key={s.key} className={`tl-step ${done ? 'done' : current ? 'current' : ''}`}>
+                <div className="dot" />
+                <div className="tl-title">
+                  {s.title}
+                  {doneAt && <span className="tl-time">{relativeTime(doneAt)}</span>}
+                  {current && <span className="tl-time tl-time-wait">en attente depuis {sinceText(lastEventAt)}</span>}
+                </div>
+                <div className="tl-desc">{s.desc}</div>
+              </div>
+            );
+          })}
         </div>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
           <span className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
