@@ -487,3 +487,46 @@ test('KPIs admin : réservés aux admins, forme correcte', async () => {
   assert.ok('transactionsPerMonth' in asAdmin.body.kpis);
   assert.equal(typeof asAdmin.body.totals.transactions, 'number');
 });
+
+test('modification d\'annonce : réservée à l\'expéditeur, bloquée une fois acceptée', async () => {
+  const fatima = tokens.fatima;
+  const mehdi = tokens.mehdi;
+  const admin = tokens.admin;
+  // Voyageur dédié plutôt que karim : karim accumule au fil de la suite des transactions
+  // volontairement laissées non résolues (IDOR/messagerie/douane n'ont besoin que d'un
+  // statut 'accepted') et finit par cogner son maxActive — l'accept ci-dessous échouerait
+  // silencieusement avec karim, ce qui a fait échouer une première version de ce test.
+  const traveler = await registerKycVerifiedUser(admin, 'EditeurVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Édition test', categoryId: 'cosmetiques', categoryLabel: 'Cosmétiques naturels',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 8, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const listingId = listing.body.listing.id;
+
+  // Un tiers ne peut pas modifier l'annonce d'un autre.
+  const outsiderEdit = await api(`/listings/${listingId}`, { method: 'PUT', token: mehdi, body: { title: 'Piraté' } });
+  assert.equal(outsiderEdit.status, 403);
+
+  // L'expéditeur peut modifier tant que l'annonce n'est pas acceptée.
+  const ownerEdit = await api(`/listings/${listingId}`, { method: 'PUT', token: fatima, body: { title: 'Titre corrigé', weightKg: 1.5 } });
+  assert.equal(ownerEdit.status, 200);
+  assert.equal(ownerEdit.body.listing.title, 'Titre corrigé');
+  assert.equal(ownerEdit.body.listing.weightKg, 1.5);
+
+  // Une valeur qui dépasse le plafond du compte est refusée.
+  const overCapEdit = await api(`/listings/${listingId}`, { method: 'PUT', token: fatima, body: { valueEur: 999999 } });
+  assert.equal(overCapEdit.status, 400);
+
+  // Une fois acceptée, l'annonce est figée — même pour son propriétaire.
+  const accepted = await api(`/listings/${listingId}/accept`, { method: 'POST', token: traveler.token });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+  const editAfterAccept = await api(`/listings/${listingId}`, { method: 'PUT', token: fatima, body: { title: 'Trop tard' } });
+  assert.equal(editAfterAccept.status, 400);
+});
