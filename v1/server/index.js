@@ -762,16 +762,36 @@ app.post('/api/transactions/:id/rate', auth, (req, res) => {
   const target = findUser(targetId);
   if (!target || ![t.senderId, t.travelerId, t.recipientId].includes(targetId))
     return res.status(400).json({ error: 'Cible invalide' });
+  const n = Number(stars);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return res.status(400).json({ error: 'Note invalide (1 à 5)' });
   t.ratings = t.ratings || [];
   if (t.ratings.some((r) => r.by === req.user.id && r.target === targetId))
     return res.status(400).json({ error: 'Déjà noté' });
-  t.ratings.push({ by: req.user.id, target: targetId, stars: Number(stars), at: Date.now() });
+  const comment = String(req.body.comment || '').trim().slice(0, 400);
+  t.ratings.push({ by: req.user.id, target: targetId, stars: n, comment: comment || null, at: Date.now() });
   const prev = (target.rating || 0) * target.ratingCount;
   target.ratingCount += 1;
-  target.rating = Math.round(((prev + Number(stars)) / target.ratingCount) * 10) / 10;
-  addEvent(t, 'rated', req.user.id, { target: targetId, stars });
+  target.rating = Math.round(((prev + n) / target.ratingCount) * 10) / 10;
+  addEvent(t, 'rated', req.user.id, { target: targetId, stars: n });
   save();
   res.json({ ok: true });
+});
+
+// Avis reçus par un utilisateur — agrège les notations de toutes ses transactions livrées.
+// Public au sens "connecté" (pas de données sensibles : prénom initiale, note, commentaire).
+app.get('/api/users/:id/reviews', auth, (req, res) => {
+  const target = findUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Introuvable' });
+  const reviews = [];
+  for (const t of db.transactions) {
+    for (const r of t.ratings || []) {
+      if (r.target !== req.params.id) continue;
+      const author = findUser(r.by);
+      reviews.push({ stars: r.stars, comment: r.comment || null, at: r.at, authorName: author?.name || 'Membre CloudKilo' });
+    }
+  }
+  reviews.sort((a, b) => b.at - a.at);
+  res.json({ reviews, rating: target.rating, ratingCount: target.ratingCount });
 });
 
 // ---------- Litiges (PRD §3 Phase 6, §4.6) ----------

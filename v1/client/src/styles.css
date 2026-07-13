@@ -322,6 +322,8 @@ body {
 .stars .icon { transition: color 0.1s, transform 0.1s; }
 .stars .on { color: #f5a623; }
 .stars .icon:hover { transform: scale(1.15); }
+.stars-readonly { cursor: default; }
+.stars-readonly .icon:hover { transform: none; }
 
 /* Avatars & icônes catégorie */
 .avatar {

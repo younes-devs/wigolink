@@ -141,12 +141,12 @@ export function TrustBadge({ user }) {
   );
 }
 
-export function Stars({ value, onChange }) {
+export function Stars({ value, onChange, readOnly = false, size = 26 }) {
   return (
-    <div className="stars">
+    <div className={`stars${readOnly ? ' stars-readonly' : ''}`}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <span key={n} className={n <= value ? 'on' : ''} onClick={() => onChange(n)}>
-          <Icon name="star" size={26} filled className={n <= value ? 'on' : ''} />
+        <span key={n} className={n <= value ? 'on' : ''} onClick={readOnly ? undefined : () => onChange(n)}>
+          <Icon name="star" size={size} filled className={n <= value ? 'on' : ''} />
         </span>
       ))}
     </div>

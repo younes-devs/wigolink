@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, getToken } from '../api';
 import { useAuth } from '../App.jsx';
-import { TrustBadge } from '../components.jsx';
+import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 
 const MEMBER_FMT = new Intl.DateTimeFormat('fr-BE', { month: 'long', year: 'numeric' });
@@ -157,11 +157,46 @@ export default function Profile() {
         </ul>
       </div>
 
+      <ReviewsSection userId={user.id} />
+
       <PrivacySection onDeleted={logout} email={me?.email} />
 
       <button className="btn btn-ghost" onClick={logout}>
         <Icon name="logout" size={17} />Se déconnecter
       </button>
+    </div>
+  );
+}
+
+// Avis reçus (PRD §5.5 : notation mutuelle) — étoiles + commentaire libre laissés par
+// les partenaires de transaction, agrégés depuis toutes les livraisons passées.
+const REVIEW_FMT = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function ReviewsSection({ userId }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => { api(`/users/${userId}/reviews`).then(setData).catch(() => setData({ reviews: [] })); }, [userId]);
+
+  if (!data) return null;
+  const withComments = data.reviews.filter((r) => r.comment);
+
+  return (
+    <div className="card">
+      <h2 style={{ marginBottom: 8 }}><Icon name="star" size={17} />Avis reçus {data.reviews.length > 0 ? `(${data.reviews.length})` : ''}</h2>
+      {data.reviews.length === 0 && <p className="muted" style={{ fontSize: 13 }}>Pas encore d'avis — ils apparaissent après vos premières livraisons confirmées.</p>}
+      {withComments.length === 0 && data.reviews.length > 0 && (
+        <p className="muted" style={{ fontSize: 13 }}>{data.reviews.length} note(s) reçue(s), sans commentaire écrit.</p>
+      )}
+      {withComments.slice(0, 6).map((r, i) => (
+        <div key={i} className="mt" style={{ paddingTop: i > 0 ? 10 : 0, borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
+          <div className="list-row">
+            <Stars value={r.stars} readOnly size={15} />
+            <span className="muted" style={{ fontSize: 11.5, marginLeft: 'auto' }}>{REVIEW_FMT.format(new Date(r.at))}</span>
+          </div>
+          <p style={{ fontSize: 13.5, margin: '4px 0 0' }}>{r.comment}</p>
+          <div className="muted" style={{ fontSize: 11.5 }}>{r.authorName}</div>
+        </div>
+      ))}
     </div>
   );
 }

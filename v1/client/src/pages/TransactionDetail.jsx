@@ -596,24 +596,37 @@ function Rating({ tx, user, reload }) {
 
 function RateRow({ tx, target, reload }) {
   const [stars, setStars] = useState(0);
+  const [comment, setComment] = useState('');
+  const [sending, setSending] = useState(false);
   const already = tx.ratings?.some((r) => r.target === target.id && r.by !== target.id && tx.myRole && r.by === (tx.myRole === 'sender' ? tx.senderId : tx.myRole === 'traveler' ? tx.travelerId : tx.recipientId));
 
-  const rate = async (n) => {
-    setStars(n);
+  const send = async () => {
+    setSending(true);
     try {
-      await api(`/transactions/${tx.id}/rate`, { method: 'POST', body: { targetId: target.id, stars: n } });
+      await api(`/transactions/${tx.id}/rate`, { method: 'POST', body: { targetId: target.id, stars, comment } });
       reload();
-    } catch { /* déjà noté */ }
+    } catch { setSending(false); /* déjà noté */ }
   };
 
   return (
-    <div className="list-row mb">
-      <Avatar name={target.u?.name} photo={target.u?.photoUrl} size={38} />
-      <div className="grow">
-        <b>{target.u?.name}</b>
-        <div className="muted" style={{ fontSize: 12 }}>{target.label}</div>
+    <div className="mb">
+      <div className="list-row">
+        <Avatar name={target.u?.name} photo={target.u?.photoUrl} size={38} />
+        <div className="grow">
+          <b>{target.u?.name}</b>
+          <div className="muted" style={{ fontSize: 12 }}>{target.label}</div>
+        </div>
+        {already ? <span className="pill pill-teal"><Icon name="check" size={13} />Noté</span> : <Stars value={stars} onChange={setStars} />}
       </div>
-      {already ? <span className="pill pill-teal"><Icon name="check" size={13} />Noté</span> : <Stars value={stars} onChange={rate} />}
+      {!already && stars > 0 && (
+        <div className="mt" style={{ marginLeft: 50 }}>
+          <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)}
+            placeholder="Un mot sur cette expérience (facultatif)…" maxLength={400} />
+          <button className="btn btn-primary btn-sm mt" onClick={send} disabled={sending}>
+            {sending ? <span className="spinner" /> : 'Envoyer la note'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
