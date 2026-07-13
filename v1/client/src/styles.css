@@ -1203,8 +1203,45 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 @keyframes content-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .card, .stat, .rail-card { animation: card-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes card-in { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
+/* Célébration à la libération de l'escrow (PRD UI/UX U16) */
+.celebrate {
+  position: fixed; inset: 0; z-index: 70; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.celebrate-check {
+  width: 84px; height: 84px; border-radius: 50%;
+  background: linear-gradient(135deg, #12a271, var(--green)); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 12px 40px rgba(14, 138, 95, 0.45);
+  animation: celebrate-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.celebrate-text {
+  font-size: 15px; font-weight: 700; color: var(--ink);
+  background: var(--surface); padding: 8px 16px; border-radius: 999px; box-shadow: var(--shadow-lg);
+  animation: celebrate-pop 0.5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes celebrate-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+.celebrate-burst { position: absolute; top: 42%; left: 50%; width: 0; height: 0; }
+.confetti {
+  position: absolute; width: 9px; height: 9px; border-radius: 2px;
+  background: hsl(calc(var(--i) * 55), 85%, 58%);
+  animation: confetti-fly 1.5s ease-out forwards;
+  transform: rotate(calc(var(--i) * 24deg));
+}
+@keyframes confetti-fly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% {
+    opacity: 0;
+    transform:
+      translate(calc((var(--i) - var(--n) / 2) * 26px), calc(120px + var(--i) * 6px))
+      rotate(540deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .content > *, .card, .stat, .rail-card, .toast, .skel { animation: none !important; }
+  .celebrate-burst { display: none; }
+  .celebrate-check, .celebrate-text { animation: none !important; }
 }
 
 /* Accessibilité clavier : anneau de focus visible uniquement à la navigation clavier */

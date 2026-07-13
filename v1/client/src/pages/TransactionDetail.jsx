@@ -41,6 +41,9 @@ export default function TransactionDetail() {
   const [tx, setTx] = useState(null);
   const [error, setError] = useState('');
 
+  const [celebrate, setCelebrate] = useState(false);
+  const prevStatus = useRef(null);
+
   const load = useCallback(() => {
     api(`/transactions/${id}`).then((d) => setTx(d.transaction)).catch((e) => setError(e.message));
   }, [id]);
@@ -50,6 +53,17 @@ export default function TransactionDetail() {
     const iv = setInterval(load, 4000);
     return () => clearInterval(iv);
   }, [load]);
+
+  // Moment de gratification (PRD UI/UX U16) : célébration à la libération de l'escrow —
+  // uniquement sur la transition (pas à chaque visite d'une transaction déjà livrée).
+  useEffect(() => {
+    if (!tx) return;
+    if (prevStatus.current && prevStatus.current !== 'released' && tx.status === 'released') {
+      setCelebrate(true);
+      setTimeout(() => setCelebrate(false), 2800);
+    }
+    prevStatus.current = tx.status;
+  }, [tx?.status]);
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
   if (!tx) return <SkeletonCard lines={3} />;
@@ -61,6 +75,7 @@ export default function TransactionDetail() {
 
   return (
     <div>
+      {celebrate && <Celebration />}
       <div className="list-row mb">
         <CategoryIcon categoryId={tx.listing?.categoryId} />
         <div className="grow">
@@ -808,6 +823,23 @@ function DisputePanel({ txId }) {
       ) : (
         <p className="muted" style={{ fontSize: 12.5 }}>Le délai de soumission des preuves est dépassé — le dossier est entre les mains de notre équipe.</p>
       )}
+    </div>
+  );
+}
+
+// Célébration à la libération de l'escrow (PRD UI/UX U16) — coche animée + confettis.
+// Respecte prefers-reduced-motion (voir styles.css : animations neutralisées).
+const CONFETTI = Array.from({ length: 14 });
+function Celebration() {
+  return (
+    <div className="celebrate" aria-hidden="true">
+      <div className="celebrate-burst">
+        {CONFETTI.map((_, i) => (
+          <span key={i} className="confetti" style={{ '--i': i, '--n': CONFETTI.length }} />
+        ))}
+      </div>
+      <div className="celebrate-check"><Icon name="check" size={40} /></div>
+      <div className="celebrate-text">Livraison validée — paiement libéré</div>
     </div>
   );
 }
