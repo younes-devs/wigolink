@@ -277,3 +277,46 @@ test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)',
   assert.equal(txAfterResolution.body.transaction.status, 'refunded');
   assert.equal(txAfterResolution.body.transaction.escrow.state, 'refunded');
 });
+
+test('zone grise : catégorie inconnue → revue humaine → promotion en liste blanche', async () => {
+  const fatima = await loginAs('fatima@demo.wigofly.app');
+  const admin = await loginAs('admin@demo.wigofly.app');
+  const categoryId = `confiture-maison-${Date.now()}`;
+
+  const firstListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Confiture maison test', categoryId, categoryLabel: 'Confiture maison',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(firstListing.status, 200);
+  assert.equal(firstListing.body.listing.whitelistVerdict, 'gray');
+  assert.equal(firstListing.body.listing.status, 'pending_review');
+
+  const overview = await api('/admin/overview', { token: admin });
+  const queueItem = overview.body.reviewQueue.find((r) => r.type === 'listing' && r.refId === firstListing.body.listing.id);
+  assert.ok(queueItem, 'l\'annonce en zone grise doit apparaître dans la file de revue');
+
+  const approve = await api(`/admin/review/${queueItem.id}`, {
+    method: 'POST', token: admin, body: { decision: 'approve', maxQty: '2 pots (500 g)' },
+  });
+  assert.equal(approve.status, 200);
+
+  // Un second envoi dans la même catégorie doit désormais passer directement,
+  // sans repasser en revue (c'est tout le sens de la promotion en liste blanche).
+  const secondListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Confiture maison test 2', categoryId, categoryLabel: 'Confiture maison',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 15, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(secondListing.status, 200);
+  assert.equal(secondListing.body.listing.whitelistVerdict, 'whitelisted');
+  assert.equal(secondListing.body.listing.status, 'published');
+});
