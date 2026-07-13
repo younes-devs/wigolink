@@ -71,7 +71,7 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <div className="phone">
-          <Header user={user} />
+          {user && <Header user={user} />}
           <div className="main-wrap">
           <div className="content">
             <Routes>

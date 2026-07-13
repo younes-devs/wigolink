@@ -360,8 +360,43 @@ body {
 .step-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(22, 24, 29, 0.15); transition: all 0.2s; }
 .step-dots i.on { background: var(--accent); width: 22px; border-radius: 5px; }
 /* Auth */
+.auth-page { padding-top: 4px; }
+.auth-hero {
+  position: relative; overflow: hidden;
+  text-align: center; padding: 34px 22px 26px;
+  margin-bottom: 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 140% at 15% -10%, rgba(45, 190, 235, 0.55), transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, rgba(125, 90, 245, 0.5), transparent 55%),
+    linear-gradient(160deg, #0a1a3d, #0a3d8f 55%, #0a6cf5);
+  box-shadow: 0 12px 32px rgba(10, 40, 120, 0.28);
+}
+.auth-hero-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(60% 50% at 50% 0%, rgba(255, 255, 255, 0.18), transparent 70%);
+}
+.auth-hero-brand { position: relative; display: inline-flex; margin-bottom: 18px; }
 .auth-logo {
-  width: auto !important; height: 40px !important; margin-bottom: 14px; display: inline-block !important;
+  width: auto !important; height: 34px !important; display: inline-block !important;
+}
+.auth-hero-title {
+  position: relative; color: #fff; font-size: 24px; font-weight: 750;
+  letter-spacing: -0.5px; margin-bottom: 6px;
+}
+.auth-hero-sub {
+  position: relative; color: rgba(255, 255, 255, 0.82); font-size: 13.5px;
+  line-height: 1.5; max-width: 340px; margin: 0 auto;
+}
+.auth-hero-badges {
+  position: relative; display: flex; justify-content: center; gap: 8px;
+  margin-top: 18px; flex-wrap: wrap;
+}
+.auth-hero-badges span {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff; font-size: 11.5px; font-weight: 600;
+  padding: 6px 11px; border-radius: 999px; backdrop-filter: blur(8px);
 }
 .auth-switch { text-align: center; font-size: 13.5px; color: var(--ink-soft); margin: 4px 0 10px; }
 .link-btn {

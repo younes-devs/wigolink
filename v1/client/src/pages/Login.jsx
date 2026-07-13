@@ -82,21 +82,26 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <div className="center" style={{ padding: '26px 0 20px' }}>
-        <a href="/decouvrir/" className="brand-link">
+      <div className="auth-hero">
+        <div className="auth-hero-glow" />
+        <a href="/decouvrir/" className="brand-link auth-hero-brand">
           <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
         </a>
-        <h1 className="page-title">{
+        <h1 className="auth-hero-title">{
           { login: 'Bon retour', register: 'Créer un compte', verify: 'Vérifiez votre email',
             forgot: 'Mot de passe oublié', reset: 'Nouveau mot de passe' }[mode]
         }</h1>
-        <p className="page-sub" style={{ marginBottom: 0 }}>{
+        <p className="auth-hero-sub">{
           { login: 'Connectez-vous pour envoyer ou transporter en toute confiance.',
             register: 'Rejoignez la communauté Bruxelles ↔ Casablanca.',
             verify: `Un code à 6 chiffres a été envoyé à ${form.email || 'votre adresse'}.`,
             forgot: 'Indiquez votre email, nous vous envoyons un code de réinitialisation.',
             reset: 'Saisissez le code reçu et choisissez un nouveau mot de passe.' }[mode]
         }</p>
+        <div className="auth-hero-badges">
+          <span><Icon name="shieldCheck" size={13} />Paiement séquestré</span>
+          <span><Icon name="camera" size={13} />Preuve vidéo</span>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
