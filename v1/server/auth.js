@@ -21,9 +21,12 @@ export function newToken() {
 }
 
 export function sixDigitCode() {
-  // Démo : code fixe pour pouvoir tester sans email réel.
-  // En prod : crypto.randomInt(100000, 999999) + envoi via prestataire email/SMS.
-  return '123456';
+  // Toujours aléatoire — y compris en mode démo. Ce qui distingue la démo de la prod,
+  // c'est que ce code est réfléchi dans la réponse API (DEMO=true) plutôt qu'envoyé par
+  // un vrai prestataire email/SMS (à brancher avant toute mise en production). Un code
+  // fixe et documenté serait une porte dérobée triviale : n'importe qui connaissant
+  // l'email d'un compte pourrait le vérifier ou en réinitialiser le mot de passe.
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

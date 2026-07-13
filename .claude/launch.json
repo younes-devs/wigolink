@@ -4,7 +4,7 @@
     {
       "name": "cloudkilo-api",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && node server/index.js"],
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.nvm/versions/node/v24.18.0/bin:$PATH\" && cd v1 && DEMO=true node server/index.js"],
       "port": 4517
     },
     {

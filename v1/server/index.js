@@ -10,6 +10,16 @@ app.use(express.json({ limit: '25mb' }));
 
 const db = getDb();
 
+// Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
+// (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
+// passe) et les codes de vérification en clair dans les réponses API — jamais en
+// production, où un vrai prestataire email/SMS doit être branché à la place.
+const DEMO = process.env.DEMO === 'true';
+
+// Endpoint public : le client s'en sert pour savoir s'il doit afficher les outils de
+// démo (bascule de compte, remplissage auto). Ne révèle rien de sensible en lui-même.
+app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
+
 // ---------- Helpers ----------
 const publicUser = (u) =>
   u && {
@@ -20,6 +30,10 @@ const publicUser = (u) =>
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
+
+// Seules les parties d'une transaction (ou un admin) peuvent en consulter le détail,
+// les messages, le récap douane, ou agir sur un litige qui s'y rattache.
+const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
 
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -103,6 +117,12 @@ function openSession(res, user) {
   res.json({ token, user: publicUser(user) });
 }
 
+// Le code n'est renvoyé dans la réponse API qu'en mode démo (pas de prestataire email
+// branché). En production, il doit être envoyé par email/SMS et jamais échoir ici —
+// sinon n'importe qui connaissant un email pourrait vérifier ou réinitialiser un compte
+// qui n'est pas le sien, sans jamais avoir accès à sa boîte mail.
+const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` : undefined);
+
 app.post('/api/auth/register', (req, res) => {
   const { name, email, phone, password, cguAccepted } = req.body;
   const invalid = validRegistration({ name, email, password });
@@ -114,12 +134,13 @@ app.post('/api/auth/register', (req, res) => {
   const code = sixDigitCode();
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
-  // En prod : envoi du code par email (prestataire). En démo, on l'affiche.
-  res.json({ pendingEmail: user.email, demoHint: `Code de vérification (démo) : ${code}` });
+  res.json({ pendingEmail: user.email, demoHint: demoHintFor(code) });
 });
 
 app.post('/api/auth/verify-email', (req, res) => {
   const email = normEmail(req.body.email);
+  if (rateLimit(`verify:${email}`))
+    return res.status(429).json({ error: 'Trop de tentatives — demandez un nouveau code' });
   const pending = db.pendingVerifications[email];
   if (!pending || pending.expires < Date.now())
     return res.status(400).json({ error: 'Code expiré — demandez un nouvel envoi' });
@@ -134,12 +155,14 @@ app.post('/api/auth/verify-email', (req, res) => {
 
 app.post('/api/auth/resend-code', (req, res) => {
   const email = normEmail(req.body.email);
+  if (rateLimit(`resend:${email}`))
+    return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
   const user = findByEmail(email);
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   const code = sixDigitCode();
   db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
-  res.json({ ok: true, demoHint: `Code de vérification (démo) : ${code}` });
+  res.json({ ok: true, demoHint: demoHintFor(code) });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -153,7 +176,7 @@ app.post('/api/auth/login', (req, res) => {
     const code = sixDigitCode();
     db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
     save();
-    return res.json({ needsVerification: true, pendingEmail: email, demoHint: `Code de vérification (démo) : ${code}` });
+    return res.json({ needsVerification: true, pendingEmail: email, demoHint: demoHintFor(code) });
   }
   openSession(res, user);
 });
@@ -174,17 +197,26 @@ app.post('/api/auth/google', (req, res) => {
 
 app.post('/api/auth/forgot', (req, res) => {
   const email = normEmail(req.body.email);
+  if (rateLimit(`forgot:${email}`))
+    return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
   const user = findByEmail(email);
+  let code = null;
   // Réponse identique que le compte existe ou non (pas d'énumération d'emails)
   if (user && user.provider !== 'google') {
-    db.resets[email] = { code: '424242', expires: Date.now() + 15 * 60e3 };
+    code = sixDigitCode();
+    db.resets[email] = { code, expires: Date.now() + 15 * 60e3 };
     save();
   }
-  res.json({ ok: true, demoHint: user?.provider === 'google' ? 'Ce compte utilise Google — connectez-vous avec Google.' : 'Code de réinitialisation (démo) : 424242' });
+  res.json({
+    ok: true,
+    demoHint: user?.provider === 'google' ? 'Ce compte utilise Google — connectez-vous avec Google.' : demoHintFor(code || '—'),
+  });
 });
 
 app.post('/api/auth/reset', (req, res) => {
   const email = normEmail(req.body.email);
+  if (rateLimit(`reset:${email}`))
+    return res.status(429).json({ error: 'Trop de tentatives — refaites une demande' });
   const reset = db.resets[email];
   if (!reset || reset.expires < Date.now())
     return res.status(400).json({ error: 'Code expiré — refaites une demande' });
@@ -601,6 +633,8 @@ function txView(user) {
 app.get('/api/transactions/:id', auth, (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Non autorisé' });
   res.json({ transaction: txView(req.user)(t) });
 });
 
@@ -614,6 +648,8 @@ app.post('/api/listings/:id/accept', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === req.params.id);
   if (!listing || listing.status !== 'published')
     return res.status(400).json({ error: 'Annonce indisponible' });
+  if (listing.senderId === req.user.id)
+    return res.status(400).json({ error: 'Vous ne pouvez pas transporter votre propre annonce' });
   const active = db.transactions.filter(
     (t) => t.travelerId === req.user.id && !['released', 'refunded', 'cancelled'].includes(t.status)
   );
@@ -729,7 +765,6 @@ app.post('/api/transactions/:id/rate', auth, (req, res) => {
 });
 
 // ---------- Litiges (PRD §3 Phase 6, §4.6) ----------
-const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
 const EVIDENCE_WINDOW_MS = 72 * 3600e3; // 72h pour soumettre des preuves (PRD §3 Phase 6)
 const RESOLUTION_TARGET_MS = 7 * 864e5; // cible 7 jours (PRD §4.6)
 
@@ -793,12 +828,18 @@ app.post('/api/disputes/:id/evidence', auth, (req, res) => {
 
 // ---------- Messagerie (PRD §4.5) ----------
 app.get('/api/transactions/:id/messages', auth, (req, res) => {
+  const t = db.transactions.find((x) => x.id === req.params.id);
+  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Non autorisé' });
   res.json({ messages: db.messages.filter((m) => m.txId === req.params.id) });
 });
 
 app.post('/api/transactions/:id/messages', auth, (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+  if (!isPartyToTx(t, req.user.id))
+    return res.status(403).json({ error: 'Non autorisé' });
   const text = String(req.body.text || '').slice(0, 2000);
   const flagged = detectLeak(text);
   const msg = { id: newId('m'), txId: t.id, from: req.user.id, text, flagged, at: Date.now() };
@@ -811,6 +852,8 @@ app.post('/api/transactions/:id/messages', auth, (req, res) => {
 app.get('/api/transactions/:id/customs-recap', auth, (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
+  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Non autorisé' });
   const listing = db.listings.find((l) => l.id === t.listingId);
   const corridor = listing.from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
   res.json({
@@ -1092,8 +1135,6 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
 });
 
 // ---------- Mode démo/test (à retirer en production) ----------
-const DEMO = process.env.DEMO !== 'false';
-
 if (DEMO) {
   // Connexion directe à un compte de démo, sans mot de passe.
   app.post('/api/dev/impersonate', (req, res) => {

@@ -15,10 +15,17 @@ export default function DevBar() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [currentEmail, setCurrentEmail] = useState(null);
+  const [demoEnabled, setDemoEnabled] = useState(false);
+
+  // Le serveur seul décide si le mode démo est actif (DEMO=true) — masqué par défaut,
+  // pas de bascule de compte ni d'endpoints /dev/* exposés en production.
+  useEffect(() => { api('/config').then((d) => setDemoEnabled(!!d.demo)).catch(() => {}); }, []);
 
   useEffect(() => {
     if (open && getToken()) api('/me').then((d) => setCurrentEmail(d.email)).catch(() => {});
   }, [open]);
+
+  if (!demoEnabled) return null;
 
   const impersonate = async (email) => {
     setBusy(true);
