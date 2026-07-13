@@ -4,6 +4,7 @@ import { api, getToken } from '../api';
 import { useAuth } from '../App.jsx';
 import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
+import { getTheme, setTheme } from '../theme.js';
 
 const MEMBER_FMT = new Intl.DateTimeFormat('fr-BE', { month: 'long', year: 'numeric' });
 
@@ -159,11 +160,32 @@ export default function Profile() {
 
       <ReviewsSection userId={user.id} />
 
+      <AppearanceSection />
+
       <PrivacySection onDeleted={logout} email={me?.email} />
 
       <button className="btn btn-ghost" onClick={logout}>
         <Icon name="logout" size={17} />Se déconnecter
       </button>
+    </div>
+  );
+}
+
+// Bascule clair/sombre (PRD UI/UX U9)
+function AppearanceSection() {
+  const [theme, setThemeState] = useState(getTheme());
+  const choose = (t) => { setTheme(t); setThemeState(t); };
+  return (
+    <div className="card">
+      <h2 style={{ marginBottom: 12 }}><Icon name="moon" size={17} />Apparence</h2>
+      <div className="theme-toggle">
+        <button className={`theme-opt ${theme === 'light' ? 'active' : ''}`} onClick={() => choose('light')}>
+          <Icon name="star" size={15} />Clair
+        </button>
+        <button className={`theme-opt ${theme === 'dark' ? 'active' : ''}`} onClick={() => choose('dark')}>
+          <Icon name="moon" size={15} />Sombre
+        </button>
+      </div>
     </div>
   );
 }

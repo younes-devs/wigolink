@@ -18,12 +18,40 @@
   --glass-strong: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(255, 255, 255, 0.7);
   --hairline: rgba(22, 24, 29, 0.08);
+  --surface: #fff; /* fond solide : modals, panneaux, onglet actif, input focus */
   --radius: 16px;
   --shadow: 0 1px 2px rgba(22, 24, 29, 0.04), 0 8px 24px rgba(22, 24, 29, 0.07);
   --shadow-lg: 0 2px 4px rgba(22, 24, 29, 0.05), 0 16px 40px rgba(22, 24, 29, 0.12);
   --blur: blur(24px) saturate(1.6);
   --glass-clear: rgba(255, 255, 255, 0.35);
   --blur-strong: blur(28px) saturate(1.9);
+}
+
+/* ——— Mode sombre (PRD UI/UX U9) ——— appliqué via data-theme (posé par un script inline
+   dans index.html avant le rendu, d'après le choix sauvegardé ou la préférence système). */
+:root[data-theme="dark"] {
+  --bg-0: #0e1116;
+  --bg-1: #070a0f;
+  --ink: #eef1f6;
+  --ink-soft: #9ba3b0;
+  --ink-faint: #6b7280;
+  --accent: #4d95ff;
+  --accent-dark: #2a80f7;
+  --accent-tint: rgba(77, 149, 255, 0.16);
+  --green: #35c48c;
+  --green-tint: rgba(53, 196, 140, 0.15);
+  --amber: #f0b429;
+  --amber-tint: rgba(240, 180, 41, 0.16);
+  --danger: #ff6a5e;
+  --danger-tint: rgba(255, 106, 94, 0.15);
+  --glass: rgba(30, 35, 44, 0.62);
+  --glass-strong: rgba(34, 40, 50, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --surface: #1a1f27;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.5);
+  --glass-clear: rgba(30, 35, 44, 0.4);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -122,7 +150,7 @@ body {
   border: 1px solid var(--hairline);
   backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
 }
-.btn-ghost:hover { background: #fff; }
+.btn-ghost:hover { background: var(--surface); }
 .btn-danger-ghost {
   background: transparent; color: var(--danger);
   border: 1px solid rgba(217, 45, 32, 0.3);
@@ -172,7 +200,7 @@ body {
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none; border-color: var(--ink);
   box-shadow: 0 0 0 1px var(--ink);
-  background: #fff;
+  background: var(--surface);
 }
 .field .hint { font-size: 12px; color: var(--ink-soft); margin-top: 5px; line-height: 1.45; }
 .row { display: flex; gap: 10px; }
@@ -285,7 +313,7 @@ body {
 .msg.mine:not(.tail) { border-bottom-right-radius: 17px; border-top-right-radius: 8px; }
 .msg.theirs {
   align-self: flex-start;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: 17px 17px 17px 5px;
   box-shadow: 0 1px 2px rgba(22, 24, 29, 0.05);
@@ -304,7 +332,7 @@ body {
 }
 .chat-input {
   flex: 1; padding: 11px 16px; border-radius: 999px;
-  border: 1px solid var(--hairline); background: #fff;
+  border: 1px solid var(--hairline); background: var(--surface);
   font-family: inherit; font-size: 14px; color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -391,6 +419,17 @@ body {
 .step-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(22, 24, 29, 0.15); transition: all 0.2s; }
 .step-dots i.on { background: var(--accent); width: 22px; border-radius: 5px; }
 
+/* Bascule de thème (PRD UI/UX U9) */
+.theme-toggle { display: flex; gap: 8px; }
+.theme-opt {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 12px; border-radius: 12px; cursor: pointer; font-family: inherit;
+  font-size: 13.5px; font-weight: 600;
+  background: var(--glass-strong); border: 1.5px solid var(--hairline); color: var(--ink-soft);
+  transition: all 0.15s;
+}
+.theme-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+
 /* Onboarding premier lancement (PRD UI/UX U1) */
 .onboard-overlay {
   position: fixed; inset: 0; z-index: 60;
@@ -403,7 +442,7 @@ body {
 }
 .onboard-card {
   position: relative; width: 100%; max-width: 400px;
-  background: #fff; border-radius: 24px; padding: 30px 24px 24px;
+  background: var(--surface); border-radius: 24px; padding: 30px 24px 24px;
   box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto;
 }
 .onboard-skip {
@@ -458,7 +497,7 @@ body {
   border: 2px solid transparent; transition: all 0.2s;
 }
 .stepper-step.done .stepper-dot { background: var(--accent); color: #fff; }
-.stepper-step.active .stepper-dot { background: #fff; color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+.stepper-step.active .stepper-dot { background: var(--surface); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
 .stepper-label { font-size: 12px; font-weight: 600; letter-spacing: -0.1px; }
 /* Trait de liaison entre les pastilles */
 .stepper-step::before {
@@ -577,7 +616,7 @@ body {
 }
 .modal {
   width: 100%; max-width: 360px;
-  background: #fff; border-radius: 20px;
+  background: var(--surface); border-radius: 20px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: modal-in 0.18s ease;
@@ -779,7 +818,7 @@ body {
   font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft);
   padding: 8px; border-radius: 9px; transition: background 0.15s, color 0.15s;
 }
-.tabs button.active { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+.tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 
 .filter-count {
   position: absolute; top: -6px; right: -6px;
@@ -806,7 +845,7 @@ body {
 .devbar-fab:hover { transform: scale(1.08); }
 .devbar-panel {
   position: fixed; bottom: 134px; right: max(12px, calc(50% - 228px)); z-index: 40;
-  width: 240px; background: #fff; border-radius: 16px;
+  width: 240px; background: var(--surface); border-radius: 16px;
   box-shadow: var(--shadow-lg); border: 1px solid var(--hairline);
   padding: 12px; animation: modal-in 0.15s ease;
 }
@@ -876,7 +915,7 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .notif-panel {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
   width: 320px; max-height: 380px; overflow-y: auto;
-  background: #fff; border-radius: 16px;
+  background: var(--surface); border-radius: 16px;
   box-shadow: var(--shadow-lg); border: 1px solid var(--hairline);
   padding: 8px; animation: modal-in 0.15s ease;
 }
