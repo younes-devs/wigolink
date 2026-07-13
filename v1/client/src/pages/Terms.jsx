@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../Icons.jsx';
+import { useIndexable } from '../useIndexable.js';
 
 const LAST_UPDATE = '12 juillet 2026';
 
@@ -170,6 +171,7 @@ const SECTIONS = [
 
 export default function Terms() {
   const nav = useNavigate();
+  useIndexable();
   return (
     <div>
       <button className="link-btn mb" onClick={() => nav(-1)}>

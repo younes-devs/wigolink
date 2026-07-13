@@ -1,0 +1,25 @@
+# CloudKilo — robots.txt
+# L'application (authentification, feed, transactions, profil, back-office) ne doit
+# jamais être indexée : contenu privé ou vide côté crawler. Seul le site public
+# (landing + pages de contenu) est exploitable. Voir docs/prd-seo.md §5.1.
+
+User-agent: *
+Allow: /decouvrir
+Allow: /comment-ca-marche
+Allow: /envoyer-colis/
+Allow: /produits/
+Allow: /guide/
+Allow: /cgu
+Allow: /confidentialite
+Allow: /sitemap.xml
+
+Disallow: /
+Disallow: /annonce/
+Disallow: /envois
+Disallow: /transactions
+Disallow: /profil
+Disallow: /verification
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://cloudkilo.app/sitemap.xml
