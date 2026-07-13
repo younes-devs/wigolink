@@ -12,6 +12,8 @@ Allow: /guide/
 Allow: /cgu
 Allow: /confidentialite
 Allow: /sitemap.xml
+Allow: /assets/
+Allow: /favicon.ico
 
 Disallow: /
 Disallow: /annonce/
