@@ -11,13 +11,13 @@ const SECTIONS = [
     body: (
       <>
         <p>
-          CloudKilo est une plateforme de mise en relation entre expéditeurs et voyageurs pour le transport
+          Wigofly est une plateforme de mise en relation entre expéditeurs et voyageurs pour le transport
           collaboratif de produits du terroir sur le corridor Bruxelles ↔ Casablanca.
         </p>
         <p className="policy-note">
-          <Icon name="shieldCheck" size={14} /> CloudKilo agit exclusivement en tant qu'<b>intermédiaire technique</b>.
+          <Icon name="shieldCheck" size={14} /> Wigofly agit exclusivement en tant qu'<b>intermédiaire technique</b>.
           Nous ne sommes ni transporteur, ni transitaire, ni mandataire douanier. Nous ne manipulons jamais la
-          marchandise. Les fonds sont détenus par un prestataire de paiement agréé, jamais par CloudKilo.
+          marchandise. Les fonds sont détenus par un prestataire de paiement agréé, jamais par Wigofly.
         </p>
       </>
     ),
@@ -83,7 +83,7 @@ const SECTIONS = [
     body: (
       <ul className="checklist">
         <li>Le paiement est séquestré (escrow) dès l'accord et libéré automatiquement à la double validation de livraison — jamais avant.</li>
-        <li>CloudKilo prélève une commission de 15 à 20 % sur la rémunération du voyageur, affichée en toute transparence avant l'accord.</li>
+        <li>Wigofly prélève une commission de 15 à 20 % sur la rémunération du voyageur, affichée en toute transparence avant l'accord.</li>
         <li>En cas de refus du voyageur avant prise en charge, ou d'absence de l'expéditeur au rendez-vous, l'escrow est intégralement remboursé sans frais pour la partie non fautive.</li>
         <li>Les gains des voyageurs peuvent être soumis à déclaration fiscale selon votre pays de résidence — il vous appartient de vous renseigner auprès de l'administration compétente.</li>
       </ul>
@@ -115,7 +115,7 @@ const SECTIONS = [
           <li>Un état à la livraison différent de la vidéo de scellage engage la responsabilité du voyageur (remboursement de l'expéditeur).</li>
           <li>Un état conforme à la vidéo mais différent de l'annonce initiale engage la responsabilité de l'expéditeur (paiement maintenu au voyageur).</li>
           <li>Notre équipe s'engage à un premier retour sous 24 heures et une résolution sous 7 jours.</li>
-          <li>La décision d'arbitrage de CloudKilo, rendue selon cette grille, est définitive dans le cadre de l'usage de la plateforme.</li>
+          <li>La décision d'arbitrage de Wigofly, rendue selon cette grille, est définitive dans le cadre de l'usage de la plateforme.</li>
         </ul>
       </>
     ),
@@ -137,8 +137,8 @@ const SECTIONS = [
     title: '9. Limitation de responsabilité',
     body: (
       <p>
-        CloudKilo met à disposition les outils de mise en relation, de vérification, de séquestre et d'arbitrage
-        décrits ci-dessus, avec les moyens raisonnables pour sécuriser les échanges. CloudKilo ne saurait être
+        Wigofly met à disposition les outils de mise en relation, de vérification, de séquestre et d'arbitrage
+        décrits ci-dessus, avec les moyens raisonnables pour sécuriser les échanges. Wigofly ne saurait être
         tenu responsable des conséquences d'une fausse déclaration, d'un contournement de la plateforme, ou d'un
         cas de force majeure (retard de vol, incident douanier imprévisible, etc.). Notre responsabilité, quand
         elle est engagée, est limitée au montant de la transaction concernée.
@@ -150,7 +150,7 @@ const SECTIONS = [
     title: '10. Suspension et résiliation',
     body: (
       <p>
-        CloudKilo peut suspendre ou clôturer un compte en cas de violation des présentes conditions, de fraude
+        Wigofly peut suspendre ou clôturer un compte en cas de violation des présentes conditions, de fraude
         avérée ou suspectée, ou de comportement mettant en danger la sécurité d'autres membres. Vous pouvez
         supprimer votre compte à tout moment depuis Profil → Confidentialité et données, sous réserve de n'avoir
         aucune transaction en cours.
@@ -198,8 +198,8 @@ export default function Terms() {
       <div className="card center" style={{ padding: '20px 18px' }}>
         <Icon name="mail" size={22} />
         <p className="muted mt" style={{ fontSize: 13 }}>Une question sur ces conditions ?</p>
-        <a href="mailto:legal@cloudkilo.app" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>
-          legal@cloudkilo.app
+        <a href="mailto:legal@wigofly.app" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>
+          legal@wigofly.app
         </a>
       </div>
     </div>

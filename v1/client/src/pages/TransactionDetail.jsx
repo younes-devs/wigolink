@@ -350,7 +350,7 @@ function SealingVideo({ tx, reload }) {
   );
 }
 
-const recapCacheKey = (txId) => `cloudkilo_recap_${txId}`;
+const recapCacheKey = (txId) => `wigofly_recap_${txId}`;
 
 function CustomsRecap({ txId, status }) {
   const [recap, setRecap] = useState(null);
@@ -383,7 +383,7 @@ function CustomsRecap({ txId, status }) {
       let y = 56;
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-      doc.text('CloudKilo — Récapitulatif douane', left, y); y += 22;
+      doc.text('Wigofly — Récapitulatif douane', left, y); y += 22;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(110);
       doc.text(`Généré le ${new Date().toLocaleString('fr-BE')} · Transaction ${recap.txId}`, left, y); y += 28;
       doc.setDrawColor(220); doc.line(left, y, 547, y); y += 24;
@@ -410,12 +410,12 @@ function CustomsRecap({ txId, status }) {
       y += 8; doc.setDrawColor(220); doc.line(left, y, 547, y); y += 20;
       doc.setFontSize(9); doc.setTextColor(130);
       doc.text(doc.splitTextToSize(
-        "Ce document atteste d'une transaction enregistrée sur la plateforme CloudKilo, avec identités vérifiées " +
+        "Ce document atteste d'une transaction enregistrée sur la plateforme Wigofly, avec identités vérifiées " +
         'des deux parties et preuve vidéo de scellage. Il ne constitue pas une déclaration en douane officielle.',
         499
       ), left, y);
 
-      doc.save(`cloudkilo-douane-${recap.txId}.pdf`);
+      doc.save(`wigofly-douane-${recap.txId}.pdf`);
     } finally {
       setPdfBusy(false);
     }

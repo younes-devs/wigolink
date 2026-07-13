@@ -1,9 +1,9 @@
-let token = localStorage.getItem('cloudkilo_token') || null;
+let token = localStorage.getItem('wigofly_token') || null;
 
 export function setToken(t) {
   token = t;
-  if (t) localStorage.setItem('cloudkilo_token', t);
-  else localStorage.removeItem('cloudkilo_token');
+  if (t) localStorage.setItem('wigofly_token', t);
+  else localStorage.removeItem('wigofly_token');
 }
 
 export function getToken() {

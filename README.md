@@ -1,4 +1,4 @@
-# CloudKilo (nom provisoire)
+# Wigofly (nom provisoire)
 
 Plateforme de transport collaboratif Belgique/France ↔ Maroc — mise en relation sécurisée entre expéditeurs et voyageurs, avec paiement séquestré, vérification d'identité et preuve vidéo.
 
@@ -31,10 +31,10 @@ Ouvrir http://localhost:5173. Comptes de démo (mot de passe : `demo1234`) :
 
 | Rôle | Email |
 |---|---|
-| Fatima — expéditrice (Casablanca) | `fatima@demo.cloudkilo.app` |
-| Karim — voyageur (Bruxelles) | `karim@demo.cloudkilo.app` |
-| Mehdi — destinataire (Bruxelles) | `mehdi@demo.cloudkilo.app` |
-| Admin — back-office | `admin@demo.cloudkilo.app` |
+| Fatima — expéditrice (Casablanca) | `fatima@demo.wigofly.app` |
+| Karim — voyageur (Bruxelles) | `karim@demo.wigofly.app` |
+| Mehdi — destinataire (Bruxelles) | `mehdi@demo.wigofly.app` |
+| Admin — back-office | `admin@demo.wigofly.app` |
 
 Authentification complète : inscription email + mot de passe (hash scrypt), vérification
 d'email par code (démo : `123456`), connexion Google (simulée), mot de passe oublié
@@ -64,7 +64,7 @@ scellage depuis un téléphone sur le même réseau Wi-Fi, il faut donc servir l
 cd v1
 mkdir -p .cert
 openssl req -x509 -newkey rsa:2048 -keyout .cert/key.pem -out .cert/cert.pem \
-  -days 825 -nodes -subj "/CN=cloudkilo-dev" \
+  -days 825 -nodes -subj "/CN=wigofly-dev" \
   -addext "subjectAltName=IP:<IP_DE_TON_PC>,IP:127.0.0.1,DNS:localhost"
 ```
 

@@ -381,7 +381,7 @@ app.get('/api/profile/export', auth, (req, res) => {
       reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
     })),
   };
-  res.setHeader('Content-Disposition', `attachment; filename="cloudkilo-donnees-${uid}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="wigofly-donnees-${uid}.json"`);
   res.json(data);
 });
 
@@ -396,7 +396,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
   // Anonymisation plutôt que suppression physique : préserve l'intégrité des transactions passées
   // (traçabilité douanière/litiges) tout en effaçant les données personnelles identifiantes.
   req.user.name = 'Compte supprimé';
-  req.user.email = `deleted-${uid}@cloudkilo.invalid`;
+  req.user.email = `deleted-${uid}@wigofly.invalid`;
   req.user.phone = '';
   req.user.city = '';
   req.user.photoUrl = null;
@@ -787,7 +787,7 @@ app.get('/api/users/:id/reviews', auth, (req, res) => {
     for (const r of t.ratings || []) {
       if (r.target !== req.params.id) continue;
       const author = findUser(r.by);
-      reviews.push({ stars: r.stars, comment: r.comment || null, at: r.at, authorName: author?.name || 'Membre CloudKilo' });
+      reviews.push({ stars: r.stars, comment: r.comment || null, at: r.at, authorName: author?.name || 'Membre Wigofly' });
     }
   }
   reviews.sort((a, b) => b.at - a.at);
@@ -1268,7 +1268,7 @@ if (DEMO) {
     const names = ['Salma', 'Youssef', 'Nadia', 'Hamza', 'Leila', 'Adam', 'Sofia', 'Bilal'];
     const user = makeUser({
       name: `${names[n % names.length]} T${n}`,
-      email: `test${n}@demo.cloudkilo.app`,
+      email: `test${n}@demo.wigofly.app`,
       phone: `+3247${n}000`,
       provider: 'email',
       emailVerified: true,
@@ -1288,4 +1288,4 @@ if (DEMO) {
 }
 
 const PORT = process.env.PORT || 4517;
-app.listen(PORT, () => console.log(`API CloudKilo sur http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`API Wigofly sur http://localhost:${PORT}`));

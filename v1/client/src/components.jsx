@@ -8,8 +8,10 @@ export function Header({ user }) {
   return (
     <header className="app-header">
       <div className="brand">
-        <span className="brand-mark">CK</span>
-        <span>CloudKilo</span>
+        <Link to="/" className="brand-link">
+          <img className="brand-mark" src="/assets/logo-mark-192.png" alt="Wigofly" />
+          <span>Wigofly</span>
+        </Link>
         {user && <span style={{ marginLeft: 'auto' }}><Notifications /></span>}
       </div>
       <div className="tagline">Envoyez avec confiance · Bruxelles ↔ Casablanca</div>
@@ -42,7 +44,7 @@ export function QrBlock({ code, caption }) {
   const [dataUrl, setDataUrl] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    QRCode.toDataURL(`cloudkilo:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
+    QRCode.toDataURL(`wigofly:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
       .then((url) => { if (!cancelled) setDataUrl(url); });
     return () => { cancelled = true; };
   }, [code]);
@@ -76,7 +78,7 @@ export function QrScanner({ onDetected, onClose }) {
           if (stopped) return;
           try {
             const codes = await detector.detect(videoRef.current);
-            const hit = codes.find((c) => c.rawValue?.startsWith('cloudkilo:'));
+            const hit = codes.find((c) => c.rawValue?.startsWith('wigofly:'));
             if (hit) { onDetected(hit.rawValue.slice(7)); return; }
           } catch { /* frame illisible, on retente */ }
           raf = requestAnimationFrame(tick);

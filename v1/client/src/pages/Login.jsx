@@ -83,7 +83,9 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="center" style={{ padding: '26px 0 20px' }}>
-        <span className="brand-mark auth-logo">CK</span>
+        <a href="/decouvrir/" className="brand-link">
+          <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
+        </a>
         <h1 className="page-title">{
           { login: 'Bon retour', register: 'Créer un compte', verify: 'Vérifiez votre email',
             forgot: 'Mot de passe oublié', reset: 'Nouveau mot de passe' }[mode]
@@ -134,7 +136,7 @@ export default function Login() {
             <button className="link-btn" onClick={() => switchMode('register')}>Créer un compte</button>
           </p>
           <p className="muted center" style={{ fontSize: 11.5 }}>
-            Comptes de démo : fatima@ / karim@ / mehdi@ / admin@demo.cloudkilo.app — mot de passe <b>demo1234</b>
+            Comptes de démo : fatima@ / karim@ / mehdi@ / admin@demo.wigofly.app — mot de passe <b>demo1234</b>
           </p>
         </>
       )}

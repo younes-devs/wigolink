@@ -58,7 +58,7 @@ export default function App() {
     return (
       <div className="phone">
         <div className="boot-splash">
-          <span className="brand-mark boot-logo">CK</span>
+          <img className="brand-mark boot-logo" src="/assets/logo-mark-192.png" alt="Wigofly" />
           <span className="spinner boot-spinner" />
         </div>
       </div>

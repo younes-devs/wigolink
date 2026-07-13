@@ -25,7 +25,7 @@ function seed() {
         maxValue: 500, maxActive: 3, badges: [], avatar: '🧔', createdAt: now - 90 * 864e5,
       },
       {
-        id: 'u-admin', name: 'Équipe CloudKilo', phone: '+32470000000', city: '—',
+        id: 'u-admin', name: 'Équipe Wigofly', phone: '+32470000000', city: '—',
         kycStatus: 'verified', isAdmin: true, rating: null, ratingCount: 0, completed: 0,
         cancelRate: 0, maxValue: 99999, maxActive: 99, badges: [], avatar: '🛡️', createdAt: now - 300 * 864e5,
       },
@@ -80,15 +80,15 @@ let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'
 // Migration : comptes existants sans email/mot de passe (démo : demo1234).
 import { hashPassword } from './auth.js';
 const DEMO_EMAILS = {
-  'u-fatima': 'fatima@demo.cloudkilo.app',
-  'u-karim': 'karim@demo.cloudkilo.app',
-  'u-mehdi': 'mehdi@demo.cloudkilo.app',
-  'u-admin': 'admin@demo.cloudkilo.app',
+  'u-fatima': 'fatima@demo.wigofly.app',
+  'u-karim': 'karim@demo.wigofly.app',
+  'u-mehdi': 'mehdi@demo.wigofly.app',
+  'u-admin': 'admin@demo.wigofly.app',
 };
 let migrated = false;
 for (const u of db.users) {
   if (!u.email) {
-    u.email = DEMO_EMAILS[u.id] || `${u.id}@demo.cloudkilo.app`;
+    u.email = DEMO_EMAILS[u.id] || `${u.id}@demo.wigofly.app`;
     u.passwordHash = hashPassword('demo1234');
     u.emailVerified = true;
     u.provider = 'email';

@@ -1,4 +1,4 @@
-/* CloudKilo — site public (marketing). Feuille de style indépendante de l'app :
+/* Wigofly — site public (marketing). Feuille de style indépendante de l'app :
    ces pages sont du HTML statique, crawlables sans exécution JS. */
 :root {
   --bg-0: #f5f6f8;
@@ -37,12 +37,9 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--hairline);
 }
 .site-header .wrap { display: flex; align-items: center; gap: 10px; padding-top: 14px; padding-bottom: 14px; }
-.brand-mark {
-  width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 12px; letter-spacing: -0.3px;
-}
+.brand-mark { height: 30px; width: auto; flex: 0 0 auto; display: inline-block; object-fit: contain; }
+.brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand-link:hover { text-decoration: none; }
 .site-header .brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; color: var(--ink); }
 .site-header nav { margin-left: auto; display: flex; gap: 20px; font-size: 14px; font-weight: 600; }
 .site-header nav a { color: var(--ink-soft); }

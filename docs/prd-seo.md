@@ -1,5 +1,5 @@
 # PRD — SEO & stratégie de mots-clés
-### CloudKilo · Addendum au PRD v1.0 · Juillet 2026
+### Wigofly · Addendum au PRD v1.0 · Juillet 2026
 
 ---
 
@@ -7,7 +7,7 @@
 
 **L'app actuelle n'est pas indexable, et ce n'est pas un détail à corriger en passant.**
 
-CloudKilo est une SPA React 100 % côté client (Vite, pas de SSR). Le HTML livré au
+Wigofly est une SPA React 100 % côté client (Vite, pas de SSR). Le HTML livré au
 navigateur — et donc à Googlebot — est :
 
 ```html
@@ -35,7 +35,7 @@ pour un crawler) et risqué (fuite d'URLs internes, contenu dupliqué par utilis
 
 ## 2. Objectif
 
-Construire la présence organique de CloudKilo sur les recherches liées à l'envoi de produits
+Construire la présence organique de Wigofly sur les recherches liées à l'envoi de produits
 entre la Belgique/France et le Maroc, en ciblant la diaspora marocaine (2M+ de personnes,
 PRD §1.1) — sans dépendre uniquement de publicité payante.
 
@@ -70,7 +70,7 @@ fonctionnement, et le convertit vers l'inscription/V0 (formulaire de demande).
 | Voyageur / rémunération | « gagner de l'argent en transportant un colis », « voyageur Bruxelles Casablanca rémunéré » | Recrutement côté offre (voyageurs) | Faible, mais cible précieuse |
 | Confiance / sécurité | « comment envoyer un colis en toute sécurité au Maroc », « arnaque transport colis Maroc groupe Facebook » | Réassurance, capte la frustration du système informel actuel (PRD §1.1) | Moyen — angle éditorial fort |
 | Douane / réglementation | « franchise douanière Maroc Belgique », « quantité autorisée huile d'argan douane » | Informationnel, capte tôt dans le parcours de décision | Moyen |
-| Marque (une fois connue) | « CloudKilo avis », « CloudKilo application » | Navigationnel | Croît avec la notoriété |
+| Marque (une fois connue) | « Wigofly avis », « Wigofly application » | Navigationnel | Croît avec la notoriété |
 
 **Priorité de lancement** : le cluster « confiance/sécurité » est le plus stratégique — il
 répond directement au problème que le PRD identifie comme le moteur du produit (§1.1 :
@@ -211,8 +211,8 @@ inscriptions ou transactions — même logique que le reste du plan (§8 du plan
 
 ## 11. Questions ouvertes
 
-1. Le site public vit-il sur le même domaine que l'app (`cloudkilo.app/`) avec une séparation
-   technique interne, ou sur un sous-domaine dédié (`www.cloudkilo.app` vs `app.cloudkilo.app`) ?
+1. Le site public vit-il sur le même domaine que l'app (`wigofly.app/`) avec une séparation
+   technique interne, ou sur un sous-domaine dédié (`www.wigofly.app` vs `app.wigofly.app`) ?
    Impacte l'architecture de pré-rendu (T3).
 2. Qui rédige le contenu éditorial (guide, blog) — interne ou prestataire ? Impacte le rythme
    de publication.

@@ -34,7 +34,7 @@ export default function Kyc() {
         <div className="card center" style={{ padding: '28px 18px' }}>
           <div className="kyc-status-icon kyc-ok"><Icon name="shieldCheck" size={30} /></div>
           <h2 style={{ justifyContent: 'center', marginTop: 12 }}>Identité vérifiée</h2>
-          <p className="muted mt">Vous avez accès à toutes les fonctionnalités de CloudKilo.</p>
+          <p className="muted mt">Vous avez accès à toutes les fonctionnalités de Wigofly.</p>
         </div>
       )}
 
@@ -58,7 +58,7 @@ export default function Kyc() {
           )}
           <p className="muted mt center">
             Cette décision est définitive. Si vous pensez qu'il s'agit d'une erreur, contactez
-            <a href="mailto:support@cloudkilo.app" style={{ color: 'var(--accent)', fontWeight: 600 }}> support@cloudkilo.app</a>.
+            <a href="mailto:support@wigofly.app" style={{ color: 'var(--accent)', fontWeight: 600 }}> support@wigofly.app</a>.
           </p>
         </div>
       )}
@@ -110,7 +110,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       const stream = await requestCameraStream(captureConfig[name].facing);
       setCaptureStream(stream);
     } catch {
-      setCaptureError("Accès à la caméra refusé ou indisponible. Vérifiez l'autorisation caméra de CloudKilo dans les réglages de votre téléphone.");
+      setCaptureError("Accès à la caméra refusé ou indisponible. Vérifiez l'autorisation caméra de Wigofly dans les réglages de votre téléphone.");
     }
   };
   const closeCapture = () => {
@@ -137,7 +137,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       <div className="card">
         <div className="alert alert-danger" style={{ marginBottom: 0 }}>
           <Icon name="alert" size={17} />
-          Nombre maximum de tentatives atteint. Contactez <a href="mailto:support@cloudkilo.app">support@cloudkilo.app</a>.
+          Nombre maximum de tentatives atteint. Contactez <a href="mailto:support@wigofly.app">support@wigofly.app</a>.
         </div>
       </div>
     );

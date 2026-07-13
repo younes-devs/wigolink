@@ -1,4 +1,4 @@
-# CloudKilo — robots.txt
+# Wigofly — robots.txt
 # L'application (authentification, feed, transactions, profil, back-office) ne doit
 # jamais être indexée : contenu privé ou vide côté crawler. Seul le site public
 # (landing + pages de contenu) est exploitable. Voir docs/prd-seo.md §5.1.
@@ -22,4 +22,4 @@ Disallow: /verification
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://cloudkilo.app/sitemap.xml
+Sitemap: https://wigofly.app/sitemap.xml

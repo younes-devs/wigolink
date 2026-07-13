@@ -224,7 +224,7 @@ export default function CreateListing() {
           <div className="field">
             <label>Téléphone du destinataire (optionnel)</label>
             <input value={form.recipientPhone} onChange={(e) => set('recipientPhone', e.target.value)} placeholder="+32…" />
-            <div className="hint">S'il a un compte CloudKilo, il validera la livraison.</div>
+            <div className="hint">S'il a un compte Wigofly, il validera la livraison.</div>
           </div>
           <button className="btn btn-primary" disabled={!form.dateFrom || !form.dateTo || !form.travelerPay}
             onClick={() => setStep(2)}>Continuer</button>

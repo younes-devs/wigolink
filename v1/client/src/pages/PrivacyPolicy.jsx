@@ -11,13 +11,13 @@ const SECTIONS = [
     body: (
       <>
         <p>
-          CloudKilo (ci-après « <b>nous</b> », « <b>la Plateforme</b> ») est responsable du traitement des données
+          Wigofly (ci-après « <b>nous</b> », « <b>la Plateforme</b> ») est responsable du traitement des données
           personnelles collectées via l'application, au sens de l'article 4.7 du Règlement Général sur la
           Protection des Données (RGPD — UE 2016/679).
         </p>
         <p>
           Pour toute question relative à vos données, vous pouvez contacter notre Délégué à la Protection des
-          Données : <a href="mailto:dpo@cloudkilo.app">dpo@cloudkilo.app</a>.
+          Données : <a href="mailto:dpo@wigofly.app">dpo@wigofly.app</a>.
         </p>
       </>
     ),
@@ -84,7 +84,7 @@ const SECTIONS = [
         <p>Vos données ne sont jamais vendues. Elles peuvent être partagées avec :</p>
         <ul className="checklist">
           <li><b>Prestataire de vérification d'identité</b> (KYC) — pour valider votre pièce d'identité.</li>
-          <li><b>Prestataire de paiement agréé</b> (escrow) — pour séquestrer et verser les fonds. CloudKilo ne détient jamais vos fonds ni vos coordonnées bancaires complètes.</li>
+          <li><b>Prestataire de paiement agréé</b> (escrow) — pour séquestrer et verser les fonds. Wigofly ne détient jamais vos fonds ni vos coordonnées bancaires complètes.</li>
           <li><b>Votre partenaire de transaction</b> — nom, photo, score de fiabilité, badges (jamais votre téléphone avant l'accord).</li>
           <li><b>Autorités compétentes</b> — sur réquisition légale (douanes, justice).</li>
           <li><b>Notre équipe support/arbitrage</b> — pour instruire un litige, avec accès restreint et journalisé.</li>
@@ -189,8 +189,8 @@ export default function PrivacyPolicy() {
         <p className="muted mt" style={{ fontSize: 13 }}>
           Une question sur vos données ? Écrivez à notre DPO :
         </p>
-        <a href="mailto:dpo@cloudkilo.app" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>
-          dpo@cloudkilo.app
+        <a href="mailto:dpo@wigofly.app" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>
+          dpo@wigofly.app
         </a>
       </div>
     </div>

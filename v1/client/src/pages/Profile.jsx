@@ -150,7 +150,7 @@ export default function Profile() {
       <div className="card">
         <h2 style={{ marginBottom: 8 }}><Icon name="shieldCheck" size={17} />Vos garanties</h2>
         <ul className="checklist">
-          <li>Paiement séquestré chez un prestataire agréé — jamais chez CloudKilo.</li>
+          <li>Paiement séquestré chez un prestataire agréé — jamais chez Wigofly.</li>
           <li>Identités vérifiées (KYC) pour tous les membres.</li>
           <li>Preuve vidéo du contenu à chaque envoi.</li>
           <li>Litiges arbitrés sous 7 jours selon une grille écrite.</li>
@@ -250,7 +250,7 @@ function PrivacyModal({ onClose, onDeleted, email }) {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'cloudkilo-mes-donnees.json';
+    a.href = url; a.download = 'wigofly-mes-donnees.json';
     a.click();
     URL.revokeObjectURL(url);
     setExported(true);

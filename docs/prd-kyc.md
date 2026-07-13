@@ -1,5 +1,5 @@
 # PRD — Vérification d'identité (KYC manuel)
-### CloudKilo · Addendum au PRD v1.0 · Juillet 2026
+### Wigofly · Addendum au PRD v1.0 · Juillet 2026
 
 ---
 
@@ -10,7 +10,7 @@ prestataire n'est pas encore choisi (dépendance A4 du plan de projet, non tranc
 attendant, ce document définit un **KYC manuel** : les utilisateurs soumettent leurs documents
 in-app, une équipe interne les valide depuis le back-office.
 
-**Objectif** : donner à CloudKilo une vraie barrière d'identité — pas la vérification instantanée
+**Objectif** : donner à Wigofly une vraie barrière d'identité — pas la vérification instantanée
 factice actuelle (`kycStatus = 'verified'` en un clic, sans aucun contrôle) — sans dépendre d'un
 prestataire externe qui n'est pas encore sous contrat.
 
@@ -176,7 +176,7 @@ raison pour laquelle ce système doit rester remplaçable sans réécrire la cap
 
 La politique de confidentialité actuelle (§2) affirme que *« vos documents d'identité sont
 traités et conservés par notre prestataire de vérification agréé — jamais stockés sur nos propres
-serveurs »*. Avec un KYC manuel, c'est **faux** : les documents sont stockés côté CloudKilo. Ce
+serveurs »*. Avec un KYC manuel, c'est **faux** : les documents sont stockés côté Wigofly. Ce
 texte devra être corrigé en même temps que l'implémentation, pour rester honnête vis-à-vis des
 utilisateurs (obligation légale, pas cosmétique).
 
