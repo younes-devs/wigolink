@@ -5,3 +5,4 @@ node_modules/
 .env.local
 v1/server/data.json
 v1/.cert/
+.claude/settings.local.json
