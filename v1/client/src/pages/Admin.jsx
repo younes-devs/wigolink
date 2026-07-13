@@ -7,7 +7,7 @@ import { useToast } from '../Toast.jsx';
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('review'); // review | kyc | kpis | categories
+  const [tab, setTab] = useState('review'); // review | kyc | kpis | fraud | categories
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -47,6 +47,7 @@ export default function Admin() {
         </button>
         <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>Identités</button>
         <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
+        <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>Fraude</button>
         <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
       </div>
 
@@ -105,6 +106,7 @@ export default function Admin() {
 
       {tab === 'kyc' && <KycPanel />}
       {tab === 'kpis' && <KpiPanel />}
+      {tab === 'fraud' && <FraudPanel />}
       {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
     </div>
   );
@@ -514,6 +516,119 @@ function KpiCard({ title, icon, value, targetLabel, status, children }) {
         <div className="kpi-value">{value}</div>
       </div>
       {children}
+    </div>
+  );
+}
+
+// ---------- Dashboard fraude (PRD §4.7) ----------
+function FraudSection({ icon, title, help, empty, children, count }) {
+  return (
+    <div className="card">
+      <div className="list-row mb" style={{ alignItems: 'flex-start' }}>
+        <div className="grow">
+          <h2 style={{ marginBottom: 2 }}><Icon name={icon} size={17} />{title}</h2>
+          <p className="muted" style={{ fontSize: 12.5 }}>{help}</p>
+        </div>
+        {count > 0 && <span className="pill pill-saffron">{count}</span>}
+      </div>
+      {count === 0 ? <p className="muted" style={{ fontSize: 13 }}>{empty}</p> : children}
+    </div>
+  );
+}
+
+function FraudPanel() {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => { api('/admin/fraud').then(setD).catch((e) => setError(e.message)); }, []);
+
+  if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
+  if (!d) return <SkeletonList count={4} avatar={false} lines={2} />;
+
+  return (
+    <div>
+      <div className="alert alert-warn">
+        <Icon name="alert" size={17} />
+        <span>
+          Signaux de corrélation, pas des verdicts. Un IP partagé ou un taux d'annulation élevé appelle une revue
+          humaine — jamais une sanction automatique (PRD §5 : collusion, faux KYC, désintermédiation).
+        </span>
+      </div>
+
+      <FraudSection icon="user" title="Comptes potentiellement liés" count={d.linkedAccounts.length}
+        help="Même téléphone ou même adresse IP à l'inscription — signe possible de doublons ou de complicité."
+        empty="Aucun rapprochement détecté.">
+        {d.linkedAccounts.map((g, i) => (
+          <div className="list-row" key={i} style={{ borderTop: i > 0 ? '1px solid var(--border)' : 'none', paddingTop: i > 0 ? 10 : 0, marginTop: i > 0 ? 10 : 0 }}>
+            <div className="grow">
+              <span className="pill pill-gray mb" style={{ fontSize: 11 }}>{g.signal === 'phone' ? 'Téléphone' : 'IP'} : {g.value}</span>
+              <div style={{ fontSize: 13 }}>
+                {g.users.map((u) => <div key={u.id}>{u.name} — {u.email}</div>)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </FraudSection>
+
+      <FraudSection icon="repeat" title="Paires expéditeur/voyageur récurrentes" count={d.repeatPairs.length}
+        help="Deux comptes qui transigent toujours ensemble — risque de fausses transactions ou de collusion sur les litiges."
+        empty="Aucune paire récurrente.">
+        {d.repeatPairs.map((p, i) => (
+          <div className="list-row" key={i} style={{ borderTop: i > 0 ? '1px solid var(--border)' : 'none', paddingTop: i > 0 ? 10 : 0, marginTop: i > 0 ? 10 : 0 }}>
+            <div className="grow" style={{ fontSize: 13 }}>
+              <b>{p.users.map((u) => u.name).join(' ↔ ')}</b>
+              <div className="muted" style={{ fontSize: 12 }}>
+                {p.transactionCount} transactions · {p.totalValueEur} € cumulés
+                {p.disputedCount > 0 ? ` · ${p.disputedCount} litige(s)` : ''}
+              </div>
+            </div>
+          </div>
+        ))}
+      </FraudSection>
+
+      <FraudSection icon="chat" title="Désintermédiation détectée" count={d.flaggedMessaging.length}
+        help="Utilisateurs dont des messages ont été signalés pour partage de coordonnées hors app."
+        empty="Aucun message signalé.">
+        {d.flaggedMessaging.map((u) => (
+          <div className="list-row" key={u.userId}>
+            <div className="grow">{u.name}</div>
+            <span className="pill pill-danger">{u.count} message(s)</span>
+          </div>
+        ))}
+      </FraudSection>
+
+      <FraudSection icon="alert" title="Taux d'annulation anormal" count={d.abnormalCancel.length}
+        help="3+ transactions passées, plus de 20 % d'annulation — à confronter aux avis et litiges."
+        empty="Rien d'anormal.">
+        {d.abnormalCancel.map((u) => (
+          <div className="list-row" key={u.id}>
+            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>({u.completed} transactions)</span></div>
+            <span className="pill pill-danger">{PCT_FMT.format(u.cancelRate)}</span>
+          </div>
+        ))}
+      </FraudSection>
+
+      <FraudSection icon="fileText" title="Litiges répétés" count={d.disputeProne.length}
+        help="Comptes impliqués dans 2+ litiges — utile pour repérer une source de friction récurrente."
+        empty="Aucun compte au-delà d'un litige isolé.">
+        {d.disputeProne.map((u) => (
+          <div className="list-row" key={u.userId}>
+            <div className="grow">{u.name}</div>
+            <span className="pill pill-saffron">{u.disputeCount} litiges</span>
+          </div>
+        ))}
+      </FraudSection>
+
+      <FraudSection icon="shieldCheck" title="Tentatives KYC répétées" count={d.kycRepeatRejections.length}
+        help="2+ soumissions rejetées ou refusées pour le même compte — signal de faux document."
+        empty="Rien à signaler.">
+        {d.kycRepeatRejections.map((u) => (
+          <div className="list-row" key={u.userId}>
+            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>(statut actuel : {u.currentStatus})</span></div>
+            <span className="pill pill-danger">{u.rejectionCount} rejets</span>
+          </div>
+        ))}
+      </FraudSection>
     </div>
   );
 }

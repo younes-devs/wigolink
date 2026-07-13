@@ -99,7 +99,7 @@ function positiveNumber(v, { allowZero = false } = {}) {
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
 
-function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt }) {
+function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {
   return {
     id: newId('u'), name: name.trim(), email: normEmail(email), phone: phone || '',
     passwordHash: passwordHash || null, provider, emailVerified: !!emailVerified,
@@ -107,12 +107,22 @@ function makeUser({ name, email, phone, provider, emailVerified, passwordHash, c
     // Plafonds progressifs (PRD §0.3) : nouveau compte = 100 €, 1 transaction active
     maxValue: 100, maxActive: 1, badges: [], createdAt: Date.now(),
     cguAcceptedAt: cguAcceptedAt || null,
+    // Indice de corrélation pour le dashboard fraude (§4.7) — pas une preuve à elle seule.
+    registerIp: registerIp || '', lastIp: registerIp || '',
   };
 }
 
-function openSession(res, user) {
+// IP au sens du proxy (best-effort — falsifiable côté client, sert d'indice de
+// corrélation pour le dashboard fraude, pas de preuve à elle seule).
+const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+
+function openSession(res, user, req) {
   const token = newToken();
   db.sessions[token] = user.id;
+  if (req) {
+    user.lastIp = clientIp(req);
+    user.lastLoginAt = Date.now();
+  }
   save();
   res.json({ token, user: publicUser(user) });
 }
@@ -129,7 +139,7 @@ app.post('/api/auth/register', (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
   if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
   if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
-  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now() });
+  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
   db.users.push(user);
   const code = sixDigitCode();
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
@@ -150,7 +160,7 @@ app.post('/api/auth/verify-email', (req, res) => {
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   user.emailVerified = true;
   delete db.pendingVerifications[email];
-  openSession(res, user);
+  openSession(res, user, req);
 });
 
 app.post('/api/auth/resend-code', (req, res) => {
@@ -178,7 +188,7 @@ app.post('/api/auth/login', (req, res) => {
     save();
     return res.json({ needsVerification: true, pendingEmail: email, demoHint: demoHintFor(code) });
   }
-  openSession(res, user);
+  openSession(res, user, req);
 });
 
 // OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
@@ -189,10 +199,10 @@ app.post('/api/auth/google', (req, res) => {
   let user = findByEmail(email);
   if (!user) {
     if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
-    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true, cguAcceptedAt: Date.now() });
+    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true, cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
     db.users.push(user);
   }
-  openSession(res, user);
+  openSession(res, user, req);
 });
 
 app.post('/api/auth/forgot', (req, res) => {
@@ -231,7 +241,7 @@ app.post('/api/auth/reset', (req, res) => {
   delete db.resets[email];
   // Sécurité : invalide toutes les sessions existantes du compte
   for (const [tok, uid] of Object.entries(db.sessions)) if (uid === user.id) delete db.sessions[tok];
-  openSession(res, user);
+  openSession(res, user, req);
 });
 
 app.post('/api/auth/logout', auth, (req, res) => {
@@ -1092,6 +1102,95 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
       users: db.users.length,
     },
   });
+});
+
+// Dashboard fraude (PRD §4.7) : comptes liés, patterns anormaux, transactions atypiques.
+// Signaux, pas verdicts — un rapprochement d'IP ou un taux d'annulation élevé appelle une
+// revue humaine, jamais une sanction automatique.
+app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
+  const humans = db.users.filter((u) => !u.isAdmin);
+
+  const groupBy = (key) => {
+    const groups = {};
+    for (const u of humans) {
+      const v = u[key];
+      if (!v) continue;
+      (groups[v] = groups[v] || []).push(u);
+    }
+    return Object.entries(groups).filter(([, list]) => list.length > 1);
+  };
+
+  const linkedAccounts = [
+    ...groupBy('phone').map(([value, list]) => ({ signal: 'phone', value, users: list })),
+    ...groupBy('registerIp').map(([value, list]) => ({ signal: 'ip', value, users: list })),
+  ].map(({ signal, value, users }) => ({
+    signal, value,
+    users: users.map((u) => ({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt })),
+  }));
+
+  // Paires expéditeur/voyageur récurrentes : signal de collusion (double validation
+  // contournée entre deux comptes qui transigent toujours ensemble — PRD §5).
+  const pairCounts = {};
+  for (const t of db.transactions) {
+    const key = [t.senderId, t.travelerId].sort().join('|');
+    (pairCounts[key] = pairCounts[key] || []).push(t);
+  }
+  const repeatPairs = Object.entries(pairCounts)
+    .filter(([, txs]) => txs.length >= 2)
+    .map(([key, txs]) => {
+      const [aId, bId] = key.split('|');
+      const disputed = txs.filter((t) => t.status === 'disputed' || db.disputes.some((d) => d.txId === t.id)).length;
+      return {
+        users: [aId, bId].map((id) => { const u = findUser(id); return u ? { id: u.id, name: u.name } : { id, name: '?' }; }),
+        transactionCount: txs.length, disputedCount: disputed,
+        totalValueEur: Math.round(txs.reduce((s, t) => s + (t.escrow?.amount || 0), 0) * 100) / 100,
+      };
+    })
+    .sort((a, b) => b.transactionCount - a.transactionCount);
+
+  // Désintermédiation : utilisateurs à l'origine de messages signalés (partage de coordonnées).
+  const flaggedByUser = {};
+  for (const m of db.messages) {
+    if (!m.flagged) continue;
+    (flaggedByUser[m.from] = flaggedByUser[m.from] || 0);
+    flaggedByUser[m.from] += 1;
+  }
+  const flaggedMessaging = Object.entries(flaggedByUser)
+    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', count }; })
+    .sort((a, b) => b.count - a.count);
+
+  // Annulations anormales : au moins 3 transactions passées, taux d'annulation > 20 %.
+  const abnormalCancel = humans
+    .filter((u) => u.completed >= 3 && u.cancelRate > 0.2)
+    .map((u) => ({ id: u.id, name: u.name, completed: u.completed, cancelRate: u.cancelRate }))
+    .sort((a, b) => b.cancelRate - a.cancelRate);
+
+  // Litiges répétés : un compte qui revient souvent dans des litiges (ouvreur ou partie).
+  const disputeCountByUser = {};
+  for (const d of db.disputes) {
+    const t = db.transactions.find((x) => x.id === d.txId);
+    if (!t) continue;
+    for (const uid of new Set([t.senderId, t.travelerId, t.recipientId].filter(Boolean))) {
+      disputeCountByUser[uid] = (disputeCountByUser[uid] || 0) + 1;
+    }
+  }
+  const disputeProne = Object.entries(disputeCountByUser)
+    .filter(([, count]) => count >= 2)
+    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', disputeCount: count }; })
+    .sort((a, b) => b.disputeCount - a.disputeCount);
+
+  // Faux KYC répétés : plusieurs soumissions rejetées avant, éventuellement, un refus définitif.
+  const kycRejectionsByUser = {};
+  for (const s of db.kycSubmissions) {
+    if (s.status !== 'rejected' && s.status !== 'refused') continue;
+    kycRejectionsByUser[s.userId] = (kycRejectionsByUser[s.userId] || 0) + 1;
+  }
+  const kycRepeatRejections = Object.entries(kycRejectionsByUser)
+    .filter(([, count]) => count >= 2)
+    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', rejectionCount: count, currentStatus: u?.kycStatus }; })
+    .sort((a, b) => b.rejectionCount - a.rejectionCount);
+
+  res.json({ linkedAccounts, repeatPairs, flaggedMessaging, abnormalCancel, disputeProne, kycRepeatRejections });
 });
 
 app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
