@@ -67,6 +67,24 @@ export default function ListingDetail() {
         </div>
       </div>
 
+      {/* Décision remontée au-dessus de la ligne de flottaison (PRD UI/UX U4) :
+          rémunération + action principale visibles sans scroll sur mobile. */}
+      <div className="card decision-card">
+        <div className="decision-earn">
+          <span className="muted">Vous gagnez</span>
+          <span className="decision-amount">{listing.travelerPay} €</span>
+        </div>
+        {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
+        {needsKyc && <KycRequiredNotice />}
+        <button className="btn btn-primary" onClick={accept} disabled={busy}>
+          {busy ? <span className="spinner" /> : 'Accepter ce transport'}
+        </button>
+        <div className="decision-note">
+          <Icon name="lock" size={14} />
+          <span>Paiement séquestré dès l'acceptation, versé à la livraison validée. Refus possible sans pénalité à la remise.</span>
+        </div>
+      </div>
+
       <div className="card">
         <h2 style={{ marginBottom: 10 }}><Icon name="user" size={17} />Expéditeur</h2>
         <div className="list-row">
@@ -79,7 +97,7 @@ export default function ListingDetail() {
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: 10 }}><Icon name="euro" size={17} />Votre rémunération</h2>
+        <h2 style={{ marginBottom: 10 }}><Icon name="euro" size={17} />Détail de la rémunération</h2>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
           <span className="muted">Rémunération voyageur</span><b>{listing.travelerPay} €</b>
         </div>
@@ -87,19 +105,7 @@ export default function ListingDetail() {
           <span className="muted">Commission plateforme ({Math.round(listing.commissionRate * 100)} %, payée par l'expéditeur)</span>
           <b>{commission} €</b>
         </div>
-        <div className="divider" />
-        <div className="alert alert-teal" style={{ marginBottom: 0 }}>
-          <Icon name="lock" size={17} />
-          <span>Le paiement est séquestré dès votre acceptation et versé automatiquement à la livraison validée.
-          Vous pouvez refuser sans pénalité lors de la remise si le contenu ne correspond pas.</span>
-        </div>
       </div>
-
-      {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
-      {needsKyc && <KycRequiredNotice />}
-      <button className="btn btn-primary" onClick={accept} disabled={busy}>
-        {busy ? <span className="spinner" /> : 'Accepter ce transport'}
-      </button>
     </div>
   );
 }

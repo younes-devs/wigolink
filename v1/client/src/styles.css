@@ -148,6 +148,16 @@ body {
 .confirm-actions { display: flex; gap: 10px; }
 .confirm-actions .btn { flex: 1; }
 
+/* Carte de décision remontée (PRD UI/UX U4) */
+.decision-card { border: 1.5px solid var(--accent-tint); }
+.decision-earn { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.decision-amount { font-size: 26px; font-weight: 800; letter-spacing: -0.6px; color: var(--accent); }
+.decision-note {
+  display: flex; align-items: flex-start; gap: 7px; margin-top: 10px;
+  font-size: 11.5px; color: var(--ink-soft); line-height: 1.45;
+}
+.decision-note .icon { flex: 0 0 auto; margin-top: 1px; color: var(--green); }
+
 /* Forms */
 .field { margin-bottom: 15px; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
@@ -193,9 +203,9 @@ body {
   padding: 6px;
 }
 .bottom-nav a {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 4px; border-radius: 14px;
-  text-decoration: none; color: var(--ink-soft); font-size: 10.5px; font-weight: 600;
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 48px; padding: 7px 4px; border-radius: 14px;
+  text-decoration: none; color: var(--ink-soft); font-size: 11px; font-weight: 600;
   transition: color 0.15s, background 0.15s;
 }
 .bottom-nav a.active { color: var(--accent); background: var(--accent-tint); }
@@ -951,6 +961,17 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .rail-cta a { text-decoration: none; }
 
 /* ——— Responsive ——— */
+
+/* Cibles tactiles ≥ 44px sur mobile (PRD UI/UX U6) : on élargit la zone tapable des
+   boutons icône sans grossir l'icône elle-même, via padding/min-size. */
+@media (max-width: 639px) {
+  .pwd-toggle { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; padding: 0; top: 50%; }
+  .notif-bell { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; padding: 0; }
+  .photo-thumb button { width: 28px; height: 28px; top: 5px; right: 5px; }
+  .stars span { padding: 6px; margin: -6px; }
+  .modal-head .pwd-toggle { min-width: 44px; min-height: 44px; }
+  .pay-chip { padding: 9px 15px; }
+}
 
 /* Tablette (640–899px) : colonne élargie, nav en bas conservée */
 @media (min-width: 640px) {
