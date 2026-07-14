@@ -1,9 +1,10 @@
 // Socle i18n (PRD UI/UX U14). Mécanisme minimal, sans dépendance : un dictionnaire par
 // langue (src/locales/) et une fonction t(). L'arabe d'abord (diaspora marocaine), RTL
 // géré via dir="rtl" posé avant le rendu (script inline d'index.html).
-// Les messages d'erreur de l'API sont traduits côté SERVEUR (voir server/errors.js) via
-// l'en-tête Accept-Language envoyé par api.js. Limite restante documentée : les libellés
-// de catégories de la liste blanche (rules.js) restent en français.
+// Les messages d'erreur de l'API et les libellés de catégories sont traduits côté
+// SERVEUR (server/errors.js, rules.js) via l'en-tête Accept-Language envoyé par api.js.
+// Seule exception : les catégories promues dynamiquement (customWhitelist) restent dans
+// la langue de leur création.
 import { useSyncExternalStore } from 'react';
 import fr from './locales/fr.js';
 import ar from './locales/ar.js';

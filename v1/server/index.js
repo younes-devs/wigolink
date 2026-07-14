@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { getDb, save, newId } from './store.js';
-import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak } from './rules.js';
+import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
 
@@ -445,7 +445,14 @@ app.post('/api/training/complete', auth, (req, res) => {
 
 // ---------- Référentiels ----------
 app.get('/api/rules', (req, res) => {
-  res.json({ whitelist: combinedWhitelist(), blacklist: BLACKLIST, customs: CUSTOMS });
+  // Labels localisés selon Accept-Language (req.lang posé par langMiddleware).
+  // Les i18n internes ne sortent pas de l'API ; les catégories promues (sans i18n)
+  // et le français restent tels quels.
+  res.json({
+    whitelist: combinedWhitelist().map((c) => localizeCategory(c, req.lang)),
+    blacklist: BLACKLIST.map((c) => localizeCategory(c, req.lang)),
+    customs: CUSTOMS,
+  });
 });
 
 // ---------- Trajets voyageur (PRD §2.1) ----------
