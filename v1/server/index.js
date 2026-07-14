@@ -30,7 +30,7 @@ const publicUser = (u) =>
     id: u.id, name: u.name, city: u.city, kycStatus: u.kycStatus, rating: u.rating,
     ratingCount: u.ratingCount, completed: u.completed, cancelRate: u.cancelRate,
     badges: u.badges, photoUrl: u.photoUrl || null, isAdmin: !!u.isAdmin,
-    createdAt: u.createdAt,
+    createdAt: u.createdAt, onboardingDone: !!u.settings?.onboardingDone,
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
@@ -344,6 +344,12 @@ app.post('/api/settings', auth, (req, res) => {
   req.user.settings = { ...req.user.settings, notifications: next };
   save();
   res.json({ settings: userSettings(req.user) });
+});
+
+app.post('/api/onboarding/complete', auth, (req, res) => {
+  req.user.settings = { ...userSettings(req.user), onboardingDone: true };
+  save();
+  res.json({ user: publicUser(req.user), settings: userSettings(req.user) });
 });
 
 // ---------- KYC manuel (PRD KYC) ----------

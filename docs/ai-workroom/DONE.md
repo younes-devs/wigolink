@@ -134,3 +134,21 @@ test etendu verifiant la traduction neerlandaise sur cet endpoint aussi.
 Fichiers touches: `v1/server/index.js`, `v1/server/test/api.test.js`.
 Verification: `npm test` 39/39 OK (assertion `/api/dashboard` + `nl`
 incluse).
+
+## 2026-07-14 (suite) - Codex : onboarding persistant par compte
+
+Travail fait (Codex):
+
+- L'onboarding premier lancement n'est plus seulement memorise dans
+  `localStorage`; il est maintenant marque cote serveur dans les parametres du
+  compte via `POST /api/onboarding/complete`.
+- `/api/me` et les reponses d'auth renvoient `user.onboardingDone`, ce qui evite
+  de revoir l'onboarding sur un autre appareil ou apres nettoyage du navigateur.
+- Le client garde `localStorage` comme fallback immediat si la sauvegarde reseau
+  echoue, donc l'experience reste fluide.
+
+Fichiers touches: `v1/server/index.js`, `v1/server/test/api.test.js`,
+`v1/client/src/Onboarding.jsx`.
+
+Verification: `npm test` 40/40 OK (nouveau test onboarding persistant),
+`npx vite build client` OK.

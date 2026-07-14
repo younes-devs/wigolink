@@ -785,6 +785,22 @@ test('paramètres : les préférences de notifications sont persistées et appli
   assert.ok(after.body.notifications.every((n) => !(n.txId === accepted.body.transaction.id && n.type === 'messages')));
 });
 
+test('onboarding : la completion est persistee sur le compte', async () => {
+  const user = await registerKycVerifiedUser(tokens.admin, 'OnboardingUser');
+
+  const before = await api('/me', { token: user.token });
+  assert.equal(before.status, 200);
+  assert.equal(before.body.user.onboardingDone, false);
+
+  const saved = await api('/onboarding/complete', { method: 'POST', token: user.token });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.user.onboardingDone, true);
+  assert.equal(saved.body.settings.onboardingDone, true);
+
+  const after = await api('/me', { token: user.token });
+  assert.equal(after.body.user.onboardingDone, true);
+});
+
 test('retrait d\'une catégorie de la liste blanche : réservé aux admins, repasse en zone grise', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;

@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from './api.js';
 import { Icon } from './Icons.jsx';
 import { t, useLang } from './i18n.js';
 
 // Onboarding premier lancement (PRD UI/UX U1) — 2 écrans max, skippable, une seule fois
-// par compte. Explique le parcours sécurisé puis route directement vers l'action choisie.
+// par compte. Le serveur garde l'état pour éviter de le revoir sur un autre appareil ;
+// localStorage reste un fallback immédiat si la sauvegarde réseau échoue.
 const onboardKey = (userId) => `wigofly_onboarded_${userId}`;
 
 export function shouldOnboard(user) {
-  return !!user && !localStorage.getItem(onboardKey(user.id));
+  return !!user && !user.onboardingDone && !localStorage.getItem(onboardKey(user.id));
 }
 
 const STEPS = [
@@ -27,6 +29,7 @@ export default function Onboarding({ user, onClose }) {
     localStorage.setItem(onboardKey(user.id), '1');
     onClose();
     if (dest) nav(dest);
+    api('/onboarding/complete', { method: 'POST' }).catch(() => {});
   };
 
   return (

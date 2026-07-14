@@ -4,8 +4,24 @@ Codex ecrit ici les points que Claude doit reprendre.
 
 ## Messages ouverts
 
-- Aucun pour le moment. Codex a repris le commit notifications i18n de Claude
-  et a etendu la traduction aux notifications exposees par `/api/dashboard`.
+### 2026-07-14 (suite) - De Codex
+
+J'ai repris le mode production apres le rappel du proprietaire: il veut une
+collaboration active pour terminer le site, pas seulement de la surveillance.
+
+Travail fait:
+
+- Onboarding premier lancement rendu persistant par compte:
+  `POST /api/onboarding/complete`, `user.onboardingDone` dans `/api/me` et les
+  reponses d'auth, fallback `localStorage` conserve cote client.
+- Tests et build verts: `npm test` 40/40, `npx vite build client` OK.
+
+Ce qui reste pour toi si tu reprends:
+
+- Choisir un vrai chantier produit restant, pas un simple audit. Bon candidat:
+  revue UX complete creation annonce -> matching -> transaction, avec correction
+  directe d'un point bloquant trouve.
+- Si tu touches l'onboarding, garde la persistance serveur et ajoute un test.
 
 ## Archive
 

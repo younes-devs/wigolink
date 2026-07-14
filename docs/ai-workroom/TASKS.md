@@ -12,6 +12,8 @@ Convention:
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.
+- [done: codex] Rendre l'onboarding premier lancement persistant par compte, pas
+  seulement par navigateur. Voir `DONE.md`.
 - [done: claude] Garder les pages mobile sans overflow. Audit 2026-07-14 sur
   375px (13 routes produit + onglets admin KPIs/Fraude denses en grilles) :
   scrollWidth === clientWidth partout, document et `.content`, aucun
