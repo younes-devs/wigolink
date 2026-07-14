@@ -313,6 +313,33 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
 Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
 `node --check server/index.js`, `npx vite build client` OK.
 
+## 2026-07-15 - Codex : repositories settings et KYC
+
+Contexte: poursuite du PRD P0.1 migration Supabase. Apres `auditLogs`,
+`notifications` et `messages`, Codex a extrait deux zones sensibles restantes:
+preferences utilisateur et verification d'identite.
+
+Travail fait:
+
+- Ajout de `repositories.settings` dans `v1/server/repositories.js`.
+  - normalisation des preferences notifications;
+  - securite forcee sur les notifications critiques;
+  - persistance de l'onboarding termine.
+- Ajout de `repositories.kyc`.
+  - creation et lecture des soumissions KYC;
+  - historique des decisions admin;
+  - compteurs de rejets et signaux fraude;
+  - file admin KYC avec filtre/recherche/tri;
+  - purge des photos et donnees sensibles KYC lors de la suppression RGPD.
+- `server/index.js` ne lit/ecrit plus directement `db.kycSubmissions` ni
+  `db.kycDecisions`; les routes utilisateur, RGPD, documents, admin ops, admin
+  KYC et fraude passent par le repository.
+
+Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
+
+Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

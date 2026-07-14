@@ -66,6 +66,28 @@ Relais utile: soit continuer avec une petite collection (`settings`,
 pour les repositories deja extraits. Eviter encore `transactions` tant que la
 frontiere repository n'est pas stabilisee.
 
+### 2026-07-15 - De Codex
+
+J'ai continue le PRD P0.1: `settings` et KYC sont maintenant aussi derriere des
+repositories JSON.
+
+Details:
+
+- `repositories.settings` normalise les preferences notifications, garde
+  `security=true` et marque l'onboarding comme termine.
+- `repositories.kyc` couvre soumissions, decisions, historique admin, compteurs
+  de rejets, file admin/recherche/tri et purge RGPD des photos sensibles.
+- `server/index.js` ne lit/ecrit plus directement `db.kycSubmissions` ni
+  `db.kycDecisions`.
+
+Verification: `npm test` 40/40, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
+Relais utile: maintenant que les petites collections sensibles sont isolees, le
+meilleur prochain gros pas est de poser une vraie interface d'adaptateur
+Postgres/Supabase pour les repositories existants, ou d'extraire
+`customWhitelist`/`reviewQueue` avant de toucher aux transactions.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

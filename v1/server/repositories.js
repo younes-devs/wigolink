@@ -8,8 +8,150 @@
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
+    kyc: createKycRepository({ db, newId, findUser }),
     messages: createMessageRepository({ db, newId }),
     notifications: createNotificationRepository({ db, newId }),
+    settings: createSettingsRepository(),
+  };
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  transactions: true,
+  messages: true,
+  shipments: true,
+  reminders: true,
+  security: true,
+};
+
+function createSettingsRepository() {
+  return {
+    ensure(user) {
+      user.settings = user.settings || {};
+      user.settings.notifications = {
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...(user.settings.notifications || {}),
+        security: true,
+      };
+      return user.settings;
+    },
+
+    updateNotifications(user, input = {}) {
+      const next = { ...this.ensure(user).notifications };
+      for (const key of Object.keys(DEFAULT_NOTIFICATION_SETTINGS)) {
+        if (key === 'security') continue;
+        if (input[key] !== undefined) next[key] = !!input[key];
+      }
+      next.security = true;
+      user.settings = { ...user.settings, notifications: next };
+      return this.ensure(user);
+    },
+
+    markOnboardingDone(user) {
+      user.settings = { ...this.ensure(user), onboardingDone: true };
+      return this.ensure(user);
+    },
+  };
+}
+
+function createKycRepository({ db, newId, findUser }) {
+  const submissions = () => {
+    db.kycSubmissions = db.kycSubmissions || [];
+    return db.kycSubmissions;
+  };
+  const decisions = () => {
+    db.kycDecisions = db.kycDecisions || [];
+    return db.kycDecisions;
+  };
+
+  const sortedForUser = (userId) => submissions()
+    .filter((s) => s.userId === userId)
+    .sort((a, b) => b.submittedAt - a.submittedAt);
+
+  const priorRejects = (userId, before = Infinity) => submissions()
+    .filter((s) => s.userId === userId && s.status === 'rejected' && s.submittedAt < before)
+    .length;
+
+  return {
+    listForUser(userId) {
+      return sortedForUser(userId);
+    },
+
+    rejectedCountForUser(userId, { before = Infinity } = {}) {
+      return priorRejects(userId, before);
+    },
+
+    appendSubmission(data) {
+      const submission = {
+        id: newId('kyc'),
+        submittedAt: Date.now(),
+        status: 'pending',
+        reviewedBy: null,
+        reviewedAt: null,
+        decisionReason: null,
+        ...data,
+      };
+      submissions().push(submission);
+      return submission;
+    },
+
+    purgeSensitiveForUser(userId) {
+      for (const s of submissions()) {
+        if (s.userId === userId) {
+          s.selfiePhoto = null;
+          s.idFrontPhoto = null;
+          s.idBackPhoto = null;
+          s.legalName = '(supprime)';
+        }
+      }
+    },
+
+    pending() {
+      return submissions().filter((s) => s.status === 'pending');
+    },
+
+    reviewed() {
+      return submissions().filter((s) => s.reviewedAt);
+    },
+
+    list({ filter = 'pending', q = '' } = {}) {
+      const statusMap = { pending: 'pending', verified: 'approved', rejected: 'rejected', refused: 'refused' };
+      let list = [...submissions()];
+      if (filter !== 'all') list = list.filter((s) => s.status === statusMap[filter]);
+      const term = String(q || '').toLowerCase().trim();
+      if (term) {
+        list = list.filter((s) => {
+          const u = findUser(s.userId);
+          return s.legalName.toLowerCase().includes(term) || (u && u.email.toLowerCase().includes(term));
+        });
+      }
+      return list.sort((a, b) => (filter === 'pending' ? a.submittedAt - b.submittedAt : b.submittedAt - a.submittedAt));
+    },
+
+    findSubmission(id) {
+      return submissions().find((x) => x.id === id);
+    },
+
+    historyForUser(userId) {
+      return decisions()
+        .filter((d) => d.userId === userId)
+        .sort((a, b) => b.at - a.at);
+    },
+
+    appendDecision({ submissionId, userId, adminId, decision, reason, at = Date.now() }) {
+      const record = { id: newId('kycd'), submissionId, userId, adminId, decision, reason, at };
+      decisions().push(record);
+      return record;
+    },
+
+    rejectionCountsByUser() {
+      const counts = {};
+      for (const s of submissions()) {
+        if (s.status !== 'rejected' && s.status !== 'refused') continue;
+        counts[s.userId] = (counts[s.userId] || 0) + 1;
+      }
+      return counts;
+    },
+
   };
 }
 

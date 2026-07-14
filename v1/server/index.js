@@ -48,13 +48,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 const OFFER_REMINDER_MS = 6 * 3600e3;
 
 function userSettings(user) {
-  user.settings = user.settings || {};
-  user.settings.notifications = {
-    ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...(user.settings.notifications || {}),
-    security: true,
-  };
-  return user.settings;
+  return repositories.settings.ensure(user);
 }
 
 // Seules les parties d'une transaction (ou un admin) peuvent en consulter le détail,
@@ -342,19 +336,13 @@ app.get('/api/settings', auth, (req, res) => {
 
 app.post('/api/settings', auth, (req, res) => {
   const input = req.body?.notifications || {};
-  const next = { ...userSettings(req.user).notifications };
-  for (const key of Object.keys(DEFAULT_NOTIFICATION_SETTINGS)) {
-    if (key === 'security') continue;
-    if (input[key] !== undefined) next[key] = !!input[key];
-  }
-  next.security = true;
-  req.user.settings = { ...req.user.settings, notifications: next };
+  repositories.settings.updateNotifications(req.user, input);
   save();
   res.json({ settings: userSettings(req.user) });
 });
 
 app.post('/api/onboarding/complete', auth, (req, res) => {
-  req.user.settings = { ...userSettings(req.user), onboardingDone: true };
+  repositories.settings.markOnboardingDone(req.user);
   save();
   res.json({ user: publicUser(req.user), settings: userSettings(req.user) });
 });
@@ -365,7 +353,7 @@ const MAX_KYC_ATTEMPTS = 3; // au-delà de 3 rejets, passage automatique en 'ref
 
 // Vue KYC côté utilisateur : sa demande active, sans exposer les décisions internes.
 function kycUserView(user) {
-  const mine = db.kycSubmissions.filter((s) => s.userId === user.id).sort((a, b) => b.submittedAt - a.submittedAt);
+  const mine = repositories.kyc.listForUser(user.id);
   const latest = mine[0] || null;
   const rejectedCount = mine.filter((s) => s.status === 'rejected').length;
   return {
@@ -414,18 +402,16 @@ app.post('/api/kyc/submit', auth, (req, res) => {
 
   // Garde-fou anti-fraude : au-delà de la limite de tentatives, on refuse d'accepter
   // une nouvelle soumission automatiquement (le compte reste 'rejected', support requis).
-  const rejectedCount = db.kycSubmissions.filter((s) => s.userId === req.user.id && s.status === 'rejected').length;
+  const rejectedCount = repositories.kyc.rejectedCountForUser(req.user.id);
   if (rejectedCount >= MAX_KYC_ATTEMPTS)
     return res.status(403).json({ error: 'Nombre maximum de tentatives atteint — contactez le support' });
 
-  const submission = {
-    id: newId('kyc'), userId: req.user.id, submittedAt: Date.now(),
+  repositories.kyc.appendSubmission({
+    userId: req.user.id,
     legalName: String(legalName).trim().slice(0, 120),
     birthDate, age, documentType,
     selfiePhoto, idFrontPhoto, idBackPhoto: documentType === 'id_card' ? idBackPhoto : null,
-    status: 'pending', reviewedBy: null, reviewedAt: null, decisionReason: null,
-  };
-  db.kycSubmissions.push(submission);
+  });
   req.user.kycStatus = 'pending';
   save();
   res.json({ kyc: kycUserView(req.user) });
@@ -474,7 +460,7 @@ app.get('/api/profile/export', auth, (req, res) => {
     disputes: db.disputes.filter((d) => d.openedBy === uid),
     // Métadonnées KYC sans les images (données biométriques sensibles — non incluses
     // dans l'export standard, PRD KYC §6 ; communiquées séparément sur demande justifiée).
-    kyc: db.kycSubmissions.filter((s) => s.userId === uid).map((s) => ({
+    kyc: repositories.kyc.listForUser(uid).map((s) => ({
       id: s.id, submittedAt: s.submittedAt, status: s.status,
       legalName: s.legalName, birthDate: s.birthDate, documentType: s.documentType,
       reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
@@ -545,9 +531,7 @@ function documentCenterFor(user) {
       docs,
     };
   });
-  const kyc = db.kycSubmissions
-    .filter((s) => s.userId === uid)
-    .sort((a, b) => b.submittedAt - a.submittedAt)
+  const kyc = repositories.kyc.listForUser(uid)
     .map((s) => ({
       id: s.id,
       status: s.status,
@@ -593,9 +577,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
   req.user.deletedAt = Date.now();
   // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
   // anonymisée pour l'audit de conformité, sans les photos.
-  for (const s of db.kycSubmissions) {
-    if (s.userId === uid) { s.selfiePhoto = null; s.idFrontPhoto = null; s.idBackPhoto = null; s.legalName = '(supprimé)'; }
-  }
+  repositories.kyc.purgeSensitiveForUser(uid);
   for (const [tok, id] of Object.entries(db.sessions)) if (id === uid) delete db.sessions[tok];
   save();
   res.json({ ok: true });
@@ -2052,11 +2034,7 @@ function adminRiskSignals() {
     for (const uid of [t.senderId, t.travelerId, t.recipientId]) disputeCountByUser[uid] = (disputeCountByUser[uid] || 0) + 1;
   }
 
-  const kycRejectionsByUser = {};
-  for (const s of db.kycSubmissions) {
-    if (!['rejected', 'refused'].includes(s.status)) continue;
-    kycRejectionsByUser[s.userId] = (kycRejectionsByUser[s.userId] || 0) + 1;
-  }
+  const kycRejectionsByUser = repositories.kyc.rejectionCountsByUser();
 
   return {
     linkedAccounts: groupsFor('phone').length + groupsFor('registerIp').length,
@@ -2074,7 +2052,7 @@ function adminOpsSummary() {
   const reviewOpen = db.reviewQueue.filter((r) => r.status === 'open');
   const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
   const reviewListings = reviewOpen.filter((r) => r.type === 'listing');
-  const pendingKyc = db.kycSubmissions.filter((s) => s.status === 'pending');
+  const pendingKyc = repositories.kyc.pending();
   const overdueKyc = pendingKyc.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS);
   const openDisputes = db.disputes.filter((d) => d.status === 'open');
   const flaggedMessages = repositories.messages.flagged();
@@ -2254,9 +2232,7 @@ app.get('/api/admin/audit-logs', auth, adminOnly, (req, res) => {
 // Résumé d'une soumission pour la vue liste (sans les photos — allège la charge).
 function kycSummary(s) {
   const u = findUser(s.userId);
-  const priorRejects = db.kycSubmissions.filter(
-    (x) => x.userId === s.userId && x.status === 'rejected' && x.submittedAt < s.submittedAt
-  ).length;
+  const priorRejects = repositories.kyc.rejectedCountForUser(s.userId, { before: s.submittedAt });
   return {
     id: s.id, userId: s.userId, submittedAt: s.submittedAt, status: s.status,
     legalName: s.legalName, documentType: s.documentType, age: s.age,
@@ -2271,21 +2247,9 @@ function kycSummary(s) {
 app.get('/api/admin/kyc', auth, adminOnly, (req, res) => {
   const filter = req.query.status || 'pending';
   const q = String(req.query.q || '').toLowerCase().trim();
-  const statusMap = { pending: 'pending', verified: 'approved', rejected: 'rejected', refused: 'refused' };
-
-  let list = [...db.kycSubmissions];
-  if (filter !== 'all') list = list.filter((s) => s.status === statusMap[filter]);
-  if (q) {
-    list = list.filter((s) => {
-      const u = findUser(s.userId);
-      return s.legalName.toLowerCase().includes(q) || (u && u.email.toLowerCase().includes(q));
-    });
-  }
-  // FIFO pour les demandes en attente (équité), antichronologique pour l'historique.
-  list.sort((a, b) => (filter === 'pending' ? a.submittedAt - b.submittedAt : b.submittedAt - a.submittedAt));
-
-  const pending = db.kycSubmissions.filter((s) => s.status === 'pending');
-  const reviewed = db.kycSubmissions.filter((s) => s.reviewedAt);
+  const list = repositories.kyc.list({ filter, q });
+  const pending = repositories.kyc.pending();
+  const reviewed = repositories.kyc.reviewed();
   const avgReviewMs = reviewed.length
     ? reviewed.reduce((sum, s) => sum + (s.reviewedAt - s.submittedAt), 0) / reviewed.length
     : null;
@@ -2303,12 +2267,10 @@ app.get('/api/admin/kyc', auth, adminOnly, (req, res) => {
 
 // Détail complet d'une soumission (avec photos) — réservé admin.
 app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
-  const s = db.kycSubmissions.find((x) => x.id === req.params.id);
+  const s = repositories.kyc.findSubmission(req.params.id);
   if (!s) return res.status(404).json({ error: 'Demande introuvable' });
   const u = findUser(s.userId);
-  const history = db.kycDecisions
-    .filter((d) => d.userId === s.userId)
-    .sort((a, b) => b.at - a.at)
+  const history = repositories.kyc.historyForUser(s.userId)
     .map((d) => ({ ...d, adminName: findUser(d.adminId)?.name || d.adminId }));
   res.json({
     submission: {
@@ -2317,7 +2279,7 @@ app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
         name: u.name, email: u.email, createdAt: u.createdAt, kycStatus: u.kycStatus,
         phone: u.phone, city: u.city,
       } : null,
-      priorRejects: db.kycSubmissions.filter((x) => x.userId === s.userId && x.status === 'rejected' && x.submittedAt < s.submittedAt).length,
+      priorRejects: repositories.kyc.rejectedCountForUser(s.userId, { before: s.submittedAt }),
     },
     history,
   });
@@ -2325,7 +2287,7 @@ app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
 
 // Décision admin : approve | reject | refuse (motif obligatoire pour reject/refuse).
 app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
-  const s = db.kycSubmissions.find((x) => x.id === req.params.id);
+  const s = repositories.kyc.findSubmission(req.params.id);
   if (!s) return res.status(404).json({ error: 'Demande introuvable' });
   if (s.status !== 'pending') return res.status(400).json({ error: 'Cette demande a déjà été traitée' });
 
@@ -2349,7 +2311,7 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
     notify([user.id], { key: 'kyc.verified' }, null, 'security');
   } else if (decision === 'reject') {
     s.status = 'rejected';
-    const rejectedCount = db.kycSubmissions.filter((x) => x.userId === user.id && x.status === 'rejected').length;
+    const rejectedCount = repositories.kyc.rejectedCountForUser(user.id);
     // Passage automatique en refus définitif au-delà de la limite (PRD §7).
     if (rejectedCount >= MAX_KYC_ATTEMPTS) {
       user.kycStatus = 'refused';
@@ -2364,9 +2326,9 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
     notify([user.id], { key: 'kyc.refused', params: { reason: cleanReason } }, null, 'security');
   }
 
-  db.kycDecisions.push({
-    id: newId('kycd'), submissionId: s.id, userId: user.id, adminId: req.user.id,
-    decision, reason: cleanReason, at: Date.now(),
+  repositories.kyc.appendDecision({
+    submissionId: s.id, userId: user.id, adminId: req.user.id,
+    decision, reason: cleanReason,
   });
   audit(req.user.id, `kyc.${decision}`, 'kyc_submission', s.id, {
     userId: user.id,
@@ -2519,11 +2481,7 @@ app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
     .sort((a, b) => b.disputeCount - a.disputeCount);
 
   // Faux KYC répétés : plusieurs soumissions rejetées avant, éventuellement, un refus définitif.
-  const kycRejectionsByUser = {};
-  for (const s of db.kycSubmissions) {
-    if (s.status !== 'rejected' && s.status !== 'refused') continue;
-    kycRejectionsByUser[s.userId] = (kycRejectionsByUser[s.userId] || 0) + 1;
-  }
+  const kycRejectionsByUser = repositories.kyc.rejectionCountsByUser();
   const kycRepeatRejections = Object.entries(kycRejectionsByUser)
     .filter(([, count]) => count >= 2)
     .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', rejectionCount: count, currentStatus: u?.kycStatus }; })
