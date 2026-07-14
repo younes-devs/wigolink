@@ -817,3 +817,22 @@ test('recherche élargie : couvre titre, description et catégorie (PRD UI/UX U1
   const notFound = await api('/listings?all=1&q=motquinexistenullepart', { token: karim });
   assert.ok(!notFound.body.listings.some((l) => l.id === listing.body.listing.id));
 });
+
+test('i18n des erreurs API : Accept-Language traduit body.error (fr/ar/nl)', async () => {
+  const bad = { method: 'POST', body: { email: 'fatima@demo.wigofly.app', password: 'wrong' } };
+
+  const fr = await api('/auth/login', bad);
+  assert.equal(fr.status, 401);
+  assert.equal(fr.body.error, 'Email ou mot de passe incorrect');
+
+  const ar = await api('/auth/login', { ...bad, lang: 'ar' });
+  assert.equal(ar.body.error, 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
+
+  // En-tête complexe de navigateur réel : le premier tag gagne.
+  const nl = await api('/auth/login', { ...bad, lang: 'nl-BE,nl;q=0.9,fr;q=0.8' });
+  assert.equal(nl.body.error, 'E-mail of wachtwoord onjuist');
+
+  // Langue inconnue : repli français, jamais d'erreur cassée.
+  const de = await api('/auth/login', { ...bad, lang: 'de' });
+  assert.equal(de.body.error, 'Email ou mot de passe incorrect');
+});

@@ -46,9 +46,10 @@ export async function stopServer() {
   if (dataFile && fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
 }
 
-export async function api(pathname, { method = 'GET', token, body } = {}) {
+export async function api(pathname, { method = 'GET', token, body, lang } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (lang) headers['Accept-Language'] = lang;
   const res = await fetch(`${BASE_URL}/api${pathname}`, {
     method,
     headers,

@@ -15,6 +15,9 @@ export async function api(path, opts = {}) {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
+      // i18n des erreurs API : le serveur traduit body.error selon cette langue.
+      // documentElement.lang est posé avant le rendu (script inline d'index.html).
+      'Accept-Language': document.documentElement.lang || 'fr',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...opts.headers,
     },

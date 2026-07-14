@@ -3,10 +3,13 @@ import cors from 'cors';
 import { getDb, save, newId } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
+import { langMiddleware } from './errors.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
+// i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
+app.use(langMiddleware);
 
 const db = getDb();
 
