@@ -6,7 +6,7 @@ import { QrBlock, QrScanner, Stars, StatusPill } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
-import { t, useLang, getLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const STEPS = ['accepted', 'sealed', 'in_transit', 'released'];
 const ORDER = ['accepted', 'sealed', 'in_transit', 'released'];
@@ -285,7 +285,7 @@ function StepAction({ tx, user, reload }) {
             ? <video className="video-preview" src={tx.sealingVideo.dataUrl} controls />
             : <div className="alert alert-warn" style={{ marginBottom: 0 }}><Icon name="video" size={17} />{t('tx.video.simulated')}</div>}
           <div className="muted mt" style={{ fontSize: 12 }}>
-            {t('tx.video.meta', { date: new Date(tx.sealingVideo.recordedAt).toLocaleString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE'), id: tx.id })}
+            {t('tx.video.meta', { date: new Date(tx.sealingVideo.recordedAt).toLocaleString(dateLocale()), id: tx.id })}
             {tx.sealingVideo.geo ? ` · ${tx.sealingVideo.geo}` : ''}
           </div>
         </div>
@@ -514,7 +514,7 @@ function CustomsRecap({ txId, status }) {
           <b>{t('recap.f.value')}</b> {recap.valueEur} € · <b>{t('recap.f.weight')}</b> {recap.weightKg} kg<br />
           <b>{t('recap.f.sender')}</b> {recap.sender?.name} {t('recap.verified')}<br />
           <b>{t('recap.f.traveler')}</b> {recap.traveler?.name} {t('recap.verified')}<br />
-          {recap.sealedAt && <><b>{t('recap.f.sealed')}</b> {new Date(recap.sealedAt).toLocaleString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE')}<br /></>}
+          {recap.sealedAt && <><b>{t('recap.f.sealed')}</b> {new Date(recap.sealedAt).toLocaleString(dateLocale())}<br /></>}
           <b>{t('recap.f.franchise')}</b> {recap.corridor.franchise}
           <div className="row mt" style={{ gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={downloadPdf} disabled={pdfBusy}>
@@ -531,8 +531,8 @@ function CustomsRecap({ txId, status }) {
   );
 }
 
-const DAY_FMT = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
-const TIME_FMT = new Intl.DateTimeFormat('fr-BE', { hour: '2-digit', minute: '2-digit' });
+const dayFmt = () => new Intl.DateTimeFormat(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
+const timeFmt = () => new Intl.DateTimeFormat(dateLocale(), { hour: '2-digit', minute: '2-digit' });
 
 function Chat({ tx, userId }) {
   const [messages, setMessages] = useState([]);
@@ -607,7 +607,7 @@ function Chat({ tx, userId }) {
         {groups.map((g, gi) => {
           const mine = g.from === userId;
           const p = participants[g.from];
-          const day = DAY_FMT.format(new Date(g.msgs[0].at));
+          const day = dayFmt().format(new Date(g.msgs[0].at));
           const showDay = day !== lastDay;
           lastDay = day;
           return (
@@ -625,7 +625,7 @@ function Chat({ tx, userId }) {
                       )}
                     </div>
                   ))}
-                  <div className="msg-time">{TIME_FMT.format(new Date(g.msgs[g.msgs.length - 1].at))}</div>
+                  <div className="msg-time">{timeFmt().format(new Date(g.msgs[g.msgs.length - 1].at))}</div>
                 </div>
               </div>
             </div>
@@ -703,7 +703,7 @@ function RateRow({ tx, target, reload }) {
   );
 }
 
-const SLA_FMT = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const slaFmt = () => new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 function timeLeftLabel(deadline) {
   const ms = deadline - Date.now();
@@ -774,7 +774,7 @@ function DisputePanel({ txId }) {
         </div>
         <div className="sla-chip">
           <Icon name="clock" size={13} />
-          {t('dispute.resolution', { date: SLA_FMT.format(d.resolutionTarget) })}
+          {t('dispute.resolution', { date: slaFmt().format(d.resolutionTarget) })}
         </div>
       </div>
 
@@ -784,7 +784,7 @@ function DisputePanel({ txId }) {
             <div className="evidence-item" key={i}>
               {e.photo && <img src={e.photo} alt="Preuve" />}
               {e.text && <p>{e.text}</p>}
-              <span className="evidence-time">{SLA_FMT.format(e.at)}</span>
+              <span className="evidence-time">{slaFmt().format(e.at)}</span>
             </div>
           ))}
         </div>

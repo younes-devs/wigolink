@@ -5,9 +5,9 @@ import { useAuth } from '../App.jsx';
 import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { getTheme, setTheme } from '../theme.js';
-import { t, useLang, getLang, setLang, LANGS } from '../i18n.js';
+import { t, useLang, getLang, setLang, dateLocale, LANGS } from '../i18n.js';
 
-const memberFmt = () => new Intl.DateTimeFormat(getLang() === 'ar' ? 'ar-MA' : 'fr-BE', { month: 'long', year: 'numeric' });
+const memberFmt = () => new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric' });
 
 export default function Profile() {
   useLang();
@@ -203,7 +203,7 @@ function AppearanceSection() {
 
 // Avis reçus (PRD §5.5 : notation mutuelle) — étoiles + commentaire libre laissés par
 // les partenaires de transaction, agrégés depuis toutes les livraisons passées.
-const reviewFmt = () => new Intl.DateTimeFormat(getLang() === 'ar' ? 'ar-MA' : 'fr-BE', { day: 'numeric', month: 'short', year: 'numeric' });
+const reviewFmt = () => new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 
 function ReviewsSection({ userId }) {
   const [data, setData] = useState(null);

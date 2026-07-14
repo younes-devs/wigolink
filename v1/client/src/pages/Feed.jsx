@@ -5,7 +5,7 @@ import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
-import { t, useLang, getLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
 
@@ -68,7 +68,7 @@ export default function Feed() {
           <div className="trip-chips">
             {futureTrips.map((trip) => (
               <span key={trip.id} className="trip-chip">
-                {trip.from} → {trip.to} · {new Date(trip.date).toLocaleDateString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE', { day: 'numeric', month: 'short' })} · {trip.capacityKg} kg
+                {trip.from} → {trip.to} · {new Date(trip.date).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })} · {trip.capacityKg} kg
                 <button onClick={() => removeTrip(trip.id)} aria-label={t('common.remove')}><Icon name="x" size={12} /></button>
               </span>
             ))}

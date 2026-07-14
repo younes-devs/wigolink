@@ -7,20 +7,26 @@
 import { useSyncExternalStore } from 'react';
 import fr from './locales/fr.js';
 import ar from './locales/ar.js';
+import nl from './locales/nl.js';
 
-const DICT = { fr, ar };
+const DICT = { fr, ar, nl };
 const RTL_LANGS = new Set(['ar']);
 const KEY = 'wigofly_lang';
 
 export const LANGS = [
   { code: 'fr', label: 'Français' },
   { code: 'ar', label: 'العربية' },
+  { code: 'nl', label: 'Nederlands' },
 ];
 
-let current = document.documentElement.lang === 'ar' ? 'ar' : 'fr';
+let current = DICT[document.documentElement.lang] ? document.documentElement.lang : 'fr';
 const listeners = new Set();
 
 export function getLang() { return current; }
+
+// Locale Intl pour dates/nombres, alignée sur la langue de l'UI.
+const DATE_LOCALES = { fr: 'fr-BE', ar: 'ar-MA', nl: 'nl-BE' };
+export function dateLocale() { return DATE_LOCALES[current] || 'fr-BE'; }
 
 export function setLang(lang) {
   if (!DICT[lang]) return;
