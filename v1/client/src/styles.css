@@ -1145,10 +1145,15 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .shipment-card { margin-bottom: 0; min-width: 0; width: 100%; }
 .shipment-card-hot { border-color: rgba(217, 45, 32, 0.22); }
 .shipment-card-head {
-  display: flex; align-items: center; gap: 10px; min-width: 0;
+  /* flex-wrap: le pill de statut le plus long ("Publiée — en attente de voyageur") ne
+     tient pas à côté de l'icône + titre sur une carte étroite (grille 2 colonnes) : sans
+     wrap, .grow se faisait écraser à 0px et le texte de route s'effondrait mot par mot
+     au lieu de tronquer. Le pill passe maintenant à la ligne quand la place manque. */
+  display: flex; align-items: center; gap: 8px 10px; min-width: 0; flex-wrap: wrap;
 }
-.shipment-card-head .grow { min-width: 0; }
+.shipment-card-head .grow { min-width: 0; flex: 1 1 160px; }
 .shipment-card-head b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shipment-card-head .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shipment-card-head .pill { flex: 0 0 auto; }
 .shipment-card-body {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px;

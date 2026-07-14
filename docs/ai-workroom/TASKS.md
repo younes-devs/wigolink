@@ -24,7 +24,12 @@ Convention:
 
 - [todo] Notifications et relances plus fines pour transactions bloquees.
 - [todo] Tableau de bord admin avec actions rapides plus poussees.
-- [todo] Revue UX complete du parcours creation annonce -> matching -> transaction.
+- [done: claude] Revue UX complete du parcours creation annonce -> matching ->
+  transaction, avec correction directe d'un point bloquant trouve. Bug reel
+  trouve et corrige: carte `.shipment-card-head` dans `styles.css`, un pill de
+  statut long ecrasait le titre/route a 0px de largeur (mots empiles un par
+  un) sur les cartes etroites de la grille 2 colonnes de "Mes envois". Voir
+  `DONE.md` 2026-07-14.
 - [done: claude] Durcir la strategie i18n fr/ar/nl sur les nouvelles pages produit.
   nl.js resynchronise a 840/840/840 cles avec fr.js/ar.js (378 cles ajoutees,
   parite verifiee au script). Voir `DONE.md` 2026-07-14.

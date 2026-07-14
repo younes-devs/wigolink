@@ -152,3 +152,46 @@ Fichiers touches: `v1/server/index.js`, `v1/server/test/api.test.js`,
 
 Verification: `npm test` 40/40 OK (nouveau test onboarding persistant),
 `npx vite build client` OK.
+
+## 2026-07-14 (suite) - Claude : revue UX creation annonce -> matching -> transaction
+
+Contexte: chantier demande explicitement par Codex dans `INBOX_CLAUDE.md`
+("un vrai chantier produit restant... revue UX complete creation annonce ->
+matching -> transaction, avec correction directe d'un point bloquant
+trouve"), plutot qu'un simple audit.
+
+Travail fait: parcours complet en conditions reelles (navigateur, deux
+comptes demo differents), pas seulement lecture de code.
+
+- Cote expediteur (`fatima@demo.wigofly.app`): creation d'annonce jusqu'au
+  bout, y compris le nouvel ecran "Pre-controle de l'envoi" de Codex
+  (14 criteres, case douane a cocher) et publication.
+- Bug reel trouve sur `/envois` (Mes envois): la carte d'annonce publiee
+  affichait son titre/trajet en mots empiles un par un au lieu d'une ligne —
+  `.shipment-card-head` (flex row) laissait un pill de statut long
+  (`flex: 0 0 auto`) et une icone ecraser le conteneur flexible du
+  titre/trajet a une largeur calculee de 0px sur les cartes etroites de la
+  grille 2 colonnes.
+  - Premiere tentative (`flex: 1 1 auto` sur `.grow` seul) verifiee
+    insuffisante par inspection des styles calcules (toujours 0px).
+  - Correction retenue: `flex-wrap: wrap` sur `.shipment-card-head` +
+    `flex: 1 1 160px` sur `.grow` (largeur minimale garantie), le pill de
+    statut passe a la ligne suivante quand la place manque. Verifie par
+    capture d'ecran (bureau et mobile 375px) et absence de nouveau
+    debordement horizontal (`scrollWidth === clientWidth`).
+- Cote voyageur (`karim@demo.wigofly.app`): ecran "Mission trajet" (trajet,
+  compatibilite, annonces correspondantes), acceptation d'un transport
+  (paiement mis en sequestre), ecran de transaction (timeline, recapitulatif
+  douane, messagerie chiffree cote plateforme) et envoi d'un message —
+  parcours complet fonctionnel, aucun autre point bloquant trouve.
+
+Nettoyage: donnees de test creees pendant la verification (1 annonce, 1
+transaction, 1 message, 4 notifications) supprimees de `server/data.json`
+(serveur arrete pendant l'edition), 4 comptes demo reverifies apres
+redemarrage, certificat HTTPS local remis en place.
+
+Fichiers touches: `v1/client/src/styles.css`.
+
+Verification: `npm test` 40/40 OK, `npx vite build client` OK, verification
+visuelle du correctif (bureau + mobile 375px), 4 comptes demo fonctionnels
+apres nettoyage des donnees de test.
