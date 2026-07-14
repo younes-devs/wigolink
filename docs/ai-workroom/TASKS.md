@@ -26,6 +26,7 @@ Convention:
 - [done: claude] Durcir la strategie i18n fr/ar/nl sur les nouvelles pages produit.
   nl.js resynchronise a 840/840/840 cles avec fr.js/ar.js (378 cles ajoutees,
   parite verifiee au script). Voir `DONE.md` 2026-07-14.
-- [done: claude] Les textes de notification generes cote serveur sont
-  desormais traduits a la LECTURE (pas a la creation) via `notify-i18n.js`
-  + `req.lang`, meme pattern que `errors.js`. Voir `DONE.md` 2026-07-14.
+- [done: claude+codex] Les notifications serveur sont traduites a la lecture
+  selon `Accept-Language` en fr/ar/nl. Claude a ajoute `notify-i18n.js` et la
+  traduction de `/api/notifications`; Codex a etendu la meme regle aux
+  notifications renvoyees par `/api/dashboard`.

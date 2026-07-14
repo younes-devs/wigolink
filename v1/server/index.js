@@ -1408,7 +1408,8 @@ app.get('/api/dashboard', auth, (req, res) => {
   const notifications = (db.notifications || [])
     .filter((n) => n.userId === req.user.id)
     .sort((a, b) => b.at - a.at)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
   const unread = (db.notifications || []).filter((n) => n.userId === req.user.id && !n.read).length;
   res.json({
     user: publicUser(req.user),

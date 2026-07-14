@@ -48,21 +48,19 @@ Verification:
 
 Fichiers touches: `v1/client/src/locales/nl.js`.
 
-## 2026-07-14 (suite) - i18n des notifications a la lecture
-
-Contexte: limite identifiee dans la synchronisation NL precedente — les
-notifications in-app (`notify()` dans `v1/server/index.js`) etaient
-generees en francais au moment de l'evenement, jamais traduites.
+## 2026-07-14 (suite) - Notifications serveur i18n completes
 
 Travail fait:
 
-- `v1/server/notify-i18n.js`: table de 19 templates de notification
+- Claude a ajoute `v1/server/notify-i18n.js`: 19 templates de notification
   (offres, transactions, litiges, chat, KYC) en fr/ar/nl avec parametres
-  structures, et une fonction `renderNotification(lang, notification)`.
-- `notify()` stocke une cle de template + parametres au lieu d'un texte
-  fige ; `GET /api/notifications` traduit chaque entree a la lecture
-  selon `Accept-Language`. Repli sur le texte francais pour les
-  notifications persistees avant ce changement (jamais casse).
+  structures.
+- `notify()` stocke maintenant une cle de template + parametres au lieu d'un
+  texte francais fige; `/api/notifications` traduit chaque entree a la lecture
+  selon `Accept-Language`, avec repli compatible pour les anciennes notifications.
+- Codex a complete le relais en appliquant la meme traduction aux notifications
+  exposees par `/api/dashboard`, pas seulement `/api/notifications`.
+- `TASKS.md` a ete mis a jour: le chantier notifications serveur i18n est clos.
 
 Verification:
 
@@ -71,6 +69,8 @@ Verification:
   lecture, pas triplication en base).
 - Repli legacy verifie en unitaire sur une vraie entree sans cle tiree de
   `data.json` (29 notifications historiques concernees, toutes lisibles).
+- Test ajoute par Codex: `/api/dashboard` renvoie aussi le texte de notification
+  traduit en neerlandais.
 - `npm test`: 39/39 OK. `npx vite build client`: OK.
 - Aucun changement client necessaire (deja branche sur `Accept-Language`
   depuis la synchronisation NL).
@@ -100,4 +100,3 @@ Aucun correctif necessaire — pas de regression, item ferme.
 
 Verification: mesure `scrollWidth`/`clientWidth` via le navigateur de
 preview a 375px, capture d'ecran de controle.
-

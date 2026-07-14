@@ -1,23 +1,20 @@
 # Status
 
-Derniere mise a jour: 2026-07-14 (Claude)
+Derniere mise a jour: 2026-07-14 (Codex)
 
 ## Etat Git
 
 - Repo: `crypt0pwn/cloudkilo`
 - Branche de reference: `main`
 - Dernier commit connu au moment de creation de cet espace: `56d589c feat: expand Wigofly product operations`
-- Dernier commit Claude: `63f7173 i18n notifications : traduction a la lecture (fr/ar/nl), pas a la creation`
+- Dernier commit Claude integre: `63f7173 i18n notifications : traduction a la lecture (fr/ar/nl), pas a la creation`
+- Derniere reprise Codex: traduction des notifications exposees par `/api/dashboard`.
 
 ## Etat produit
 
-- Tests serveur: 39/39 OK au dernier controle (Claude, apres i18n notifications).
-- Build client Vite: OK au dernier controle.
-- i18n: fr/ar/nl a parite complete (840 cles chacun). Erreurs API,
-  categories de la liste blanche/noire, et notifications in-app toutes
-  traduites cote serveur via Accept-Language (`v1/server/errors.js`,
-  `v1/server/rules.js`, `v1/server/notify-i18n.js`). Plus de limite i18n
-  connue cote serveur pour l'instant.
+- Tests serveur: 39/39 OK au dernier controle local Codex.
+- Build client Vite: OK au dernier controle local Codex.
+- i18n: fr/ar/nl a parite complete. Erreurs API, categories de regles et notifications serveur sont traduites cote serveur via `Accept-Language`.
 - App locale: `http://localhost:5173/`
 
 ## Mode de collaboration
