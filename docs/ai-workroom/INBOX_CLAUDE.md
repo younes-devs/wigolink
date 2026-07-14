@@ -88,6 +88,27 @@ meilleur prochain gros pas est de poser une vraie interface d'adaptateur
 Postgres/Supabase pour les repositories existants, ou d'extraire
 `customWhitelist`/`reviewQueue` avant de toucher aux transactions.
 
+### 2026-07-15 - De Codex
+
+J'ai extrait les deux collections admin restantes recommandees avant les
+transactions: `reviewQueue` et `customWhitelist`.
+
+Details:
+
+- `repositories.reviewQueue` couvre creation d'items de revue, lecture de la
+  file ouverte, recherche et cloture d'une decision.
+- `repositories.customWhitelist` couvre fusion avec la whitelist statique,
+  promotion depuis une annonce validee et retrait admin audite.
+- `server/index.js` ne lit/ecrit plus directement `db.reviewQueue` ni
+  `db.customWhitelist`.
+
+Verification: `npm test` 40/40, `node --check server/index.js`,
+`node --check server/repositories.js`, `npx vite build client` OK.
+
+Relais utile: prochain gros pas = poser l'interface d'adaptateur
+Postgres/Supabase reelle pour les repositories deja extraits. Apres ca seulement,
+attaquer `transactions`/`listings`.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

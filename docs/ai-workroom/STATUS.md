@@ -8,7 +8,7 @@ Derniere mise a jour: 2026-07-15 (Codex)
 - Branche de reference: `main`
 - Dernier commit connu au moment de creation de cet espace: `56d589c feat: expand Wigofly product operations`
 - Derniere reprise Codex: repositories JSON pour auditLogs, notifications,
-  messages, settings et KYC.
+  messages, settings, KYC, reviewQueue et customWhitelist.
 - Derniere reprise Claude: fondation production (PRD P0.1/P0.4) — schema SQL
   Supabase (`docs/supabase-schema.sql`), escrow provider-ready
   (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`.
@@ -20,8 +20,8 @@ Derniere mise a jour: 2026-07-15 (Codex)
 - Build client Vite: OK au dernier controle local Codex.
 - Persistance: encore JSON (`data.json`) en V1. Schema Postgres cible pret,
   repositories crees pour `auditLogs`, `notifications`, `messages`, `settings`
-  et KYC; prochain candidat: interface Postgres/Supabase reelle ou
-  `customWhitelist`/`reviewQueue` avant `transactions`.
+  KYC, `reviewQueue` et `customWhitelist`; prochain candidat: interface
+  Postgres/Supabase reelle avant `transactions`/`listings`.
 - Escrow: simule mais modele pret pour un vrai prestataire (provider/providerRef,
   transitions horodatees).
 - Audit: `auditLogs` runtime JSON + endpoint admin `/api/admin/audit-logs`

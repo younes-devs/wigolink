@@ -8,9 +8,11 @@
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
+    customWhitelist: createCustomWhitelistRepository({ db }),
     kyc: createKycRepository({ db, newId, findUser }),
     messages: createMessageRepository({ db, newId }),
     notifications: createNotificationRepository({ db, newId }),
+    reviewQueue: createReviewQueueRepository({ db, newId }),
     settings: createSettingsRepository(),
   };
 }
@@ -49,6 +51,76 @@ function createSettingsRepository() {
     markOnboardingDone(user) {
       user.settings = { ...this.ensure(user), onboardingDone: true };
       return this.ensure(user);
+    },
+  };
+}
+
+function createCustomWhitelistRepository({ db }) {
+  const ensure = () => {
+    db.customWhitelist = db.customWhitelist || [];
+    return db.customWhitelist;
+  };
+
+  return {
+    all() {
+      return [...ensure()];
+    },
+
+    combinedWith(baseWhitelist) {
+      return [...baseWhitelist, ...ensure()];
+    },
+
+    remove(id) {
+      const index = ensure().findIndex((c) => c.id === id);
+      if (index === -1) return null;
+      const [removed] = ensure().splice(index, 1);
+      return removed;
+    },
+
+    hasIn(baseWhitelist, categoryId) {
+      return this.combinedWith(baseWhitelist).some((c) => c.id === categoryId);
+    },
+
+    promoteFromListing(listing, { maxQty, at = Date.now() } = {}) {
+      const entry = {
+        id: listing.categoryId,
+        label: listing.categoryLabel,
+        maxQty: String(maxQty || 'Usage personnel (a confirmer)').slice(0, 40),
+        icon: listing.icon || '📦',
+        addedFrom: listing.id,
+        addedAt: at,
+      };
+      ensure().push(entry);
+      return entry;
+    },
+  };
+}
+
+function createReviewQueueRepository({ db, newId }) {
+  const ensure = () => {
+    db.reviewQueue = db.reviewQueue || [];
+    return db.reviewQueue;
+  };
+
+  return {
+    append({ type, refId, status = 'open', createdAt = Date.now() }) {
+      const item = { id: newId('rq'), type, refId, status, createdAt };
+      ensure().push(item);
+      return item;
+    },
+
+    open({ type = null } = {}) {
+      return ensure().filter((r) => r.status === 'open' && (!type || r.type === type));
+    },
+
+    find(id) {
+      return ensure().find((r) => r.id === id);
+    },
+
+    close(item, decision) {
+      item.status = 'closed';
+      item.decision = decision;
+      return item;
     },
   };
 }

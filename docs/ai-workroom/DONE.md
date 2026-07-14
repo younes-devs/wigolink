@@ -340,6 +340,35 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
 Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
 `node --check server/index.js`, `npx vite build client` OK.
 
+## 2026-07-15 - Codex : repositories reviewQueue et customWhitelist
+
+Contexte: poursuite du PRD P0.1 migration Supabase sur les collections admin
+sensibles avant les transactions. Ces deux collections pilotent la revue humaine
+des annonces en zone grise, les litiges et la promotion de categories en liste
+blanche.
+
+Travail fait:
+
+- Ajout de `repositories.reviewQueue` dans `v1/server/repositories.js`.
+  - creation d'items de revue (`append`);
+  - lecture de la file ouverte, avec filtre par type (`open`);
+  - recherche et cloture d'une decision admin (`find`, `close`).
+- Ajout de `repositories.customWhitelist`.
+  - liste blanche promue (`all`);
+  - fusion avec la whitelist statique (`combinedWith`);
+  - verification d'existence (`hasIn`);
+  - promotion depuis une annonce validee;
+  - suppression admin auditee.
+- `server/index.js` ne lit/ecrit plus directement `db.reviewQueue` ni
+  `db.customWhitelist`; publication d'annonce grise, ouverture de litige,
+  centre conformite, admin ops, admin overview, retrait whitelist et decisions
+  de revue passent par les repositories.
+
+Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
+
+Verification: `npm test` 40/40 OK, `node --check server/index.js`,
+`node --check server/repositories.js`, `npx vite build client` OK.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

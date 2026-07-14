@@ -134,7 +134,7 @@ function validPhotos(photos) {
 
 // Liste blanche effective = base statique + catégories promues depuis la zone grise
 // après validation admin (évite de rejuger indéfiniment le même produit — §4.2).
-const combinedWhitelist = () => [...WHITELIST, ...db.customWhitelist];
+const combinedWhitelist = () => repositories.customWhitelist.combinedWith(WHITELIST);
 
 function evaluateCategoryDynamic(categoryId) {
   const white = combinedWhitelist().find((c) => c.id === categoryId);
@@ -628,7 +628,7 @@ function complianceCenterFor(user) {
   const listings = db.listings
     .filter((l) => l.senderId === user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
-  const reviewQueue = db.reviewQueue.filter((r) => r.type === 'listing' && r.status === 'open');
+  const reviewQueue = repositories.reviewQueue.open({ type: 'listing' });
   const items = listings.map((listing) => {
     const corridorKey = listing.from === 'Casablanca' ? 'MA-EU' : 'EU-MA';
     const limitEur = corridorKey === 'MA-EU' ? 430 : 185;
@@ -1238,7 +1238,7 @@ app.post('/api/listings', auth, (req, res) => {
   };
   db.listings.push(listing);
   if (evalRes.verdict === 'gray') {
-    db.reviewQueue.push({ id: newId('rq'), type: 'listing', refId: listing.id, status: 'open', createdAt: Date.now() });
+    repositories.reviewQueue.append({ type: 'listing', refId: listing.id });
   }
   save();
   res.json({ listing });
@@ -1923,7 +1923,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
     evidence: [], status: 'open', createdAt: Date.now(),
   };
   db.disputes.push(dispute);
-  db.reviewQueue.push({ id: newId('rq'), type: 'dispute', refId: dispute.id, status: 'open', createdAt: Date.now() });
+  repositories.reviewQueue.append({ type: 'dispute', refId: dispute.id });
   addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
   notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, t.id, 'security', 'litige');
   save();
@@ -2049,7 +2049,7 @@ function adminRiskSignals() {
 function adminOpsSummary() {
   runMatchingOfferReminders({ persist: true });
   const now = Date.now();
-  const reviewOpen = db.reviewQueue.filter((r) => r.status === 'open');
+  const reviewOpen = repositories.reviewQueue.open();
   const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
   const reviewListings = reviewOpen.filter((r) => r.type === 'listing');
   const pendingKyc = repositories.kyc.pending();
@@ -2192,7 +2192,7 @@ app.get('/api/admin/ops', auth, adminOnly, (req, res) => {
 
 app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
   res.json({
-    reviewQueue: db.reviewQueue.filter((r) => r.status === 'open').map((r) => ({
+    reviewQueue: repositories.reviewQueue.open().map((r) => ({
       ...r,
       listing: r.type === 'listing' ? db.listings.find((l) => l.id === r.refId) : null,
       dispute: r.type === 'dispute'
@@ -2210,15 +2210,14 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
         .reduce((s, t) => s + t.escrow.amount, 0),
     },
     disputes: db.disputes,
-    customWhitelist: db.customWhitelist,
+    customWhitelist: repositories.customWhitelist.all(),
   });
 });
 
 // Retire une catégorie promue (repasse en zone grise pour les prochains envois).
 app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
-  const i = db.customWhitelist.findIndex((c) => c.id === req.params.id);
-  if (i === -1) return res.status(404).json({ error: 'Catégorie introuvable' });
-  const [removed] = db.customWhitelist.splice(i, 1);
+  const removed = repositories.customWhitelist.remove(req.params.id);
+  if (!removed) return res.status(404).json({ error: 'Catégorie introuvable' });
   audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
   save();
   res.json({ ok: true });
@@ -2491,11 +2490,10 @@ app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
 });
 
 app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
-  const item = db.reviewQueue.find((r) => r.id === req.params.id);
+  const item = repositories.reviewQueue.find(req.params.id);
   if (!item) return res.status(404).json({ error: 'Introuvable' });
   const { decision, maxQty } = req.body; // approve | reject
-  item.status = 'closed';
-  item.decision = decision;
+  repositories.reviewQueue.close(item, decision);
   if (item.type === 'listing') {
     const l = db.listings.find((x) => x.id === item.refId);
     if (l) {
@@ -2504,12 +2502,8 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       // Promotion en liste blanche : les envois suivants de cette catégorie
       // passeront directement, sans repasser en revue humaine à chaque fois.
       if (decision === 'approve' && l.whitelistVerdict === 'gray'
-          && !combinedWhitelist().some((c) => c.id === l.categoryId)) {
-        db.customWhitelist.push({
-          id: l.categoryId, label: l.categoryLabel,
-          maxQty: String(maxQty || 'Usage personnel (à confirmer)').slice(0, 40),
-          icon: '📦', addedFrom: l.id, addedAt: Date.now(),
-        });
+          && !repositories.customWhitelist.hasIn(WHITELIST, l.categoryId)) {
+        repositories.customWhitelist.promoteFromListing(l, { maxQty });
         promoted = true;
       }
       audit(req.user.id, `review.listing.${decision}`, 'listing', l.id, {
