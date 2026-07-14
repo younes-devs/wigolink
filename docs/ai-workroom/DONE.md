@@ -369,6 +369,35 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
 Verification: `npm test` 40/40 OK, `node --check server/index.js`,
 `node --check server/repositories.js`, `npx vite build client` OK.
 
+## 2026-07-15 - Codex : point d'entree persistence
+
+Contexte: les petites collections sensibles sont maintenant derriere des
+repositories JSON. Prochaine etape PRD P0.1: eviter que `server/index.js`
+instancie directement ces repositories, et poser un point d'entree unique pour
+le futur adaptateur Postgres/Supabase.
+
+Travail fait:
+
+- Ajout de `v1/server/persistence.js`.
+- `server/index.js` passe maintenant par `createPersistence()` pour obtenir les
+  repositories.
+- Ajout de `persistenceConfig()`:
+  - `json` par defaut sans `DATABASE_URL`;
+  - `postgres` selectionne automatiquement si `DATABASE_URL` est defini;
+  - `PERSISTENCE_DRIVER` permet de forcer explicitement le driver.
+- Garde-fou production: `PERSISTENCE_DRIVER=postgres` ou `DATABASE_URL` refuse
+  le demarrage avec un message clair tant que l'adaptateur Postgres complet
+  n'est pas branche. Cela evite un faux mode production silencieux qui
+  continuerait a ecrire dans `data.json`.
+- Tests unitaires ajoutes pour verrouiller ces comportements.
+
+Fichiers touches: `v1/server/persistence.js`, `v1/server/index.js`,
+`v1/server/test/persistence.test.js`.
+
+Verification: `npm test` 43/43 OK, `node --check server/persistence.js`,
+`node --check server/index.js`, `node --check server/repositories.js`,
+`npx vite build client` OK.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

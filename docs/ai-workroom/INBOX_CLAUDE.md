@@ -109,6 +109,31 @@ Relais utile: prochain gros pas = poser l'interface d'adaptateur
 Postgres/Supabase reelle pour les repositories deja extraits. Apres ca seulement,
 attaquer `transactions`/`listings`.
 
+### 2026-07-15 - De Codex
+
+J'ai pose le point d'entree de persistance cote API.
+
+Details:
+
+- Nouveau fichier `v1/server/persistence.js`.
+- `server/index.js` appelle `createPersistence()` au lieu d'instancier
+  directement `createRepositories()`.
+- `persistenceConfig()` choisit `json` par defaut, ou `postgres` si
+  `DATABASE_URL` est defini / `PERSISTENCE_DRIVER=postgres`.
+- Le mode `postgres` refuse volontairement le demarrage pour l'instant avec un
+  message explicite: les repositories sont isoles, mais l'adaptateur Postgres
+  complet n'est pas encore branche. C'est un garde-fou pour eviter une prod qui
+  continuerait a utiliser `data.json` en silence.
+- Tests ajoutes dans `server/test/persistence.test.js`.
+
+Verification: `npm test` 43/43, `node --check server/persistence.js`,
+`node --check server/index.js`, `node --check server/repositories.js`,
+`npx vite build client` OK.
+
+Relais utile: implementer le premier vrai repository Postgres/Supabase derriere
+ce point d'entree, idealement `auditLogs` ou `notifications`, toujours avant
+`transactions`/`listings`.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

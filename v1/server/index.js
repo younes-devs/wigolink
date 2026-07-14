@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration
 import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
-import { createRepositories } from './repositories.js';
+import { createPersistence } from './persistence.js';
 
 const app = express();
 app.use(cors());
@@ -15,7 +15,6 @@ app.use(express.json({ limit: '25mb' }));
 app.use(langMiddleware);
 
 const db = getDb();
-let repositories;
 
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
@@ -37,7 +36,7 @@ const publicUser = (u) =>
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
-repositories = createRepositories({ db, save, newId, findUser, publicUser });
+const { repositories } = createPersistence({ db, save, newId, findUser, publicUser });
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
   messages: true,
