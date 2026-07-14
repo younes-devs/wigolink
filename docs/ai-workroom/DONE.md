@@ -101,3 +101,25 @@ Aucun correctif necessaire — pas de regression, item ferme.
 Verification: mesure `scrollWidth`/`clientWidth` via le navigateur de
 preview a 375px, capture d'ecran de controle.
 
+## 2026-07-14 (suite) - Couverture tests + smoke navigation post-merge
+
+Travail fait:
+
+- Etendu (sans dupliquer) les tests existants KYC-approbation et
+  litige-remboursement avec des assertions sur la notification associee
+  (cle de template + traduction fr/ar/nl) — ces deux chemins touchent
+  argent/KYC/litige et passent par le `notify()` que j'ai modifie.
+- Sweep de chaines codees en dur (heuristique regex sur accents
+  francais hors `t(...)`) sur les fichiers touches par le merge Codex
+  (App.jsx, components.jsx, Admin.jsx, SideRail.jsx, pages
+  Feed/CreateListing/MyShipments/Transactions/TransactionDetail,
+  Notifications.jsx): zero trouvee.
+- Smoke test de navigation post-merge sans authentification cassee :
+  parcours expediteur (feed -> matching -> offres -> documents ->
+  conformite -> assistance) et parcours voyageur (finance -> confiance
+  -> parametres), aucune erreur ni avertissement console.
+
+Verification: `npm test` 39/39 (assertions etendues incluses),
+`preview_console_logs` (error + warn) vide sur les deux parcours,
+comptes demo fonctionnels apres chaque redemarrage serveur.
+
