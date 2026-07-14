@@ -16,7 +16,9 @@ function fraudSignalCount(f) {
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('review'); // review | kyc | kpis | fraud | categories
+  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | categories
+  const [ops, setOps] = useState(null);
+  const [opsError, setOpsError] = useState('');
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [kycPending, setKycPending] = useState(null);
@@ -25,11 +27,15 @@ export default function Admin() {
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
   }, []);
+  const loadOps = useCallback(() => {
+    api('/admin/ops').then((d) => setOps(d.ops)).catch((e) => setOpsError(e.message));
+  }, []);
   const loadFraud = useCallback(() => {
     api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadOps(); }, [loadOps]);
   // Chargés au montage (pas seulement à l'ouverture de l'onglet) pour pouvoir afficher un
   // badge de compte sur les boutons "Fraude" et "Identités" — un admin ne devrait pas avoir
   // à cliquer à l'aveugle pour découvrir qu'il y a quelque chose à traiter. Requête légère,
@@ -40,6 +46,7 @@ export default function Admin() {
   const decide = async (id, decision, extra = {}) => {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
     load();
+    loadOps();
     toast.success('Décision enregistrée', 2200);
   };
 
@@ -63,6 +70,9 @@ export default function Admin() {
       <p className="page-sub">Revue humaine, litiges, KPIs et surveillance fraude.</p>
 
       <div className="tabs">
+        <button className={tab === 'ops' ? 'active' : ''} onClick={() => setTab('ops')}>
+          Opérations {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
+        </button>
         <button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>
           File de revue {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
@@ -83,6 +93,7 @@ export default function Admin() {
         <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">Messages signalés</div></div>
       </div>
 
+      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} reload={() => { load(); loadOps(); loadFraud(); }} />}
       {tab === 'review' && (
         <>
           {reviewQueue.length === 0 && (
@@ -139,6 +150,159 @@ export default function Admin() {
 
 // Revue d'une annonce en zone grise : l'approbation demande une quantité max, car
 // approuver promeut la catégorie en liste blanche pour tous les envois suivants.
+function OpsPanel({ ops, error, setTab, reload }) {
+  if (error) {
+    return (
+      <div className="alert alert-danger">
+        <Icon name="alert" size={17} />{error}
+        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>Réessayer</button>
+      </div>
+    );
+  }
+  if (!ops) return <SkeletonList count={4} avatar={false} lines={2} />;
+
+  const statusCopy = {
+    clear: ['Plateforme claire', 'Aucune urgence opérationnelle ouverte.'],
+    watch: ['Surveillance active', 'Des dossiers attendent une revue, sans dépassement critique.'],
+    critical: ['Priorité immédiate', 'Au moins un litige ou KYC en retard demande une action rapide.'],
+  }[ops.health.status] || ['Opérations', 'État courant du back-office.'];
+
+  return (
+    <div className="ops-panel">
+      <div className={`ops-hero ops-${ops.health.status}`}>
+        <div>
+          <h2>{statusCopy[0]}</h2>
+          <p>{statusCopy[1]}</p>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={reload}><Icon name="repeat" size={15} />Actualiser</button>
+      </div>
+
+      <div className="ops-metrics">
+        <OpsMetric label="Revue ouverte" value={ops.health.reviewOpen} icon="fileText" />
+        <OpsMetric label="KYC en retard" value={ops.health.kycOverdue} icon="clock" danger={ops.health.kycOverdue > 0} />
+        <OpsMetric label="Litiges ouverts" value={ops.health.openDisputes} icon="alert" danger={ops.health.openDisputes > 0} />
+        <OpsMetric label="Offres à risque" value={ops.health.offersAtRisk || 0} icon="send" danger={(ops.health.offersAtRisk || 0) > 0} />
+        <OpsMetric label="Escrow gelé/tenu" value={`${Math.round(ops.health.escrowHeld)} €`} icon="lock" />
+      </div>
+
+      <div className="ops-task-grid">
+        {ops.tasks.map((task) => (
+          <button key={task.id} className={`ops-task ops-${task.severity}`} onClick={() => setTab(task.tab)}>
+            <span className="ops-task-count">{task.count}</span>
+            <span className="grow">
+              <b>{task.title}</b>
+              <small>{task.body}</small>
+            </span>
+            <Icon name="arrowRight" size={16} />
+          </button>
+        ))}
+      </div>
+
+      <div className="ops-grid">
+        <section className="ops-section">
+          <div className="ops-section-head">
+            <h2><Icon name="fileText" size={17} />Derniers dossiers</h2>
+            <button className="link-btn" onClick={() => setTab('review')}>Ouvrir</button>
+          </div>
+          {ops.latest.reviewQueue.length === 0 ? (
+            <p className="muted" style={{ fontSize: 13 }}>Aucun dossier en revue.</p>
+          ) : ops.latest.reviewQueue.map((item) => (
+            <button key={item.id} className="ops-row" onClick={() => setTab('review')}>
+              <Icon name={item.type === 'dispute' ? 'alert' : 'package'} size={16} />
+              <span className="grow">
+                <b>{item.type === 'dispute' ? 'Litige' : 'Annonce zone grise'}</b>
+                <small>{item.label || item.refId}</small>
+              </span>
+              <small>{DT_FMT.format(item.createdAt)}</small>
+            </button>
+          ))}
+        </section>
+
+        <section className="ops-section">
+          <div className="ops-section-head">
+            <h2><Icon name="shieldCheck" size={17} />Identités à vérifier</h2>
+            <button className="link-btn" onClick={() => setTab('kyc')}>Ouvrir</button>
+          </div>
+          {ops.latest.kyc.length === 0 ? (
+            <p className="muted" style={{ fontSize: 13 }}>Aucune demande KYC en attente.</p>
+          ) : ops.latest.kyc.map((item) => (
+            <button key={item.id} className={`ops-row ${item.overdue ? 'is-danger' : ''}`} onClick={() => setTab('kyc')}>
+              <Icon name={item.overdue ? 'alert' : 'user'} size={16} />
+              <span className="grow">
+                <b>{item.legalName}</b>
+                <small>{item.user?.email || item.user?.name}</small>
+              </span>
+              <small>{DT_FMT.format(item.submittedAt)}</small>
+            </button>
+          ))}
+        </section>
+      </div>
+
+      <section className="ops-section">
+        <div className="ops-section-head">
+          <h2><Icon name="send" size={17} />Négociation à surveiller</h2>
+          <button className="link-btn" onClick={() => setTab('ops')}>{ops.health.offersActive || 0} actives</button>
+        </div>
+        {!ops.latest.offers?.length ? (
+          <p className="muted" style={{ fontSize: 13 }}>Aucune proposition active ou expirée.</p>
+        ) : (
+          <div className="ops-offer-list">
+            {ops.latest.offers.map((offer) => (
+              <div key={offer.id} className={`ops-offer-row ops-${offer.severity}`}>
+                <Icon name={offer.severity === 'critical' ? 'alert' : offer.severity === 'warning' ? 'clock' : 'send'} size={16} />
+                <span className="grow">
+                  <b>{offer.listing?.title || offer.id}</b>
+                  <small>{offer.sender?.name} → {offer.traveler?.name} · +{offer.offeredPay} €</small>
+                </span>
+                <span className="ops-offer-meta">
+                  <b>{offer.waitingFor === 'traveler' ? 'Voyageur' : offer.waitingFor === 'sender' ? 'Expéditeur' : 'Expirée'}</b>
+                  <small>{offerTimeLabel(offer)}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="ops-section">
+        <div className="ops-section-head">
+          <h2><Icon name="alert" size={17} />Signalement risque</h2>
+          <button className="link-btn" onClick={() => setTab('fraud')}>Analyser</button>
+        </div>
+        <div className="ops-risk-list">
+          <RiskPill label="Comptes liés" value={ops.risk.linkedAccounts} />
+          <RiskPill label="Paires répétées" value={ops.risk.repeatPairs} />
+          <RiskPill label="Messages hors app" value={ops.risk.flaggedMessaging} />
+          <RiskPill label="Annulations" value={ops.risk.abnormalCancel} />
+          <RiskPill label="Litiges répétés" value={ops.risk.disputeProne} />
+          <RiskPill label="KYC répétés" value={ops.risk.kycRepeatRejections} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function OpsMetric({ icon, value, label, danger = false }) {
+  return (
+    <div className={`ops-metric ${danger ? 'is-danger' : ''}`}>
+      <Icon name={icon} size={17} />
+      <b>{value}</b>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function RiskPill({ label, value }) {
+  return <span className={`ops-risk-pill ${value > 0 ? 'on' : ''}`}><b>{value}</b>{label}</span>;
+}
+
+function offerTimeLabel(offer) {
+  if (offer.status === 'expired' || offer.expiresIn <= 0) return 'expirée';
+  const hours = Math.ceil(offer.expiresIn / 3600000);
+  if (hours <= 48) return `${hours} h`;
+  return `${Math.ceil(hours / 24)} j`;
+}
+
 function ListingReviewCard({ item, decide }) {
   const [maxQty, setMaxQty] = useState('');
   const [approving, setApproving] = useState(false);

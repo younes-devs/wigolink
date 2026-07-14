@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { QrBlock, QrScanner, Stars, StatusPill } from '../components.jsx';
@@ -34,6 +34,7 @@ function relativeTime(ts) {
 export default function TransactionDetail() {
   useLang();
   const { id } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const [tx, setTx] = useState(null);
   const [error, setError] = useState('');
@@ -51,6 +52,12 @@ export default function TransactionDetail() {
     return () => clearInterval(iv);
   }, [load]);
 
+  useEffect(() => {
+    if (!tx || !location.hash) return;
+    const target = document.getElementById(location.hash.slice(1));
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [tx, location.hash]);
+
   // Moment de gratification (PRD UI/UX U16) : célébration à la libération de l'escrow —
   // uniquement sur la transition (pas à chaque visite d'une transaction déjà livrée).
   useEffect(() => {
@@ -66,6 +73,7 @@ export default function TransactionDetail() {
   if (!tx) return <SkeletonCard lines={3} />;
 
   const stepIdx = ORDER.indexOf(tx.status);
+  const nextAction = getNextAction(tx);
   const eventAt = (type) => tx.events?.find((e) => e.type === type)?.at || null;
   // Depuis quand on attend sur l'étape courante (dernier événement enregistré).
   const lastEventAt = tx.events?.length ? tx.events[tx.events.length - 1].at : tx.createdAt;
@@ -73,15 +81,33 @@ export default function TransactionDetail() {
   return (
     <div>
       {celebrate && <Celebration />}
-      <div className="list-row mb">
+      <div className="tx-hero">
         <CategoryIcon categoryId={tx.listing?.categoryId} />
         <div className="grow">
           <h1 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px' }}>{tx.listing?.title}</h1>
           <StatusPill status={tx.status} />
         </div>
+        <span className="tx-role">{t(`role.${tx.myRole}`)}</span>
       </div>
 
-      <div className="card">
+      <div className="tx-next">
+        <span className="tx-next-icon"><Icon name={nextAction.icon} size={18} /></span>
+        <div className="grow">
+          <b>{t(nextAction.title)}</b>
+          <span>{t(nextAction.desc)}</span>
+        </div>
+        <a href={`#${nextAction.target}`} className="btn btn-sm btn-ghost">{t('tx.nav.go')}</a>
+      </div>
+
+      <div className="tx-section-nav">
+        <a href="#suivi"><Icon name="clock" size={14} />{t('tx.nav.tracking')}</a>
+        <a href="#actions"><Icon name="check" size={14} />{t('tx.nav.actions')}</a>
+        <a href="#douane"><Icon name="fileText" size={14} />{t('tx.nav.customs')}</a>
+        {!['cancelled', 'released', 'refunded'].includes(tx.status) && <a href="#messages"><Icon name="chat" size={14} />{t('tx.nav.messages')}</a>}
+        {tx.status === 'disputed' && <a href="#litige"><Icon name="alert" size={14} />{t('tx.nav.dispute')}</a>}
+      </div>
+
+      <div className="card tx-section" id="suivi">
         <div className="timeline">
           {STEPS.map((key, i) => {
             const done = stepIdx > i || tx.status === 'released';
@@ -108,10 +134,10 @@ export default function TransactionDetail() {
         </div>
       </div>
 
-      <StepAction tx={tx} user={user} reload={load} />
-      {tx.status === 'disputed' && <DisputePanel txId={tx.id} />}
-      {!['cancelled'].includes(tx.status) && <CustomsRecap txId={tx.id} status={tx.status} />}
-      {!['cancelled', 'released', 'refunded'].includes(tx.status) && <Chat tx={tx} userId={user.id} />}
+      <section id="actions" className="tx-section"><StepAction tx={tx} user={user} reload={load} /></section>
+      {tx.status === 'disputed' && <section id="litige" className="tx-section"><DisputePanel txId={tx.id} /></section>}
+      {!['cancelled'].includes(tx.status) && <section id="douane" className="tx-section"><CustomsRecap txId={tx.id} status={tx.status} /></section>}
+      {!['cancelled', 'released', 'refunded'].includes(tx.status) && <section id="messages" className="tx-section"><Chat tx={tx} userId={user.id} /></section>}
       {tx.status === 'released' && <Rating tx={tx} user={user} reload={load} />}
     </div>
   );
@@ -123,6 +149,27 @@ const ACTION_TOASTS = {
   refuse: ['info', 'tx.toast.refuse'],
   dispute: ['info', 'tx.toast.dispute'],
 };
+
+function getNextAction(tx) {
+  const role = tx.myRole;
+  if (tx.status === 'accepted' && role === 'sender')
+    return { icon: 'camera', title: 'tx.next.seal.title', desc: 'tx.next.seal.desc', target: 'actions' };
+  if (tx.status === 'accepted')
+    return { icon: 'clock', title: 'tx.next.waitSeal.title', desc: 'tx.next.waitSeal.desc', target: 'suivi' };
+  if (tx.status === 'sealed' && role === 'traveler')
+    return { icon: 'qr', title: 'tx.next.pickup.title', desc: 'tx.next.pickup.desc', target: 'actions' };
+  if (tx.status === 'sealed')
+    return { icon: 'package', title: 'tx.next.waitPickup.title', desc: 'tx.next.waitPickup.desc', target: 'suivi' };
+  if (tx.status === 'in_transit' && role === 'recipient')
+    return { icon: 'qr', title: 'tx.next.delivery.title', desc: 'tx.next.delivery.desc', target: 'actions' };
+  if (tx.status === 'in_transit')
+    return { icon: 'plane', title: 'tx.next.waitDelivery.title', desc: 'tx.next.waitDelivery.desc', target: 'messages' };
+  if (tx.status === 'disputed')
+    return { icon: 'alert', title: 'tx.next.dispute.title', desc: 'tx.next.dispute.desc', target: 'litige' };
+  if (tx.status === 'released')
+    return { icon: 'star', title: 'tx.next.rate.title', desc: 'tx.next.rate.desc', target: 'actions' };
+  return { icon: 'info', title: 'tx.next.closed.title', desc: 'tx.next.closed.desc', target: 'suivi' };
+}
 
 function StepAction({ tx, user, reload }) {
   const [code, setCode] = useState('');
@@ -595,6 +642,15 @@ function Chat({ tx, userId }) {
         <span className="chat-presence" title={t('chat.public.place')}>
           <Icon name="mapPin" size={13} />{t('chat.public.place')}
         </span>
+      </div>
+      <div className="chat-participants">
+        {Object.entries(participants).filter(([id]) => id !== userId).map(([id, p]) => (
+          <div key={id} className="chat-participant">
+            <Avatar name={p?.name} photo={p?.photoUrl} size={26} />
+            <span>{p?.name}</span>
+            <small>{p?.role}</small>
+          </div>
+        ))}
       </div>
 
       <div className="chat-box" ref={boxRef}>

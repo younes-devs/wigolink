@@ -100,6 +100,37 @@ test('une catégorie en liste noire est refusée à la publication', async () =>
   assert.equal(res.body.verdict, 'blacklisted');
 });
 
+test('pré-contrôle annonce : détecte publication directe, revue et blocages', async () => {
+  const fatima = tokens.fatima;
+  const base = {
+    title: 'Précontrôle safran', categoryId: 'safran', categoryLabel: 'Safran',
+    description: 'Description suffisamment longue pour le précontrôle', weightKg: 0.1,
+    valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+    travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+  };
+
+  const ok = await api('/listings/preflight', { method: 'POST', token: fatima, body: base });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.preflight.status, 'published');
+  assert.equal(ok.body.preflight.canSubmit, true);
+
+  const gray = await api('/listings/preflight', {
+    method: 'POST', token: fatima,
+    body: { ...base, categoryId: `nouveau-produit-${Date.now()}`, categoryLabel: 'Nouveau produit' },
+  });
+  assert.equal(gray.body.preflight.status, 'pending_review');
+  assert.ok(gray.body.preflight.warnings.includes('review'));
+
+  const blocked = await api('/listings/preflight', {
+    method: 'POST', token: fatima,
+    body: { ...base, categoryId: 'medicaments', categoryLabel: 'Médicaments', valueEur: 999999 },
+  });
+  assert.equal(blocked.body.preflight.status, 'blocked');
+  assert.equal(blocked.body.preflight.canSubmit, false);
+  assert.ok(blocked.body.preflight.blockers.includes('category'));
+  assert.ok(blocked.body.preflight.blockers.includes('limit'));
+});
+
 test('parcours complet : annonce → escrow → scellage → double validation → livraison → notation', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;
@@ -174,6 +205,28 @@ test('dashboard fraude : réservé aux admins', async () => {
   assert.equal(asAdmin.status, 200);
   assert.ok(Array.isArray(asAdmin.body.linkedAccounts));
   assert.ok(Array.isArray(asAdmin.body.repeatPairs));
+});
+
+test('centre opérations admin : agrège priorités et risques', async () => {
+  const karim = tokens.karim;
+  const admin = tokens.admin;
+
+  const asTraveler = await api('/admin/ops', { token: karim });
+  assert.equal(asTraveler.status, 403);
+
+  const asAdmin = await api('/admin/ops', { token: admin });
+  assert.equal(asAdmin.status, 200, JSON.stringify(asAdmin.body));
+  assert.ok(['clear', 'watch', 'critical'].includes(asAdmin.body.ops.health.status));
+  assert.equal(typeof asAdmin.body.ops.health.reviewOpen, 'number');
+  assert.equal(typeof asAdmin.body.ops.health.riskSignals, 'number');
+  assert.equal(typeof asAdmin.body.ops.health.offersActive, 'number');
+  assert.equal(typeof asAdmin.body.ops.health.offersAtRisk, 'number');
+  assert.ok(asAdmin.body.ops.tasks.some((t) => t.id === 'review-disputes'));
+  assert.ok(asAdmin.body.ops.tasks.some((t) => t.id === 'kyc-overdue'));
+  assert.ok(asAdmin.body.ops.tasks.some((t) => t.id === 'offer-watch'));
+  assert.ok(Array.isArray(asAdmin.body.ops.latest.reviewQueue));
+  assert.ok(Array.isArray(asAdmin.body.ops.latest.kyc));
+  assert.ok(Array.isArray(asAdmin.body.ops.latest.offers));
 });
 
 test('anti brute-force : le login se bloque après trop de tentatives', async () => {
@@ -608,6 +661,7 @@ test('notifications : marquées lues correctement, scopées au bon utilisateur',
   const before = await api('/notifications', { token: fatima });
   assert.equal(before.status, 200);
   assert.ok(before.body.unread > 0, 'fatima doit avoir au moins une notification non lue après acceptation');
+  assert.ok(before.body.notifications.some((n) => n.txId === accepted.body.transaction.id && n.section === 'suivi'));
 
   await api('/notifications/read', { method: 'POST', token: fatima });
   const after = await api('/notifications', { token: fatima });
@@ -618,6 +672,99 @@ test('notifications : marquées lues correctement, scopées au bon utilisateur',
   const mehdiNotifs = await api('/notifications', { token: tokens.mehdi });
   assert.equal(mehdiNotifs.status, 200);
   assert.ok(mehdiNotifs.body.notifications.every((n) => n.txId !== accepted.body.transaction.id));
+});
+
+test('dashboard : agrège actions, matching, confiance et notifications', async () => {
+  const fatima = tokens.fatima;
+  const karim = (await registerKycVerifiedUser(tokens.admin, 'DashboardVoyageur')).token;
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Dashboard colis', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour le dashboard utilisateur', weightKg: 0.1,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const trip = await api('/trips', {
+    method: 'POST', token: karim,
+    body: { from: 'Casablanca', to: 'Bruxelles', date: '2026-08-10', capacityKg: 3 },
+  });
+  const offer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: listing.body.listing.id, tripId: trip.body.trip.id },
+  });
+
+  const dashBefore = await api('/dashboard', { token: karim });
+  assert.equal(dashBefore.status, 200);
+  assert.ok(dashBefore.body.matches.some((l) => l.id === listing.body.listing.id), 'le matching doit inclure l’annonce compatible');
+  assert.equal(dashBefore.body.trust.kycStatus, 'verified');
+  assert.equal(dashBefore.body.offers.mineToAct >= 1, true);
+  assert.ok(dashBefore.body.offers.latest.some((o) => o.id === offer.body.offer.id && o.waitingForMe));
+  assert.ok(dashBefore.body.notifications.some((n) => n.section === 'matching'));
+
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  const dashAfter = await api('/dashboard', { token: fatima });
+  assert.equal(dashAfter.status, 200);
+  assert.ok(dashAfter.body.actions.some((tx) => tx.id === accepted.body.transaction.id && tx.status === 'accepted'));
+  assert.ok(dashAfter.body.notifications.some((n) => n.txId === accepted.body.transaction.id && n.section === 'suivi'));
+});
+
+test('centre de confiance : expose score, limites, actions et protections', async () => {
+  const token = (await registerKycVerifiedUser(tokens.admin, 'TrustCenterUser')).token;
+  const res = await api('/trust-center', { token });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.trust.identity.kycStatus, 'verified');
+  assert.equal(typeof res.body.trust.score, 'number');
+  assert.ok(res.body.trust.score >= 0 && res.body.trust.score <= 100);
+  assert.equal(res.body.trust.limits.maxValue, 100);
+  assert.equal(res.body.trust.limits.maxActive, 1);
+  assert.ok(res.body.trust.actions.some((a) => a.id === 'build-reviews'));
+  assert.ok(res.body.trust.protections.some((p) => p.id === 'escrow' && p.enabled === true));
+
+  const blocked = await api('/trust-center');
+  assert.equal(blocked.status, 401);
+});
+
+test('paramètres : les préférences de notifications sont persistées et appliquées', async () => {
+  const fatima = tokens.fatima;
+  const karim = (await registerKycVerifiedUser(tokens.admin, 'PrefsVoyageur')).token;
+  await completeTraining(karim);
+
+  const defaults = await api('/settings', { token: fatima });
+  assert.equal(defaults.status, 200);
+  assert.equal(defaults.body.settings.notifications.messages, true);
+  assert.equal(defaults.body.settings.notifications.security, true);
+
+  const saved = await api('/settings', {
+    method: 'POST', token: fatima,
+    body: { notifications: { messages: false, security: false } },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.settings.notifications.messages, false);
+  assert.equal(saved.body.settings.notifications.security, true, 'la sécurité reste obligatoire');
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Préférences notifications', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.1,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+
+  const before = await api('/notifications', { token: fatima });
+  await api(`/transactions/${accepted.body.transaction.id}/messages`, {
+    method: 'POST', token: karim, body: { text: 'Message qui ne doit pas notifier Fatima.' },
+  });
+  const after = await api('/notifications', { token: fatima });
+  assert.equal(after.body.notifications.length, before.body.notifications.length);
+  assert.ok(after.body.notifications.every((n) => !(n.txId === accepted.body.transaction.id && n.type === 'messages')));
 });
 
 test('retrait d\'une catégorie de la liste blanche : réservé aux admins, repasse en zone grise', async () => {
@@ -741,6 +888,14 @@ test('trajets : le feed se filtre sur le trajet déclaré du voyageur (PRD §2.1
   assert.ok(filteredIds.includes(matching.body.listing.id), 'l\'annonce compatible doit apparaître');
   assert.ok(!filteredIds.includes(nonMatching.body.listing.id), 'l\'annonce incompatible ne doit pas apparaître');
 
+  const mission = await api('/trips/mission', { token: traveler.token });
+  assert.equal(mission.status, 200);
+  assert.equal(mission.body.totals.trips, 1);
+  assert.ok(mission.body.totals.matches >= 1);
+  assert.ok(mission.body.totals.potentialPay >= 7);
+  assert.ok(mission.body.missions[0].matchIds.includes(matching.body.listing.id));
+  assert.ok(!mission.body.missions[0].matchIds.includes(nonMatching.body.listing.id));
+
   const unfiltered = await api('/listings?all=1', { token: traveler.token });
   const unfilteredIds = unfiltered.body.listings.map((l) => l.id);
   assert.ok(unfilteredIds.includes(matching.body.listing.id));
@@ -790,6 +945,357 @@ test('retrait d\'annonce (avant acceptation) : réservé à l\'expéditeur, bloq
   const ownerCancel = await api(`/listings/${listingId}/cancel`, { method: 'POST', token: fatima });
   assert.equal(ownerCancel.status, 200);
   assert.equal(ownerCancel.body.listing.status, 'cancelled');
+});
+
+test('centre de pilotage des envois : priorise les actions expediteur', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'PilotageVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Pilotage colis test', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 30, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 9, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+
+  const beforeAccept = await api('/shipments/command-center', { token: fatima });
+  assert.equal(beforeAccept.status, 200);
+  const waiting = beforeAccept.body.commandCenter.items.find((i) => i.listing.id === listing.body.listing.id);
+  assert.equal(waiting.action.id, 'wait_traveler');
+  assert.equal(beforeAccept.body.commandCenter.totals.published >= 1, true);
+
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+
+  const afterAccept = await api('/shipments/command-center', { token: fatima });
+  const active = afterAccept.body.commandCenter.items.find((i) => i.listing.id === listing.body.listing.id);
+  assert.equal(active.action.id, 'seal');
+  assert.equal(active.action.priority, 'high');
+  assert.equal(active.transaction.myRole, 'sender');
+  assert.ok(afterAccept.body.commandCenter.actions.some((a) => a.listingId === listing.body.listing.id && a.action.id === 'seal'));
+  assert.ok(afterAccept.body.commandCenter.totals.escrowHeld >= accepted.body.transaction.escrow.amount);
+});
+
+test('centre financier : agrège escrow, rôles et actions', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'FinanceVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Finance colis test', categoryId: 'argan', categoryLabel: "Huile d'argan",
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 40, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  const txId = accepted.body.transaction.id;
+  const amount = accepted.body.transaction.escrow.amount;
+
+  const senderFinance = await api('/finance-center', { token: fatima });
+  assert.equal(senderFinance.status, 200);
+  assert.ok(senderFinance.body.finance.totals.held >= amount);
+  assert.ok(senderFinance.body.finance.totals.paidByMe >= amount);
+  const senderRow = senderFinance.body.finance.rows.find((r) => r.transaction.id === txId);
+  assert.equal(senderRow.role, 'sender');
+  assert.equal(senderRow.action.id, 'seal_to_unlock');
+  assert.ok(senderFinance.body.finance.actions.some((a) => a.txId === txId && a.action.id === 'seal_to_unlock'));
+
+  const travelerFinance = await api('/finance-center', { token: traveler.token });
+  const travelerRow = travelerFinance.body.finance.rows.find((r) => r.transaction.id === txId);
+  assert.equal(travelerRow.role, 'traveler');
+  assert.equal(travelerRow.transaction.escrow.state, 'held');
+});
+
+test('centre documents : indexe douane, scellage, escrow et KYC', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'DocsVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Documents colis test', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.2,
+      valueEur: 35, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 8, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  const txId = accepted.body.transaction.id;
+  await api(`/transactions/${txId}/sealing-video`, { method: 'POST', token: fatima, body: { simulated: true, geo: 'Casablanca' } });
+
+  const center = await api('/documents-center', { token: fatima });
+  assert.equal(center.status, 200);
+  const dossier = center.body.documents.dossiers.find((d) => d.txId === txId);
+  assert.ok(dossier, 'le dossier transaction doit apparaître');
+  assert.equal(dossier.role, 'sender');
+  assert.equal(dossier.docs.find((d) => d.id === 'customs').status, 'ready');
+  assert.equal(dossier.docs.find((d) => d.id === 'sealing').status, 'ready');
+  assert.equal(dossier.docs.find((d) => d.id === 'escrow').status, 'held');
+  assert.ok(center.body.documents.totals.ready >= 2);
+});
+
+test('centre assistance : agrège actions, dossiers et guide', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'SupportVoyageur');
+  await completeTraining(traveler.token);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Support colis test', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 25, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: traveler.token });
+  const txId = accepted.body.transaction.id;
+
+  const support = await api('/support-center', { token: fatima });
+  assert.equal(support.status, 200);
+  const supportCase = support.body.support.cases.find((c) => c.txId === txId);
+  assert.ok(supportCase, 'la transaction doit apparaître dans les dossiers support');
+  assert.equal(supportCase.action.id, 'seal_first');
+  assert.ok(support.body.support.urgent.some((a) => a.txId === txId && a.action.id === 'seal_first'));
+  assert.ok(support.body.support.guide.some((g) => g.id === 'evidence_72h'));
+  assert.equal(support.body.support.totals.cases >= 1, true);
+});
+
+test('centre conformité : expose catalogue, corridors et risques utilisateur', async () => {
+  const fatima = tokens.fatima;
+
+  const gray = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Conformité zone grise', categoryId: 'autre', categoryLabel: 'Produit artisanal rare',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 30, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const over = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Conformité valeur haute', categoryId: 'argan', categoryLabel: "Huile d'argan",
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 500, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+
+  const center = await api('/compliance-center', { token: fatima });
+  assert.equal(center.status, 200);
+  assert.ok(center.body.compliance.corridors.some((c) => c.id === 'MA-EU'));
+  assert.ok(center.body.compliance.catalogue.allowed.length >= 1);
+  assert.ok(center.body.compliance.catalogue.forbidden.length >= 1);
+  assert.ok(center.body.compliance.totals.reviewPending >= 1);
+  assert.ok(center.body.compliance.totals.overFranchise >= 1);
+  assert.ok(center.body.compliance.actions.some((a) => a.listingId === gray.body.listing.id && a.action.id === 'wait_review'));
+  assert.ok(center.body.compliance.actions.some((a) => a.listingId === over.body.listing.id && a.action.id === 'customs_value'));
+});
+
+test('centre matching expediteur : relie annonces actives et trajets compatibles', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'MatchingVoyageur');
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Matching colis test', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 25, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(listing.status, 200, JSON.stringify(listing.body));
+
+  const trip = await api('/trips', {
+    method: 'POST', token: traveler.token,
+    body: { from: 'Casablanca', to: 'Bruxelles', date: '2026-08-10', capacityKg: 5 },
+  });
+  assert.equal(trip.status, 200, JSON.stringify(trip.body));
+
+  const pending = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Matching revue test', categoryId: 'autre', categoryLabel: 'Produit rare',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 20, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(pending.status, 200, JSON.stringify(pending.body));
+
+  const center = await api('/sender-matching', { token: fatima });
+  assert.equal(center.status, 200);
+  assert.ok(center.body.matching.totals.matched >= 1);
+  assert.ok(center.body.matching.totals.candidates >= 1);
+
+  const item = center.body.matching.items.find((i) => i.listing.id === listing.body.listing.id);
+  assert.ok(item, 'l annonce doit apparaitre dans le centre matching');
+  assert.equal(item.action.id, 'contact_ready');
+  assert.ok(item.candidates.some((c) => c.trip.id === trip.body.trip.id));
+
+  const pendingItem = center.body.matching.items.find((i) => i.listing.id === pending.body.listing.id);
+  assert.equal(pendingItem.action.id, 'wait_review');
+  assert.ok(center.body.matching.actions.some((a) => a.listingId === listing.body.listing.id && a.action.id === 'contact_ready'));
+});
+
+test('propositions matching : l expediteur invite un voyageur qui accepte en transaction', async () => {
+  const fatima = tokens.fatima;
+  const admin = tokens.admin;
+  const traveler = await registerKycVerifiedUser(admin, 'OffreVoyageur');
+  await completeTraining(traveler.token);
+  const travelerMe = await api('/me', { token: traveler.token });
+  const travelerId = travelerMe.body.user.id;
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Offre matching colis', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.5,
+      valueEur: 45, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 11, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const trip = await api('/trips', {
+    method: 'POST', token: traveler.token,
+    body: { from: 'Casablanca', to: 'Bruxelles', date: '2026-08-12', capacityKg: 6 },
+  });
+
+  const offer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: listing.body.listing.id, tripId: trip.body.trip.id, message: 'Pouvez-vous le prendre ?', expiresInHours: 24 },
+  });
+  assert.equal(offer.status, 200, JSON.stringify(offer.body));
+  assert.equal(offer.body.offer.status, 'pending_traveler');
+  assert.equal(offer.body.offer.offeredPay, 11);
+  assert.equal(offer.body.offer.travelerId, travelerId);
+  assert.ok(offer.body.offer.expiresAt - offer.body.offer.createdAt <= 24 * 36e5 + 1000);
+
+  const travelerOffers = await api('/matching-offers', { token: traveler.token });
+  assert.ok(travelerOffers.body.offers.some((o) => o.id === offer.body.offer.id && o.myRole === 'traveler' && o.listing.id === listing.body.listing.id));
+
+  const counter = await api(`/matching-offers/${offer.body.offer.id}/counter`, {
+    method: 'POST', token: traveler.token,
+    body: { offeredPay: 14, message: 'Possible pour 14 EUR.' },
+  });
+  assert.equal(counter.status, 200, JSON.stringify(counter.body));
+  assert.equal(counter.body.offer.status, 'countered_sender');
+  assert.equal(counter.body.offer.offeredPay, 14);
+  assert.ok(counter.body.offer.history.some((h) => h.type === 'counter' && h.pay === 14));
+
+  const declinedListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Offre matching refusee', categoryId: 'miel', categoryLabel: 'Miel',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 22, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const declineOffer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: declinedListing.body.listing.id, tripId: trip.body.trip.id },
+  });
+  const declined = await api(`/matching-offers/${declineOffer.body.offer.id}/decline`, { method: 'POST', token: traveler.token });
+  assert.equal(declined.status, 200, JSON.stringify(declined.body));
+  assert.equal(declined.body.offer.status, 'declined');
+
+  const withdrawnListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Offre matching retiree', categoryId: 'amlou', categoryLabel: 'Amlou',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 24, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 6, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const withdrawOffer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: withdrawnListing.body.listing.id, tripId: trip.body.trip.id },
+  });
+  const withdrawn = await api(`/matching-offers/${withdrawOffer.body.offer.id}/withdraw`, { method: 'POST', token: fatima });
+  assert.equal(withdrawn.status, 200, JSON.stringify(withdrawn.body));
+  assert.equal(withdrawn.body.offer.status, 'withdrawn');
+  assert.ok(withdrawn.body.offer.history.some((h) => h.type === 'withdrawn'));
+
+  const soonListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Offre matching relance', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 0.8,
+      valueEur: 28, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 8, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const soonOffer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: soonListing.body.listing.id, tripId: trip.body.trip.id, expiresInHours: 1 },
+  });
+  assert.equal(soonOffer.status, 200, JSON.stringify(soonOffer.body));
+  const remindersBefore = await api('/notifications', { token: traveler.token });
+  const reminderCount = remindersBefore.body.notifications
+    .filter((n) => n.type === 'reminders' && n.section === 'matching' && n.text.includes('Offre matching relance'))
+    .length;
+  assert.equal(reminderCount, 1);
+  const remindersAfter = await api('/notifications', { token: traveler.token });
+  const reminderCountAfter = remindersAfter.body.notifications
+    .filter((n) => n.type === 'reminders' && n.section === 'matching' && n.text.includes('Offre matching relance'))
+    .length;
+  assert.equal(reminderCountAfter, 1, 'la relance proche expiration ne doit pas être dupliquée');
+
+  const expiredListing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Offre matching expiree', categoryId: 'safran', categoryLabel: 'Safran',
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 25, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  const expiredOffer = await api('/matching-offers', {
+    method: 'POST', token: fatima,
+    body: { listingId: expiredListing.body.listing.id, tripId: trip.body.trip.id, expiresInHours: 0 },
+  });
+  assert.equal(expiredOffer.status, 200, JSON.stringify(expiredOffer.body));
+  const travelerExpiredOffers = await api('/matching-offers', { token: traveler.token });
+  const expiredRow = travelerExpiredOffers.body.offers.find((o) => o.id === expiredOffer.body.offer.id);
+  assert.equal(expiredRow.status, 'expired');
+  assert.ok(expiredRow.history.some((h) => h.type === 'expired'));
+  const expiredAccept = await api(`/matching-offers/${expiredOffer.body.offer.id}/accept`, { method: 'POST', token: traveler.token });
+  assert.equal(expiredAccept.status, 400);
+  const expiredNotifications = await api('/notifications', { token: traveler.token });
+  assert.ok(expiredNotifications.body.notifications.some((n) =>
+    n.type === 'reminders' && n.section === 'matching' && n.text.includes('Offre matching expiree')
+  ));
+
+  const notifications = await api('/notifications', { token: traveler.token });
+  assert.ok(notifications.body.notifications.some((n) => n.section === 'matching' && n.text.includes('Offre matching colis')));
+
+  const accepted = await api(`/matching-offers/${offer.body.offer.id}/accept`, { method: 'POST', token: fatima });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+  assert.equal(accepted.body.offer.status, 'accepted');
+  assert.equal(accepted.body.transaction.listingId, listing.body.listing.id);
+  assert.equal(accepted.body.transaction.travelerId, travelerId);
+  assert.equal(accepted.body.transaction.escrow.travelerPay, 14);
+  assert.equal(accepted.body.transaction.escrow.state, 'held');
+
+  const after = await api('/sender-matching', { token: fatima });
+  assert.ok(!after.body.matching.items.some((i) => i.listing.id === listing.body.listing.id));
 });
 
 test('recherche élargie : couvre titre, description et catégorie (PRD UI/UX U11)', async () => {

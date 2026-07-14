@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, getToken } from '../api';
+import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
-import { getTheme, setTheme } from '../theme.js';
-import { t, useLang, getLang, setLang, dateLocale, LANGS } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const memberFmt = () => new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric' });
 
 export default function Profile() {
   useLang();
-  const { user, logout, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [me, setMe] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: '', city: '', phone: '' });
@@ -93,9 +92,14 @@ export default function Profile() {
             </div>
             <div style={{ marginTop: 8 }}><TrustBadge user={user} /></div>
           </div>
-          <button className="btn btn-ghost btn-sm profile-edit-btn" onClick={() => setEditing(!editing)}>
-            {editing ? t('common.cancel') : t('common.edit')}
-          </button>
+          <div className="profile-actions">
+            <Link className="icon-btn" to="/parametres" title={t('settings.title')} aria-label={t('settings.title')}>
+              <Icon name="settings" size={18} />
+            </Link>
+            <button className="btn btn-ghost btn-sm profile-edit-btn" onClick={() => setEditing(!editing)}>
+              {editing ? t('common.cancel') : t('common.edit')}
+            </button>
+          </div>
         </div>
 
         {user.photoUrl && !editing && (
@@ -133,6 +137,48 @@ export default function Profile() {
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
 
       <KycBanner status={me?.kyc?.status || user.kycStatus} />
+      <ProfileSummary user={user} me={me} memberSince={memberSince} />
+
+      <Link to="/confiance" className="profile-trust-link">
+        <span className="settings-row-icon"><Icon name="shieldCheck" size={18} /></span>
+        <span className="grow">
+          <b>{t('trust.title')}</b>
+          <small>{t('trust.profile.link')}</small>
+        </span>
+        <Icon name="arrowRight" size={16} />
+      </Link>
+      <Link to="/documents" className="profile-trust-link">
+        <span className="settings-row-icon"><Icon name="fileText" size={18} /></span>
+        <span className="grow">
+          <b>{t('docs.title')}</b>
+          <small>{t('docs.profile.link')}</small>
+        </span>
+        <Icon name="arrowRight" size={16} />
+      </Link>
+      <Link to="/offres" className="profile-trust-link">
+        <span className="settings-row-icon"><Icon name="send" size={18} /></span>
+        <span className="grow">
+          <b>{t('offers.title')}</b>
+          <small>{t('offers.profile.link')}</small>
+        </span>
+        <Icon name="arrowRight" size={16} />
+      </Link>
+      <Link to="/assistance" className="profile-trust-link">
+        <span className="settings-row-icon"><Icon name="alert" size={18} /></span>
+        <span className="grow">
+          <b>{t('support.title')}</b>
+          <small>{t('support.profile.link')}</small>
+        </span>
+        <Icon name="arrowRight" size={16} />
+      </Link>
+      <Link to="/conformite" className="profile-trust-link">
+        <span className="settings-row-icon"><Icon name="fileText" size={18} /></span>
+        <span className="grow">
+          <b>{t('compliance.title')}</b>
+          <small>{t('compliance.profile.link')}</small>
+        </span>
+        <Icon name="arrowRight" size={16} />
+      </Link>
 
       <div className="stat-grid mb">
         <div className="stat"><div className="num">{user.completed}</div><div className="lbl">{t('profile.stat.completed')}</div></div>
@@ -159,43 +205,37 @@ export default function Profile() {
       </div>
 
       <ReviewsSection userId={user.id} />
-
-      <AppearanceSection />
-
-      <PrivacySection onDeleted={logout} email={me?.email} />
-
-      <button className="btn btn-ghost" onClick={logout}>
-        <Icon name="logout" size={17} />{t('profile.logout')}
-      </button>
     </div>
   );
 }
 
-// Bascule clair/sombre (U9) + langue (U14)
-function AppearanceSection() {
-  useLang();
-  const [theme, setThemeState] = useState(getTheme());
-  const [lang, setLangState] = useState(getLang());
-  const chooseTheme = (v) => { setTheme(v); setThemeState(v); };
-  const chooseLang = (v) => { setLang(v); setLangState(v); };
+function ProfileSummary({ user, me, memberSince }) {
+  const status = me?.kyc?.status || user.kycStatus || 'none';
+  const identityKey = status === 'verified'
+    ? 'profile.summary.identity.verified'
+    : status === 'pending'
+      ? 'profile.summary.identity.pending'
+      : 'profile.summary.identity.none';
+
   return (
-    <div className="card">
-      <h2 style={{ marginBottom: 12 }}><Icon name="moon" size={17} />{t('appearance.title')}</h2>
-      <div className="theme-toggle mb">
-        <button className={`theme-opt ${theme === 'light' ? 'active' : ''}`} onClick={() => chooseTheme('light')}>
-          <Icon name="star" size={15} />{t('appearance.light')}
-        </button>
-        <button className={`theme-opt ${theme === 'dark' ? 'active' : ''}`} onClick={() => chooseTheme('dark')}>
-          <Icon name="moon" size={15} />{t('appearance.dark')}
-        </button>
+    <div className="profile-summary">
+      <div className="profile-summary-head">
+        <Icon name="shieldCheck" size={17} />
+        <b>{t('profile.summary.title')}</b>
       </div>
-      <h2 style={{ margin: '4px 0 12px' }}><Icon name="mapPin" size={17} />{t('lang.title')}</h2>
-      <div className="theme-toggle">
-        {LANGS.map((l) => (
-          <button key={l.code} className={`theme-opt ${lang === l.code ? 'active' : ''}`} onClick={() => chooseLang(l.code)}>
-            {l.label}
-          </button>
-        ))}
+      <div className="profile-summary-grid">
+        <div>
+          <span>{t('profile.summary.identity')}</span>
+          <strong>{t(identityKey)}</strong>
+        </div>
+        <div>
+          <span>{t('profile.summary.limits')}</span>
+          <strong>{me ? t('profile.summary.limits.value', { active: me.maxActive, value: me.maxValue }) : '...'}</strong>
+        </div>
+        <div>
+          <span>{t('profile.summary.member')}</span>
+          <strong>{memberSince || t('profile.summary.member.fallback')}</strong>
+        </div>
       </div>
     </div>
   );
@@ -230,132 +270,6 @@ function ReviewsSection({ userId }) {
           <div className="muted" style={{ fontSize: 11.5 }}>{r.authorName}</div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// RGPD (PRD §6) : export des données personnelles et droit à l'effacement.
-function PrivacySection({ onDeleted, email }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <div className="settings-group">
-        <div className="settings-group-title">{t('legal.title')}</div>
-        <Link to="/cgu" className="settings-row" style={{ marginBottom: 8 }}>
-          <span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span>
-          <span className="grow">
-            <span className="settings-row-title">{t('auth.cgu.link')}</span>
-            <span className="settings-row-sub">{t('legal.cgu.sub')}</span>
-          </span>
-          <Icon name="chevronDown" size={16} className="settings-chevron" />
-        </Link>
-        <Link to="/confidentialite" className="settings-row" style={{ marginBottom: 8 }}>
-          <span className="settings-row-icon"><Icon name="fileText" size={17} /></span>
-          <span className="grow">
-            <span className="settings-row-title">{t('auth.privacy.link')}</span>
-            <span className="settings-row-sub">{t('legal.privacy.sub')}</span>
-          </span>
-          <Icon name="chevronDown" size={16} className="settings-chevron" />
-        </Link>
-        <button className="settings-row" onClick={() => setOpen(true)}>
-          <span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span>
-          <span className="grow">
-            <span className="settings-row-title">{t('legal.data.title')}</span>
-            <span className="settings-row-sub">{t('legal.data.sub')}</span>
-          </span>
-          <Icon name="chevronDown" size={16} className="settings-chevron" />
-        </button>
-      </div>
-      {open && <PrivacyModal onClose={() => setOpen(false)} onDeleted={onDeleted} email={email} />}
-    </>
-  );
-}
-
-function PrivacyModal({ onClose, onDeleted, email }) {
-  const [confirming, setConfirming] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [exported, setExported] = useState(false);
-
-  const exportData = async () => {
-    const res = await fetch('/api/profile/export', { headers: { Authorization: `Bearer ${getToken()}` } });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'wigofly-mes-donnees.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    setExported(true);
-    setTimeout(() => setExported(false), 2500);
-  };
-
-  const deleteAccount = async () => {
-    setErr(''); setBusy(true);
-    try {
-      await api('/profile/delete', { method: 'POST' });
-      onDeleted();
-    } catch (e) { setErr(e.message); setBusy(false); }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal privacy-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <Icon name="shieldCheck" size={20} />
-          <b>{t('privacy.modal.title')}</b>
-          <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-
-        <div className="privacy-body">
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>{t('privacy.modal.intro')}</p>
-
-          <div className="privacy-item">
-            <div className="privacy-item-icon"><Icon name="fileText" size={18} /></div>
-            <div className="grow">
-              <div className="privacy-item-title">{t('privacy.export.title')}</div>
-              <div className="privacy-item-desc">{t('privacy.export.desc')}</div>
-              <button className="btn btn-ghost btn-sm mt" onClick={exportData}>
-                <Icon name={exported ? 'check' : 'fileText'} size={15} />
-                {exported ? t('privacy.export.done') : t('privacy.export.btn')}
-              </button>
-            </div>
-          </div>
-
-          <div className="divider" />
-
-          <div className="privacy-item">
-            <div className="privacy-item-icon privacy-item-icon-danger"><Icon name="trash" size={18} /></div>
-            <div className="grow">
-              <div className="privacy-item-title">{t('privacy.delete.title')}</div>
-              <div className="privacy-item-desc">{t('privacy.delete.desc')}</div>
-              {!confirming ? (
-                <button className="btn btn-danger-ghost btn-sm mt" onClick={() => setConfirming(true)}>
-                  <Icon name="trash" size={15} />{t('privacy.delete.title')}
-                </button>
-              ) : (
-                <div className="privacy-confirm mt">
-                  {err && <div className="alert alert-danger" style={{ marginBottom: 10 }}><Icon name="alert" size={16} />{err}</div>}
-                  <p style={{ fontSize: 12.5, marginBottom: 8 }}>{t('privacy.delete.confirm.text', { email })}</p>
-                  <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
-                    placeholder={email} style={{ marginBottom: 10 }} />
-                  <div className="row">
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setConfirming(false); setConfirmText(''); setErr(''); }}>
-                      {t('common.cancel')}
-                    </button>
-                    <button className="btn btn-danger-ghost btn-sm" onClick={deleteAccount}
-                      disabled={busy || confirmText !== email}>
-                      {busy ? <span className="spinner" /> : t('privacy.delete.confirm.btn')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

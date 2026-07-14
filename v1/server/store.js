@@ -63,6 +63,7 @@ function seed() {
       },
     ],
     transactions: [],
+    matchingOffers: [],
     messages: [],
     disputes: [],
     reviewQueue: [],
@@ -104,6 +105,7 @@ if (!db.pendingVerifications) { db.pendingVerifications = {}; migrated = true; }
 if (!db.customWhitelist) { db.customWhitelist = []; migrated = true; }
 if (!db.kycSubmissions) { db.kycSubmissions = []; migrated = true; }
 if (!db.kycDecisions) { db.kycDecisions = []; migrated = true; }
+if (!db.matchingOffers) { db.matchingOffers = []; migrated = true; }
 
 export function save() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));

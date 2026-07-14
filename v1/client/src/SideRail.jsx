@@ -34,7 +34,7 @@ export default function SideRail({ user }) {
   const active = txs.filter((t) => !['released', 'refunded', 'cancelled'].includes(t.status)).length;
   const franchise = rules?.customs?.['MA-EU']?.franchise;
 
-  const isFeed = pathname === '/' || pathname.startsWith('/annonce');
+  const isFeed = pathname === '/trajets' || pathname.startsWith('/annonce');
   const isTx = pathname.startsWith('/transactions');
   const isShip = pathname.startsWith('/envois');
   const isProfile = pathname.startsWith('/profil');

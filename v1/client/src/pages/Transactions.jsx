@@ -18,8 +18,13 @@ export default function Transactions() {
 
   return (
     <div>
-      <h1 className="page-title">{t('txs.title')}</h1>
-      <p className="page-sub">{t('txs.sub')}</p>
+      <div className="list-row mb">
+        <div className="grow">
+          <h1 className="page-title">{t('txs.title')}</h1>
+          <p className="page-sub" style={{ marginBottom: 0 }}>{t('txs.sub')}</p>
+        </div>
+        <Link to="/finance" className="btn btn-ghost btn-sm"><Icon name="euro" size={15} />{t('finance.nav')}</Link>
+      </div>
 
       <div className="tabs">
         <button className={tab === 'current' ? 'active' : ''} onClick={() => setTab('current')}>{t('txs.tab.current')}</button>

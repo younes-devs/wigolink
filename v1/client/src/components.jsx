@@ -73,7 +73,8 @@ export function Header({ user }) {
 export function BottomNav({ user }) {
   useLang();
   const tabs = [
-    { to: '/', icon: 'luggage', label: t('nav.trips') },
+    { to: '/', icon: 'sparkles', label: t('nav.home') },
+    { to: '/trajets', icon: 'luggage', label: t('nav.trips') },
     { to: '/envois', icon: 'package', label: t('nav.shipments') },
     { to: '/transactions', icon: 'repeat', label: t('nav.transactions') },
     { to: '/profil', icon: 'user', label: t('nav.profile') },

@@ -60,6 +60,7 @@ export default function CreateListing() {
   const [error, setError] = useState('');
   const [needsKyc, setNeedsKyc] = useState(false);
   const [showBlacklist, setShowBlacklist] = useState(false);
+  const [preflight, setPreflight] = useState(null);
   const [form, setForm] = useState({
     title: '', categoryId: '', categoryLabel: '', description: '', weightKg: '', valueEur: '',
     from: 'Casablanca', to: 'Bruxelles', dateFrom: '', dateTo: '', travelerPay: '',
@@ -76,6 +77,19 @@ export default function CreateListing() {
 
   useEffect(() => { api('/rules').then(setRules); }, []);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    if (step !== 2 || !form.categoryId || !form.valueEur) {
+      setPreflight(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api('/listings/preflight', { method: 'POST', body: form })
+        .then((d) => setPreflight(d.preflight))
+        .catch(() => setPreflight(null));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [step, form]);
 
   // Mode test : pré-remplit tout le formulaire avec des données plausibles.
   const autofill = () => {
@@ -254,6 +268,7 @@ export default function CreateListing() {
 
       {step === 2 && (
         <div>
+          <PreflightPanel preflight={preflight} />
           {/* Écran douane dédié — acceptation explicite, pas une checkbox CGU (PRD §1.3) */}
           <div className="card">
             <h2 style={{ marginBottom: 10 }}><Icon name="fileText" size={17} />{t('create.customs.title', { label: corridor.label })}</h2>
@@ -273,7 +288,7 @@ export default function CreateListing() {
             </label>
           </div>
           {needsKyc && <KycRequiredNotice />}
-          <button className="btn btn-primary" disabled={!form.customsAccepted} onClick={submit}>
+          <button className="btn btn-primary" disabled={!form.customsAccepted || preflight?.canSubmit === false} onClick={submit}>
             {t('create.submit')}
           </button>
         </div>
@@ -303,6 +318,62 @@ export default function CreateListing() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PreflightPanel({ preflight }) {
+  if (!preflight) {
+    return (
+      <div className="card preflight-card">
+        <div className="preflight-head">
+          <span className="preflight-icon"><span className="spinner" /></span>
+          <div>
+            <h2>{t('preflight.title')}</h2>
+            <p>{t('common.loading')}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const icon = preflight.status === 'blocked' ? 'alert' : preflight.status === 'pending_review' ? 'clock' : 'check';
+  return (
+    <div className={`card preflight-card preflight-${preflight.status}`}>
+      <div className="preflight-head">
+        <span className="preflight-icon"><Icon name={icon} size={20} /></span>
+        <div className="grow">
+          <h2>{t('preflight.title')}</h2>
+          <p>{t(`preflight.status.${preflight.status}`)}</p>
+        </div>
+      </div>
+
+      <div className="preflight-summary">
+        <div>
+          <span>{t('preflight.category')}</span>
+          <b>{preflight.category.label || '...'}</b>
+          <small>{t(`preflight.verdict.${preflight.category.verdict}`)}</small>
+        </div>
+        <div>
+          <span>{t('preflight.customs')}</span>
+          <b>{preflight.customs.valueEur ?? '...'} €</b>
+          <small>{preflight.customs.overFranchise ? t('preflight.customs.over') : t('preflight.customs.ok')}</small>
+        </div>
+        <div>
+          <span>{t('preflight.cost')}</span>
+          <b>{preflight.costs ? `${preflight.costs.total} €` : '...'}</b>
+          <small>{preflight.costs ? t('preflight.cost.detail', { fee: preflight.costs.commission }) : t('preflight.cost.missing')}</small>
+        </div>
+      </div>
+
+      <div className="preflight-checks">
+        {preflight.checks.map((c) => (
+          <div key={c.id} className={`preflight-check ${c.ok ? 'ok' : c.severity}`}>
+            <Icon name={c.ok ? 'check' : c.severity === 'warning' ? 'alert' : 'x'} size={15} />
+            <span>{c.label}</span>
+            {c.detail && <small>{c.detail}</small>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

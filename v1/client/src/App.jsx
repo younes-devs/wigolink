@@ -5,6 +5,7 @@ import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
 import DevBar from './DevBar.jsx';
 import SideRail from './SideRail.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 import Login from './pages/Login.jsx';
 import Feed from './pages/Feed.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
@@ -12,7 +13,15 @@ import CreateListing from './pages/CreateListing.jsx';
 import MyShipments from './pages/MyShipments.jsx';
 import Transactions from './pages/Transactions.jsx';
 import TransactionDetail from './pages/TransactionDetail.jsx';
+import FinanceCenter from './pages/FinanceCenter.jsx';
+import DocumentsCenter from './pages/DocumentsCenter.jsx';
+import SupportCenter from './pages/SupportCenter.jsx';
+import ComplianceCenter from './pages/ComplianceCenter.jsx';
+import SenderMatching from './pages/SenderMatching.jsx';
+import OffersCenter from './pages/OffersCenter.jsx';
 import Profile from './pages/Profile.jsx';
+import Settings from './pages/Settings.jsx';
+import TrustCenter from './pages/TrustCenter.jsx';
 import Admin from './pages/Admin.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import Terms from './pages/Terms.jsx';
@@ -88,13 +97,22 @@ export default function App() {
                 <Route path="*" element={<Login />} />
               ) : (
                 <>
-                  <Route path="/" element={<Feed />} />
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/trajets" element={<Feed />} />
                   <Route path="/annonce/:id" element={<ListingDetail />} />
                   <Route path="/envois" element={<MyShipments />} />
                   <Route path="/envois/nouveau" element={<CreateListing />} />
                   <Route path="/transactions" element={<Transactions />} />
                   <Route path="/transactions/:id" element={<TransactionDetail />} />
+                  <Route path="/finance" element={<FinanceCenter />} />
+                  <Route path="/documents" element={<DocumentsCenter />} />
+                  <Route path="/assistance" element={<SupportCenter />} />
+                  <Route path="/conformite" element={<ComplianceCenter />} />
+                  <Route path="/matching" element={<SenderMatching />} />
+                  <Route path="/offres" element={<OffersCenter />} />
                   <Route path="/profil" element={<Profile />} />
+                  <Route path="/parametres" element={<Settings />} />
+                  <Route path="/confiance" element={<TrustCenter />} />
                   <Route path="/verification" element={<Kyc />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="*" element={<NotFound />} />

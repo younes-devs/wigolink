@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
@@ -11,8 +11,13 @@ const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
 
 export default function Feed() {
   useLang();
+  const nav = useNavigate();
   const [data, setData] = useState(null);
   const [trips, setTrips] = useState(null);
+  const [mission, setMission] = useState(null);
+  const [offers, setOffers] = useState(null);
+  const [busyOffer, setBusyOffer] = useState('');
+  const [counterDrafts, setCounterDrafts] = useState({});
   const [showAll, setShowAll] = useState(false);
   const [addingTrip, setAddingTrip] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -28,6 +33,8 @@ export default function Feed() {
     if (filters.q) params.set('q', filters.q);
     api(`/listings?${params}`).then(setData).catch(() => setData({ listings: [] }));
     api('/trips/mine').then((d) => setTrips(d.trips)).catch(() => setTrips([]));
+    api('/trips/mission').then((d) => setMission(d)).catch(() => setMission({ missions: [], totals: {} }));
+    api('/matching-offers').then((d) => setOffers(d.offers)).catch(() => setOffers([]));
   }, [showAll, filters]);
 
   useEffect(() => { load(); }, [load]);
@@ -41,6 +48,44 @@ export default function Feed() {
     await api(`/trips/${id}`, { method: 'DELETE' });
     load();
     toast.info(t('feed.trip.removed'));
+  };
+
+  const respondOffer = async (offer, decision) => {
+    setBusyOffer(`${offer.id}:${decision}`);
+    try {
+      const d = await api(`/matching-offers/${offer.id}/${decision}`, { method: 'POST' });
+      if (decision === 'accept') {
+        toast.success(t('traveler.offers.accepted'));
+        nav(`/transactions/${d.transaction.id}`);
+      } else {
+        toast.info(t('traveler.offers.declined'));
+        load();
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusyOffer('');
+    }
+  };
+
+  const counterOffer = async (offer) => {
+    const nextPay = counterDrafts[offer.id] || offer.offeredPay || offer.listing?.travelerPay;
+    setBusyOffer(`${offer.id}:counter`);
+    try {
+      await api(`/matching-offers/${offer.id}/counter`, {
+        method: 'POST',
+        body: {
+          offeredPay: nextPay,
+          message: t('traveler.offers.counter.default', { amount: nextPay }),
+        },
+      });
+      toast.success(t('traveler.offers.counter.sent'));
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusyOffer('');
+    }
   };
 
   const listings = data?.listings;
@@ -81,6 +126,17 @@ export default function Feed() {
         )}
         {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); toast.success(t('feed.trip.added')); }} />}
       </div>
+
+      <MissionPanel mission={mission} onDeclare={() => setAddingTrip(true)} />
+
+      <TravelerOffersPanel
+        offers={(offers || []).filter((o) => ['pending', 'pending_traveler'].includes(o.status) && o.myRole === 'traveler')}
+        busyOffer={busyOffer}
+        counterDrafts={counterDrafts}
+        setCounterDrafts={setCounterDrafts}
+        onRespond={respondOffer}
+        onCounter={counterOffer}
+      />
 
       {data?.filteredByTrip !== undefined && futureTrips.length > 0 && (
         <label className="feed-toggle">
@@ -186,6 +242,126 @@ export default function Feed() {
         </Link>
       ))}
       </div>
+    </div>
+  );
+}
+
+function TravelerOffersPanel({ offers, busyOffer, counterDrafts, setCounterDrafts, onRespond, onCounter }) {
+  if (!offers?.length) return null;
+  return (
+    <section className="traveler-offers">
+      <div className="section-head">
+        <h2>{t('traveler.offers.title')}</h2>
+        <span>{offers.length}</span>
+      </div>
+      <div className="traveler-offer-list">
+        {offers.map((offer) => (
+          <article className="traveler-offer" key={offer.id}>
+            <div className="traveler-offer-main">
+              <CategoryIcon categoryId={offer.listing?.categoryId} size={18} />
+              <div className="grow">
+                <b>{offer.listing?.title || t('traveler.offers.missing')}</b>
+                <span>
+                  {offer.listing?.from} → {offer.listing?.to} · {offer.listing?.weightKg} kg · +{offer.offeredPay || offer.listing?.travelerPay} €
+                </span>
+                <small>{offer.sender?.name} · {offer.trip?.date} · {offer.trip?.capacityKg} kg</small>
+              </div>
+            </div>
+            <div className="traveler-offer-meta">
+              <span className="pill pill-teal">+{offer.offeredPay || offer.listing?.travelerPay} €</span>
+              <span>{t(`matching.offer.status.${offer.status}`)}</span>
+            </div>
+            {offer.message && <p>{offer.message}</p>}
+            {offer.history?.length > 1 && (
+              <div className="offer-history">
+                {offer.history.slice(-3).map((h, i) => (
+                  <span key={`${h.at}-${i}`}>+{h.pay} € · {t(`matching.offer.event.${h.type}`)}</span>
+                ))}
+              </div>
+            )}
+            <div className="offer-counter">
+              <label>{t('traveler.offers.counter.label')}</label>
+              <input
+                type="number"
+                min="1"
+                value={counterDrafts[offer.id] ?? Math.ceil((offer.offeredPay || offer.listing?.travelerPay || 0) + 2)}
+                onChange={(e) => setCounterDrafts({ ...counterDrafts, [offer.id]: e.target.value })}
+              />
+              <button className="btn btn-ghost btn-sm" onClick={() => onCounter(offer)} disabled={!!busyOffer}>
+                {busyOffer === `${offer.id}:counter` ? <span className="spinner" /> : <Icon name="repeat" size={15} />}
+                {t('traveler.offers.counter')}
+              </button>
+            </div>
+            <div className="traveler-offer-actions">
+              <button
+                className="btn btn-danger-ghost btn-sm"
+                onClick={() => onRespond(offer, 'decline')}
+                disabled={!!busyOffer}
+              >
+                {busyOffer === `${offer.id}:decline` ? <span className="spinner" /> : <Icon name="x" size={15} />}
+                {t('traveler.offers.decline')}
+              </button>
+              <button
+                className="btn btn-teal btn-sm"
+                onClick={() => onRespond(offer, 'accept')}
+                disabled={!!busyOffer}
+              >
+                {busyOffer === `${offer.id}:accept` ? <span className="spinner" /> : <Icon name="check" size={15} />}
+                {t('traveler.offers.accept')}
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MissionPanel({ mission, onDeclare }) {
+  if (!mission) return null;
+  if (!mission.missions?.length) {
+    return (
+      <div className="mission-panel mission-empty">
+        <Icon name="plane" size={22} />
+        <div className="grow">
+          <b>{t('mission.empty.title')}</b>
+          <span>{t('mission.empty.sub')}</span>
+        </div>
+        <button className="btn btn-primary btn-sm" onClick={onDeclare}>{t('feed.declare')}</button>
+      </div>
+    );
+  }
+  const first = mission.missions[0];
+  return (
+    <div className="mission-panel">
+      <div className="mission-head">
+        <div>
+          <h2><Icon name="plane" size={17} />{t('mission.title')}</h2>
+          <p>{t('mission.sub', { trips: mission.totals.trips, matches: mission.totals.matches })}</p>
+        </div>
+        <b>+{mission.totals.potentialPay} €</b>
+      </div>
+      <div className="mission-metrics">
+        <div><span>{t('mission.metric.matches')}</span><b>{first.matchCount}</b></div>
+        <div><span>{t('mission.metric.weight')}</span><b>{first.totalWeight}/{first.trip.capacityKg} kg</b></div>
+        <div><span>{t('mission.metric.customs')}</span><b className={first.customs.overLimit ? 'danger' : ''}>{first.totalValue} €</b></div>
+      </div>
+      {first.topMatches.length > 0 ? (
+        <div className="mission-top">
+          {first.topMatches.map((l) => (
+            <Link key={l.id} to={`/annonce/${l.id}`} className="mission-row">
+              <CategoryIcon categoryId={l.categoryId} size={17} />
+              <span className="grow">
+                <b>{l.title}</b>
+                <small>{l.weightKg} kg · {l.valueEur} € · {l.sender?.name}</small>
+              </span>
+              <strong>+{l.travelerPay} €</strong>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{t('mission.nomatches')}</p>
+      )}
     </div>
   );
 }

@@ -33,6 +33,24 @@ const publicUser = (u) =>
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  transactions: true,
+  messages: true,
+  shipments: true,
+  reminders: true,
+  security: true,
+};
+const OFFER_REMINDER_MS = 6 * 3600e3;
+
+function userSettings(user) {
+  user.settings = user.settings || {};
+  user.settings.notifications = {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(user.settings.notifications || {}),
+    security: true,
+  };
+  return user.settings;
+}
 
 // Seules les parties d'une transaction (ou un admin) peuvent en consulter le détail,
 // les messages, le récap douane, ou agir sur un litige qui s'y rattache.
@@ -52,11 +70,50 @@ function addEvent(tx, type, actorId, meta = {}) {
 }
 
 // Notifications in-app aux transitions d'état (PRD §4.5)
-function notify(userIds, text, txId = null) {
+function notify(userIds, text, txId = null, type = 'transactions', section = null) {
   db.notifications = db.notifications || [];
   for (const uid of new Set(userIds.filter(Boolean))) {
-    db.notifications.push({ id: newId('n'), userId: uid, text, txId, read: false, at: Date.now() });
+    const user = findUser(uid);
+    const kind = DEFAULT_NOTIFICATION_SETTINGS[type] === undefined ? 'transactions' : type;
+    const prefs = user ? userSettings(user).notifications : DEFAULT_NOTIFICATION_SETTINGS;
+    if (kind !== 'security' && prefs[kind] === false) continue;
+    db.notifications.push({ id: newId('n'), userId: uid, text, txId, type: kind, section, read: false, at: Date.now() });
   }
+}
+
+function matchingOfferWaitingUser(offer) {
+  if (offer.status === 'pending_traveler') return offer.travelerId;
+  if (offer.status === 'countered_sender') return offer.senderId;
+  return null;
+}
+
+function runMatchingOfferReminders({ persist = false } = {}) {
+  let changed = normalizeMatchingOffers();
+  const now = Date.now();
+  for (const offer of db.matchingOffers || []) {
+    normalizeMatchingOffer(offer);
+    const listing = db.listings.find((l) => l.id === offer.listingId);
+    const title = listing?.title || 'une proposition';
+    offer.reminders = offer.reminders || {};
+
+    if (['pending_traveler', 'countered_sender'].includes(offer.status)) {
+      const waitingUserId = matchingOfferWaitingUser(offer);
+      const expiresIn = (offer.expiresAt || 0) - now;
+      if (waitingUserId && expiresIn > 0 && expiresIn <= OFFER_REMINDER_MS && !offer.reminders.expiresSoonAt) {
+        offer.reminders.expiresSoonAt = now;
+        notify([waitingUserId], `Rappel : la proposition « ${title} » expire bientôt.`, null, 'reminders', 'matching');
+        changed = true;
+      }
+    }
+
+    if (offer.status === 'expired' && !offer.reminders.expiredAt) {
+      offer.reminders.expiredAt = now;
+      notify([offer.senderId, offer.travelerId], `La proposition « ${title} » a expiré.`, null, 'reminders', 'matching');
+      changed = true;
+    }
+  }
+  if (changed && persist) save();
+  return changed;
 }
 
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
@@ -263,6 +320,23 @@ app.get('/api/me', auth, (req, res) => {
   });
 });
 
+app.get('/api/settings', auth, (req, res) => {
+  res.json({ settings: userSettings(req.user) });
+});
+
+app.post('/api/settings', auth, (req, res) => {
+  const input = req.body?.notifications || {};
+  const next = { ...userSettings(req.user).notifications };
+  for (const key of Object.keys(DEFAULT_NOTIFICATION_SETTINGS)) {
+    if (key === 'security') continue;
+    if (input[key] !== undefined) next[key] = !!input[key];
+  }
+  next.security = true;
+  req.user.settings = { ...req.user.settings, notifications: next };
+  save();
+  res.json({ settings: userSettings(req.user) });
+});
+
 // ---------- KYC manuel (PRD KYC) ----------
 // Statuts : none | pending | verified | rejected | refused
 const MAX_KYC_ATTEMPTS = 3; // au-delà de 3 rejets, passage automatique en 'refused'
@@ -388,6 +462,95 @@ app.get('/api/profile/export', auth, (req, res) => {
   res.json(data);
 });
 
+function documentCenterFor(user) {
+  const uid = user.id;
+  const txs = db.transactions
+    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const dossiers = txs.map((tx) => {
+    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
+    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
+    const role = tx.senderId === uid ? 'sender' : tx.travelerId === uid ? 'traveler' : 'recipient';
+    const docs = [
+      {
+        id: 'customs',
+        status: tx.sealingVideo || ['sealed', 'in_transit', 'released', 'disputed', 'refunded'].includes(tx.status) ? 'ready' : 'pending',
+        href: `/transactions/${tx.id}#douane`,
+      },
+      {
+        id: 'sealing',
+        status: tx.sealingVideo ? 'ready' : tx.status === 'accepted' && role === 'sender' ? 'action' : 'pending',
+        href: `/transactions/${tx.id}#actions`,
+        meta: tx.sealingVideo ? {
+          recordedAt: tx.sealingVideo.recordedAt,
+          simulated: !!tx.sealingVideo.simulated,
+          hasVideo: !!tx.sealingVideo.dataUrl,
+          geo: tx.sealingVideo.geo || null,
+        } : null,
+      },
+      {
+        id: 'escrow',
+        status: tx.escrow?.state || 'pending',
+        href: `/transactions/${tx.id}#suivi`,
+        meta: tx.escrow || null,
+      },
+    ];
+    if (dispute) {
+      docs.push({
+        id: 'dispute',
+        status: dispute.status,
+        href: `/transactions/${tx.id}#litige`,
+        meta: {
+          evidenceCount: dispute.evidence?.length || 0,
+          myEvidenceCount: (dispute.evidence || []).filter((e) => e.by === uid).length,
+          evidenceDeadline: dispute.createdAt + EVIDENCE_WINDOW_MS,
+        },
+      });
+    }
+    return {
+      txId: tx.id,
+      role,
+      status: tx.status,
+      listing: listing ? {
+        id: listing.id,
+        title: listing.title,
+        from: listing.from,
+        to: listing.to,
+        valueEur: listing.valueEur,
+        categoryId: listing.categoryId,
+      } : null,
+      createdAt: tx.createdAt,
+      docs,
+    };
+  });
+  const kyc = db.kycSubmissions
+    .filter((s) => s.userId === uid)
+    .sort((a, b) => b.submittedAt - a.submittedAt)
+    .map((s) => ({
+      id: s.id,
+      status: s.status,
+      submittedAt: s.submittedAt,
+      reviewedAt: s.reviewedAt || null,
+      documentType: s.documentType,
+      retainedByProvider: true,
+    }));
+  return {
+    totals: {
+      dossiers: dossiers.length,
+      ready: dossiers.reduce((sum, d) => sum + d.docs.filter((doc) => doc.status === 'ready' || doc.status === 'released' || doc.status === 'held').length, 0),
+      actions: dossiers.reduce((sum, d) => sum + d.docs.filter((doc) => doc.status === 'action').length, 0),
+      disputes: dossiers.filter((d) => d.docs.some((doc) => doc.id === 'dispute')).length,
+      kyc: kyc.length,
+    },
+    dossiers,
+    kyc,
+  };
+}
+
+app.get('/api/documents-center', auth, (req, res) => {
+  res.json({ documents: documentCenterFor(req.user) });
+});
+
 app.post('/api/profile/delete', auth, (req, res) => {
   const uid = req.user.id;
   const activeTx = db.transactions.filter(
@@ -418,6 +581,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
 
 // ---------- Notifications ----------
 app.get('/api/notifications', auth, (req, res) => {
+  runMatchingOfferReminders({ persist: true });
   const mine = (db.notifications || [])
     .filter((n) => n.userId === req.user.id)
     .sort((a, b) => b.at - a.at)
@@ -456,8 +620,117 @@ app.get('/api/rules', (req, res) => {
 });
 
 // ---------- Trajets voyageur (PRD §2.1) ----------
+function complianceCenterFor(user) {
+  const listings = db.listings
+    .filter((l) => l.senderId === user.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const reviewQueue = db.reviewQueue.filter((r) => r.type === 'listing' && r.status === 'open');
+  const items = listings.map((listing) => {
+    const corridorKey = listing.from === 'Casablanca' ? 'MA-EU' : 'EU-MA';
+    const limitEur = corridorKey === 'MA-EU' ? 430 : 185;
+    const queueItem = reviewQueue.find((r) => r.refId === listing.id);
+    return {
+      listing,
+      corridorKey,
+      customsLimitEur: limitEur,
+      overFranchise: listing.valueEur > limitEur,
+      reviewPending: listing.status === 'pending_review',
+      queueId: queueItem?.id || null,
+      action: listing.status === 'pending_review'
+        ? { id: 'wait_review', priority: 'medium', href: '/envois' }
+        : listing.valueEur > limitEur
+          ? { id: 'customs_value', priority: 'medium', href: `/annonce/${listing.id}` }
+          : { id: 'ok', priority: 'low', href: `/annonce/${listing.id}` },
+    };
+  });
+  const gray = items.filter((i) => i.listing.whitelistVerdict === 'gray' || i.reviewPending);
+  const over = items.filter((i) => i.overFranchise);
+  return {
+    corridors: Object.entries(CUSTOMS).map(([id, c]) => ({
+      id,
+      label: c.label,
+      franchise: c.franchise,
+      rules: c.rules,
+      limitEur: id === 'MA-EU' ? 430 : 185,
+    })),
+    catalogue: {
+      allowed: combinedWhitelist(),
+      forbidden: BLACKLIST,
+      grayExamples: gray.slice(0, 4).map((i) => ({
+        id: i.listing.id,
+        title: i.listing.title,
+        categoryLabel: i.listing.categoryLabel,
+        status: i.listing.status,
+      })),
+    },
+    totals: {
+      listings: listings.length,
+      reviewPending: gray.length,
+      overFranchise: over.length,
+      allowedCategories: combinedWhitelist().length,
+      forbiddenCategories: BLACKLIST.length,
+    },
+    actions: [...gray, ...over]
+      .sort((a, b) => {
+        const rank = { medium: 0, low: 1 };
+        return rank[a.action.priority] - rank[b.action.priority] || b.listing.createdAt - a.listing.createdAt;
+      })
+      .slice(0, 6)
+      .map((i) => ({
+        id: `${i.listing.id}:${i.action.id}`,
+        listingId: i.listing.id,
+        title: i.listing.title,
+        categoryLabel: i.listing.categoryLabel,
+        action: i.action,
+      })),
+    items,
+  };
+}
+
+app.get('/api/compliance-center', auth, (req, res) => {
+  res.json({ compliance: complianceCenterFor(req.user) });
+});
+
 app.get('/api/trips/mine', auth, (req, res) => {
   res.json({ trips: db.trips.filter((t) => t.travelerId === req.user.id) });
+});
+
+app.get('/api/trips/mission', auth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const trips = db.trips
+    .filter((t) => t.travelerId === req.user.id && t.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const open = db.listings.filter((l) => l.status === 'published' && l.senderId !== req.user.id);
+  const missions = trips.map((trip) => {
+    const matches = open
+      .filter((l) => matchesTrip(l, trip))
+      .sort((a, b) => b.travelerPay - a.travelerPay)
+      .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)) }));
+    const totalPay = matches.reduce((s, l) => s + l.travelerPay, 0);
+    const totalWeight = matches.reduce((s, l) => s + l.weightKg, 0);
+    const totalValue = matches.reduce((s, l) => s + l.valueEur, 0);
+    const corridor = trip.from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
+    const customsLimit = trip.from === 'Casablanca' ? 430 : 185;
+    return {
+      trip,
+      matchCount: matches.length,
+      totalPay,
+      totalWeight: Math.round(totalWeight * 10) / 10,
+      remainingKg: Math.max(0, Math.round((trip.capacityKg - totalWeight) * 10) / 10),
+      totalValue,
+      customs: { corridor, limitEur: customsLimit, overLimit: totalValue > customsLimit },
+      matchIds: matches.map((l) => l.id),
+      topMatches: matches.slice(0, 3),
+    };
+  });
+  res.json({
+    missions,
+    totals: {
+      trips: missions.length,
+      matches: missions.reduce((s, m) => s + m.matchCount, 0),
+      potentialPay: missions.reduce((s, m) => s + m.totalPay, 0),
+    },
+  });
 });
 
 app.post('/api/trips', auth, (req, res) => {
@@ -523,6 +796,258 @@ app.get('/api/listings/mine', auth, (req, res) => {
 });
 
 // Modification d'une annonce tant qu'aucun voyageur ne l'a acceptée (statut 'published' ou 'pending_review').
+function shipmentActionFor(listing, tx) {
+  if (listing.status === 'pending_review') return { id: 'review', priority: 'medium', href: '/envois' };
+  if (listing.status === 'published') return { id: 'wait_traveler', priority: 'medium', href: `/annonce/${listing.id}` };
+  if (!tx) return { id: listing.status === 'cancelled' ? 'cancelled' : 'closed', priority: 'low', href: '/envois' };
+  if (tx.status === 'accepted') return { id: 'seal', priority: 'high', href: `/transactions/${tx.id}#actions` };
+  if (tx.status === 'sealed') return { id: 'handoff', priority: 'high', href: `/transactions/${tx.id}#messages` };
+  if (tx.status === 'in_transit') return { id: 'track', priority: 'medium', href: `/transactions/${tx.id}#suivi` };
+  if (tx.status === 'disputed') return { id: 'dispute', priority: 'high', href: `/transactions/${tx.id}#litige` };
+  if (tx.status === 'released') return { id: 'rate', priority: 'low', href: `/transactions/${tx.id}#actions` };
+  return { id: 'closed', priority: 'low', href: `/transactions/${tx.id}` };
+}
+
+function shipmentCommandCenterFor(user) {
+  const mine = db.listings
+    .filter((l) => l.senderId === user.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const items = mine.map((listing) => {
+    const tx = db.transactions
+      .filter((t) => t.listingId === listing.id)
+      .sort((a, b) => b.createdAt - a.createdAt)[0] || null;
+    const action = shipmentActionFor(listing, tx);
+    return {
+      listing,
+      transaction: tx ? txView(user)(tx) : null,
+      action,
+      risk: {
+        customs: listing.valueEur > (listing.from === 'Casablanca' ? 430 : 185),
+        gray: listing.whitelistVerdict === 'gray',
+        disputed: tx?.status === 'disputed',
+      },
+    };
+  });
+  const actions = items
+    .filter((i) => ['high', 'medium'].includes(i.action.priority))
+    .sort((a, b) => {
+      const rank = { high: 0, medium: 1, low: 2 };
+      return rank[a.action.priority] - rank[b.action.priority] || b.listing.createdAt - a.listing.createdAt;
+    })
+    .slice(0, 5)
+    .map((i) => ({
+      id: `${i.listing.id}:${i.action.id}`,
+      listingId: i.listing.id,
+      title: i.listing.title,
+      action: i.action,
+      status: i.transaction?.status || i.listing.status,
+    }));
+  return {
+    totals: {
+      total: mine.length,
+      active: items.filter((i) => !['cancelled', 'rejected'].includes(i.listing.status)).length,
+      published: mine.filter((l) => l.status === 'published').length,
+      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
+      matched: mine.filter((l) => l.status === 'matched').length,
+      inTransit: items.filter((i) => i.transaction?.status === 'in_transit').length,
+      disputed: items.filter((i) => i.transaction?.status === 'disputed').length,
+      escrowHeld: items.reduce((sum, i) => sum + (i.transaction?.escrow?.state === 'held' ? i.transaction.escrow.amount : 0), 0),
+    },
+    actions,
+    items,
+  };
+}
+
+app.get('/api/shipments/command-center', auth, (req, res) => {
+  res.json({ commandCenter: shipmentCommandCenterFor(req.user) });
+});
+
+function senderMatchingCenterFor(user) {
+  const today = new Date().toISOString().slice(0, 10);
+  const mine = db.listings
+    .filter((l) => l.senderId === user.id && ['published', 'pending_review'].includes(l.status))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const trips = db.trips
+    .filter((t) => t.travelerId !== user.id && t.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const items = mine.map((listing) => {
+    const candidates = trips
+      .filter((trip) => matchesTrip(listing, trip))
+      .map((trip) => {
+        const traveler = findUser(trip.travelerId);
+        const capacityFit = listing.weightKg ? Math.min(100, Math.round((listing.weightKg / trip.capacityKg) * 100)) : 0;
+        const offer = (db.matchingOffers || [])
+          .filter((o) => o.listingId === listing.id && o.tripId === trip.id && o.senderId === user.id)
+          .sort((a, b) => b.createdAt - a.createdAt)[0] || null;
+        return {
+          trip,
+          traveler: publicUser(traveler),
+          score: Math.min(100, Math.max(40, 100 - capacityFit + Math.min(10, traveler?.completed || 0))),
+          capacityFit,
+          offer,
+        };
+      })
+      .sort((a, b) => b.score - a.score || a.trip.date.localeCompare(b.trip.date));
+    const action = listing.status === 'pending_review'
+      ? { id: 'wait_review', priority: 'medium', href: '/envois' }
+      : candidates.length
+        ? { id: 'contact_ready', priority: 'high', href: `/annonce/${listing.id}` }
+        : { id: 'adjust_listing', priority: 'medium', href: '/envois' };
+    return {
+      listing,
+      candidates: candidates.slice(0, 5),
+      candidateCount: candidates.length,
+      action,
+    };
+  });
+  return {
+    totals: {
+      listings: mine.length,
+      matched: items.filter((i) => i.candidateCount > 0).length,
+      candidates: items.reduce((s, i) => s + i.candidateCount, 0),
+      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
+    },
+    actions: items
+      .filter((i) => i.action.priority !== 'low')
+      .sort((a, b) => {
+        const rank = { high: 0, medium: 1, low: 2 };
+        return rank[a.action.priority] - rank[b.action.priority] || b.candidateCount - a.candidateCount;
+      })
+      .slice(0, 6)
+      .map((i) => ({
+        id: `${i.listing.id}:${i.action.id}`,
+        listingId: i.listing.id,
+        title: i.listing.title,
+        action: i.action,
+        candidateCount: i.candidateCount,
+      })),
+    items,
+  };
+}
+
+app.get('/api/sender-matching', auth, (req, res) => {
+  runMatchingOfferReminders({ persist: true });
+  res.json({ matching: senderMatchingCenterFor(req.user) });
+});
+
+app.get('/api/matching-offers', auth, (req, res) => {
+  runMatchingOfferReminders({ persist: true });
+  const offers = (db.matchingOffers || [])
+    .map(normalizeMatchingOffer)
+    .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((o) => ({
+      ...o,
+      myRole: o.senderId === req.user.id ? 'sender' : 'traveler',
+      listing: db.listings.find((l) => l.id === o.listingId),
+      trip: db.trips.find((t) => t.id === o.tripId),
+      sender: publicUser(findUser(o.senderId)),
+      traveler: publicUser(findUser(o.travelerId)),
+    }));
+  res.json({ offers });
+});
+
+function matchingOfferSnapshot(offer) {
+  if (!offer) return '';
+  return JSON.stringify({
+    status: offer.status,
+    offeredPay: offer.offeredPay,
+    expiresAt: offer.expiresAt,
+    respondedAt: offer.respondedAt,
+    historyLength: Array.isArray(offer.history) ? offer.history.length : 0,
+  });
+}
+
+function normalizeMatchingOffers({ persist = false } = {}) {
+  let changed = false;
+  for (const offer of db.matchingOffers || []) {
+    const before = matchingOfferSnapshot(offer);
+    normalizeMatchingOffer(offer);
+    if (matchingOfferSnapshot(offer) !== before) changed = true;
+  }
+  if (changed && persist) save();
+  return changed;
+}
+
+function normalizeMatchingOfferAndSave(offer) {
+  const before = matchingOfferSnapshot(offer);
+  normalizeMatchingOffer(offer);
+  if (matchingOfferSnapshot(offer) !== before) save();
+  return offer;
+}
+
+function normalizeMatchingOffer(offer) {
+  if (!offer) return offer;
+  const now = Date.now();
+  const listing = db.listings.find((l) => l.id === offer.listingId);
+  if (!offer.offeredPay && listing) offer.offeredPay = listing.travelerPay;
+  if (!offer.expiresAt) offer.expiresAt = offer.createdAt + 72 * 36e5;
+  if (!offer.history) {
+    offer.history = [{
+      by: offer.senderId,
+      type: 'created',
+      pay: offer.offeredPay || listing?.travelerPay || 0,
+      message: offer.message || '',
+      at: offer.createdAt,
+    }];
+  }
+  if (offer.status === 'pending') offer.status = 'pending_traveler';
+  if (['pending_traveler', 'countered_sender'].includes(offer.status) && offer.expiresAt <= now) {
+    offer.status = 'expired';
+    offer.respondedAt = now;
+    if (!offer.history.some((h) => h.type === 'expired')) {
+      offer.history.push({ by: 'system', type: 'expired', pay: offer.offeredPay || 0, message: '', at: now });
+    }
+  }
+  return offer;
+}
+
+app.post('/api/matching-offers', auth, (req, res) => {
+  normalizeMatchingOffers({ persist: true });
+  const { listingId, tripId, message = '', offeredPay, expiresInHours } = req.body || {};
+  const listing = db.listings.find((l) => l.id === listingId);
+  const trip = db.trips.find((t) => t.id === tripId);
+  if (!listing || listing.senderId !== req.user.id)
+    return res.status(404).json({ error: 'Annonce introuvable' });
+  if (listing.status !== 'published')
+    return res.status(400).json({ error: 'Cette annonce ne peut plus recevoir de proposition' });
+  if (!trip || trip.travelerId === req.user.id)
+    return res.status(400).json({ error: 'Trajet incompatible' });
+  if (!matchesTrip(listing, trip))
+    return res.status(400).json({ error: 'Ce trajet ne correspond pas aux contraintes de l annonce' });
+
+  const pay = positiveNumber(offeredPay === undefined ? listing.travelerPay : offeredPay);
+  if (pay === null) return res.status(400).json({ error: 'Montant proposé invalide' });
+
+  const existing = (db.matchingOffers || []).find((o) =>
+    o.listingId === listing.id && o.tripId === trip.id && ['pending_traveler', 'countered_sender'].includes(o.status)
+  );
+  if (existing) return res.json({ offer: existing });
+
+  const now = Date.now();
+  const rawTtl = expiresInHours === undefined ? 72 : Number(expiresInHours);
+  const ttlHours = Number.isFinite(rawTtl) ? Math.max(0, Math.min(168, rawTtl)) : 72;
+  const offer = {
+    id: newId('mo'), listingId: listing.id, tripId: trip.id,
+    senderId: req.user.id, travelerId: trip.travelerId,
+    status: 'pending_traveler',
+    offeredPay: pay,
+    message: String(message || '').trim().slice(0, 500),
+    history: [{
+      by: req.user.id,
+      type: 'offer',
+      pay,
+      message: String(message || '').trim().slice(0, 500),
+      at: now,
+    }],
+    createdAt: now, expiresAt: now + ttlHours * 36e5, respondedAt: null, txId: null,
+  };
+  db.matchingOffers.push(offer);
+  notify([offer.travelerId], `${req.user.name} vous propose de transporter « ${listing.title} ».`, null, 'messages', 'matching');
+  save();
+  res.json({ offer });
+});
+
 app.put('/api/listings/:id', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === req.params.id);
   if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
@@ -572,6 +1097,99 @@ app.post('/api/listings/:id/cancel', auth, (req, res) => {
   listing.status = 'cancelled';
   save();
   res.json({ listing });
+});
+
+function listingPreflight(user, body) {
+  const {
+    title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description,
+    weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted,
+    recipientPhone, photos,
+  } = body;
+  const checks = [];
+  const warnings = [];
+  const blockers = [];
+  const addCheck = (id, ok, label, severity = 'blocker', detail = null) => {
+    checks.push({ id, ok, label, severity, detail });
+    if (!ok && severity === 'blocker') blockers.push(id);
+    if (!ok && severity === 'warning') warnings.push(id);
+  };
+
+  addCheck('kyc', user.kycStatus === 'verified', 'Identité vérifiée');
+  addCheck('required', !!title && !!rawCategoryId && !!valueEur && !!from && !!to, 'Informations essentielles complètes');
+  addCheck('photos', !!photos?.length && photos.length <= 3 && validPhotos(photos), 'Photos produit exploitables');
+  addCheck('customs', !!customsAccepted, 'Responsabilités douanières acceptées');
+
+  const valueNum = positiveNumber(valueEur);
+  const weightNum = positiveNumber(weightKg);
+  const payNum = positiveNumber(travelerPay);
+  addCheck('value', valueNum !== null, 'Valeur déclarée valide');
+  addCheck('weight', weightNum !== null, 'Poids valide');
+  addCheck('pay', payNum !== null, 'Rémunération voyageur valide');
+  addCheck('limit', valueNum !== null && valueNum <= user.maxValue, `Plafond compte : ${user.maxValue} €`);
+  addCheck('route', !!from && !!to && from !== to, 'Trajet cohérent');
+  addCheck('dates', !!dateFrom && !!dateTo && dateFrom <= dateTo, 'Fenêtre de dates cohérente');
+
+  const categoryId = rawCategoryId === 'autre' && rawCategoryLabel ? slugify(rawCategoryLabel) : rawCategoryId;
+  const evalRes = categoryId ? evaluateCategoryDynamic(categoryId) : { verdict: 'gray' };
+  const cat = combinedWhitelist().find((c) => c.id === categoryId);
+  addCheck('category', evalRes.verdict !== 'blacklisted', 'Catégorie autorisée',
+    evalRes.verdict === 'blacklisted' ? 'blocker' : 'warning',
+    evalRes.category?.reason || null);
+  if (evalRes.verdict === 'gray') {
+    addCheck('review', false, 'Revue humaine nécessaire', 'warning', 'Publication après validation admin.');
+  } else {
+    addCheck('review', true, 'Publication directe possible', 'warning');
+  }
+
+  const corridor = from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
+  const customsLimit = from === 'Casablanca' ? 430 : 185;
+  if (valueNum !== null && valueNum > customsLimit) {
+    addCheck('customs-value', false, `Valeur au-dessus de la franchise indicative (${customsLimit} €)`, 'warning');
+  } else {
+    addCheck('customs-value', true, 'Valeur dans la franchise indicative', 'warning');
+  }
+
+  const recipient = recipientPhone ? db.users.find((u) => u.phone === recipientPhone) : null;
+  if (recipientPhone && !recipient) {
+    addCheck('recipient', false, 'Destinataire non reconnu dans Wigofly', 'warning');
+  } else {
+    addCheck('recipient', true, recipient ? 'Destinataire reconnu' : 'Destinataire optionnel', 'warning');
+  }
+
+  const publishStatus = blockers.length > 0
+    ? 'blocked'
+    : evalRes.verdict === 'gray'
+      ? 'pending_review'
+      : 'published';
+  return {
+    status: publishStatus,
+    canSubmit: blockers.length === 0,
+    blockers,
+    warnings,
+    checks,
+    category: {
+      id: categoryId,
+      label: cat?.label || rawCategoryLabel || categoryId || '',
+      verdict: evalRes.verdict,
+      maxQty: cat?.maxQty || null,
+      reason: evalRes.category?.reason || null,
+    },
+    customs: {
+      corridor,
+      franchiseLimitEur: customsLimit,
+      valueEur: valueNum,
+      overFranchise: valueNum !== null ? valueNum > customsLimit : false,
+    },
+    costs: payNum === null ? null : {
+      travelerPay: payNum,
+      commission: Math.round(payNum * 0.18 * 100) / 100,
+      total: Math.round(payNum * 1.18 * 100) / 100,
+    },
+  };
+}
+
+app.post('/api/listings/preflight', auth, (req, res) => {
+  res.json({ preflight: listingPreflight(req.user, req.body || {}) });
 });
 
 app.post('/api/listings', auth, (req, res) => {
@@ -625,6 +1243,203 @@ app.post('/api/listings', auth, (req, res) => {
 // ---------- Transactions (machine à états) ----------
 // accepted → sealed → in_transit → delivered → released | disputed
 const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function trustCenterFor(user) {
+  const txs = db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id));
+  const active = txs.filter((t) => !CLOSED_STATUSES.includes(t.status));
+  const released = txs.filter((t) => t.status === 'released');
+  const cancelled = txs.filter((t) => t.status === 'cancelled' || t.status === 'refunded');
+  const disputes = db.disputes
+    .filter((d) => {
+      const tx = db.transactions.find((t) => t.id === d.txId);
+      return tx && isPartyToTx(tx, user.id);
+    })
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const openDisputes = disputes.filter((d) => d.status === 'open');
+  const flaggedMessages = db.messages.filter((m) => m.from === user.id && m.flagged);
+  const kyc = kycUserView(user);
+
+  let score = 35;
+  if (user.emailVerified) score += 8;
+  if (user.kycStatus === 'verified') score += 25;
+  else if (user.kycStatus === 'pending') score += 10;
+  score += Math.min(18, (user.completed || released.length) * 4);
+  if (user.ratingCount > 0) score += clamp(((user.rating || 0) - 3) * 5, 0, 10);
+  score -= Math.round((user.cancelRate || 0) * 35);
+  score -= Math.min(18, disputes.length * 6);
+  score -= Math.min(12, flaggedMessages.length * 4);
+  score = clamp(Math.round(score), 0, 100);
+
+  const level = score >= 85 ? 'excellent' : score >= 70 ? 'solid' : score >= 50 ? 'limited' : 'risk';
+  const actions = [];
+  if (user.kycStatus !== 'verified') {
+    actions.push({
+      id: 'verify-identity',
+      status: user.kycStatus || 'none',
+      priority: user.kycStatus === 'pending' ? 'medium' : 'high',
+      href: '/verification',
+    });
+  }
+  if ((user.ratingCount || 0) < 3) {
+    actions.push({ id: 'build-reviews', status: 'todo', priority: 'medium', href: '/trajets' });
+  }
+  if (openDisputes.length > 0) {
+    const d = openDisputes[0];
+    actions.push({ id: 'answer-dispute', status: 'urgent', priority: 'high', href: `/transactions/${d.txId}#litige` });
+  }
+  if (flaggedMessages.length > 0) {
+    actions.push({ id: 'keep-chat-in-app', status: 'warning', priority: 'medium', href: '/cgu' });
+  }
+  if (active.length >= user.maxActive) {
+    actions.push({ id: 'active-limit', status: 'locked', priority: 'medium', href: '/transactions' });
+  }
+
+  return {
+    user: publicUser(user),
+    score,
+    level,
+    stats: {
+      completed: user.completed || released.length,
+      rating: user.rating,
+      ratingCount: user.ratingCount || 0,
+      cancelRate: user.cancelRate || 0,
+      active: active.length,
+      released: released.length,
+      disputes: disputes.length,
+      openDisputes: openDisputes.length,
+      flaggedMessages: flaggedMessages.length,
+      memberSince: user.createdAt,
+    },
+    limits: {
+      maxValue: user.maxValue,
+      maxActive: user.maxActive,
+      active: active.length,
+      nextValue: user.completed >= 3 ? user.maxValue : 500,
+      nextActive: user.completed >= 3 ? user.maxActive : 3,
+      completedForUpgrade: Math.min(user.completed || 0, 3),
+      requiredForUpgrade: 3,
+    },
+    identity: {
+      emailVerified: !!user.emailVerified,
+      kycStatus: user.kycStatus || 'none',
+      kyc,
+    },
+    actions,
+    incidents: {
+      disputes: disputes.slice(0, 4).map((d) => ({
+        id: d.id,
+        txId: d.txId,
+        status: d.status,
+        reason: d.reason,
+        createdAt: d.createdAt,
+        evidenceCount: d.evidence?.length || 0,
+      })),
+      flaggedMessages: flaggedMessages.slice(-4).reverse().map((m) => ({
+        id: m.id,
+        txId: m.txId,
+        at: m.at,
+      })),
+    },
+    protections: [
+      { id: 'escrow', enabled: true },
+      { id: 'kyc', enabled: user.kycStatus === 'verified' },
+      { id: 'video', enabled: true },
+      { id: 'dispute', enabled: true },
+      { id: 'customs', enabled: true },
+    ],
+  };
+}
+
+app.get('/api/trust-center', auth, (req, res) => {
+  res.json({ trust: trustCenterFor(req.user) });
+});
+
+app.get('/api/dashboard', auth, (req, res) => {
+  runMatchingOfferReminders({ persist: true });
+  const today = new Date().toISOString().slice(0, 10);
+  const trips = db.trips
+    .filter((t) => t.travelerId === req.user.id && t.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4);
+  const txs = db.transactions
+    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const activeRaw = txs.filter((t) => !CLOSED_STATUSES.includes(t.status));
+  const activeTx = activeRaw.map(txView(req.user));
+  const actions = activeTx.filter((t) => {
+    if (t.status === 'accepted') return t.myRole === 'sender';
+    if (t.status === 'sealed') return t.myRole === 'traveler';
+    if (t.status === 'in_transit') return t.myRole === 'recipient';
+    if (t.status === 'disputed') return true;
+    return false;
+  }).slice(0, 5);
+  const openListings = db.listings
+    .filter((l) => l.status === 'published' && l.senderId !== req.user.id);
+  const matches = openListings
+    .filter((l) => trips.some((tr) => matchesTrip(l, tr)))
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)), matched: true }))
+    .slice(0, 5);
+  const mine = db.listings.filter((l) => l.senderId === req.user.id);
+  const myOffers = (db.matchingOffers || [])
+    .map(normalizeMatchingOffer)
+    .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const offerTurn = (o) =>
+    (o.status === 'pending_traveler' && o.travelerId === req.user.id)
+    || (o.status === 'countered_sender' && o.senderId === req.user.id);
+  const activeOffers = myOffers.filter((o) => ['pending_traveler', 'countered_sender'].includes(o.status));
+  const notifications = (db.notifications || [])
+    .filter((n) => n.userId === req.user.id)
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 5);
+  const unread = (db.notifications || []).filter((n) => n.userId === req.user.id && !n.read).length;
+  res.json({
+    user: publicUser(req.user),
+    trust: {
+      kycStatus: req.user.kycStatus || 'none',
+      trainingDone: !!req.user.trainingDone,
+      maxValue: req.user.maxValue,
+      maxActive: req.user.maxActive,
+      activeCount: activeRaw.length,
+      completed: req.user.completed,
+      rating: req.user.rating,
+    },
+    actions,
+    activeTx: activeTx.slice(0, 5),
+    trips,
+    matches,
+    shipments: {
+      total: mine.length,
+      published: mine.filter((l) => l.status === 'published').length,
+      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
+      matched: mine.filter((l) => l.status === 'matched').length,
+    },
+    offers: {
+      active: activeOffers.length,
+      mineToAct: activeOffers.filter(offerTurn).length,
+      sent: myOffers.filter((o) => o.senderId === req.user.id).length,
+      received: myOffers.filter((o) => o.travelerId === req.user.id).length,
+      latest: activeOffers.slice(0, 3).map((o) => ({
+        id: o.id,
+        status: o.status,
+        offeredPay: o.offeredPay,
+        expiresAt: o.expiresAt,
+        myRole: o.senderId === req.user.id ? 'sender' : 'traveler',
+        waitingForMe: offerTurn(o),
+        listing: db.listings.find((l) => l.id === o.listingId),
+        other: publicUser(findUser(o.senderId === req.user.id ? o.travelerId : o.senderId)),
+      })),
+    },
+    notifications,
+    unread,
+  });
+});
+
 app.get('/api/transactions', auth, (req, res) => {
   const mine = db.transactions
     .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
@@ -663,39 +1478,130 @@ app.get('/api/transactions/:id', auth, (req, res) => {
   res.json({ transaction: txView(req.user)(t) });
 });
 
-// Acceptation par le voyageur → escrow séquestré immédiatement (PRD §2.3)
-app.post('/api/listings/:id/accept', auth, (req, res) => {
-  if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
-  // Formation courte obligatoire au premier transport (PRD §5.4)
-  if (!req.user.trainingDone && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Formation voyageur requise', needsTraining: true });
-  const listing = db.listings.find((l) => l.id === req.params.id);
+function assertTravelerCanAccept(user, listing) {
+  if (!user) return { status: 404, body: { error: 'Voyageur introuvable' } };
+  if (user.kycStatus !== 'verified')
+    return { status: 403, body: { error: 'Vérification d\'identité requise', needsKyc: true } };
+  if (!user.trainingDone && !user.isAdmin)
+    return { status: 403, body: { error: 'Formation voyageur requise', needsTraining: true } };
   if (!listing || listing.status !== 'published')
-    return res.status(400).json({ error: 'Annonce indisponible' });
-  if (listing.senderId === req.user.id)
-    return res.status(400).json({ error: 'Vous ne pouvez pas transporter votre propre annonce' });
+    return { status: 400, body: { error: 'Annonce indisponible' } };
+  if (listing.senderId === user.id)
+    return { status: 400, body: { error: 'Vous ne pouvez pas transporter votre propre annonce' } };
   const active = db.transactions.filter(
-    (t) => t.travelerId === req.user.id && !['released', 'refunded', 'cancelled'].includes(t.status)
+    (t) => t.travelerId === user.id && !['released', 'refunded', 'cancelled'].includes(t.status)
   );
-  if (active.length >= req.user.maxActive)
-    return res.status(400).json({ error: `Plafond atteint : ${req.user.maxActive} transaction(s) active(s) max` });
+  if (active.length >= user.maxActive)
+    return { status: 400, body: { error: `Plafond atteint : ${user.maxActive} transaction(s) active(s) max` } };
+  return null;
+}
 
+function acceptListingWithTraveler(listing, traveler, offer = null) {
+  if (offer?.offeredPay) listing.travelerPay = offer.offeredPay;
   listing.status = 'matched';
-  const total = listing.travelerPay + Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
+  const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
+  const total = listing.travelerPay + commission;
   const tx = {
     id: newId('tx'), listingId: listing.id, senderId: listing.senderId,
-    travelerId: req.user.id, recipientId: listing.recipientId || listing.senderId,
+    travelerId: traveler.id, recipientId: listing.recipientId || listing.senderId,
     status: 'accepted',
-    escrow: { amount: total, travelerPay: listing.travelerPay, commission: Math.round(listing.travelerPay * listing.commissionRate * 100) / 100, state: 'held', heldAt: Date.now() },
+    escrow: { amount: total, travelerPay: listing.travelerPay, commission, state: 'held', heldAt: Date.now() },
     pickupCode: code6(), deliveryCode: code6(),
     sealingVideo: null, events: [], createdAt: Date.now(),
   };
-  addEvent(tx, 'accepted', req.user.id, { escrowHeld: total });
-  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], `${req.user.name} transporte « ${listing.title} ». Paiement séquestré.`, tx.id);
+  addEvent(tx, 'accepted', traveler.id, { escrowHeld: total, offerId: offer?.id || null });
+  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], `${traveler.name} transporte « ${listing.title} ». Paiement séquestré.`, tx.id, 'transactions', 'suivi');
   db.transactions.push(tx);
+  for (const o of db.matchingOffers || []) {
+    normalizeMatchingOffer(o);
+    if (o.listingId !== listing.id) continue;
+    if (offer && o.id === offer.id) {
+      o.status = 'accepted';
+      o.respondedAt = Date.now();
+      o.txId = tx.id;
+    } else if (['pending', 'pending_traveler', 'countered_sender'].includes(o.status)) {
+      o.status = 'closed';
+      o.respondedAt = Date.now();
+    }
+  }
+  return tx;
+}
+
+// Acceptation par le voyageur → escrow séquestré immédiatement (PRD §2.3)
+app.post('/api/listings/:id/accept', auth, (req, res) => {
+  const listing = db.listings.find((l) => l.id === req.params.id);
+  const blocked = assertTravelerCanAccept(req.user, listing);
+  if (blocked) return res.status(blocked.status).json(blocked.body);
+  const tx = acceptListingWithTraveler(listing, req.user);
   save();
   res.json({ transaction: txView(req.user)(tx) });
+});
+
+app.post('/api/matching-offers/:id/accept', auth, (req, res) => {
+  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
+  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
+    return res.status(404).json({ error: 'Proposition introuvable' });
+  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
+    return res.status(400).json({ error: 'Cette proposition n est plus active' });
+  if (offer.status === 'pending_traveler' && offer.travelerId !== req.user.id)
+    return res.status(403).json({ error: 'En attente de la réponse du voyageur' });
+  if (offer.status === 'countered_sender' && offer.senderId !== req.user.id)
+    return res.status(403).json({ error: 'En attente de la réponse de l expéditeur' });
+  const listing = db.listings.find((l) => l.id === offer.listingId);
+  const traveler = findUser(offer.travelerId);
+  const blocked = assertTravelerCanAccept(traveler, listing);
+  if (blocked) return res.status(blocked.status).json(blocked.body);
+  offer.history.push({ by: req.user.id, type: 'accepted', pay: offer.offeredPay, message: '', at: Date.now() });
+  const tx = acceptListingWithTraveler(listing, traveler, offer);
+  save();
+  res.json({ offer, transaction: txView(req.user)(tx) });
+});
+
+app.post('/api/matching-offers/:id/decline', auth, (req, res) => {
+  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
+  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
+    return res.status(404).json({ error: 'Proposition introuvable' });
+  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
+    return res.status(400).json({ error: 'Cette proposition n est plus active' });
+  offer.status = 'declined';
+  offer.respondedAt = Date.now();
+  offer.history.push({ by: req.user.id, type: 'declined', pay: offer.offeredPay, message: '', at: Date.now() });
+  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], `${req.user.name} a décliné la proposition.`, null, 'messages', 'matching');
+  save();
+  res.json({ offer });
+});
+
+app.post('/api/matching-offers/:id/withdraw', auth, (req, res) => {
+  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
+  if (!offer || offer.senderId !== req.user.id)
+    return res.status(404).json({ error: 'Proposition introuvable' });
+  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
+    return res.status(400).json({ error: 'Cette proposition n est plus active' });
+  offer.status = 'withdrawn';
+  offer.respondedAt = Date.now();
+  offer.history.push({ by: req.user.id, type: 'withdrawn', pay: offer.offeredPay, message: '', at: Date.now() });
+  notify([offer.travelerId], `${req.user.name} a retiré sa proposition.`, null, 'messages', 'matching');
+  save();
+  res.json({ offer });
+});
+
+app.post('/api/matching-offers/:id/counter', auth, (req, res) => {
+  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
+  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
+    return res.status(404).json({ error: 'Proposition introuvable' });
+  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
+    return res.status(400).json({ error: 'Cette proposition n est plus active' });
+  const pay = positiveNumber(req.body?.offeredPay);
+  if (pay === null) return res.status(400).json({ error: 'Montant proposé invalide' });
+  const message = String(req.body?.message || '').trim().slice(0, 500);
+  offer.offeredPay = pay;
+  offer.message = message;
+  offer.status = req.user.id === offer.travelerId ? 'countered_sender' : 'pending_traveler';
+  offer.expiresAt = Date.now() + 72 * 36e5;
+  offer.history.push({ by: req.user.id, type: 'counter', pay, message, at: Date.now() });
+  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], `${req.user.name} a envoyé une contre-proposition.`, null, 'messages', 'matching');
+  save();
+  res.json({ offer });
 });
 
 // Vidéo de scellage (PRD §3.2) — caméra in-app uniquement, horodatée
@@ -709,7 +1615,7 @@ app.post('/api/transactions/:id/sealing-video', auth, (req, res) => {
   };
   t.status = 'sealed';
   addEvent(t, 'sealed', req.user.id, { simulated: !!req.body.simulated });
-  notify([t.travelerId], `Colis scellé et filmé pour « ${db.listings.find((l) => l.id === t.listingId)?.title} ». Organisez la remise.`, t.id);
+  notify([t.travelerId], `Colis scellé et filmé pour « ${db.listings.find((l) => l.id === t.listingId)?.title} ». Organisez la remise.`, t.id, 'shipments', 'actions');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -723,7 +1629,7 @@ app.post('/api/transactions/:id/confirm-pickup', auth, (req, res) => {
     return res.status(400).json({ error: 'Code invalide — scannez le QR de l\'expéditeur' });
   t.status = 'in_transit';
   addEvent(t, 'in_transit', req.user.id, { responsibility: 'traveler' });
-  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], 'Colis pris en charge par le voyageur — en transit.', t.id);
+  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], 'Colis pris en charge par le voyageur — en transit.', t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -738,7 +1644,7 @@ app.post('/api/transactions/:id/refuse', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === t.listingId);
   if (listing) listing.status = 'published';
   addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
-  notify([t.senderId], 'Le voyageur a refusé le transport (sans pénalité). Votre annonce est republiée et remboursée.', t.id);
+  notify([t.senderId], 'Le voyageur a refusé le transport (sans pénalité). Votre annonce est republiée et remboursée.', t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -763,8 +1669,8 @@ app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
   if (sender.completed !== undefined) sender.completed += 1;
   if (sender.completed >= 3) { sender.maxValue = 500; sender.maxActive = 3; }
   addEvent(t, 'delivered_and_released', req.user.id, { released: t.escrow.travelerPay });
-  notify([t.travelerId], `Livraison validée — ${t.escrow.travelerPay} € versés sur votre compte.`, t.id);
-  notify([t.senderId], 'Colis livré et validé par le destinataire. Pensez à noter vos partenaires.', t.id);
+  notify([t.travelerId], `Livraison validée — ${t.escrow.travelerPay} € versés sur votre compte.`, t.id, 'shipments', 'suivi');
+  notify([t.senderId], 'Colis livré et validé par le destinataire. Pensez à noter vos partenaires.', t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -826,6 +1732,181 @@ function disputeView(d, t) {
   };
 }
 
+function financeActionFor(user, tx, dispute) {
+  if (dispute?.status === 'open') {
+    const mine = dispute.evidence.filter((e) => e.by === user.id).length;
+    return {
+      id: mine ? 'follow_dispute' : 'add_evidence',
+      priority: mine ? 'medium' : 'high',
+      href: `/transactions/${tx.id}#litige`,
+    };
+  }
+  if (tx.status === 'accepted' && tx.senderId === user.id) {
+    return { id: 'seal_to_unlock', priority: 'high', href: `/transactions/${tx.id}#actions` };
+  }
+  if (tx.status === 'sealed' && [tx.senderId, tx.travelerId].includes(user.id)) {
+    return { id: 'handoff_to_move', priority: 'medium', href: `/transactions/${tx.id}#messages` };
+  }
+  if (tx.status === 'in_transit') {
+    return { id: 'wait_delivery', priority: 'medium', href: `/transactions/${tx.id}#suivi` };
+  }
+  if (tx.status === 'released' && tx.travelerId === user.id) {
+    return { id: 'payout_done', priority: 'low', href: `/transactions/${tx.id}` };
+  }
+  if (tx.status === 'refunded' && tx.senderId === user.id) {
+    return { id: 'refund_done', priority: 'low', href: `/transactions/${tx.id}` };
+  }
+  return { id: 'monitor', priority: 'low', href: `/transactions/${tx.id}` };
+}
+
+function financeCenterFor(user) {
+  const txs = db.transactions
+    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const rows = txs.map((tx) => {
+    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
+    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
+    const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
+    return {
+      transaction: txView(user)(tx),
+      listing,
+      dispute: dispute ? disputeView(dispute, tx) : null,
+      role,
+      action: financeActionFor(user, tx, dispute),
+    };
+  });
+  const totals = {
+    held: txs.filter((t) => t.escrow?.state === 'held').reduce((s, t) => s + t.escrow.amount, 0),
+    frozen: txs.filter((t) => t.escrow?.state === 'frozen').reduce((s, t) => s + t.escrow.amount, 0),
+    releasedToMe: txs
+      .filter((t) => t.travelerId === user.id && t.escrow?.state === 'released')
+      .reduce((s, t) => s + t.escrow.travelerPay, 0),
+    paidByMe: txs
+      .filter((t) => t.senderId === user.id && ['held', 'frozen', 'released'].includes(t.escrow?.state))
+      .reduce((s, t) => s + t.escrow.amount, 0),
+    refundedToMe: txs
+      .filter((t) => t.senderId === user.id && t.escrow?.state === 'refunded')
+      .reduce((s, t) => s + t.escrow.amount, 0),
+    commission: txs
+      .filter((t) => ['held', 'frozen', 'released'].includes(t.escrow?.state))
+      .reduce((s, t) => s + (t.escrow.commission || 0), 0),
+  };
+  const openDisputes = rows.filter((r) => r.dispute?.status === 'open');
+  const actions = rows
+    .filter((r) => ['high', 'medium'].includes(r.action.priority))
+    .sort((a, b) => {
+      const rank = { high: 0, medium: 1, low: 2 };
+      return rank[a.action.priority] - rank[b.action.priority] || b.transaction.createdAt - a.transaction.createdAt;
+    })
+    .slice(0, 6)
+    .map((r) => ({
+      id: `${r.transaction.id}:${r.action.id}`,
+      txId: r.transaction.id,
+      title: r.listing?.title || r.transaction.id,
+      status: r.transaction.status,
+      action: r.action,
+    }));
+  return {
+    totals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    counts: {
+      transactions: txs.length,
+      active: txs.filter((t) => !CLOSED_STATUSES.includes(t.status)).length,
+      openDisputes: openDisputes.length,
+      completed: txs.filter((t) => t.status === 'released').length,
+    },
+    actions,
+    rows,
+  };
+}
+
+app.get('/api/finance-center', auth, (req, res) => {
+  res.json({ finance: financeCenterFor(req.user) });
+});
+
+function supportActionFor(user, tx, dispute) {
+  const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
+  if (dispute?.status === 'open') {
+    const mine = (dispute.evidence || []).some((e) => e.by === user.id);
+    return {
+      id: mine ? 'follow_dispute' : 'add_evidence',
+      priority: mine ? 'medium' : 'high',
+      href: `/transactions/${tx.id}#litige`,
+    };
+  }
+  if (tx.status === 'in_transit' || tx.status === 'released') {
+    return { id: 'open_dispute', priority: 'medium', href: `/transactions/${tx.id}#actions` };
+  }
+  if (tx.status === 'accepted' && role === 'sender') {
+    return { id: 'seal_first', priority: 'high', href: `/transactions/${tx.id}#actions` };
+  }
+  if (tx.status === 'sealed') {
+    return { id: 'organize_handoff', priority: 'medium', href: `/transactions/${tx.id}#messages` };
+  }
+  return { id: 'read_rules', priority: 'low', href: '/cgu#litiges' };
+}
+
+function supportCenterFor(user) {
+  const txs = db.transactions
+    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const cases = txs.map((tx) => {
+    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
+    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
+    const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
+    const canOpenDispute = !dispute && ['in_transit', 'released'].includes(tx.status);
+    return {
+      txId: tx.id,
+      role,
+      status: tx.status,
+      listing: listing ? {
+        id: listing.id,
+        title: listing.title,
+        from: listing.from,
+        to: listing.to,
+        categoryId: listing.categoryId,
+      } : null,
+      dispute: dispute ? disputeView(dispute, tx) : null,
+      canOpenDispute,
+      action: supportActionFor(user, tx, dispute),
+    };
+  });
+  const openDisputes = cases.filter((c) => c.dispute?.status === 'open');
+  const urgent = cases
+    .filter((c) => ['high', 'medium'].includes(c.action.priority))
+    .sort((a, b) => {
+      const rank = { high: 0, medium: 1, low: 2 };
+      return rank[a.action.priority] - rank[b.action.priority];
+    })
+    .slice(0, 6)
+    .map((c) => ({
+      id: `${c.txId}:${c.action.id}`,
+      txId: c.txId,
+      title: c.listing?.title || c.txId,
+      status: c.status,
+      action: c.action,
+    }));
+  return {
+    totals: {
+      cases: cases.length,
+      openDisputes: openDisputes.length,
+      canOpenDispute: cases.filter((c) => c.canOpenDispute).length,
+      urgent: urgent.filter((a) => a.action.priority === 'high').length,
+    },
+    urgent,
+    cases,
+    guide: [
+      { id: 'stay_in_app', href: '/cgu#interdits' },
+      { id: 'inspect_before_pickup', href: '/cgu#transaction' },
+      { id: 'customs_truth', href: '/cgu#douane' },
+      { id: 'evidence_72h', href: '/cgu#litiges' },
+    ],
+  };
+}
+
+app.get('/api/support-center', auth, (req, res) => {
+  res.json({ support: supportCenterFor(req.user) });
+});
+
 app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || !['in_transit', 'released'].includes(t.status))
@@ -843,7 +1924,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   db.disputes.push(dispute);
   db.reviewQueue.push({ id: newId('rq'), type: 'dispute', refId: dispute.id, status: 'open', createdAt: Date.now() });
   addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
-  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.', t.id);
+  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.', t.id, 'security', 'litige');
   save();
   res.json({ dispute: disputeView(dispute, t) });
 });
@@ -894,6 +1975,7 @@ app.post('/api/transactions/:id/messages', auth, (req, res) => {
   const flagged = detectLeak(text);
   const msg = { id: newId('m'), txId: t.id, from: req.user.id, text, flagged, at: Date.now() };
   db.messages.push(msg);
+  notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), `${req.user.name} vous a envoyé un message.`, t.id, 'messages', 'messages');
   save();
   res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
 });
@@ -921,6 +2003,196 @@ function adminOnly(req, res, next) {
   if (!req.user.isAdmin) return res.status(403).json({ error: 'Réservé aux admins' });
   next();
 }
+
+const KYC_SLA_MS = 24 * 3600e3;
+const OFFER_WATCH_MS = 24 * 3600e3;
+
+function adminRiskSignals() {
+  const humans = db.users.filter((u) => !u.isAdmin);
+  const groupsFor = (key) => {
+    const groups = {};
+    for (const u of humans) {
+      const v = u[key];
+      if (!v) continue;
+      (groups[v] = groups[v] || []).push(u);
+    }
+    return Object.values(groups).filter((g) => g.length > 1);
+  };
+
+  const pairMap = {};
+  for (const t of db.transactions) {
+    const ids = [t.senderId, t.travelerId].sort().join('|');
+    pairMap[ids] = pairMap[ids] || { transactionCount: 0, disputedCount: 0 };
+    pairMap[ids].transactionCount += 1;
+    if (t.status === 'disputed' || db.disputes.some((d) => d.txId === t.id)) pairMap[ids].disputedCount += 1;
+  }
+
+  const disputeCountByUser = {};
+  for (const d of db.disputes) {
+    const t = db.transactions.find((x) => x.id === d.txId);
+    if (!t) continue;
+    for (const uid of [t.senderId, t.travelerId, t.recipientId]) disputeCountByUser[uid] = (disputeCountByUser[uid] || 0) + 1;
+  }
+
+  const kycRejectionsByUser = {};
+  for (const s of db.kycSubmissions) {
+    if (!['rejected', 'refused'].includes(s.status)) continue;
+    kycRejectionsByUser[s.userId] = (kycRejectionsByUser[s.userId] || 0) + 1;
+  }
+
+  return {
+    linkedAccounts: groupsFor('phone').length + groupsFor('registerIp').length,
+    repeatPairs: Object.values(pairMap).filter((p) => p.transactionCount >= 3).length,
+    flaggedMessaging: new Set(db.messages.filter((m) => m.flagged).map((m) => m.from)).size,
+    abnormalCancel: humans.filter((u) => u.completed >= 3 && u.cancelRate > 0.2).length,
+    disputeProne: Object.values(disputeCountByUser).filter((count) => count >= 2).length,
+    kycRepeatRejections: Object.values(kycRejectionsByUser).filter((count) => count >= 2).length,
+  };
+}
+
+function adminOpsSummary() {
+  runMatchingOfferReminders({ persist: true });
+  const now = Date.now();
+  const reviewOpen = db.reviewQueue.filter((r) => r.status === 'open');
+  const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
+  const reviewListings = reviewOpen.filter((r) => r.type === 'listing');
+  const pendingKyc = db.kycSubmissions.filter((s) => s.status === 'pending');
+  const overdueKyc = pendingKyc.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS);
+  const openDisputes = db.disputes.filter((d) => d.status === 'open');
+  const flaggedMessages = db.messages.filter((m) => m.flagged);
+  const escrowHeld = db.transactions
+    .filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
+    .reduce((s, t) => s + t.escrow.amount, 0);
+  const risk = adminRiskSignals();
+  const riskCount = Object.values(risk).reduce((s, n) => s + n, 0);
+  const activeOfferStatuses = ['pending_traveler', 'countered_sender'];
+  const offerQueue = (db.matchingOffers || [])
+    .map(normalizeMatchingOffer)
+    .filter((o) => activeOfferStatuses.includes(o.status) || o.status === 'expired')
+    .map((o) => {
+      const listing = db.listings.find((l) => l.id === o.listingId);
+      const expiresIn = (o.expiresAt || 0) - now;
+      const severity = o.status === 'expired' || expiresIn <= 0 ? 'critical'
+        : expiresIn <= OFFER_WATCH_MS ? 'warning'
+          : 'ok';
+      return {
+        id: o.id,
+        status: o.status,
+        severity,
+        waitingFor: o.status === 'pending_traveler' ? 'traveler' : o.status === 'countered_sender' ? 'sender' : 'none',
+        offeredPay: o.offeredPay,
+        expiresAt: o.expiresAt,
+        expiresIn,
+        listing: listing ? {
+          id: listing.id,
+          title: listing.title,
+          from: listing.from,
+          to: listing.to,
+          valueEur: listing.valueEur,
+        } : null,
+        sender: publicUser(findUser(o.senderId)),
+        traveler: publicUser(findUser(o.travelerId)),
+      };
+    })
+    .sort((a, b) => {
+      const rank = { critical: 0, warning: 1, ok: 2 };
+      return rank[a.severity] - rank[b.severity] || a.expiresAt - b.expiresAt;
+    });
+  const offersAtRisk = offerQueue.filter((o) => o.severity !== 'ok').length;
+
+  const tasks = [
+    {
+      id: 'review-disputes',
+      severity: reviewDisputes.length ? 'critical' : 'ok',
+      count: reviewDisputes.length,
+      tab: 'review',
+      title: 'Litiges à arbitrer',
+      body: 'Escrow gelé, preuves à lire et décision admin à prendre.',
+    },
+    {
+      id: 'kyc-overdue',
+      severity: overdueKyc.length ? 'critical' : pendingKyc.length ? 'warning' : 'ok',
+      count: overdueKyc.length || pendingKyc.length,
+      tab: 'kyc',
+      title: 'Identités à traiter',
+      body: overdueKyc.length ? 'Demandes KYC au-delà du SLA 24 h.' : 'Demandes KYC en attente de revue.',
+    },
+    {
+      id: 'gray-listings',
+      severity: reviewListings.length ? 'warning' : 'ok',
+      count: reviewListings.length,
+      tab: 'review',
+      title: 'Annonces en zone grise',
+      body: 'Catégories à accepter, refuser ou promouvoir en liste blanche.',
+    },
+    {
+      id: 'fraud-signals',
+      severity: riskCount ? 'warning' : 'ok',
+      count: riskCount,
+      tab: 'fraud',
+      title: 'Signaux de risque',
+      body: 'Comptes liés, messages hors app, litiges répétés ou comportements atypiques.',
+    },
+    {
+      id: 'offer-watch',
+      severity: offersAtRisk ? 'warning' : 'ok',
+      count: offersAtRisk || offerQueue.length,
+      tab: 'ops',
+      title: 'Offres a surveiller',
+      body: offersAtRisk ? 'Propositions expirees ou proches de l expiration.' : 'Flux de negociation sous controle.',
+    },
+  ];
+
+  return {
+    generatedAt: Date.now(),
+    health: {
+      status: reviewDisputes.length || overdueKyc.length ? 'critical' : reviewOpen.length || riskCount || offersAtRisk ? 'watch' : 'clear',
+      reviewOpen: reviewOpen.length,
+      kycPending: pendingKyc.length,
+      kycOverdue: overdueKyc.length,
+      openDisputes: openDisputes.length,
+      flaggedMessages: flaggedMessages.length,
+      escrowHeld,
+      riskSignals: riskCount,
+      offersActive: offerQueue.filter((o) => activeOfferStatuses.includes(o.status)).length,
+      offersAtRisk,
+    },
+    tasks,
+    risk,
+    latest: {
+      reviewQueue: reviewOpen
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 5)
+        .map((r) => ({
+          id: r.id,
+          type: r.type,
+          createdAt: r.createdAt,
+          refId: r.refId,
+          label: r.type === 'listing'
+            ? db.listings.find((l) => l.id === r.refId)?.title
+            : db.disputes.find((d) => d.id === r.refId)?.reason,
+        })),
+      kyc: pendingKyc
+        .sort((a, b) => a.submittedAt - b.submittedAt)
+        .slice(0, 5)
+        .map((s) => {
+          const u = findUser(s.userId);
+          return {
+            id: s.id,
+            legalName: s.legalName,
+            submittedAt: s.submittedAt,
+            overdue: (Date.now() - s.submittedAt) > KYC_SLA_MS,
+            user: u ? { name: u.name, email: u.email } : null,
+          };
+        }),
+      offers: offerQueue.slice(0, 6),
+    },
+  };
+}
+
+app.get('/api/admin/ops', auth, adminOnly, (req, res) => {
+  res.json({ ops: adminOpsSummary() });
+});
 
 app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
   res.json({
@@ -956,8 +2228,6 @@ app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
 });
 
 // ---------- Back-office KYC (PRD KYC §5) ----------
-const KYC_SLA_MS = 24 * 3600e3;
-
 // Résumé d'une soumission pour la vue liste (sans les photos — allège la charge).
 function kycSummary(s) {
   const u = findUser(s.userId);
@@ -1053,22 +2323,22 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
   if (decision === 'approve') {
     s.status = 'approved';
     user.kycStatus = 'verified';
-    notify([user.id], 'Votre identité a été vérifiée. Vous pouvez maintenant envoyer et transporter.');
+    notify([user.id], 'Votre identité a été vérifiée. Vous pouvez maintenant envoyer et transporter.', null, 'security');
   } else if (decision === 'reject') {
     s.status = 'rejected';
     const rejectedCount = db.kycSubmissions.filter((x) => x.userId === user.id && x.status === 'rejected').length;
     // Passage automatique en refus définitif au-delà de la limite (PRD §7).
     if (rejectedCount >= MAX_KYC_ATTEMPTS) {
       user.kycStatus = 'refused';
-      notify([user.id], 'Votre vérification a été refusée définitivement après plusieurs tentatives. Contactez le support.');
+      notify([user.id], 'Votre vérification a été refusée définitivement après plusieurs tentatives. Contactez le support.', null, 'security');
     } else {
       user.kycStatus = 'rejected';
-      notify([user.id], `Votre vérification a été rejetée : ${cleanReason}. Vous pouvez soumettre à nouveau.`);
+      notify([user.id], `Votre vérification a été rejetée : ${cleanReason}. Vous pouvez soumettre à nouveau.`, null, 'security');
     }
   } else { // refuse
     s.status = 'refused';
     user.kycStatus = 'refused';
-    notify([user.id], `Votre vérification a été définitivement refusée : ${cleanReason}. Contactez le support.`);
+    notify([user.id], `Votre vérification a été définitivement refusée : ${cleanReason}. Contactez le support.`, null, 'security');
   }
 
   db.kycDecisions.push({
@@ -1267,7 +2537,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       t.status = 'refunded'; t.escrow.state = 'refunded';
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
-    notify([t.senderId, t.travelerId, t.recipientId], decision === 'release_traveler' ? 'Litige tranché : paiement versé au voyageur.' : 'Litige tranché : expéditeur remboursé.', t.id);
+    notify([t.senderId, t.travelerId, t.recipientId], decision === 'release_traveler' ? 'Litige tranché : paiement versé au voyageur.' : 'Litige tranché : expéditeur remboursé.', t.id, 'security', 'litige');
   }
   save();
   res.json({ ok: true });

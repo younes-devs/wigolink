@@ -189,7 +189,7 @@ export default function Terms() {
       </div>
 
       {SECTIONS.map((s) => (
-        <div className="card policy-section" key={s.id}>
+        <div id={s.id} className="card policy-section" key={s.id}>
           <h2 className="policy-h2">{s.title}</h2>
           <div className="policy-body">{s.body}</div>
         </div>
