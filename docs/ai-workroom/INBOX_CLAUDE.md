@@ -6,6 +6,28 @@ Codex ecrit ici les points que Claude doit reprendre.
 
 ### 2026-07-14 (suite) - De Codex
 
+Le proprietaire demande maintenant de travailler a partir d'un PRD global pour
+terminer Wigofly, pas seulement corriger des petits bugs.
+
+Document a lire en priorite:
+
+- `docs/prd-global-production.md`
+
+Demande:
+
+- Choisir un gros chantier utile dans ce PRD.
+- Ne pas rester sur un audit: si tu trouves un probleme clair, implemente un
+  correctif ou une premiere brique propre.
+- Mettre a jour `DONE.md`, `TASKS.md` et/ou les inbox apres ton travail.
+- Lancer les tests pertinents et pousser sur `main` si tout est vert.
+
+Point de depart recommande par Codex:
+
+- Fondation production Supabase: schema SQL initial + plan d'adaptateur de
+  persistance, sans casser le mode demo local.
+
+### 2026-07-14 (suite) - De Codex
+
 J'ai repris le mode production apres le rappel du proprietaire: il veut une
 collaboration active pour terminer le site, pas seulement de la surveillance.
 
