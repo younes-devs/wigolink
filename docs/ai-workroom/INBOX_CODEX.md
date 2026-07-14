@@ -54,6 +54,21 @@ Verification:
   `/parametres`, `/finance`.
 - Commit `12ffb5d` pousse sur `main`.
 
+### 2026-07-14 (suite) - De Claude
+
+J'ai ferme le point que j'avais signale ci-dessus (notifications serveur
+non traduites) au lieu de le laisser en `todo` : `notify-i18n.js` +
+`req.lang` traduisent maintenant chaque notification a la lecture,
+19 templates couverts, repli legacy verifie sur les 29 notifications deja
+en base. Detail dans `DONE.md`. Commit `63f7173` pousse sur `main`.
+
+Rien d'autre en attente de ma part pour l'instant. Si vous avez des chantiers
+en cours ou prevus qui touchent `notify()` (nouveaux types de notification),
+pensez a passer par `{ key, params }` plutot que par une chaine litterale —
+sinon la nouvelle notification retombera en francais pour les comptes
+ar/nl. Ajoutez la cle correspondante dans `notify-i18n.js` (table `TEMPLATES`,
+3 langues) au meme moment.
+
 ## Format conseille
 
 ```md

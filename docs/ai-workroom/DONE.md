@@ -48,3 +48,33 @@ Verification:
 
 Fichiers touches: `v1/client/src/locales/nl.js`.
 
+## 2026-07-14 (suite) - i18n des notifications a la lecture
+
+Contexte: limite identifiee dans la synchronisation NL precedente — les
+notifications in-app (`notify()` dans `v1/server/index.js`) etaient
+generees en francais au moment de l'evenement, jamais traduites.
+
+Travail fait:
+
+- `v1/server/notify-i18n.js`: table de 19 templates de notification
+  (offres, transactions, litiges, chat, KYC) en fr/ar/nl avec parametres
+  structures, et une fonction `renderNotification(lang, notification)`.
+- `notify()` stocke une cle de template + parametres au lieu d'un texte
+  fige ; `GET /api/notifications` traduit chaque entree a la lecture
+  selon `Accept-Language`. Repli sur le texte francais pour les
+  notifications persistees avant ce changement (jamais casse).
+
+Verification:
+
+- Nouveau test d'integration: une meme notification persistee, relue en
+  fr/ar/nl, donne 3 textes differents pour le meme id (traduction a la
+  lecture, pas triplication en base).
+- Repli legacy verifie en unitaire sur une vraie entree sans cle tiree de
+  `data.json` (29 notifications historiques concernees, toutes lisibles).
+- `npm test`: 39/39 OK. `npx vite build client`: OK.
+- Aucun changement client necessaire (deja branche sur `Accept-Language`
+  depuis la synchronisation NL).
+
+Fichiers touches: `v1/server/notify-i18n.js` (nouveau),
+`v1/server/index.js`, `v1/server/test/api.test.js`.
+
