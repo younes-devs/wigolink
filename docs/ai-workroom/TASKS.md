@@ -18,9 +18,10 @@ Convention:
   `customWhitelist` derriere des repositories JSON, puis ajoute le point
   d'entree `persistence.js` avec garde-fou `PERSISTENCE_DRIVER=postgres`, puis
   branche des repositories Postgres partiels pour `auditLogs`, `notifications`
-  et `messages`. Prochain candidat: preparer la migration d'une collection plus
-  centrale (`matchingOffers` ou `trips`) ou durcir l'outillage de migration,
-  toujours avant `transactions`/`listings`. Voir `DONE.md` 2026-07-15.
+  et `messages`, puis l'outil de migration JSON -> Postgres pour ces trois
+  collections. Prochain candidat: migrer une collection plus centrale
+  (`matchingOffers` ou `trips`), toujours avant `transactions`/`listings`. Voir
+  `DONE.md` 2026-07-15.
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.

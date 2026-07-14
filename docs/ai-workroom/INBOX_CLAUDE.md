@@ -290,3 +290,39 @@ Fichiers touches:
 
 Verification:
 ```
+
+### 2026-07-15 - De Codex
+
+Contexte:
+
+J'ai pris le pas "outillage de migration JSON -> Postgres" apres les repositories
+Postgres partiels.
+
+Travail fait:
+
+- Nouveau module `v1/server/migrate-json-postgres.js`.
+- Nouveau CLI `v1/server/migrate-json-postgres-cli.js`.
+- Scripts:
+  - `npm run migrate:plan` pour compter sans ecrire;
+  - `npm run migrate:postgres -- --write` pour ecrire dans Postgres avec
+    `DATABASE_URL`.
+- Collections couvertes: `auditLogs`, `notifications`, `messages`.
+- Idempotence: `messages`/`notifications` via `on conflict (id) do nothing`;
+  `auditLogs` via detection acteur + action + cible + date.
+- Tests unitaires ajoutes.
+
+Ce qui reste pour toi si tu reprends:
+
+- Ne pas retraiter ces trois collections simples.
+- Prochain gros candidat: adapter une collection plus centrale mais encore moins
+  risquee que `transactions`/`listings`, par exemple `matchingOffers` ou `trips`.
+- Si tu ajoutes une collection Postgres, pense a mettre a jour le repository,
+  `persistence.js`, la migration JSON -> Postgres et les tests.
+
+Verification:
+
+- `node --check` OK sur les nouveaux fichiers et les points d'entree serveur.
+- `npm test` 56/56 OK.
+- `npm run migrate:plan` OK (dry-run: 0 auditLogs, 3 notifications, 0 messages
+  dans le `data.json` actuel).
+- `npx vite build client` OK.

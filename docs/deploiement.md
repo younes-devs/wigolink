@@ -44,11 +44,23 @@ production : clés étrangères, index, contraintes d'états, horodatages.
    `server/index.js` par des appels repository, collection par collection.
 3. Tant que la migration n'est pas complète, le mode JSON (`store.js`) reste le
    défaut ; l'adaptateur Postgres s'active via `DATABASE_URL`.
-4. Les tests continuent de tourner sur une base isolée (aujourd'hui `DATA_FILE`
+4. Pour les collections deja branchees (`auditLogs`, `notifications`, `messages`),
+   preparer puis executer la migration ponctuelle:
+
+   ```bash
+   npm run migrate:plan
+   npm run migrate:postgres -- --write
+   ```
+
+   `migrate:plan` est un dry-run: il compte ce qui serait migre sans ouvrir de
+   connexion Postgres. `--write` exige `DATABASE_URL` et fait des insertions
+   idempotentes autant que possible (`messages`/`notifications` par id,
+   `auditLogs` par action + cible + date).
+5. Les tests continuent de tourner sur une base isolée (aujourd'hui `DATA_FILE`
    jetable ; demain une base de test dédiée ou l'adaptateur JSON).
 
-> Prochaine brique concrète recommandée : commencer l'adaptateur par les collections
-> les moins couplées (`notifications`, `messages`, `audit_logs`) avant `transactions`.
+> Prochaine brique concrète recommandée : migrer une collection plus centrale
+> (`matchingOffers` ou `trips`) avant `transactions`/`listings`.
 
 ## 4. Paiement / escrow (déjà « provider-ready »)
 

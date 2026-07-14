@@ -8,7 +8,8 @@ Derniere mise a jour: 2026-07-15 (Codex)
 - Branche de reference: `main`
 - Dernier commit connu au moment de creation de cet espace: `56d589c feat: expand Wigofly product operations`
 - Derniere reprise Codex: repositories Postgres partiels pour `auditLogs`,
-  `notifications` et `messages` via `persistence.js`.
+  `notifications` et `messages` via `persistence.js`, plus outil de migration
+  JSON -> Postgres pour ces trois collections.
 - Derniere reprise Claude: fondation production (PRD P0.1/P0.4) — schema SQL
   Supabase (`docs/supabase-schema.sql`), escrow provider-ready
   (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`.
@@ -24,8 +25,10 @@ Derniere mise a jour: 2026-07-15 (Codex)
   permet un Postgres partiel explicite pour `auditLogs`, `notifications` et
   `messages`
   (`PERSISTENCE_ALLOW_PARTIAL=true`,
-  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages`). Prochain
-  candidat: collection plus centrale ou outillage de migration.
+  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages`). Le CLI
+  `npm run migrate:plan` / `npm run migrate:postgres -- --write` prepare la
+  migration de ces trois collections. Prochain candidat: collection plus centrale
+  (`matchingOffers` ou `trips`).
 - Escrow: simule mais modele pret pour un vrai prestataire (provider/providerRef,
   transitions horodatees).
 - Audit: `auditLogs` runtime JSON + endpoint admin `/api/admin/audit-logs`

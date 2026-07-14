@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node --test server/test/*.test.js",
     "dev": "concurrently -n api,web -c yellow,cyan \"node server/index.js\" \"vite client --port 5173\"",
-    "api": "node server/index.js"
+    "api": "node server/index.js",
+    "migrate:plan": "node server/migrate-json-postgres-cli.js",
+    "migrate:postgres": "node server/migrate-json-postgres-cli.js --write"
   },
   "keywords": [],
   "author": "",

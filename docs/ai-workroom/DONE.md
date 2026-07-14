@@ -524,3 +524,33 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
 
 Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
 `node --check server/index.js`, `npx vite build client` OK.
+
+## 2026-07-15 - Codex : outil migration JSON -> Postgres
+
+Contexte: apres les repositories Postgres partiels `auditLogs`, `notifications`
+et `messages`, il manquait un outil verifiable pour basculer les donnees simples
+de `data.json` vers Supabase/Postgres sans tout migrer d'un coup.
+
+Travail fait:
+
+- Ajout de `v1/server/migrate-json-postgres.js`:
+  - plan de migration par collection;
+  - dry-run par defaut;
+  - ecriture Postgres pour `auditLogs`, `notifications`, `messages`;
+  - insertions idempotentes pour `messages`/`notifications` via `on conflict`;
+  - anti-doublon naturel pour `auditLogs` par acteur, action, cible et date.
+- Ajout du CLI `v1/server/migrate-json-postgres-cli.js`.
+- Ajout des scripts npm:
+  - `npm run migrate:plan`;
+  - `npm run migrate:postgres -- --write`.
+- Documentation dans `v1/.env.example` et `docs/deploiement.md`.
+
+Fichiers touches: `v1/server/migrate-json-postgres.js`,
+`v1/server/migrate-json-postgres-cli.js`,
+`v1/server/test/migrate-json-postgres.test.js`, `v1/package.json`,
+`v1/.env.example`, `docs/deploiement.md`, `docs/ai-workroom/*`.
+
+Verification: `node --check` sur les nouveaux fichiers et les points d'entree
+serveur OK, `npm test` 56/56 OK, `npm run migrate:plan` OK (dry-run:
+0 auditLogs, 3 notifications, 0 messages dans le `data.json` actuel),
+`npx vite build client` OK.
