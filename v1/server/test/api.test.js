@@ -283,6 +283,15 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
 
   const meAfterApproval = await api('/me', { token });
   assert.equal(meAfterApproval.body.user.kycStatus, 'verified');
+
+  // La décision KYC déclenche une notification — vérifie qu'elle porte bien une clé
+  // de template (pas du texte français figé) et se traduit correctement à la lecture.
+  const notifFr = await api('/notifications', { token, lang: 'fr' });
+  const kycNotif = notifFr.body.notifications.find((n) => n.key === 'kyc.verified');
+  assert.ok(kycNotif, 'une notification kyc.verified doit être créée à l\'approbation');
+  assert.match(kycNotif.text, /identité a été vérifiée/);
+  const notifAr = await api('/notifications', { token, lang: 'ar' });
+  assert.match(notifAr.body.notifications.find((n) => n.id === kycNotif.id).text, /تم التحقق/);
 });
 
 test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)', async () => {
@@ -341,6 +350,15 @@ test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)',
   const txAfterResolution = await api(`/transactions/${tx.id}`, { token: fatima });
   assert.equal(txAfterResolution.body.transaction.status, 'refunded');
   assert.equal(txAfterResolution.body.transaction.escrow.state, 'refunded');
+
+  // L'arbitrage notifie les parties — vérifie la clé de template et la traduction NL,
+  // sur le chemin remboursement (celui exercé par ce test, distinct de release_traveler).
+  const notifFr = await api('/notifications', { token: fatima, lang: 'fr' });
+  const disputeNotif = notifFr.body.notifications.find((n) => n.key === 'dispute.resolved.sender');
+  assert.ok(disputeNotif, 'une notification dispute.resolved.sender doit être créée au remboursement');
+  assert.match(disputeNotif.text, /expéditeur remboursé/);
+  const notifNl = await api('/notifications', { token: fatima, lang: 'nl' });
+  assert.match(notifNl.body.notifications.find((n) => n.id === disputeNotif.id).text, /terugbetaald/);
 });
 
 test('zone grise : catégorie inconnue → revue humaine → promotion en liste blanche', async () => {
