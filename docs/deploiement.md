@@ -77,7 +77,7 @@ Voir **`v1/.env.example`** pour la liste commentée. Résumé :
 | `DATABASE_URL`     | Postgres Supabase (une fois l'adaptateur branché)           | oui  |
 | `PERSISTENCE_DRIVER` | Driver `json` ou `postgres`                               | oui  |
 | `PERSISTENCE_ALLOW_PARTIAL` | Autorise une migration partielle explicite en dev/staging | non |
-| `PERSISTENCE_POSTGRES_COLLECTIONS` | Collections deja branchees Postgres (`auditLogs`) | non |
+| `PERSISTENCE_POSTGRES_COLLECTIONS` | Collections deja branchees Postgres (`auditLogs,notifications`) | non |
 | `RESEND_API_KEY`   | Envoi d'emails transactionnels                              | oui  |
 | `EMAIL_FROM`       | Expéditeur des emails                                       | oui  |
 | `APP_URL`          | URL publique (liens dans les emails)                        | oui  |

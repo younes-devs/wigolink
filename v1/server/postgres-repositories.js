@@ -34,6 +34,53 @@ export function createPostgresAuditLogRepository({ pool, findUser, publicUser })
   };
 }
 
+export function createPostgresNotificationRepository({ pool }) {
+  return {
+    async append({ userId, txId = null, type = 'transactions', section = null, key = null, params = {}, text = null, at = Date.now() }) {
+      const result = await pool.query(
+        `insert into notifications (id, user_id, tx_id, type, section, key, params, text, read, at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, false, to_timestamp($9 / 1000.0))
+         returning id, user_id, tx_id, type, section, key, params, text, read, at`,
+        [notificationId(), userId, txId, type, section, key, JSON.stringify(params || {}), text, at]
+      );
+      return fromNotificationRow(result.rows[0]);
+    },
+
+    async listForUser(userId, { limit = 30 } = {}) {
+      const safeLimit = Math.max(1, Math.min(100, Number(limit) || 30));
+      const result = await pool.query(
+        `select id, user_id, tx_id, type, section, key, params, text, read, at
+         from notifications
+         where user_id = $1
+         order by at desc
+         limit $2`,
+        [userId, safeLimit]
+      );
+      return result.rows.map(fromNotificationRow);
+    },
+
+    async unreadCount(userId) {
+      const result = await pool.query(
+        `select count(*)::int as count
+         from notifications
+         where user_id = $1 and read = false`,
+        [userId]
+      );
+      return Number(result.rows[0]?.count || 0);
+    },
+
+    async markAllRead(userId) {
+      const result = await pool.query(
+        `update notifications
+         set read = true
+         where user_id = $1 and read = false`,
+        [userId]
+      );
+      return result.rowCount || 0;
+    },
+  };
+}
+
 function fromAuditRow(row, { findUser, publicUser }) {
   if (!row) return null;
   const actorId = row.actor_id;
@@ -47,4 +94,24 @@ function fromAuditRow(row, { findUser, publicUser }) {
     at: row.at instanceof Date ? row.at.getTime() : new Date(row.at).getTime(),
     actor: publicUser(findUser(actorId)) || { id: actorId, name: 'system' },
   };
+}
+
+function fromNotificationRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    txId: row.tx_id,
+    type: row.type,
+    section: row.section,
+    key: row.key,
+    params: row.params || {},
+    text: row.text,
+    read: !!row.read,
+    at: row.at instanceof Date ? row.at.getTime() : new Date(row.at).getTime(),
+  };
+}
+
+function notificationId() {
+  return `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

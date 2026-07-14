@@ -434,6 +434,38 @@ Verification: `npm test` 47/47 OK, `node --check server/persistence.js`,
 `node --check server/postgres-repositories.js`, `node --check server/index.js`,
 `node --check server/repositories.js`, `npx vite build client` OK.
 
+## 2026-07-15 - Codex : repository Postgres partiel notifications
+
+Contexte: deuxieme collection simple branchee sur le mode Postgres partiel apres
+`auditLogs`. Les notifications sont critiques produit, mais leur repository est
+encore assez isole pour eviter `transactions`/`listings`.
+
+Travail fait:
+
+- Ajout de `createPostgresNotificationRepository()` dans
+  `v1/server/postgres-repositories.js`.
+- Operations Postgres couvertes:
+  - creation d'une notification dans `notifications`;
+  - liste bornee par utilisateur;
+  - compteur non lus;
+  - marquage lu par utilisateur.
+- `PERSISTENCE_POSTGRES_COLLECTIONS` accepte maintenant
+  `auditLogs,notifications`.
+- `notify()` et `runMatchingOfferReminders()` sont async.
+- Les routes qui lisent ou emettent des notifications attendent les operations
+  du repository, afin qu'une reponse OK ne parte pas avant l'ecriture Postgres.
+- Tests SQL/mapping ajoutes pour notifications.
+
+Fichiers touches: `v1/server/postgres-repositories.js`,
+`v1/server/persistence.js`, `v1/server/index.js`,
+`v1/server/test/postgres-repositories.test.js`,
+`v1/server/test/persistence.test.js`, `v1/.env.example`,
+`docs/deploiement.md`.
+
+Verification: `npm test` 49/49 OK, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js`.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

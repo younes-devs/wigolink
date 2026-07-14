@@ -17,9 +17,9 @@ Convention:
   `auditLogs`, `notifications`, `messages`, `settings`, KYC, `reviewQueue` et
   `customWhitelist` derriere des repositories JSON, puis ajoute le point
   d'entree `persistence.js` avec garde-fou `PERSISTENCE_DRIVER=postgres`, puis
-  branche un premier repository Postgres partiel pour `auditLogs`. Prochain
-  candidat: etendre le driver Postgres a `notifications` ou `messages`, toujours
-  avant `transactions`/`listings`. Voir `DONE.md` 2026-07-15.
+  branche des repositories Postgres partiels pour `auditLogs` et `notifications`.
+  Prochain candidat: etendre le driver Postgres a `messages`, toujours avant
+  `transactions`/`listings`. Voir `DONE.md` 2026-07-15.
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.

@@ -76,8 +76,9 @@ async function audit(actorId, action, targetType, targetId, meta = {}) {
 // se fait à la LECTURE selon la langue du lecteur (voir notify-i18n.js), pas à la création :
 // une notification est persistée une fois mais peut être lue par un compte qui a changé de
 // langue, ou par un admin dans une autre langue que le destinataire.
-function notify(userIds, textOrKey, txId = null, type = 'transactions', section = null) {
+async function notify(userIds, textOrKey, txId = null, type = 'transactions', section = null) {
   const isKeyed = textOrKey && typeof textOrKey === 'object';
+  const writes = [];
   for (const uid of new Set(userIds.filter(Boolean))) {
     const user = findUser(uid);
     const kind = DEFAULT_NOTIFICATION_SETTINGS[type] === undefined ? 'transactions' : type;
@@ -86,8 +87,9 @@ function notify(userIds, textOrKey, txId = null, type = 'transactions', section 
     const payload = isKeyed
       ? { key: textOrKey.key, params: textOrKey.params || {}, text: renderNotification('fr', textOrKey) }
       : { text: textOrKey };
-    repositories.notifications.append({ userId: uid, txId, type: kind, section, ...payload });
+    writes.push(repositories.notifications.append({ userId: uid, txId, type: kind, section, ...payload }));
   }
+  return Promise.all(writes);
 }
 
 function matchingOfferWaitingUser(offer) {
@@ -96,8 +98,9 @@ function matchingOfferWaitingUser(offer) {
   return null;
 }
 
-function runMatchingOfferReminders({ persist = false } = {}) {
+async function runMatchingOfferReminders({ persist = false } = {}) {
   let changed = normalizeMatchingOffers();
+  const writes = [];
   const now = Date.now();
   for (const offer of db.matchingOffers || []) {
     normalizeMatchingOffer(offer);
@@ -110,17 +113,18 @@ function runMatchingOfferReminders({ persist = false } = {}) {
       const expiresIn = (offer.expiresAt || 0) - now;
       if (waitingUserId && expiresIn > 0 && expiresIn <= OFFER_REMINDER_MS && !offer.reminders.expiresSoonAt) {
         offer.reminders.expiresSoonAt = now;
-        notify([waitingUserId], { key: 'offer.expiring', params: { title } }, null, 'reminders', 'matching');
+        writes.push(notify([waitingUserId], { key: 'offer.expiring', params: { title } }, null, 'reminders', 'matching'));
         changed = true;
       }
     }
 
     if (offer.status === 'expired' && !offer.reminders.expiredAt) {
       offer.reminders.expiredAt = now;
-      notify([offer.senderId, offer.travelerId], { key: 'offer.expired', params: { title } }, null, 'reminders', 'matching');
+      writes.push(notify([offer.senderId, offer.travelerId], { key: 'offer.expired', params: { title } }, null, 'reminders', 'matching'));
       changed = true;
     }
   }
+  await Promise.all(writes);
   if (changed && persist) save();
   return changed;
 }
@@ -583,17 +587,17 @@ app.post('/api/profile/delete', auth, (req, res) => {
 });
 
 // ---------- Notifications ----------
-app.get('/api/notifications', auth, (req, res) => {
-  runMatchingOfferReminders({ persist: true });
-  const mine = repositories.notifications.listForUser(req.user.id, { limit: 30 })
+app.get('/api/notifications', auth, async (req, res) => {
+  await runMatchingOfferReminders({ persist: true });
+  const mine = (await repositories.notifications.listForUser(req.user.id, { limit: 30 }))
     // Traduit à la lecture selon req.lang (posé par langMiddleware) — le texte français
     // stocké sert de repli pour les notifications persistées avant l'introduction des clés.
     .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  res.json({ notifications: mine, unread: repositories.notifications.unreadCount(req.user.id) });
+  res.json({ notifications: mine, unread: await repositories.notifications.unreadCount(req.user.id) });
 });
 
-app.post('/api/notifications/read', auth, (req, res) => {
-  repositories.notifications.markAllRead(req.user.id);
+app.post('/api/notifications/read', auth, async (req, res) => {
+  await repositories.notifications.markAllRead(req.user.id);
   save();
   res.json({ ok: true });
 });
@@ -928,13 +932,13 @@ function senderMatchingCenterFor(user) {
   };
 }
 
-app.get('/api/sender-matching', auth, (req, res) => {
-  runMatchingOfferReminders({ persist: true });
+app.get('/api/sender-matching', auth, async (req, res) => {
+  await runMatchingOfferReminders({ persist: true });
   res.json({ matching: senderMatchingCenterFor(req.user) });
 });
 
-app.get('/api/matching-offers', auth, (req, res) => {
-  runMatchingOfferReminders({ persist: true });
+app.get('/api/matching-offers', auth, async (req, res) => {
+  await runMatchingOfferReminders({ persist: true });
   const offers = (db.matchingOffers || [])
     .map(normalizeMatchingOffer)
     .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
@@ -1005,7 +1009,7 @@ function normalizeMatchingOffer(offer) {
   return offer;
 }
 
-app.post('/api/matching-offers', auth, (req, res) => {
+app.post('/api/matching-offers', auth, async (req, res) => {
   normalizeMatchingOffers({ persist: true });
   const { listingId, tripId, message = '', offeredPay, expiresInHours } = req.body || {};
   const listing = db.listings.find((l) => l.id === listingId);
@@ -1046,7 +1050,7 @@ app.post('/api/matching-offers', auth, (req, res) => {
     createdAt: now, expiresAt: now + ttlHours * 36e5, respondedAt: null, txId: null,
   };
   db.matchingOffers.push(offer);
-  notify([offer.travelerId], { key: 'offer.received', params: { name: req.user.name, title: listing.title } }, null, 'messages', 'matching');
+  await notify([offer.travelerId], { key: 'offer.received', params: { name: req.user.name, title: listing.title } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
@@ -1361,8 +1365,8 @@ app.get('/api/trust-center', auth, (req, res) => {
   res.json({ trust: trustCenterFor(req.user) });
 });
 
-app.get('/api/dashboard', auth, (req, res) => {
-  runMatchingOfferReminders({ persist: true });
+app.get('/api/dashboard', auth, async (req, res) => {
+  await runMatchingOfferReminders({ persist: true });
   const today = new Date().toISOString().slice(0, 10);
   const trips = db.trips
     .filter((t) => t.travelerId === req.user.id && t.date >= today)
@@ -1396,9 +1400,9 @@ app.get('/api/dashboard', auth, (req, res) => {
     (o.status === 'pending_traveler' && o.travelerId === req.user.id)
     || (o.status === 'countered_sender' && o.senderId === req.user.id);
   const activeOffers = myOffers.filter((o) => ['pending_traveler', 'countered_sender'].includes(o.status));
-  const notifications = repositories.notifications.listForUser(req.user.id, { limit: 5 })
+  const notifications = (await repositories.notifications.listForUser(req.user.id, { limit: 5 }))
     .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  const unread = repositories.notifications.unreadCount(req.user.id);
+  const unread = await repositories.notifications.unreadCount(req.user.id);
   res.json({
     user: publicUser(req.user),
     trust: {
@@ -1497,7 +1501,7 @@ function assertTravelerCanAccept(user, listing) {
   return null;
 }
 
-function acceptListingWithTraveler(listing, traveler, offer = null) {
+async function acceptListingWithTraveler(listing, traveler, offer = null) {
   if (offer?.offeredPay) listing.travelerPay = offer.offeredPay;
   listing.status = 'matched';
   const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
@@ -1511,7 +1515,7 @@ function acceptListingWithTraveler(listing, traveler, offer = null) {
     sealingVideo: null, events: [], createdAt: Date.now(),
   };
   addEvent(tx, 'accepted', traveler.id, { escrowHeld: total, offerId: offer?.id || null });
-  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], { key: 'tx.accepted', params: { name: traveler.name, title: listing.title } }, tx.id, 'transactions', 'suivi');
+  await notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], { key: 'tx.accepted', params: { name: traveler.name, title: listing.title } }, tx.id, 'transactions', 'suivi');
   db.transactions.push(tx);
   for (const o of db.matchingOffers || []) {
     normalizeMatchingOffer(o);
@@ -1529,16 +1533,16 @@ function acceptListingWithTraveler(listing, traveler, offer = null) {
 }
 
 // Acceptation par le voyageur → escrow séquestré immédiatement (PRD §2.3)
-app.post('/api/listings/:id/accept', auth, (req, res) => {
+app.post('/api/listings/:id/accept', auth, async (req, res) => {
   const listing = db.listings.find((l) => l.id === req.params.id);
   const blocked = assertTravelerCanAccept(req.user, listing);
   if (blocked) return res.status(blocked.status).json(blocked.body);
-  const tx = acceptListingWithTraveler(listing, req.user);
+  const tx = await acceptListingWithTraveler(listing, req.user);
   save();
   res.json({ transaction: txView(req.user)(tx) });
 });
 
-app.post('/api/matching-offers/:id/accept', auth, (req, res) => {
+app.post('/api/matching-offers/:id/accept', auth, async (req, res) => {
   const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
   if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
     return res.status(404).json({ error: 'Proposition introuvable' });
@@ -1553,12 +1557,12 @@ app.post('/api/matching-offers/:id/accept', auth, (req, res) => {
   const blocked = assertTravelerCanAccept(traveler, listing);
   if (blocked) return res.status(blocked.status).json(blocked.body);
   offer.history.push({ by: req.user.id, type: 'accepted', pay: offer.offeredPay, message: '', at: Date.now() });
-  const tx = acceptListingWithTraveler(listing, traveler, offer);
+  const tx = await acceptListingWithTraveler(listing, traveler, offer);
   save();
   res.json({ offer, transaction: txView(req.user)(tx) });
 });
 
-app.post('/api/matching-offers/:id/decline', auth, (req, res) => {
+app.post('/api/matching-offers/:id/decline', auth, async (req, res) => {
   const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
   if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
     return res.status(404).json({ error: 'Proposition introuvable' });
@@ -1567,12 +1571,12 @@ app.post('/api/matching-offers/:id/decline', auth, (req, res) => {
   offer.status = 'declined';
   offer.respondedAt = Date.now();
   offer.history.push({ by: req.user.id, type: 'declined', pay: offer.offeredPay, message: '', at: Date.now() });
-  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.declined', params: { name: req.user.name } }, null, 'messages', 'matching');
+  await notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.declined', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
 
-app.post('/api/matching-offers/:id/withdraw', auth, (req, res) => {
+app.post('/api/matching-offers/:id/withdraw', auth, async (req, res) => {
   const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
   if (!offer || offer.senderId !== req.user.id)
     return res.status(404).json({ error: 'Proposition introuvable' });
@@ -1581,12 +1585,12 @@ app.post('/api/matching-offers/:id/withdraw', auth, (req, res) => {
   offer.status = 'withdrawn';
   offer.respondedAt = Date.now();
   offer.history.push({ by: req.user.id, type: 'withdrawn', pay: offer.offeredPay, message: '', at: Date.now() });
-  notify([offer.travelerId], { key: 'offer.withdrawn', params: { name: req.user.name } }, null, 'messages', 'matching');
+  await notify([offer.travelerId], { key: 'offer.withdrawn', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
 
-app.post('/api/matching-offers/:id/counter', auth, (req, res) => {
+app.post('/api/matching-offers/:id/counter', auth, async (req, res) => {
   const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
   if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
     return res.status(404).json({ error: 'Proposition introuvable' });
@@ -1600,13 +1604,13 @@ app.post('/api/matching-offers/:id/counter', auth, (req, res) => {
   offer.status = req.user.id === offer.travelerId ? 'countered_sender' : 'pending_traveler';
   offer.expiresAt = Date.now() + 72 * 36e5;
   offer.history.push({ by: req.user.id, type: 'counter', pay, message, at: Date.now() });
-  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.countered', params: { name: req.user.name } }, null, 'messages', 'matching');
+  await notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.countered', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
 
 // Vidéo de scellage (PRD §3.2) — caméra in-app uniquement, horodatée
-app.post('/api/transactions/:id/sealing-video', auth, (req, res) => {
+app.post('/api/transactions/:id/sealing-video', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || t.status !== 'accepted') return res.status(400).json({ error: 'Étape invalide' });
   if (t.senderId !== req.user.id) return res.status(403).json({ error: "Seul l'expéditeur filme le scellage" });
@@ -1616,13 +1620,13 @@ app.post('/api/transactions/:id/sealing-video', auth, (req, res) => {
   };
   t.status = 'sealed';
   addEvent(t, 'sealed', req.user.id, { simulated: !!req.body.simulated });
-  notify([t.travelerId], { key: 'tx.sealed', params: { title: db.listings.find((l) => l.id === t.listingId)?.title } }, t.id, 'shipments', 'actions');
+  await notify([t.travelerId], { key: 'tx.sealed', params: { title: db.listings.find((l) => l.id === t.listingId)?.title } }, t.id, 'shipments', 'actions');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
 
 // Double validation remise : le voyageur saisit le code présenté par l'expéditeur (PRD §3.4)
-app.post('/api/transactions/:id/confirm-pickup', auth, (req, res) => {
+app.post('/api/transactions/:id/confirm-pickup', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || t.status !== 'sealed') return res.status(400).json({ error: 'Étape invalide' });
   if (t.travelerId !== req.user.id) return res.status(403).json({ error: 'Seul le voyageur valide la prise en charge' });
@@ -1630,13 +1634,13 @@ app.post('/api/transactions/:id/confirm-pickup', auth, (req, res) => {
     return res.status(400).json({ error: 'Code invalide — scannez le QR de l\'expéditeur' });
   t.status = 'in_transit';
   addEvent(t, 'in_transit', req.user.id, { responsibility: 'traveler' });
-  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], { key: 'tx.pickedUp' }, t.id, 'shipments', 'suivi');
+  await notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], { key: 'tx.pickedUp' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
 
 // Refus sans pénalité avant prise en charge (PRD §3.3)
-app.post('/api/transactions/:id/refuse', auth, (req, res) => {
+app.post('/api/transactions/:id/refuse', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || !['accepted', 'sealed'].includes(t.status)) return res.status(400).json({ error: 'Étape invalide' });
   if (t.travelerId !== req.user.id) return res.status(403).json({ error: 'Réservé au voyageur' });
@@ -1645,13 +1649,13 @@ app.post('/api/transactions/:id/refuse', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === t.listingId);
   if (listing) listing.status = 'published';
   addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
-  notify([t.senderId], { key: 'tx.refused' }, t.id, 'shipments', 'suivi');
+  await notify([t.senderId], { key: 'tx.refused' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
 
 // Double validation livraison : le destinataire saisit le code du voyageur → escrow libéré (PRD §5.3/5.4)
-app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
+app.post('/api/transactions/:id/confirm-delivery', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || t.status !== 'in_transit') return res.status(400).json({ error: 'Étape invalide' });
   if (t.recipientId !== req.user.id) return res.status(403).json({ error: 'Seul le destinataire valide la livraison' });
@@ -1669,8 +1673,8 @@ app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
   if (sender.completed !== undefined) sender.completed += 1;
   if (sender.completed >= 3) { sender.maxValue = 500; sender.maxActive = 3; }
   addEvent(t, 'delivered_and_released', req.user.id, { released: t.escrow.travelerPay });
-  notify([t.travelerId], { key: 'tx.delivered.traveler', params: { amount: t.escrow.travelerPay } }, t.id, 'shipments', 'suivi');
-  notify([t.senderId], { key: 'tx.delivered.sender' }, t.id, 'shipments', 'suivi');
+  await notify([t.travelerId], { key: 'tx.delivered.traveler', params: { amount: t.escrow.travelerPay } }, t.id, 'shipments', 'suivi');
+  await notify([t.senderId], { key: 'tx.delivered.sender' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -1907,7 +1911,7 @@ app.get('/api/support-center', auth, (req, res) => {
   res.json({ support: supportCenterFor(req.user) });
 });
 
-app.post('/api/transactions/:id/dispute', auth, (req, res) => {
+app.post('/api/transactions/:id/dispute', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || !['in_transit', 'released'].includes(t.status))
     return res.status(400).json({ error: 'Litige impossible à ce stade' });
@@ -1924,7 +1928,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   db.disputes.push(dispute);
   repositories.reviewQueue.append({ type: 'dispute', refId: dispute.id });
   addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
-  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, t.id, 'security', 'litige');
+  await notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, t.id, 'security', 'litige');
   save();
   res.json({ dispute: disputeView(dispute, t) });
 });
@@ -1966,7 +1970,7 @@ app.get('/api/transactions/:id/messages', auth, (req, res) => {
   res.json({ messages: repositories.messages.listForTransaction(req.params.id) });
 });
 
-app.post('/api/transactions/:id/messages', auth, (req, res) => {
+app.post('/api/transactions/:id/messages', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
   if (!isPartyToTx(t, req.user.id))
@@ -1974,7 +1978,7 @@ app.post('/api/transactions/:id/messages', auth, (req, res) => {
   const text = String(req.body.text || '').slice(0, 2000);
   const flagged = detectLeak(text);
   const msg = repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
-  notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
+  await notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
   res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
 });
@@ -2045,8 +2049,8 @@ function adminRiskSignals() {
   };
 }
 
-function adminOpsSummary() {
-  runMatchingOfferReminders({ persist: true });
+async function adminOpsSummary() {
+  await runMatchingOfferReminders({ persist: true });
   const now = Date.now();
   const reviewOpen = repositories.reviewQueue.open();
   const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
@@ -2185,8 +2189,8 @@ function adminOpsSummary() {
   };
 }
 
-app.get('/api/admin/ops', auth, adminOnly, (req, res) => {
-  res.json({ ops: adminOpsSummary() });
+app.get('/api/admin/ops', auth, adminOnly, async (req, res) => {
+  res.json({ ops: await adminOpsSummary() });
 });
 
 app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
@@ -2306,22 +2310,22 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, async (req, res) => {
   if (decision === 'approve') {
     s.status = 'approved';
     user.kycStatus = 'verified';
-    notify([user.id], { key: 'kyc.verified' }, null, 'security');
+    await notify([user.id], { key: 'kyc.verified' }, null, 'security');
   } else if (decision === 'reject') {
     s.status = 'rejected';
     const rejectedCount = repositories.kyc.rejectedCountForUser(user.id);
     // Passage automatique en refus définitif au-delà de la limite (PRD §7).
     if (rejectedCount >= MAX_KYC_ATTEMPTS) {
       user.kycStatus = 'refused';
-      notify([user.id], { key: 'kyc.refusedFinal' }, null, 'security');
+      await notify([user.id], { key: 'kyc.refusedFinal' }, null, 'security');
     } else {
       user.kycStatus = 'rejected';
-      notify([user.id], { key: 'kyc.rejected', params: { reason: cleanReason } }, null, 'security');
+      await notify([user.id], { key: 'kyc.rejected', params: { reason: cleanReason } }, null, 'security');
     }
   } else { // refuse
     s.status = 'refused';
     user.kycStatus = 'refused';
-    notify([user.id], { key: 'kyc.refused', params: { reason: cleanReason } }, null, 'security');
+    await notify([user.id], { key: 'kyc.refused', params: { reason: cleanReason } }, null, 'security');
   }
 
   repositories.kyc.appendDecision({
@@ -2529,7 +2533,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, async (req, res) => {
       txId: t.id,
       escrowState: t.escrow?.state || null,
     });
-    notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');
+    await notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');
   }
   save();
   res.json({ ok: true });

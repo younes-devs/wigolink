@@ -161,6 +161,29 @@ Relais utile: brancher ensuite `notifications` ou `messages` sur Postgres en
 gardant le mode partiel explicite. Ne pas attaquer `transactions`/`listings`
 avant au moins une deuxieme collection simple.
 
+### 2026-07-15 - De Codex
+
+J'ai branche la deuxieme collection Postgres partielle: `notifications`.
+
+Details:
+
+- `createPostgresNotificationRepository()` couvre `append`, `listForUser`,
+  `unreadCount` et `markAllRead`.
+- Activation partielle possible avec
+  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications`.
+- `notify()` et `runMatchingOfferReminders()` sont maintenant async.
+- Les routes qui emettent/lisent les notifications attendent le repository, pour
+  eviter de repondre OK avant l'ecriture Postgres.
+- `.env.example` et `docs/deploiement.md` sont a jour.
+
+Verification: `npm test` 49/49, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js` OK.
+
+Relais utile: prochain candidat logique = `messages` Postgres partiel. Toujours
+eviter `transactions`/`listings` jusqu'a ce que les repositories simples soient
+stabilises.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

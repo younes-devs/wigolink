@@ -28,7 +28,7 @@ test('persistence : DATABASE_URL selectionne postgres mais bloque l activation i
   );
 });
 
-test('persistence : postgres partiel autorise auditLogs explicitement', () => {
+test('persistence : postgres partiel autorise auditLogs et notifications explicitement', () => {
   const queries = [];
   const pool = { query(sql, params) { queries.push({ sql, params }); return { rows: [] }; } };
   const { repositories, config } = createPersistence({
@@ -41,13 +41,14 @@ test('persistence : postgres partiel autorise auditLogs explicitement', () => {
     env: {
       DATABASE_URL: 'postgresql://example',
       PERSISTENCE_ALLOW_PARTIAL: 'true',
-      PERSISTENCE_POSTGRES_COLLECTIONS: 'auditLogs',
+      PERSISTENCE_POSTGRES_COLLECTIONS: 'auditLogs,notifications',
     },
   });
 
-  assert.deepEqual(config.partialPostgresCollections, ['auditLogs']);
+  assert.deepEqual(config.partialPostgresCollections, ['auditLogs', 'notifications']);
   assert.equal(typeof repositories.auditLogs.append, 'function');
-  assert.equal(typeof repositories.notifications.append, 'function', 'les autres repositories restent en JSON');
+  assert.equal(typeof repositories.notifications.append, 'function');
+  assert.equal(typeof repositories.messages.append, 'function', 'les autres repositories restent en JSON');
 });
 
 test('persistence : postgres partiel refuse les collections non supportees', () => {

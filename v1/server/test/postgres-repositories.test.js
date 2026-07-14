@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPostgresAuditLogRepository } from '../postgres-repositories.js';
+import { createPostgresAuditLogRepository, createPostgresNotificationRepository } from '../postgres-repositories.js';
 
 test('postgres auditLogs : append mappe vers audit_logs', async () => {
   const calls = [];
@@ -72,4 +72,84 @@ test('postgres auditLogs : list borne la limite et renvoie acteur public', async
   assert.equal(calls[0].params[0], 200);
   assert.equal(logs[0].id, '8');
   assert.deepEqual(logs[0].actor, { id: 'u-missing', name: 'system' });
+});
+
+test('postgres notifications : append mappe vers notifications', async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      return {
+        rows: [{
+          id: params[0],
+          user_id: 'u-fatima',
+          tx_id: 'tx-1',
+          type: 'messages',
+          section: 'matching',
+          key: 'offer.received',
+          params: { title: 'Colis' },
+          text: 'fallback',
+          read: false,
+          at: new Date('2026-07-15T12:00:00.000Z'),
+        }],
+      };
+    },
+  };
+  const repo = createPostgresNotificationRepository({ pool });
+
+  const notification = await repo.append({
+    userId: 'u-fatima',
+    txId: 'tx-1',
+    type: 'messages',
+    section: 'matching',
+    key: 'offer.received',
+    params: { title: 'Colis' },
+    text: 'fallback',
+    at: Date.parse('2026-07-15T12:00:00.000Z'),
+  });
+
+  assert.match(calls[0].sql, /insert into notifications/);
+  assert.equal(calls[0].params[1], 'u-fatima');
+  assert.equal(calls[0].params[6], '{"title":"Colis"}');
+  assert.equal(notification.userId, 'u-fatima');
+  assert.equal(notification.key, 'offer.received');
+  assert.equal(notification.at, Date.parse('2026-07-15T12:00:00.000Z'));
+});
+
+test('postgres notifications : list, unread et markAllRead utilisent le scope utilisateur', async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/count/.test(sql)) return { rows: [{ count: 3 }] };
+      if (/update notifications/.test(sql)) return { rowCount: 2, rows: [] };
+      return {
+        rows: [{
+          id: 'n-1',
+          user_id: 'u-fatima',
+          tx_id: null,
+          type: 'security',
+          section: null,
+          key: 'kyc.verified',
+          params: {},
+          text: 'fallback',
+          read: false,
+          at: '2026-07-15T13:00:00.000Z',
+        }],
+      };
+    },
+  };
+  const repo = createPostgresNotificationRepository({ pool });
+
+  const list = await repo.listForUser('u-fatima', { limit: 999 });
+  const unread = await repo.unreadCount('u-fatima');
+  const changed = await repo.markAllRead('u-fatima');
+
+  assert.match(calls[0].sql, /where user_id = \$1/);
+  assert.deepEqual(calls[0].params, ['u-fatima', 100]);
+  assert.equal(list[0].id, 'n-1');
+  assert.equal(unread, 3);
+  assert.equal(changed, 2);
+  assert.deepEqual(calls[1].params, ['u-fatima']);
+  assert.deepEqual(calls[2].params, ['u-fatima']);
 });
