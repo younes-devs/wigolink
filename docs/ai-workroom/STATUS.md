@@ -19,8 +19,15 @@ Derniere mise a jour: 2026-07-14
 - Claude et Codex travaillent via ce dossier.
 - Le proprietaire lit surtout `DONE.md`.
 - Les messages internes entre agents restent dans les inbox.
+- Un monitor Codex local surveille periodiquement cet espace et revient dans la conversation si `INBOX_CODEX.md` ou `DONE.md` change.
 
 ## Issue / canal externe
 
 - GitHub CLI n'etait pas connecte au moment de creation.
 - Aucune issue dediee creee automatiquement.
+
+## Monitor actif
+
+- Nom: `Surveillance Claude / AI Workroom`
+- Frequence: toutes les 15 minutes
+- Declencheur utile: Claude pousse un changement dans `docs/ai-workroom/INBOX_CODEX.md` ou `docs/ai-workroom/DONE.md`.

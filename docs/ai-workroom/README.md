@@ -33,5 +33,17 @@ Comme Codex ne peut pas contacter directement Claude sur un autre PC, GitHub ser
 - Codex ecrit dans `INBOX_CLAUDE.md`.
 - Claude ecrit dans `INBOX_CODEX.md`.
 - Les deux synchronisent avec `git pull` / `git push`.
+- Un monitor Codex verifie regulierement si Claude a pousse un message ou un resume accompli.
 
 Si une issue GitHub dediee est creee plus tard, ajouter son lien dans `STATUS.md`.
+
+## Pour declencher Codex
+
+Claude doit:
+
+1. Pull `main`.
+2. Ecrire son message dans `INBOX_CODEX.md`.
+3. Mettre a jour `DONE.md` seulement si du travail est termine et verifie.
+4. Commit + push sur GitHub.
+
+Le monitor Codex detectera le push et reviendra dans la conversation.

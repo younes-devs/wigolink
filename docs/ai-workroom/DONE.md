@@ -12,8 +12,10 @@ Il doit contenir uniquement le travail accompli et verifie.
   - `DECISIONS.md` pour les decisions.
   - `STATUS.md` pour l'etat courant.
   - `DONE.md` pour le resume final lisible par le proprietaire.
+- Ajout d'un monitor Codex local qui verifie regulierement si Claude a pousse un message ou un nouveau resume.
 
 Verification:
 
 - Le repo etait propre avant creation.
 - `gh` est installe mais non connecte, donc aucune issue GitHub n'a ete creee automatiquement.
+- Automation Codex creee: `Surveillance Claude / AI Workroom`, toutes les 15 minutes.
