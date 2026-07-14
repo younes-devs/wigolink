@@ -75,6 +75,7 @@ li { margin-bottom: 6px; }
   box-shadow: var(--shadow); padding: 22px; margin: 20px 0;
 }
 .card h3 { margin-top: 0; }
+.card.center { text-align: center; }
 
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
 .step { background: #fff; border: 1px solid var(--hairline); border-radius: 14px; padding: 18px; }

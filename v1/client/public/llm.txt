@@ -1,0 +1,45 @@
+# Wigofly
+
+> Wigofly est une plateforme belgo-marocaine de transport collaboratif de colis et de produits
+> du terroir, entre la Belgique/France et le Maroc (corridor de lancement : Bruxelles ↔
+> Casablanca). Elle met en relation des expéditeurs et des voyageurs qui font le trajet, avec
+> paiement séquestré (escrow), vérification d'identité (KYC) et preuve vidéo à chaque étape de
+> la remise et de la livraison.
+
+Wigofly agit uniquement comme intermédiaire technique : ni transporteur, ni transitaire, ni
+mandataire douanier, et ne manipule jamais la marchandise. Seuls des produits du terroir
+scellés d'origine (huile d'argan, safran, miel, dattes, épices, amlou, cosmétiques naturels,
+huiles essentielles) sont acceptés, en quantités "usage personnel".
+
+L'application elle-même (inscription, feed d'annonces, transactions, profil, back-office) est
+un espace authentifié et privé : elle ne contient aucun contenu public à explorer et porte un
+`noindex, nofollow` explicite. Les pages listées ci-dessous sont les seules destinées à être
+lues, citées ou explorées par des robots et des agents.
+
+## Pages principales
+
+- [Découvrir Wigofly](https://wigofly.app/decouvrir/): Page d'accueil publique — proposition de valeur, fonctionnement, produits acceptés.
+- [Comment ça marche](https://wigofly.app/comment-ca-marche/): Parcours complet d'une transaction, étape par étape (accord, escrow, scellage filmé, double validation, livraison, litiges). Contient des questions/réponses structurées (FAQ).
+- [Produits autorisés](https://wigofly.app/produits/): Liste blanche complète des produits du terroir marocain acceptés, avec quantités maximales par catégorie.
+- [Envoyer un colis Bruxelles ↔ Casablanca](https://wigofly.app/envoyer-colis/bruxelles-casablanca/): Page du corridor de lancement — modalités pour expéditeurs et voyageurs.
+- [Guide : envoyer en toute sécurité](https://wigofly.app/guide/comment-envoyer-en-securite/): Contenu de fond sur la sécurité des envois entre la Belgique et le Maroc.
+- [Guide : douane Maroc–Belgique](https://wigofly.app/guide/douane-maroc-belgique/): Franchises douanières et quantités autorisées par catégorie de produit.
+- [Conditions générales d'utilisation](https://wigofly.app/cgu/): Statut de la plateforme, règles de transaction, paiement, litiges, droit applicable.
+- [Politique de confidentialité](https://wigofly.app/confidentialite/): Données collectées, base légale, durée de conservation, droits RGPD.
+
+## Pages produit (une par catégorie)
+
+- [Huile d'argan](https://wigofly.app/produits/huile-argan/): Jusqu'à 5 L par envoi.
+- [Safran](https://wigofly.app/produits/safran/): Jusqu'à 100 g par envoi.
+- [Miel](https://wigofly.app/produits/miel/): Jusqu'à 5 kg par envoi.
+- [Dattes](https://wigofly.app/produits/dattes/): Jusqu'à 5 kg par envoi.
+- [Épices](https://wigofly.app/produits/epices/): Jusqu'à 3 kg par envoi.
+- [Amlou](https://wigofly.app/produits/amlou/): Jusqu'à 3 kg par envoi.
+- [Cosmétiques naturels](https://wigofly.app/produits/cosmetiques/): Jusqu'à 3 kg par envoi.
+- [Huiles essentielles](https://wigofly.app/produits/huiles-essentielles/): Jusqu'à 1 L par envoi.
+
+## À ne pas explorer
+
+- `/` et toute route de l'application (feed, annonces, transactions, profil, vérification
+  d'identité, back-office admin) : contenu authentifié, privé, non représentatif du site
+  public — voir `/robots.txt`.

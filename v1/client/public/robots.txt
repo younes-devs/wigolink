@@ -9,9 +9,11 @@ Allow: /comment-ca-marche
 Allow: /envoyer-colis/
 Allow: /produits/
 Allow: /guide/
-Allow: /cgu
-Allow: /confidentialite
+Allow: /cgu/
+Allow: /confidentialite/
 Allow: /sitemap.xml
+Allow: /llms.txt
+Allow: /llm.txt
 Allow: /assets/
 Allow: /favicon.ico
 
