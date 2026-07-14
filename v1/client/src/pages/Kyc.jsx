@@ -6,10 +6,12 @@ import { PhotoCapture, requestCameraStream } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { t, useLang } from '../i18n.js';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
 // Accès complet à la navigation ; cette page n'est requise que pour transacter.
 export default function Kyc() {
+  useLang();
   const nav = useNavigate();
   const { refreshUser } = useAuth();
   const toast = useToast();
@@ -23,41 +25,35 @@ export default function Kyc() {
 
   return (
     <div>
-      <button className="link-btn mb" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />Retour</button>
-      <h1 className="page-title">Vérification d'identité</h1>
-      <p className="page-sub">
-        Obligatoire uniquement pour publier un envoi, déclarer un trajet ou accepter un transport.
-        La navigation reste libre.
-      </p>
+      <button className="link-btn mb" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />{t('common.back')}</button>
+      <h1 className="page-title">{t('kyc.title')}</h1>
+      <p className="page-sub">{t('kyc.sub')}</p>
 
       {status === 'verified' && (
         <div className="card center" style={{ padding: '28px 18px' }}>
           <div className="kyc-status-icon kyc-ok"><Icon name="shieldCheck" size={30} /></div>
-          <h2 style={{ justifyContent: 'center', marginTop: 12 }}>Identité vérifiée</h2>
-          <p className="muted mt">Vous avez accès à toutes les fonctionnalités de Wigofly.</p>
+          <h2 style={{ justifyContent: 'center', marginTop: 12 }}>{t('kyc.verified.title')}</h2>
+          <p className="muted mt">{t('kyc.verified.text')}</p>
         </div>
       )}
 
       {status === 'pending' && (
         <div className="card center" style={{ padding: '28px 18px' }}>
           <div className="kyc-status-icon kyc-pending"><Icon name="clock" size={30} /></div>
-          <h2 style={{ justifyContent: 'center', marginTop: 12 }}>Vérification en cours</h2>
-          <p className="muted mt">
-            Notre équipe examine vos documents. Délai habituel : sous 24 h. Vous recevrez une notification
-            dès qu'une décision est prise.
-          </p>
+          <h2 style={{ justifyContent: 'center', marginTop: 12 }}>{t('kyc.pending.title')}</h2>
+          <p className="muted mt">{t('kyc.pending.text')}</p>
         </div>
       )}
 
       {status === 'refused' && (
         <div className="card" style={{ padding: '24px 18px' }}>
           <div className="kyc-status-icon kyc-refused" style={{ margin: '0 auto' }}><Icon name="x" size={30} /></div>
-          <h2 style={{ justifyContent: 'center', marginTop: 12, textAlign: 'center' }}>Vérification refusée</h2>
+          <h2 style={{ justifyContent: 'center', marginTop: 12, textAlign: 'center' }}>{t('kyc.refused.title')}</h2>
           {me.kyc?.latestDecisionReason && (
             <div className="alert alert-danger mt"><Icon name="alert" size={17} />{me.kyc.latestDecisionReason}</div>
           )}
           <p className="muted mt center">
-            Cette décision est définitive. Si vous pensez qu'il s'agit d'une erreur, contactez
+            {t('kyc.refused.text')}
             <a href="mailto:support@wigofly.app" style={{ color: 'var(--accent)', fontWeight: 600 }}> support@wigofly.app</a>.
           </p>
         </div>
@@ -68,7 +64,7 @@ export default function Kyc() {
           rejected={status === 'rejected'}
           rejectReason={me.kyc?.latestDecisionReason}
           canResubmit={status === 'none' || me.kyc?.canResubmit}
-          onDone={async () => { await load(); await refreshUser(); toast.success('Vérification envoyée — réponse sous 24h'); }}
+          onDone={async () => { await load(); await refreshUser(); toast.success(t('kyc.toast.sent')); }}
         />
       )}
     </div>
@@ -94,9 +90,9 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const captureConfig = {
-    selfie: { facing: 'user', key: 'selfiePhoto', guide: 'Selfie — visage bien visible', maxPx: 700 },
-    front: { facing: 'environment', key: 'idFrontPhoto', guide: "Pièce d'identité — recto", maxPx: 1100 },
-    back: { facing: 'environment', key: 'idBackPhoto', guide: "Pièce d'identité — verso", maxPx: 1100 },
+    selfie: { facing: 'user', key: 'selfiePhoto', guide: t('kyc.guide.selfie'), maxPx: 700 },
+    front: { facing: 'environment', key: 'idFrontPhoto', guide: t('kyc.guide.front'), maxPx: 1100 },
+    back: { facing: 'environment', key: 'idBackPhoto', guide: t('kyc.guide.back'), maxPx: 1100 },
   };
 
   // Demande la caméra dès le clic (synchrone dans le geste utilisateur) : c'est ce qui
@@ -110,7 +106,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       const stream = await requestCameraStream(captureConfig[name].facing);
       setCaptureStream(stream);
     } catch {
-      setCaptureError("Accès à la caméra refusé ou indisponible. Vérifiez l'autorisation caméra de Wigofly dans les réglages de votre téléphone.");
+      setCaptureError(t('kyc.camera.denied'));
     }
   };
   const closeCapture = () => {
@@ -137,7 +133,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       <div className="card">
         <div className="alert alert-danger" style={{ marginBottom: 0 }}>
           <Icon name="alert" size={17} />
-          Nombre maximum de tentatives atteint. Contactez <a href="mailto:support@wigofly.app">support@wigofly.app</a>.
+          {t('kyc.maxattempts')} <a href="mailto:support@wigofly.app">support@wigofly.app</a>.
         </div>
       </div>
     );
@@ -148,7 +144,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       {rejected && (
         <div className="alert alert-warn">
           <Icon name="alert" size={17} />
-          <span><b>Demande précédente rejetée.</b>{rejectReason ? ` ${rejectReason}` : ''} Vous pouvez soumettre à nouveau.</span>
+          <span><b>{t('kyc.rejected.banner')}</b>{rejectReason ? ` ${rejectReason}` : ''} {t('kyc.rejected.retry')}</span>
         </div>
       )}
 
@@ -157,28 +153,28 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
 
       {stepName === 'infos' && (
         <>
-          <h2 style={{ marginBottom: 12 }}><Icon name="user" size={17} />Vos informations</h2>
+          <h2 style={{ marginBottom: 12 }}><Icon name="user" size={17} />{t('kyc.infos.title')}</h2>
           <div className="field">
-            <label>Nom légal complet</label>
+            <label>{t('kyc.legalname')}</label>
             <input value={form.legalName} onChange={(e) => set('legalName', e.target.value)}
-              placeholder="Tel qu'il figure sur votre pièce d'identité" />
+              placeholder={t('kyc.legalname.ph')} />
           </div>
           <div className="field">
-            <label>Date de naissance</label>
+            <label>{t('kyc.birthdate')}</label>
             <input type="date" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
             {age !== null && age < 18 && (
-              <div className="hint" style={{ color: 'var(--danger)' }}>Vous devez avoir 18 ans ou plus.</div>
+              <div className="hint" style={{ color: 'var(--danger)' }}>{t('kyc.age.min')}</div>
             )}
           </div>
           <div className="field">
-            <label>Type de document</label>
+            <label>{t('kyc.doctype')}</label>
             <select value={form.documentType} onChange={(e) => { set('documentType', e.target.value); setPhotos((p) => ({ ...p, idBackPhoto: null })); }}>
-              <option value="id_card">Carte d'identité nationale</option>
-              <option value="passport">Passeport</option>
+              <option value="id_card">{t('kyc.doc.idcard')}</option>
+              <option value="passport">{t('kyc.doc.passport')}</option>
             </select>
-            <div className="hint">{needsBack ? 'Recto et verso seront demandés.' : 'Seule la page principale du passeport est demandée.'}</div>
+            <div className="hint">{needsBack ? t('kyc.hint.both') : t('kyc.hint.passport')}</div>
           </div>
-          <button className="btn btn-primary" disabled={!infosValid} onClick={next}>Continuer</button>
+          <button className="btn btn-primary" disabled={!infosValid} onClick={next}>{t('common.continue')}</button>
         </>
       )}
 
@@ -193,25 +189,25 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
 
       {stepName === 'review' && (
         <>
-          <h2 style={{ marginBottom: 12 }}><Icon name="shieldCheck" size={17} />Vérifiez avant d'envoyer</h2>
+          <h2 style={{ marginBottom: 12 }}><Icon name="shieldCheck" size={17} />{t('kyc.review.title')}</h2>
           <div className="kyc-review-grid">
-            <ReviewThumb label="Selfie" photo={photos.selfiePhoto} onRetake={() => openCapture('selfie')} />
-            <ReviewThumb label="Recto" photo={photos.idFrontPhoto} onRetake={() => openCapture('front')} />
-            {needsBack && <ReviewThumb label="Verso" photo={photos.idBackPhoto} onRetake={() => openCapture('back')} />}
+            <ReviewThumb label={t('kyc.review.selfie')} photo={photos.selfiePhoto} onRetake={() => openCapture('selfie')} />
+            <ReviewThumb label={t('kyc.review.front')} photo={photos.idFrontPhoto} onRetake={() => openCapture('front')} />
+            {needsBack && <ReviewThumb label={t('kyc.review.back')} photo={photos.idBackPhoto} onRetake={() => openCapture('back')} />}
           </div>
           <div className="kyc-recap">
-            <div><span className="muted">Nom légal</span><b>{form.legalName}</b></div>
-            <div><span className="muted">Naissance</span><b>{form.birthDate}</b></div>
-            <div><span className="muted">Document</span><b>{needsBack ? "Carte d'identité" : 'Passeport'}</b></div>
+            <div><span className="muted">{t('kyc.review.name')}</span><b>{form.legalName}</b></div>
+            <div><span className="muted">{t('kyc.review.birth')}</span><b>{form.birthDate}</b></div>
+            <div><span className="muted">{t('kyc.review.doc')}</span><b>{needsBack ? t('kyc.doc.idcard.short') : t('kyc.doc.passport')}</b></div>
           </div>
           <div className="alert alert-teal" style={{ fontSize: 12.5 }}>
             <Icon name="lock" size={16} />
-            <span>Vos documents ne sont visibles que par notre équipe de vérification. Ils ne sont jamais montrés aux autres membres.</span>
+            <span>{t('kyc.privacy')}</span>
           </div>
           <button className="btn btn-teal" onClick={submit} disabled={busy}>
-            {busy ? 'Envoi…' : 'Envoyer pour vérification'}
+            {busy ? t('kyc.submitting') : t('kyc.submit')}
           </button>
-          <button className="btn btn-ghost mt" onClick={prev}>Retour</button>
+          <button className="btn btn-ghost mt" onClick={prev}>{t('common.back')}</button>
         </>
       )}
 
@@ -235,23 +231,21 @@ function PhotoStep({ cfg, photo, onRetake, onNext, onPrev }) {
     <>
       <h2 style={{ marginBottom: 6 }}><Icon name="camera" size={17} />{cfg.guide}</h2>
       <p className="muted mb" style={{ fontSize: 12.5 }}>
-        {cfg.facing === 'user'
-          ? 'Visage dégagé, sans lunettes de soleil, bon éclairage. Caméra in-app uniquement.'
-          : 'Document à plat, bien cadré, texte lisible. Caméra in-app uniquement.'}
+        {cfg.facing === 'user' ? t('kyc.photo.selfie.help') : t('kyc.photo.doc.help')}
       </p>
       {photo ? (
         <div className={`kyc-preview ${cfg.facing === 'user' ? 'kyc-preview-selfie' : ''}`}>
           <img src={photo} alt={cfg.guide} />
         </div>
       ) : (
-        <div className="kyc-placeholder"><Icon name="camera" size={28} /><span>Aucune photo</span></div>
+        <div className="kyc-placeholder"><Icon name="camera" size={28} /><span>{t('kyc.photo.none')}</span></div>
       )}
       <button className="btn btn-ghost mt" onClick={onRetake}>
-        <Icon name="camera" size={17} />{photo ? 'Reprendre' : 'Prendre la photo'}
+        <Icon name="camera" size={17} />{photo ? t('kyc.photo.retake') : t('kyc.photo.take')}
       </button>
       <div className="row mt">
-        <button className="btn btn-ghost btn-sm" onClick={onPrev}>Retour</button>
-        <button className="btn btn-primary btn-sm" onClick={onNext} disabled={!photo}>Continuer</button>
+        <button className="btn btn-ghost btn-sm" onClick={onPrev}>{t('common.back')}</button>
+        <button className="btn btn-primary btn-sm" onClick={onNext} disabled={!photo}>{t('common.continue')}</button>
       </div>
     </>
   );
@@ -262,7 +256,7 @@ function ReviewThumb({ label, photo, onRetake }) {
     <div className="kyc-review-thumb">
       <img src={photo} alt={label} />
       <span>{label}</span>
-      <button className="kyc-retake" onClick={onRetake} aria-label="Reprendre"><Icon name="camera" size={13} /></button>
+      <button className="kyc-retake" onClick={onRetake} aria-label={t('kyc.photo.retake')}><Icon name="camera" size={13} /></button>
     </div>
   );
 }

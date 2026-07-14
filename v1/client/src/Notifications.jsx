@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from './api';
 import { Icon } from './Icons.jsx';
+import { t, useLang } from './i18n.js';
 
 const REL_FMT = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
 function relTime(at) {
@@ -59,14 +60,14 @@ export default function Notifications() {
 
   return (
     <div className="notif-wrap" ref={panelRef}>
-      <button className="notif-bell" onClick={toggle} aria-label="Notifications">
+      <button className="notif-bell" onClick={toggle} aria-label={t('notif.title')}>
         <Icon name="bell" size={20} />
         {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
         <div className="notif-panel">
-          <div className="notif-title">Notifications</div>
-          {items.length === 0 && <div className="notif-empty">Rien pour l'instant.</div>}
+          <div className="notif-title">{t('notif.title')}</div>
+          {items.length === 0 && <div className="notif-empty">{t('notif.empty')}</div>}
           {items.map((n) => (
             <button key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`} onClick={() => go(n)}>
               <span className="notif-dot" />

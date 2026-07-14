@@ -29,7 +29,7 @@ export function Stepper({ labels, current, onGo }) {
 
 // Dialogue de confirmation du design system — remplace le confirm() natif (PRD UI/UX U5).
 // Fermeture par Échap, clic sur le fond, ou bouton Annuler ; focus initial sur l'action.
-export function ConfirmDialog({ title, message, confirmLabel = 'Confirmer', cancelLabel = 'Annuler', danger = false, icon = 'alert', onConfirm, onClose }) {
+export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, danger = false, icon = 'alert', onConfirm, onClose }) {
   const confirmRef = useRef(null);
   useEffect(() => {
     confirmRef.current?.focus();
@@ -45,9 +45,9 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Confirmer', canc
         <h2 className="confirm-title">{title}</h2>
         {message && <p className="confirm-message">{message}</p>}
         <div className="confirm-actions">
-          <button className="btn btn-ghost" onClick={onClose}>{cancelLabel}</button>
+          <button className="btn btn-ghost" onClick={onClose}>{cancelLabel || t('common.cancel')}</button>
           <button ref={confirmRef} className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</button>
+            onClick={() => { onConfirm(); onClose(); }}>{confirmLabel || t('common.confirm')}</button>
         </div>
       </div>
     </div>
@@ -137,7 +137,7 @@ export function QrScanner({ onDetected, onClose }) {
         };
         raf = requestAnimationFrame(tick);
       } catch {
-        setError("Caméra indisponible — utilisez la saisie manuelle.");
+        setError(t('scanner.no.camera'));
       }
     })();
 
@@ -153,7 +153,7 @@ export function QrScanner({ onDetected, onClose }) {
       <div className="modal scanner-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <Icon name="qr" size={19} />
-          <b>Scanner le QR</b>
+          <b>{t('scanner.title')}</b>
           <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
             <Icon name="x" size={18} />
           </button>
@@ -161,7 +161,7 @@ export function QrScanner({ onDetected, onClose }) {
         {!supported && (
           <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}>
             <Icon name="alert" size={17} />
-            <span>Le scan caméra n'est pas pris en charge par ce navigateur. Utilisez la saisie manuelle du code.</span>
+            <span>{t('scanner.unsupported')}</span>
           </div>
         )}
         {supported && error && (
@@ -183,10 +183,10 @@ export function TrustBadge({ user }) {
   return (
     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
       {user.kycStatus === 'verified' && (
-        <span className="pill pill-teal"><Icon name="shieldCheck" size={13} />Identité vérifiée</span>
+        <span className="pill pill-teal"><Icon name="shieldCheck" size={13} />{t('badge.verified')}</span>
       )}
       {user.badges?.includes('voyageur-confirme') && (
-        <span className="pill pill-saffron"><Icon name="star" size={13} filled />Voyageur confirmé</span>
+        <span className="pill pill-saffron"><Icon name="star" size={13} filled />{t('badge.confirmed')}</span>
       )}
       {user.rating != null && (
         <span className="pill pill-gray"><Icon name="star" size={13} filled />{user.rating} ({user.ratingCount})</span>
