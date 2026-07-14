@@ -28,6 +28,47 @@ test('persistence : DATABASE_URL selectionne postgres mais bloque l activation i
   );
 });
 
+test('persistence : postgres partiel autorise auditLogs explicitement', () => {
+  const queries = [];
+  const pool = { query(sql, params) { queries.push({ sql, params }); return { rows: [] }; } };
+  const { repositories, config } = createPersistence({
+    db: {},
+    save() {},
+    newId(prefix) { return `${prefix}-1`; },
+    findUser() { return null; },
+    publicUser() { return null; },
+    pool,
+    env: {
+      DATABASE_URL: 'postgresql://example',
+      PERSISTENCE_ALLOW_PARTIAL: 'true',
+      PERSISTENCE_POSTGRES_COLLECTIONS: 'auditLogs',
+    },
+  });
+
+  assert.deepEqual(config.partialPostgresCollections, ['auditLogs']);
+  assert.equal(typeof repositories.auditLogs.append, 'function');
+  assert.equal(typeof repositories.notifications.append, 'function', 'les autres repositories restent en JSON');
+});
+
+test('persistence : postgres partiel refuse les collections non supportees', () => {
+  assert.throws(
+    () => createPersistence({
+      db: {},
+      save() {},
+      newId(prefix) { return `${prefix}-1`; },
+      findUser() { return null; },
+      publicUser() { return null; },
+      pool: { query() { return { rows: [] }; } },
+      env: {
+        DATABASE_URL: 'postgresql://example',
+        PERSISTENCE_ALLOW_PARTIAL: 'true',
+        PERSISTENCE_POSTGRES_COLLECTIONS: 'transactions',
+      },
+    }),
+    /Collections Postgres non supportees/
+  );
+});
+
 test('persistence : PERSISTENCE_DRIVER invalide refuse le demarrage', () => {
   assert.throws(
     () => persistenceConfig({ PERSISTENCE_DRIVER: 'sqlite' }),

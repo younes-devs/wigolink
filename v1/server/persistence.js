@@ -1,6 +1,8 @@
 import { createRepositories } from './repositories.js';
+import { createPostgresAuditLogRepository, createPostgresPool } from './postgres-repositories.js';
 
 const VALID_DRIVERS = new Set(['json', 'postgres']);
+const PARTIAL_POSTGRES_COLLECTIONS = new Set(['auditLogs']);
 
 export function persistenceConfig(env = process.env) {
   const requested = String(env.PERSISTENCE_DRIVER || '').trim().toLowerCase();
@@ -11,21 +13,47 @@ export function persistenceConfig(env = process.env) {
   return {
     driver,
     hasDatabaseUrl: !!env.DATABASE_URL,
+    partialPostgresCollections: parseCollections(env.PERSISTENCE_POSTGRES_COLLECTIONS),
+    allowPartialPostgres: env.PERSISTENCE_ALLOW_PARTIAL === 'true',
     ready: driver === 'json',
   };
 }
 
-export function createPersistence({ db, save, newId, findUser, publicUser, env = process.env }) {
+export function createPersistence({ db, save, newId, findUser, publicUser, env = process.env, pool = null }) {
   const config = persistenceConfig(env);
+  const repositories = createRepositories({ db, save, newId, findUser, publicUser });
+
   if (config.driver === 'postgres') {
-    throw new Error(
-      'PERSISTENCE_DRIVER=postgres demande un adaptateur Postgres complet. ' +
-      'Les repositories JSON sont isoles, mais transactions/listings/auth restent a migrer avant activation.'
-    );
+    if (!config.hasDatabaseUrl && !pool) {
+      throw new Error('PERSISTENCE_DRIVER=postgres demande DATABASE_URL.');
+    }
+    const unsupported = config.partialPostgresCollections.filter((name) => !PARTIAL_POSTGRES_COLLECTIONS.has(name));
+    if (unsupported.length) {
+      throw new Error(`Collections Postgres non supportees pour l'instant: ${unsupported.join(', ')}.`);
+    }
+    if (!config.allowPartialPostgres || !config.partialPostgresCollections.length) {
+      throw new Error(
+        'PERSISTENCE_DRIVER=postgres demande un adaptateur Postgres complet. ' +
+        'Pour tester une migration partielle explicite, definir PERSISTENCE_ALLOW_PARTIAL=true ' +
+        'et PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs.'
+      );
+    }
+
+    const postgresPool = pool || createPostgresPool({ connectionString: env.DATABASE_URL });
+    if (config.partialPostgresCollections.includes('auditLogs')) {
+      repositories.auditLogs = createPostgresAuditLogRepository({ pool: postgresPool, findUser, publicUser });
+    }
   }
 
   return {
     config,
-    repositories: createRepositories({ db, save, newId, findUser, publicUser }),
+    repositories,
   };
+}
+
+function parseCollections(value = '') {
+  return String(value || '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
 }

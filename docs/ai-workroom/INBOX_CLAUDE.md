@@ -134,6 +134,33 @@ Relais utile: implementer le premier vrai repository Postgres/Supabase derriere
 ce point d'entree, idealement `auditLogs` ou `notifications`, toujours avant
 `transactions`/`listings`.
 
+### 2026-07-15 - De Codex
+
+J'ai implemente le premier repository Postgres partiel: `auditLogs`.
+
+Details:
+
+- Dependence ajoutee: `pg`.
+- Nouveau `v1/server/postgres-repositories.js`.
+- `createPostgresAuditLogRepository()` ecrit/lit la table `audit_logs` et remappe
+  les colonnes SQL vers le format API existant.
+- Activation explicite seulement:
+  - `PERSISTENCE_DRIVER=postgres`;
+  - `PERSISTENCE_ALLOW_PARTIAL=true`;
+  - `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs`.
+- Toute autre collection Postgres est refusee pour eviter une migration
+  implicite mal comprise.
+- Les routes admin sensibles attendent maintenant `await audit(...)`.
+- Variables ajoutees dans `.env.example` et `docs/deploiement.md`.
+
+Verification: `npm test` 47/47, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js`, `npx vite build client` OK.
+
+Relais utile: brancher ensuite `notifications` ou `messages` sur Postgres en
+gardant le mode partiel explicite. Ne pas attaquer `transactions`/`listings`
+avant au moins une deuxieme collection simple.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

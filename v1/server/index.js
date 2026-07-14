@@ -67,8 +67,8 @@ function addEvent(tx, type, actorId, meta = {}) {
   tx.events.push({ id: newId('e'), type, actorId, meta, at: Date.now() });
 }
 
-function audit(actorId, action, targetType, targetId, meta = {}) {
-  repositories.auditLogs.append({ actorId, action, targetType, targetId, meta });
+async function audit(actorId, action, targetType, targetId, meta = {}) {
+  return repositories.auditLogs.append({ actorId, action, targetType, targetId, meta });
 }
 
 // Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
@@ -2214,16 +2214,16 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
 });
 
 // Retire une catégorie promue (repasse en zone grise pour les prochains envois).
-app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
+app.delete('/api/admin/whitelist/:id', auth, adminOnly, async (req, res) => {
   const removed = repositories.customWhitelist.remove(req.params.id);
   if (!removed) return res.status(404).json({ error: 'Catégorie introuvable' });
-  audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
+  await audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
   save();
   res.json({ ok: true });
 });
 
-app.get('/api/admin/audit-logs', auth, adminOnly, (req, res) => {
-  res.json({ logs: repositories.auditLogs.list({ limit: req.query.limit }) });
+app.get('/api/admin/audit-logs', auth, adminOnly, async (req, res) => {
+  res.json({ logs: await repositories.auditLogs.list({ limit: req.query.limit }) });
 });
 
 // ---------- Back-office KYC (PRD KYC §5) ----------
@@ -2284,7 +2284,7 @@ app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
 });
 
 // Décision admin : approve | reject | refuse (motif obligatoire pour reject/refuse).
-app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
+app.post('/api/admin/kyc/:id/decide', auth, adminOnly, async (req, res) => {
   const s = repositories.kyc.findSubmission(req.params.id);
   if (!s) return res.status(404).json({ error: 'Demande introuvable' });
   if (s.status !== 'pending') return res.status(400).json({ error: 'Cette demande a déjà été traitée' });
@@ -2328,7 +2328,7 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
     submissionId: s.id, userId: user.id, adminId: req.user.id,
     decision, reason: cleanReason,
   });
-  audit(req.user.id, `kyc.${decision}`, 'kyc_submission', s.id, {
+  await audit(req.user.id, `kyc.${decision}`, 'kyc_submission', s.id, {
     userId: user.id,
     status: user.kycStatus,
     reason: cleanReason,
@@ -2488,7 +2488,7 @@ app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
   res.json({ linkedAccounts, repeatPairs, flaggedMessaging, abnormalCancel, disputeProne, kycRepeatRejections });
 });
 
-app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
+app.post('/api/admin/review/:id', auth, adminOnly, async (req, res) => {
   const item = repositories.reviewQueue.find(req.params.id);
   if (!item) return res.status(404).json({ error: 'Introuvable' });
   const { decision, maxQty } = req.body; // approve | reject
@@ -2505,7 +2505,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
         repositories.customWhitelist.promoteFromListing(l, { maxQty });
         promoted = true;
       }
-      audit(req.user.id, `review.listing.${decision}`, 'listing', l.id, {
+      await audit(req.user.id, `review.listing.${decision}`, 'listing', l.id, {
         reviewId: item.id,
         categoryId: l.categoryId,
         promoted,
@@ -2524,7 +2524,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       t.status = 'refunded'; transitionEscrow(t.escrow, 'refunded');
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
-    audit(req.user.id, `review.dispute.${decision}`, 'dispute', d.id, {
+    await audit(req.user.id, `review.dispute.${decision}`, 'dispute', d.id, {
       reviewId: item.id,
       txId: t.id,
       escrowState: t.escrow?.state || null,

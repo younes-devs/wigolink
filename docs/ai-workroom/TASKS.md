@@ -16,10 +16,10 @@ Convention:
   Codex a ajoute le runtime audit log JSON + endpoint admin pour P0.8, extrait
   `auditLogs`, `notifications`, `messages`, `settings`, KYC, `reviewQueue` et
   `customWhitelist` derriere des repositories JSON, puis ajoute le point
-  d'entree `persistence.js` avec garde-fou `PERSISTENCE_DRIVER=postgres`.
-  Prochain candidat: implementer le vrai driver Postgres/Supabase pour une
-  premiere collection deja extraite, avant `transactions`/`listings`. Voir
-  `DONE.md` 2026-07-15.
+  d'entree `persistence.js` avec garde-fou `PERSISTENCE_DRIVER=postgres`, puis
+  branche un premier repository Postgres partiel pour `auditLogs`. Prochain
+  candidat: etendre le driver Postgres a `notifications` ou `messages`, toujours
+  avant `transactions`/`listings`. Voir `DONE.md` 2026-07-15.
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.

@@ -398,6 +398,42 @@ Verification: `npm test` 43/43 OK, `node --check server/persistence.js`,
 `node --check server/index.js`, `node --check server/repositories.js`,
 `npx vite build client` OK.
 
+## 2026-07-15 - Codex : premier repository Postgres partiel (auditLogs)
+
+Contexte: suite directe du point d'entree `persistence.js`. Objectif PRD P0.1:
+brancher une premiere collection sur Postgres/Supabase sans pretendre que toute
+l'application est deja migree.
+
+Travail fait:
+
+- Ajout de la dependance `pg`.
+- Ajout de `v1/server/postgres-repositories.js`.
+- Implementation de `createPostgresAuditLogRepository()`:
+  - `append()` ecrit dans la table `audit_logs`;
+  - `list()` lit les logs recents, borne `limit` a 200 et remappe les noms SQL
+    (`actor_id`, `target_type`, etc.) vers le format API existant.
+- `createPersistence()` peut maintenant activer explicitement un mode Postgres
+  partiel:
+  - `PERSISTENCE_DRIVER=postgres`;
+  - `PERSISTENCE_ALLOW_PARTIAL=true`;
+  - `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs`.
+- Les autres collections restent en JSON dans ce mode partiel. Toute collection
+  Postgres non supportee est refusee.
+- Les endpoints admin sensibles attendent maintenant l'ecriture audit
+  (`await audit(...)`) pour ne pas repondre OK avant le log.
+- Variables documentees dans `v1/.env.example` et `docs/deploiement.md`.
+- Tests ajoutes pour le mapping SQL et la configuration partielle.
+
+Fichiers touches: `v1/server/postgres-repositories.js`,
+`v1/server/persistence.js`, `v1/server/index.js`,
+`v1/server/test/postgres-repositories.test.js`,
+`v1/server/test/persistence.test.js`, `v1/package.json`,
+`v1/package-lock.json`, `v1/.env.example`, `docs/deploiement.md`.
+
+Verification: `npm test` 47/47 OK, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js`, `npx vite build client` OK.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des
