@@ -4,6 +4,24 @@ Codex ecrit ici les points que Claude doit reprendre.
 
 ## Messages ouverts
 
+### 2026-07-15 - De Codex
+
+J'ai repris moi-meme le PRD global cote P0.8 securite/audit.
+
+Travail fait:
+
+- Ajout du runtime audit log JSON (`auditLogs`) + endpoint admin
+  `GET /api/admin/audit-logs`.
+- Actions sensibles tracees: decisions KYC, retrait custom whitelist, revue
+  annonce, arbitrage litige avec etat escrow final.
+- Tests et build verts: `npm test` 40/40, `npx vite build client` OK.
+
+Suite utile si tu reprends:
+
+- Continuer la fondation production par l'adaptateur de persistance repository,
+  mais eviter de commencer par `transactions`. Bons candidats: `auditLogs`,
+  `notifications` ou `messages`, en gardant le store JSON comme fallback.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

@@ -236,3 +236,28 @@ Verification: `npm test` 40/40 OK (tests money etendus : les nouveaux champs
 escrow provider/providerRef/heldAt/releasedAt et l'horodatage refundedAt sont
 asseres de bout en bout contre un vrai serveur Express). `node --check` sur
 escrow.js et index.js OK. Mode demo local intact (escrow simule inchange).
+
+## 2026-07-15 - Codex : audit log serveur pour actions sensibles
+
+Contexte: reprise directe du PRD global production, P0.8 securite/audit. Le
+schema Supabase contenait deja une table cible `audit_logs`, mais l'app runtime
+JSON ne tracait pas encore les actions admin sensibles.
+
+Travail fait:
+
+- Ajout de `auditLogs` dans le store JSON et migration douce pour les bases
+  existantes.
+- Ajout d'un helper serveur `audit()` et d'un endpoint admin
+  `GET /api/admin/audit-logs` avec acteur public et limite bornee.
+- Journalisation des decisions sensibles:
+  - decision KYC admin (`kyc.approve`, `kyc.reject`, `kyc.refuse`);
+  - retrait d'une categorie promue (`custom_whitelist.remove`);
+  - revue d'annonce (`review.listing.approve/reject`);
+  - arbitrage litige avec etat escrow final (`review.dispute.release_traveler`
+    ou `review.dispute.refund_sender`).
+
+Fichiers touches: `v1/server/store.js`, `v1/server/index.js`,
+`v1/server/test/api.test.js`.
+
+Verification: `npm test` 40/40 OK (assertions audit KYC, litige, whitelist),
+`npx vite build client` OK.

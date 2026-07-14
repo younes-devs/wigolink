@@ -289,6 +289,11 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
   });
   assert.equal(decide.status, 200);
 
+  const audit = await api('/admin/audit-logs', { token: admin });
+  assert.ok(audit.body.logs.some((l) =>
+    l.action === 'kyc.approve' && l.targetType === 'kyc_submission' && l.targetId === submission.id
+  ));
+
   const meAfterApproval = await api('/me', { token });
   assert.equal(meAfterApproval.body.user.kycStatus, 'verified');
 
@@ -354,6 +359,12 @@ test('litige : ouverture, preuve, tiers exclu, arbitrage admin (remboursement)',
 
   const decide = await api(`/admin/review/${queueItem.id}`, { method: 'POST', token: admin, body: { decision: 'refund_sender' } });
   assert.equal(decide.status, 200);
+
+  const audit = await api('/admin/audit-logs', { token: admin });
+  assert.ok(audit.body.logs.some((l) =>
+    l.action === 'review.dispute.refund_sender' && l.targetType === 'dispute' && l.targetId === disputeId
+      && l.meta?.txId === tx.id && l.meta?.escrowState === 'refunded'
+  ));
 
   const txAfterResolution = await api(`/transactions/${tx.id}`, { token: fatima });
   assert.equal(txAfterResolution.body.transaction.status, 'refunded');
@@ -841,6 +852,11 @@ test('retrait d\'une catégorie de la liste blanche : réservé aux admins, repa
 
   const del = await api(`/admin/whitelist/${promoted.id}`, { method: 'DELETE', token: admin });
   assert.equal(del.status, 200);
+
+  const audit = await api('/admin/audit-logs', { token: admin });
+  assert.ok(audit.body.logs.some((l) =>
+    l.action === 'custom_whitelist.remove' && l.targetType === 'custom_whitelist' && l.targetId === promoted.id
+  ));
 
   // Une fois retirée, un nouvel envoi dans cette catégorie repasse en zone grise.
   const secondListing = await api('/listings', {

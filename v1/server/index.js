@@ -71,6 +71,19 @@ function addEvent(tx, type, actorId, meta = {}) {
   tx.events.push({ id: newId('e'), type, actorId, meta, at: Date.now() });
 }
 
+function audit(actorId, action, targetType, targetId, meta = {}) {
+  db.auditLogs = db.auditLogs || [];
+  db.auditLogs.push({
+    id: newId('audit'),
+    actorId,
+    action,
+    targetType,
+    targetId,
+    meta,
+    at: Date.now(),
+  });
+}
+
 // Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
 // chaîne française littérale (legacy), soit { key, params } — dans ce cas la traduction
 // se fait à la LECTURE selon la langue du lecteur (voir notify-i18n.js), pas à la création :
@@ -2241,9 +2254,22 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
 app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
   const i = db.customWhitelist.findIndex((c) => c.id === req.params.id);
   if (i === -1) return res.status(404).json({ error: 'Catégorie introuvable' });
-  db.customWhitelist.splice(i, 1);
+  const [removed] = db.customWhitelist.splice(i, 1);
+  audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
   save();
   res.json({ ok: true });
+});
+
+app.get('/api/admin/audit-logs', auth, adminOnly, (req, res) => {
+  const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 80));
+  const logs = [...(db.auditLogs || [])]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, limit)
+    .map((log) => ({
+      ...log,
+      actor: publicUser(findUser(log.actorId)) || { id: log.actorId, name: 'system' },
+    }));
+  res.json({ logs });
 });
 
 // ---------- Back-office KYC (PRD KYC §5) ----------
@@ -2363,6 +2389,11 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
   db.kycDecisions.push({
     id: newId('kycd'), submissionId: s.id, userId: user.id, adminId: req.user.id,
     decision, reason: cleanReason, at: Date.now(),
+  });
+  audit(req.user.id, `kyc.${decision}`, 'kyc_submission', s.id, {
+    userId: user.id,
+    status: user.kycStatus,
+    reason: cleanReason,
   });
   save();
   res.json({ ok: true, status: user.kycStatus });
@@ -2532,6 +2563,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
     const l = db.listings.find((x) => x.id === item.refId);
     if (l) {
       l.status = decision === 'approve' ? 'published' : 'rejected';
+      let promoted = false;
       // Promotion en liste blanche : les envois suivants de cette catégorie
       // passeront directement, sans repasser en revue humaine à chaque fois.
       if (decision === 'approve' && l.whitelistVerdict === 'gray'
@@ -2541,7 +2573,13 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
           maxQty: String(maxQty || 'Usage personnel (à confirmer)').slice(0, 40),
           icon: '📦', addedFrom: l.id, addedAt: Date.now(),
         });
+        promoted = true;
       }
+      audit(req.user.id, `review.listing.${decision}`, 'listing', l.id, {
+        reviewId: item.id,
+        categoryId: l.categoryId,
+        promoted,
+      });
     }
   }
   if (item.type === 'dispute') {
@@ -2556,6 +2594,11 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       t.status = 'refunded'; transitionEscrow(t.escrow, 'refunded');
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
+    audit(req.user.id, `review.dispute.${decision}`, 'dispute', d.id, {
+      reviewId: item.id,
+      txId: t.id,
+      escrowState: t.escrow?.state || null,
+    });
     notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');
   }
   save();

@@ -9,12 +9,13 @@ Convention:
 
 ## File principale
 
-- [doing: claude->codex] Fondation production (PRD P0.1/P0.4). Premiere brique
+- [doing: claude->codex] Fondation production (PRD P0.1/P0.4/P0.8). Premiere brique
   livree par Claude: schema `docs/supabase-schema.sql`, escrow provider-ready
   (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`. Reste:
   adaptateur de persistance repository derriere l'API, collection par collection
-  (candidats de depart: notifications, messages, audit_logs avant transactions).
-  Voir `DONE.md` 2026-07-15 et `INBOX_CODEX.md`.
+  (candidats de depart: notifications, messages avant transactions). Codex a
+  ajoute le runtime audit log JSON + endpoint admin pour P0.8. Voir `DONE.md`
+  2026-07-15 et `INBOX_CODEX.md`.
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.
