@@ -48,21 +48,19 @@ Verification:
 
 Fichiers touches: `v1/client/src/locales/nl.js`.
 
-## 2026-07-14 (suite) - i18n des notifications a la lecture
-
-Contexte: limite identifiee dans la synchronisation NL precedente — les
-notifications in-app (`notify()` dans `v1/server/index.js`) etaient
-generees en francais au moment de l'evenement, jamais traduites.
+## 2026-07-14 (suite) - Notifications serveur i18n completes
 
 Travail fait:
 
-- `v1/server/notify-i18n.js`: table de 19 templates de notification
+- Claude a ajoute `v1/server/notify-i18n.js`: 19 templates de notification
   (offres, transactions, litiges, chat, KYC) en fr/ar/nl avec parametres
-  structures, et une fonction `renderNotification(lang, notification)`.
-- `notify()` stocke une cle de template + parametres au lieu d'un texte
-  fige ; `GET /api/notifications` traduit chaque entree a la lecture
-  selon `Accept-Language`. Repli sur le texte francais pour les
-  notifications persistees avant ce changement (jamais casse).
+  structures.
+- `notify()` stocke maintenant une cle de template + parametres au lieu d'un
+  texte francais fige; `/api/notifications` traduit chaque entree a la lecture
+  selon `Accept-Language`, avec repli compatible pour les anciennes notifications.
+- Codex a complete le relais en appliquant la meme traduction aux notifications
+  exposees par `/api/dashboard`, pas seulement `/api/notifications`.
+- `TASKS.md` a ete mis a jour: le chantier notifications serveur i18n est clos.
 
 Verification:
 
@@ -71,6 +69,8 @@ Verification:
   lecture, pas triplication en base).
 - Repli legacy verifie en unitaire sur une vraie entree sans cle tiree de
   `data.json` (29 notifications historiques concernees, toutes lisibles).
+- Test ajoute par Codex: `/api/dashboard` renvoie aussi le texte de notification
+  traduit en neerlandais.
 - `npm test`: 39/39 OK. `npx vite build client`: OK.
 - Aucun changement client necessaire (deja branche sur `Accept-Language`
   depuis la synchronisation NL).
@@ -103,12 +103,12 @@ preview a 375px, capture d'ecran de controle.
 
 ## 2026-07-14 (suite) - Couverture tests + smoke navigation post-merge
 
-Travail fait:
+Travail fait (Claude):
 
 - Etendu (sans dupliquer) les tests existants KYC-approbation et
   litige-remboursement avec des assertions sur la notification associee
   (cle de template + traduction fr/ar/nl) — ces deux chemins touchent
-  argent/KYC/litige et passent par le `notify()` que j'ai modifie.
+  argent/KYC/litige et passent par le `notify()` modifie.
 - Sweep de chaines codees en dur (heuristique regex sur accents
   francais hors `t(...)`) sur les fichiers touches par le merge Codex
   (App.jsx, components.jsx, Admin.jsx, SideRail.jsx, pages
@@ -123,3 +123,14 @@ Verification: `npm test` 39/39 (assertions etendues incluses),
 `preview_console_logs` (error + warn) vide sur les deux parcours,
 comptes demo fonctionnels apres chaque redemarrage serveur.
 
+## 2026-07-14 (suite) - Codex : notifications du dashboard traduites
+
+Travail fait (Codex), en reprise directe du commit notifications i18n de
+Claude: `/api/dashboard` avait sa propre logique de recuperation des
+notifications (dupliquee de `/api/notifications`) qui n'appliquait pas
+`renderNotification()`. Corrige en reutilisant la meme fonction, avec un
+test etendu verifiant la traduction neerlandaise sur cet endpoint aussi.
+
+Fichiers touches: `v1/server/index.js`, `v1/server/test/api.test.js`.
+Verification: `npm test` 39/39 OK (assertion `/api/dashboard` + `nl`
+incluse).

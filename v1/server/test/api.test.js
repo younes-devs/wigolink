@@ -1396,6 +1396,9 @@ test('i18n des notifications : traduites à la lecture, la même notification su
   const nl = await api('/notifications', { token: fatima, lang: 'nl' });
   assert.match(nl.body.notifications[0].text, /vervoert/);
 
+  const dashNl = await api('/dashboard', { token: fatima, lang: 'nl' });
+  assert.match(dashNl.body.notifications[0].text, /vervoert/);
+
   assert.equal(fr.body.notifications[0].id, ar.body.notifications[0].id);
   assert.equal(fr.body.notifications[0].id, nl.body.notifications[0].id);
 });
