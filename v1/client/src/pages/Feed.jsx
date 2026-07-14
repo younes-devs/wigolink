@@ -5,10 +5,12 @@ import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { t, useLang, getLang } from '../i18n.js';
 
 const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
 
 export default function Feed() {
+  useLang();
   const [data, setData] = useState(null);
   const [trips, setTrips] = useState(null);
   const [showAll, setShowAll] = useState(false);
@@ -38,7 +40,7 @@ export default function Feed() {
   const removeTrip = async (id) => {
     await api(`/trips/${id}`, { method: 'DELETE' });
     load();
-    toast.info('Trajet retiré');
+    toast.info(t('feed.trip.removed'));
   };
 
   const listings = data?.listings;
@@ -46,52 +48,52 @@ export default function Feed() {
 
   return (
     <div>
-      <h1 className="page-title">Annonces sur votre trajet</h1>
+      <h1 className="page-title">{t('feed.title')}</h1>
       <p className="page-sub">
         {data?.filteredByTrip
-          ? `Filtrées selon vos trajets déclarés (${listings?.length ?? '…'} compatibles sur ${data.totalOpen}).`
-          : 'Déclarez votre trajet pour voir les annonces compatibles en premier.'}
+          ? t('feed.sub.filtered', { n: listings?.length ?? '…', total: data.totalOpen })
+          : t('feed.sub.unfiltered')}
       </p>
 
       {/* Trajets déclarés (PRD §2.1) — la clé du matching */}
       <div className="card trip-card">
         <div className="list-row">
           <Icon name="plane" size={18} />
-          <b className="grow">Mes trajets</b>
+          <b className="grow">{t('feed.mytrips')}</b>
           <button className="btn btn-ghost btn-sm" onClick={() => setAddingTrip(!addingTrip)}>
-            {addingTrip ? 'Fermer' : '+ Déclarer'}
+            {addingTrip ? t('feed.declare.close') : t('feed.declare')}
           </button>
         </div>
         {futureTrips.length > 0 && (
           <div className="trip-chips">
-            {futureTrips.map((t) => (
-              <span key={t.id} className="trip-chip">
-                {t.from} → {t.to} · {new Date(t.date).toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' })} · {t.capacityKg} kg
-                <button onClick={() => removeTrip(t.id)} aria-label="Supprimer"><Icon name="x" size={12} /></button>
+            {futureTrips.map((trip) => (
+              <span key={trip.id} className="trip-chip">
+                {trip.from} → {trip.to} · {new Date(trip.date).toLocaleDateString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE', { day: 'numeric', month: 'short' })} · {trip.capacityKg} kg
+                <button onClick={() => removeTrip(trip.id)} aria-label={t('common.remove')}><Icon name="x" size={12} /></button>
               </span>
             ))}
           </div>
         )}
         {futureTrips.length === 0 && !addingTrip && (
           <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
-            Aucun trajet à venir. Déclarez vos dates de voyage pour recevoir les annonces qui correspondent.
+            {t('feed.notrips')}
           </p>
         )}
-        {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); toast.success('Trajet déclaré avec succès'); }} />}
+        {addingTrip && <TripForm onSaved={() => { setAddingTrip(false); load(); toast.success(t('feed.trip.added')); }} />}
       </div>
 
       {data?.filteredByTrip !== undefined && futureTrips.length > 0 && (
         <label className="feed-toggle">
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          Voir aussi les annonces hors de mes trajets
+          {t('feed.showall')}
         </label>
       )}
 
       <div className="list-row mb">
         <input className="chat-input grow" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-          placeholder="Rechercher un produit…" />
+          placeholder={t('feed.search.ph')} />
         <button className="btn btn-ghost btn-sm" style={{ flex: '0 0 auto', position: 'relative' }} onClick={() => setFiltersOpen(!filtersOpen)}>
-          <Icon name="fileText" size={15} />Filtres
+          <Icon name="fileText" size={15} />{t('feed.filters')}
           {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
         </button>
       </div>
@@ -100,25 +102,25 @@ export default function Feed() {
         <div className="card">
           <div className="row">
             <div className="field">
-              <label>Catégorie</label>
+              <label>{t('feed.filters.cat')}</label>
               <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
-                <option value="">Toutes</option>
+                <option value="">{t('feed.filters.all')}</option>
                 {rules?.whitelist.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
             </div>
           </div>
           <div className="row">
             <div className="field">
-              <label>Rémunération min (€)</label>
+              <label>{t('feed.filters.min')}</label>
               <input type="number" min={0} value={filters.minPrice} onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })} />
             </div>
             <div className="field">
-              <label>Rémunération max (€)</label>
+              <label>{t('feed.filters.max')}</label>
               <input type="number" min={0} value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} />
             </div>
           </div>
           {activeFilterCount > 0 && (
-            <button className="link-btn" onClick={() => setFilters(EMPTY_FILTERS)}>Réinitialiser les filtres</button>
+            <button className="link-btn" onClick={() => setFilters(EMPTY_FILTERS)}>{t('feed.filters.reset')}</button>
           )}
         </div>
       )}
@@ -127,7 +129,7 @@ export default function Feed() {
       {rules?.whitelist?.length > 0 && (
         <div className="cat-chips">
           <button className={`cat-chip ${!filters.category ? 'active' : ''}`}
-            onClick={() => setFilters({ ...filters, category: '' })}>Toutes</button>
+            onClick={() => setFilters({ ...filters, category: '' })}>{t('feed.filters.all')}</button>
           {rules.whitelist.map((c) => (
             <button key={c.id} className={`cat-chip ${filters.category === c.id ? 'active' : ''}`}
               onClick={() => setFilters({ ...filters, category: filters.category === c.id ? '' : c.id })}>
@@ -142,19 +144,17 @@ export default function Feed() {
         <div className="card center empty-state">
           <Icon name="moon" size={36} />
           <p className="muted">
-            {data?.filteredByTrip
-              ? 'Aucune annonce compatible avec vos trajets pour l\'instant.'
-              : 'Aucune annonce disponible pour l\'instant sur ce corridor.'}
+            {data?.filteredByTrip ? t('feed.empty.trip') : t('feed.empty.all')}
           </p>
           {/* État vide actionnable (PRD UI/UX U12) : proposer le geste qui le résout. */}
           {activeFilterCount > 0 ? (
-            <button className="btn btn-primary btn-sm" onClick={() => setFilters(EMPTY_FILTERS)}>Réinitialiser les filtres</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setFilters(EMPTY_FILTERS)}>{t('feed.filters.reset')}</button>
           ) : data?.filteredByTrip && !showAll ? (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAll(true)}>Voir toutes les annonces</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAll(true)}>{t('feed.empty.showall')}</button>
           ) : futureTrips.length === 0 ? (
-            <button className="btn btn-primary btn-sm" onClick={() => setAddingTrip(true)}>Déclarer un trajet</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setAddingTrip(true)}>{t('feed.empty.declare')}</button>
           ) : (
-            <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">Publier un envoi</button></Link>
+            <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">{t('feed.empty.publish')}</button></Link>
           )}
         </div>
       )}
@@ -169,17 +169,17 @@ export default function Feed() {
             <div className="list-row" style={{ alignItems: 'flex-start' }}>
               <div className="grow">
                 <div style={{ fontWeight: 650, fontSize: 15, letterSpacing: '-0.2px' }}>
-                  {l.matched && <span className="pill pill-teal" style={{ marginRight: 6, verticalAlign: 'middle' }}>Sur votre trajet</span>}
+                  {l.matched && <span className="pill pill-teal" style={{ marginInlineEnd: 6, verticalAlign: 'middle' }}>{t('feed.match')}</span>}
                   {l.title}
                 </div>
-                <div className="muted">{l.from} → {l.to} · {l.weightKg} kg · valeur {l.valueEur} €</div>
+                <div className="muted">{l.from} → {l.to} · {l.weightKg} kg · {t('feed.value')} {l.valueEur} €</div>
                 <div style={{ marginTop: 7 }}>
                   <TrustBadge user={l.sender} />
                 </div>
               </div>
               <div className="center price">
                 +{l.travelerPay} €
-                <small>pour vous</small>
+                <small>{t('feed.foryou')}</small>
               </div>
             </div>
           </div>
@@ -213,23 +213,23 @@ function TripForm({ onSaved }) {
       {needsKyc && <KycRequiredNotice />}
       <div className="row">
         <div className="field">
-          <label>Sens</label>
+          <label>{t('trip.direction')}</label>
           <select value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value, to: e.target.value === 'Casablanca' ? 'Bruxelles' : 'Casablanca' })}>
             <option value="Casablanca">Casablanca → Bruxelles</option>
             <option value="Bruxelles">Bruxelles → Casablanca</option>
           </select>
         </div>
         <div className="field">
-          <label>Date du vol</label>
+          <label>{t('trip.flightdate')}</label>
           <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </div>
         <div className="field" style={{ maxWidth: 110 }}>
-          <label>Kg dispo</label>
+          <label>{t('trip.kgavail')}</label>
           <input type="number" min={1} max={30} value={form.capacityKg}
             onChange={(e) => setForm({ ...form, capacityKg: e.target.value })} />
         </div>
       </div>
-      <button className="btn btn-primary btn-sm" onClick={save} disabled={!form.date}>Enregistrer le trajet</button>
+      <button className="btn btn-primary btn-sm" onClick={save} disabled={!form.date}>{t('trip.save')}</button>
     </div>
   );
 }
