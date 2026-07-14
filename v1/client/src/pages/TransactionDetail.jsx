@@ -6,22 +6,18 @@ import { QrBlock, QrScanner, Stars, StatusPill } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { t, useLang, getLang } from '../i18n.js';
 
-const STEPS = [
-  { key: 'accepted', title: 'Accord & escrow', desc: 'Paiement séquestré chez notre prestataire.' },
-  { key: 'sealed', title: 'Scellage filmé', desc: "Vidéo in-app du contenu et de l'emballage." },
-  { key: 'in_transit', title: 'Remise & transit', desc: 'Double validation QR — responsabilité au voyageur.' },
-  { key: 'released', title: 'Livraison & paiement', desc: 'Double validation finale, escrow libéré.' },
-];
+const STEPS = ['accepted', 'sealed', 'in_transit', 'released'];
 const ORDER = ['accepted', 'sealed', 'in_transit', 'released'];
 // Événement qui marque l'entrée dans chaque étape (PRD UI/UX U10) — pour dater la timeline.
 const STEP_EVENT = { accepted: 'accepted', sealed: 'sealed', in_transit: 'in_transit', released: 'delivered_and_released' };
 
-// Durée écoulée compacte (« 2 min », « 3 h », « 5 j », « quelques instants »).
+// Durée écoulée compacte (« 2 min », « 3 h », « 5 j »), unités neutres FR/AR.
 function sinceText(ts) {
   if (!ts) return '';
   const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return 'quelques instants';
+  if (s < 60) return t('tx.time.moments');
   const m = Math.floor(s / 60);
   if (m < 60) return `${m} min`;
   const h = Math.floor(m / 60);
@@ -32,10 +28,11 @@ function sinceText(ts) {
 function relativeTime(ts) {
   if (!ts) return '';
   const s = Math.floor((Date.now() - ts) / 1000);
-  return s < 60 ? "à l'instant" : `il y a ${sinceText(ts)}`;
+  return s < 60 ? t('tx.time.now') : t('tx.time.ago', { d: sinceText(ts) });
 }
 
 export default function TransactionDetail() {
+  useLang();
   const { id } = useParams();
   const { user } = useAuth();
   const [tx, setTx] = useState(null);
@@ -86,28 +83,28 @@ export default function TransactionDetail() {
 
       <div className="card">
         <div className="timeline">
-          {STEPS.map((s, i) => {
+          {STEPS.map((key, i) => {
             const done = stepIdx > i || tx.status === 'released';
             const current = stepIdx === i && tx.status !== 'released';
-            const doneAt = done ? eventAt(STEP_EVENT[s.key]) : null;
+            const doneAt = done ? eventAt(STEP_EVENT[key]) : null;
             return (
-              <div key={s.key} className={`tl-step ${done ? 'done' : current ? 'current' : ''}`}>
+              <div key={key} className={`tl-step ${done ? 'done' : current ? 'current' : ''}`}>
                 <div className="dot" />
                 <div className="tl-title">
-                  {s.title}
+                  {t(`tx.step.${key}.t`)}
                   {doneAt && <span className="tl-time">{relativeTime(doneAt)}</span>}
-                  {current && <span className="tl-time tl-time-wait">en attente depuis {sinceText(lastEventAt)}</span>}
+                  {current && <span className="tl-time tl-time-wait">{t('tx.waiting.since', { d: sinceText(lastEventAt) })}</span>}
                 </div>
-                <div className="tl-desc">{s.desc}</div>
+                <div className="tl-desc">{t(`tx.step.${key}.d`)}</div>
               </div>
             );
           })}
         </div>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
           <span className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="lock" size={15} />Escrow
+            <Icon name="lock" size={15} />{t('tx.escrow')}
           </span>
-          <b>{tx.escrow.amount} € — {{ held: 'séquestré', frozen: 'gelé (litige)', released: 'versé au voyageur', refunded: 'remboursé' }[tx.escrow.state]}</b>
+          <b>{tx.escrow.amount} € — {t(`tx.escrow.${tx.escrow.state}`)}</b>
         </div>
       </div>
 
@@ -121,10 +118,10 @@ export default function TransactionDetail() {
 }
 
 const ACTION_TOASTS = {
-  'confirm-pickup': ['success', 'Prise en charge confirmée'],
-  'confirm-delivery': ['success', 'Livraison validée — paiement libéré'],
-  refuse: ['info', 'Transport refusé, sans pénalité'],
-  dispute: ['info', 'Litige ouvert — notre équipe va l\'examiner'],
+  'confirm-pickup': ['success', 'tx.toast.pickup'],
+  'confirm-delivery': ['success', 'tx.toast.delivery'],
+  refuse: ['info', 'tx.toast.refuse'],
+  dispute: ['info', 'tx.toast.dispute'],
 };
 
 function StepAction({ tx, user, reload }) {
@@ -140,8 +137,8 @@ function StepAction({ tx, user, reload }) {
     try {
       await api(`/transactions/${tx.id}/${path}`, { method: 'POST', body });
       reload();
-      const t = ACTION_TOASTS[path];
-      if (t) toast[t[0]](t[1]);
+      const at = ACTION_TOASTS[path];
+      if (at) toast[at[0]](t(at[1]));
     } catch (e) { setErr(e.message); }
   };
 
@@ -152,14 +149,14 @@ function StepAction({ tx, user, reload }) {
   };
 
   if (tx.status === 'cancelled')
-    return <div className="alert alert-warn"><Icon name="alert" size={17} />Transport annulé sans pénalité. L'annonce a été republiée.</div>;
+    return <div className="alert alert-warn"><Icon name="alert" size={17} />{t('tx.cancelled')}</div>;
   if (tx.status === 'refunded')
-    return <div className="alert alert-teal"><Icon name="check" size={17} />Litige résolu : l'expéditeur a été remboursé.</div>;
+    return <div className="alert alert-teal"><Icon name="check" size={17} />{t('tx.refunded')}</div>;
   if (tx.status === 'disputed')
     return (
       <div className="alert alert-danger">
         <Icon name="alert" size={17} />
-        <span>Litige en cours d'arbitrage. L'escrow est gelé. Notre équipe tranche selon la grille de décision (première réponse sous 24 h).</span>
+        <span>{t('tx.disputed')}</span>
       </div>
     );
   // Le détail du litige (motif, preuves, échéances) est affiché par <DisputePanel> plus bas.
@@ -172,13 +169,12 @@ function StepAction({ tx, user, reload }) {
       {tx.status === 'accepted' && role !== 'sender' && (
         <div className="card">
           <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="clock" size={16} />En attente de la vidéo de scellage par l'expéditeur.
+            <Icon name="clock" size={16} />{t('tx.wait.sealing')}
           </p>
           {role === 'traveler' && (
             <div className="alert alert-warn mt">
               <Icon name="alert" size={17} />
-              <span><b>Règle d'or :</b> ne transportez jamais ce que vous n'avez pas vu ouvert.
-              Au rendez-vous, ouvrez, inspectez, comparez. Vous pouvez refuser sans pénalité.</span>
+              <span>{t('tx.golden.rule')}</span>
             </div>
           )}
         </div>
@@ -186,33 +182,32 @@ function StepAction({ tx, user, reload }) {
 
       {tx.status === 'sealed' && role === 'sender' && (
         <div className="card center">
-          <h2 style={{ marginBottom: 12, justifyContent: 'center' }}><Icon name="qr" size={17} />Au rendez-vous, montrez ce QR au voyageur</h2>
-          <QrBlock code={tx.pickupCode} caption="Il le scanne pour prendre en charge le colis." />
+          <h2 style={{ marginBottom: 12, justifyContent: 'center' }}><Icon name="qr" size={17} />{t('tx.qr.show.pickup')}</h2>
+          <QrBlock code={tx.pickupCode} caption={t('tx.qr.show.pickup.cap')} />
         </div>
       )}
       {tx.status === 'sealed' && role === 'traveler' && (
         <div className="card">
-          <h2 style={{ marginBottom: 8 }}><Icon name="qr" size={17} />Prise en charge du colis</h2>
+          <h2 style={{ marginBottom: 8 }}><Icon name="qr" size={17} />{t('tx.pickup.title')}</h2>
           <div className="alert alert-warn">
             <Icon name="alert" size={17} />
-            <span>Avant de valider : ouvrez le colis, inspectez le contenu, comparez avec l'annonce et la vidéo.
-            <b> Valider transfère la responsabilité sur vous.</b></span>
+            <span>{t('tx.pickup.warn')}</span>
           </div>
           <button type="button" className="btn btn-ghost mb" onClick={() => setScanning(true)}>
-            <Icon name="qr" size={18} />Scanner le QR de l'expéditeur
+            <Icon name="qr" size={18} />{t('tx.scan.sender')}
           </button>
           <div className="field">
-            <label>Ou saisir le code manuellement</label>
+            <label>{t('tx.code.manual')}</label>
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
             <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('pickup')}>
               <Icon name="sparkles" size={13} />Code auto (test)
             </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-pickup', { code })} disabled={code.length !== 6}>
-            <Icon name="check" size={18} />J'ai vérifié le contenu — prendre en charge
+            <Icon name="check" size={18} />{t('tx.pickup.confirm')}
           </button>
           <button className="btn btn-danger-ghost" onClick={() => act('refuse', { reason: 'Contenu non conforme' })}>
-            Refuser sans pénalité
+            {t('tx.refuse')}
           </button>
           {scanning && (
             <QrScanner onClose={() => setScanning(false)}
@@ -223,36 +218,36 @@ function StepAction({ tx, user, reload }) {
       {tx.status === 'sealed' && role === 'recipient' && (
         <div className="card">
           <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="package" size={16} />Colis scellé. En attente de la remise au voyageur.
+            <Icon name="package" size={16} />{t('tx.sealed.wait')}
           </p>
         </div>
       )}
 
       {tx.status === 'in_transit' && role === 'traveler' && (
         <div className="card center">
-          <h2 style={{ marginBottom: 12, justifyContent: 'center' }}><Icon name="qr" size={17} />À la livraison, montrez ce QR au destinataire</h2>
-          <QrBlock code={tx.deliveryCode} caption="Sa validation libère votre paiement en quelques minutes." />
+          <h2 style={{ marginBottom: 12, justifyContent: 'center' }}><Icon name="qr" size={17} />{t('tx.qr.show.delivery')}</h2>
+          <QrBlock code={tx.deliveryCode} caption={t('tx.qr.show.delivery.cap')} />
         </div>
       )}
       {tx.status === 'in_transit' && role === 'recipient' && (
         <div className="card">
-          <h2 style={{ marginBottom: 8 }}><Icon name="package" size={17} />Réception du colis</h2>
+          <h2 style={{ marginBottom: 8 }}><Icon name="package" size={17} />{t('tx.delivery.title')}</h2>
           <div className="alert alert-warn">
             <Icon name="alert" size={17} />
-            <span>Inspectez le colis et comparez-le à la vidéo de scellage ci-dessous avant de valider.</span>
+            <span>{t('tx.delivery.warn')}</span>
           </div>
           <button type="button" className="btn btn-ghost mb" onClick={() => setScanning(true)}>
-            <Icon name="qr" size={18} />Scanner le QR du voyageur
+            <Icon name="qr" size={18} />{t('tx.scan.traveler')}
           </button>
           <div className="field">
-            <label>Ou saisir le code manuellement</label>
+            <label>{t('tx.code.manual')}</label>
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
             <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('delivery')}>
               <Icon name="sparkles" size={13} />Code auto (test)
             </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-delivery', { code })} disabled={code.length !== 6}>
-            <Icon name="check" size={18} />Colis conforme — valider la livraison
+            <Icon name="check" size={18} />{t('tx.delivery.confirm')}
           </button>
           {scanning && (
             <QrScanner onClose={() => setScanning(false)}
@@ -260,18 +255,18 @@ function StepAction({ tx, user, reload }) {
           )}
           <div className="field">
             <input value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}
-              placeholder="Décrivez le problème (obligatoire pour contester)" />
+              placeholder={t('tx.dispute.ph')} />
           </div>
           <button className="btn btn-danger-ghost" onClick={() => act('dispute', { reason: disputeReason })}
             disabled={disputeReason.length < 10}>
-            Contester (ouvre un litige, gèle l'escrow)
+            {t('tx.dispute.open')}
           </button>
         </div>
       )}
       {tx.status === 'in_transit' && role === 'sender' && (
         <div className="card">
           <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="plane" size={16} />Colis en transit avec {tx.traveler?.name}.
+            <Icon name="plane" size={16} />{t('tx.transit.with', { name: tx.traveler?.name })}
           </p>
         </div>
       )}
@@ -279,18 +274,18 @@ function StepAction({ tx, user, reload }) {
       {tx.status === 'released' && (
         <div className="alert alert-teal">
           <Icon name="check" size={17} />
-          <span>Livraison validée. {tx.escrow.travelerPay} € versés au voyageur (commission plateforme : {tx.escrow.commission} €).</span>
+          <span>{t('tx.released.msg', { pay: tx.escrow.travelerPay, c: tx.escrow.commission })}</span>
         </div>
       )}
 
       {tx.sealingVideo && ['sealed', 'in_transit', 'released', 'disputed'].includes(tx.status) && (
         <div className="card">
-          <h2 style={{ marginBottom: 10 }}><Icon name="video" size={17} />Vidéo de scellage</h2>
+          <h2 style={{ marginBottom: 10 }}><Icon name="video" size={17} />{t('tx.video.title')}</h2>
           {tx.sealingVideo.dataUrl
             ? <video className="video-preview" src={tx.sealingVideo.dataUrl} controls />
-            : <div className="alert alert-warn" style={{ marginBottom: 0 }}><Icon name="video" size={17} />Vidéo simulée (démo).</div>}
+            : <div className="alert alert-warn" style={{ marginBottom: 0 }}><Icon name="video" size={17} />{t('tx.video.simulated')}</div>}
           <div className="muted mt" style={{ fontSize: 12 }}>
-            Horodatée le {new Date(tx.sealingVideo.recordedAt).toLocaleString('fr-BE')} · code transaction {tx.id}
+            {t('tx.video.meta', { date: new Date(tx.sealingVideo.recordedAt).toLocaleString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE'), id: tx.id })}
             {tx.sealingVideo.geo ? ` · ${tx.sealingVideo.geo}` : ''}
           </div>
         </div>
@@ -341,7 +336,7 @@ function SealingVideo({ tx, reload }) {
       rec.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
         if (blob.size > 8 * 1024 * 1024) {
-          setErr('Vidéo trop longue pour la démo (max ~8 Mo). Réessayez plus court.');
+          setErr(t('seal.too.long'));
           return;
         }
         const dataUrl = await new Promise((ok) => {
@@ -356,7 +351,7 @@ function SealingVideo({ tx, reload }) {
       recRef.current = rec;
       setRecording(true);
     } catch {
-      setErr("Caméra indisponible — utilisez la simulation ci-dessous.");
+      setErr(t('seal.no.camera'));
     }
   };
 
@@ -374,25 +369,22 @@ function SealingVideo({ tx, reload }) {
 
   return (
     <div className="card">
-      <h2 style={{ marginBottom: 8 }}><Icon name="camera" size={17} />Filmez le scellage du colis</h2>
-      <p className="muted mb" style={{ fontSize: 13 }}>
-        Montrez le produit, l'emballage en cours de fermeture, et le code <b>{tx.id}</b> visible dans le cadre.
-        La vidéo est horodatée et servira de preuve en cas de litige. Caméra in-app uniquement.
-      </p>
+      <h2 style={{ marginBottom: 8 }}><Icon name="camera" size={17} />{t('seal.title')}</h2>
+      <p className="muted mb" style={{ fontSize: 13 }}>{t('seal.help', { id: tx.id })}</p>
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
       <video ref={videoRef} className="video-preview mb" autoPlay muted playsInline style={{ display: recording ? 'block' : 'none', maxHeight: 240 }} />
       {geoStatus !== 'idle' && (
         <div className="geo-status">
           <Icon name="mapPin" size={13} />
-          {geoStatus === 'locating' && 'Localisation en cours…'}
-          {geoStatus === 'ok' && `Position capturée — ${geoRef.current}`}
-          {geoStatus === 'denied' && "Position indisponible (n'empêche pas le scellage)"}
+          {geoStatus === 'locating' && t('seal.geo.locating')}
+          {geoStatus === 'ok' && t('seal.geo.ok', { geo: geoRef.current })}
+          {geoStatus === 'denied' && t('seal.geo.denied')}
         </div>
       )}
       {!recording
-        ? <button className="btn btn-primary mb" onClick={start}><Icon name="camera" size={18} />Démarrer l'enregistrement</button>
-        : <button className="btn btn-danger-ghost mb" onClick={stop}>Terminer et envoyer</button>}
-      <button className="btn btn-ghost" onClick={simulate}>Simuler la vidéo (démo)</button>
+        ? <button className="btn btn-primary mb" onClick={start}><Icon name="camera" size={18} />{t('seal.start')}</button>
+        : <button className="btn btn-danger-ghost mb" onClick={stop}>{t('seal.stop')}</button>}
+      <button className="btn btn-ghost" onClick={simulate}>{t('seal.simulate')}</button>
     </div>
   );
 }
@@ -427,9 +419,9 @@ function CustomsRecap({ txId, status }) {
     // Pas de partage natif (desktop) : repli sur le presse-papier, avec retour explicite.
     try {
       await navigator.clipboard.writeText(text);
-      toast.success('Récapitulatif copié dans le presse-papier');
+      toast.success(t('recap.share.copied'));
     } catch {
-      toast.error('Copie impossible — utilisez le PDF à la place');
+      toast.error(t('recap.share.failed'));
     }
   };
 
@@ -500,9 +492,9 @@ function CustomsRecap({ txId, status }) {
     <div className="card">
       <div className="list-row" onClick={() => setOpen(!open)} style={{ cursor: 'pointer' }}>
         <Icon name="fileText" size={19} />
-        <div className="grow"><b>Récapitulatif douane</b>
+        <div className="grow"><b>{t('recap.title')}</b>
           <div className="muted" style={{ fontSize: 12 }}>
-            {recap ? (fromCache ? 'Version hors ligne — à jour au dernier chargement.' : 'À montrer en cas de contrôle — disponible hors ligne.') : 'À montrer en cas de contrôle.'}
+            {recap ? (fromCache ? t('recap.sub.offline') : t('recap.sub.ready')) : t('recap.sub.plain')}
           </div>
         </div>
         <Icon name={open ? 'chevronUp' : 'chevronDown'} size={18} />
@@ -513,28 +505,28 @@ function CustomsRecap({ txId, status }) {
           {fromCache && (
             <div className="alert alert-warn" style={{ marginBottom: 12 }}>
               <Icon name="alert" size={16} />
-              <span>Hors ligne : affichage de la dernière version enregistrée sur cet appareil.</span>
+              <span>{t('recap.offline.warn')}</span>
             </div>
           )}
-          <b>Transaction :</b> {recap.txId}<br />
-          <b>Produit :</b> {recap.product} ({recap.category})<br />
-          <b>Description :</b> {recap.description}<br />
-          <b>Valeur déclarée :</b> {recap.valueEur} € · <b>Poids :</b> {recap.weightKg} kg<br />
-          <b>Expéditeur :</b> {recap.sender?.name} (identité vérifiée)<br />
-          <b>Voyageur :</b> {recap.traveler?.name} (identité vérifiée)<br />
-          {recap.sealedAt && <><b>Scellé le :</b> {new Date(recap.sealedAt).toLocaleString('fr-BE')}<br /></>}
-          <b>Franchise :</b> {recap.corridor.franchise}
+          <b>{t('recap.f.tx')}</b> {recap.txId}<br />
+          <b>{t('recap.f.product')}</b> {recap.product} ({recap.category})<br />
+          <b>{t('recap.f.desc')}</b> {recap.description}<br />
+          <b>{t('recap.f.value')}</b> {recap.valueEur} € · <b>{t('recap.f.weight')}</b> {recap.weightKg} kg<br />
+          <b>{t('recap.f.sender')}</b> {recap.sender?.name} {t('recap.verified')}<br />
+          <b>{t('recap.f.traveler')}</b> {recap.traveler?.name} {t('recap.verified')}<br />
+          {recap.sealedAt && <><b>{t('recap.f.sealed')}</b> {new Date(recap.sealedAt).toLocaleString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE')}<br /></>}
+          <b>{t('recap.f.franchise')}</b> {recap.corridor.franchise}
           <div className="row mt" style={{ gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={downloadPdf} disabled={pdfBusy}>
-              <Icon name="fileText" size={15} />{pdfBusy ? 'Génération…' : 'PDF'}
+              <Icon name="fileText" size={15} />{pdfBusy ? t('recap.generating') : 'PDF'}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={shareRecap}>
-              <Icon name="share" size={15} />Partager
+              <Icon name="share" size={15} />{t('recap.share')}
             </button>
           </div>
         </div>
       )}
-      {open && !recap && <p className="muted mt">Aucune version disponible (jamais chargée en ligne sur cet appareil).</p>}
+      {open && !recap && <p className="muted mt">{t('recap.none')}</p>}
     </div>
   );
 }
@@ -550,9 +542,9 @@ function Chat({ tx, userId }) {
   const boxRef = useRef(null);
 
   const participants = {
-    [tx.senderId]: { ...tx.sender, role: 'Expéditeur' },
-    [tx.travelerId]: { ...tx.traveler, role: 'Voyageur' },
-    [tx.recipientId]: { ...tx.recipient, role: 'Destinataire' },
+    [tx.senderId]: { ...tx.sender, role: t('role.sender') },
+    [tx.travelerId]: { ...tx.traveler, role: t('role.traveler') },
+    [tx.recipientId]: { ...tx.recipient, role: t('role.recipient') },
   };
 
   const load = useCallback(() => {
@@ -597,11 +589,11 @@ function Chat({ tx, userId }) {
     <div className="card chat-card">
       <div className="chat-header">
         <div className="grow">
-          <b>Messagerie</b>
-          <div className="chat-sub"><Icon name="lock" size={11} /> Chiffré côté plateforme · coordonnées masquées</div>
+          <b>{t('chat.title')}</b>
+          <div className="chat-sub"><Icon name="lock" size={11} /> {t('chat.sub')}</div>
         </div>
-        <span className="chat-presence" title="Rendez-vous en lieu public conseillé">
-          <Icon name="mapPin" size={13} />Lieu public conseillé
+        <span className="chat-presence" title={t('chat.public.place')}>
+          <Icon name="mapPin" size={13} />{t('chat.public.place')}
         </span>
       </div>
 
@@ -609,7 +601,7 @@ function Chat({ tx, userId }) {
         {messages.length === 0 && (
           <div className="chat-empty">
             <Icon name="chat" size={26} />
-            <p>Ouvrez la conversation pour organiser le rendez-vous de remise.</p>
+            <p>{t('chat.empty')}</p>
           </div>
         )}
         {groups.map((g, gi) => {
@@ -629,7 +621,7 @@ function Chat({ tx, userId }) {
                     <div key={m.id} className={`msg ${mine ? 'mine' : 'theirs'} ${m.flagged ? 'flagged' : ''} ${mi === g.msgs.length - 1 ? 'tail' : ''}`}>
                       {m.text}
                       {m.flagged && (
-                        <span className="msg-warn"><Icon name="alert" size={11} /> Coordonnées détectées — échange hors app non couvert</span>
+                        <span className="msg-warn"><Icon name="alert" size={11} /> {t('chat.flagged')}</span>
                       )}
                     </div>
                   ))}
@@ -648,10 +640,10 @@ function Chat({ tx, userId }) {
           className="chat-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Écrire un message…"
+          placeholder={t('chat.ph')}
           onKeyDown={(e) => e.key === 'Enter' && send()}
         />
-        <button className="chat-send" onClick={send} disabled={!text.trim() || sending} aria-label="Envoyer">
+        <button className="chat-send" onClick={send} disabled={!text.trim() || sending} aria-label={t('chat.send')}>
           <Icon name="send" size={17} />
         </button>
       </div>
@@ -661,14 +653,14 @@ function Chat({ tx, userId }) {
 
 function Rating({ tx, user, reload }) {
   const targets = [
-    { id: tx.senderId, label: 'Expéditeur', u: tx.sender },
-    { id: tx.travelerId, label: 'Voyageur', u: tx.traveler },
-    { id: tx.recipientId, label: 'Destinataire', u: tx.recipient },
+    { id: tx.senderId, label: t('role.sender'), u: tx.sender },
+    { id: tx.travelerId, label: t('role.traveler'), u: tx.traveler },
+    { id: tx.recipientId, label: t('role.recipient'), u: tx.recipient },
   ].filter((t, i, arr) => t.id !== user.id && arr.findIndex((x) => x.id === t.id) === i);
 
   return (
     <div className="card">
-      <h2 style={{ marginBottom: 12 }}><Icon name="star" size={17} />Notez vos partenaires</h2>
+      <h2 style={{ marginBottom: 12 }}><Icon name="star" size={17} />{t('rate.title')}</h2>
       {targets.map((t) => <RateRow key={t.id} tx={tx} target={t} reload={reload} />)}
     </div>
   );
@@ -696,14 +688,14 @@ function RateRow({ tx, target, reload }) {
           <b>{target.u?.name}</b>
           <div className="muted" style={{ fontSize: 12 }}>{target.label}</div>
         </div>
-        {already ? <span className="pill pill-teal"><Icon name="check" size={13} />Noté</span> : <Stars value={stars} onChange={setStars} />}
+        {already ? <span className="pill pill-teal"><Icon name="check" size={13} />{t('rate.done')}</span> : <Stars value={stars} onChange={setStars} />}
       </div>
       {!already && stars > 0 && (
         <div className="mt" style={{ marginLeft: 50 }}>
           <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)}
-            placeholder="Un mot sur cette expérience (facultatif)…" maxLength={400} />
+            placeholder={t('rate.comment.ph')} maxLength={400} />
           <button className="btn btn-primary btn-sm mt" onClick={send} disabled={sending}>
-            {sending ? <span className="spinner" /> : 'Envoyer la note'}
+            {sending ? <span className="spinner" /> : t('rate.submit')}
           </button>
         </div>
       )}
@@ -715,10 +707,10 @@ const SLA_FMT = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short
 
 function timeLeftLabel(deadline) {
   const ms = deadline - Date.now();
-  if (ms <= 0) return 'Délai dépassé';
+  if (ms <= 0) return t('dispute.deadline.over');
   const h = Math.floor(ms / 3600e3);
-  if (h < 24) return `${h} h restantes`;
-  return `${Math.floor(h / 24)} j restants`;
+  if (h < 24) return t('dispute.hours.left', { h });
+  return t('dispute.days.left', { d: Math.floor(h / 24) });
 }
 
 function DisputePanel({ txId }) {
@@ -761,7 +753,7 @@ function DisputePanel({ txId }) {
       await api(`/disputes/${d.id}/evidence`, { method: 'POST', body: { text: text.trim(), photo } });
       setText(''); setPhoto(null);
       load();
-      toast.success('Preuve envoyée');
+      toast.success(t('dispute.evidence.sent'));
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
@@ -772,17 +764,17 @@ function DisputePanel({ txId }) {
 
   return (
     <div className="card">
-      <h2 style={{ marginBottom: 8 }}><Icon name="alert" size={17} />Dossier du litige</h2>
-      <p style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 10 }}><b>Motif initial :</b> {d.reason}</p>
+      <h2 style={{ marginBottom: 8 }}><Icon name="alert" size={17} />{t('dispute.title')}</h2>
+      <p style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 10 }}><b>{t('dispute.reason')}</b> {d.reason}</p>
 
       <div className="sla-row">
         <div className={`sla-chip ${evidenceOpen ? '' : 'sla-chip-over'}`}>
           <Icon name="clock" size={13} />
-          Preuves : {timeLeftLabel(d.evidenceDeadline)}
+          {t('dispute.evidence.left', { d: timeLeftLabel(d.evidenceDeadline) })}
         </div>
         <div className="sla-chip">
           <Icon name="clock" size={13} />
-          Résolution visée : {SLA_FMT.format(d.resolutionTarget)}
+          {t('dispute.resolution', { date: SLA_FMT.format(d.resolutionTarget) })}
         </div>
       </div>
 
@@ -808,20 +800,20 @@ function DisputePanel({ txId }) {
           )}
           <div className="field">
             <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
-              placeholder="Ajouter un commentaire ou une précision…" />
+              placeholder={t('dispute.comment.ph')} />
           </div>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onPhotoPick} />
           <div className="row">
             <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
-              <Icon name="image" size={15} />Ajouter une photo
+              <Icon name="image" size={15} />{t('dispute.photo.add')}
             </button>
             <button className="btn btn-primary btn-sm" onClick={submit} disabled={busy || (!text.trim() && !photo)}>
-              {busy ? <span className="spinner" /> : 'Envoyer la preuve'}
+              {busy ? <span className="spinner" /> : t('dispute.evidence.send')}
             </button>
           </div>
         </div>
       ) : (
-        <p className="muted" style={{ fontSize: 12.5 }}>Le délai de soumission des preuves est dépassé — le dossier est entre les mains de notre équipe.</p>
+        <p className="muted" style={{ fontSize: 12.5 }}>{t('dispute.window.closed')}</p>
       )}
     </div>
   );
@@ -839,7 +831,7 @@ function Celebration() {
         ))}
       </div>
       <div className="celebrate-check"><Icon name="check" size={40} /></div>
-      <div className="celebrate-text">Livraison validée — paiement libéré</div>
+      <div className="celebrate-text">{t('tx.celebrate')}</div>
     </div>
   );
 }

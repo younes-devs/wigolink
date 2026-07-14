@@ -207,14 +207,9 @@ export function Stars({ value, onChange, readOnly = false, size = 26 }) {
   );
 }
 
-export const STATUS_LABELS = {
-  accepted: { label: 'Accord conclu — paiement séquestré', pill: 'pill-saffron' },
-  sealed: { label: 'Colis scellé et filmé', pill: 'pill-saffron' },
-  in_transit: { label: 'En transit', pill: 'pill-teal' },
-  released: { label: 'Livré — paiement versé', pill: 'pill-teal' },
-  disputed: { label: 'Litige en cours', pill: 'pill-danger' },
-  refunded: { label: 'Remboursé', pill: 'pill-gray' },
-  cancelled: { label: 'Annulé', pill: 'pill-gray' },
+export const STATUS_PILLS = {
+  accepted: 'pill-saffron', sealed: 'pill-saffron', in_transit: 'pill-teal',
+  released: 'pill-teal', disputed: 'pill-danger', refunded: 'pill-gray', cancelled: 'pill-gray',
 };
 
 // Message affiché quand une action exige une identité vérifiée — jamais de redirection
@@ -223,10 +218,10 @@ export function KycRequiredNotice() {
   return (
     <div className="alert alert-warn" style={{ alignItems: 'center' }}>
       <Icon name="shieldCheck" size={17} />
-      <span className="grow">Vérification d'identité requise pour cette action.</span>
+      <span className="grow">{t('kycnotice.text')}</span>
       <Link to="/verification">
         <button className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.06)', color: 'inherit' }}>
-          Aller vérifier
+          {t('kycnotice.go')}
         </button>
       </Link>
     </div>
@@ -234,8 +229,8 @@ export function KycRequiredNotice() {
 }
 
 export function StatusPill({ status }) {
-  const s = STATUS_LABELS[status] || { label: status, pill: 'pill-gray' };
-  return <span className={`pill ${s.pill}`}>{s.label}</span>;
+  const pill = STATUS_PILLS[status] || 'pill-gray';
+  return <span className={`pill ${pill}`}>{STATUS_PILLS[status] ? t(`txstatus.${status}`) : status}</span>;
 }
 
 // Demande l'accès caméra — à appeler directement dans le gestionnaire de clic qui
