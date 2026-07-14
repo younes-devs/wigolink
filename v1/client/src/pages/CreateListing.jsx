@@ -5,6 +5,7 @@ import { KycRequiredNotice, Stepper } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { t, useLang } from '../i18n.js';
 
 // Fourchette de rémunération suggérée selon le poids (PRD UI/UX U7) — repère simple
 // pour ne pas laisser l'expéditeur fixer un prix à l'aveugle. ~3–5 €/kg, plancher 8 €.
@@ -51,6 +52,7 @@ function placeholderPhoto(label) {
 
 // Création de demande d'envoi — parcours ≤ 3 écrans (PRD §6 accessibilité)
 export default function CreateListing() {
+  useLang();
   const nav = useNavigate();
   const toast = useToast();
   const [rules, setRules] = useState(null);
@@ -104,7 +106,7 @@ export default function CreateListing() {
     try {
       const d = await api('/listings', { method: 'POST', body: form });
       nav('/envois');
-      toast.success(d.listing.status === 'pending_review' ? 'Envoi soumis, en revue avant publication' : 'Annonce publiée !');
+      toast.success(d.listing.status === 'pending_review' ? t('create.toast.review') : t('create.toast.published'));
     } catch (e) {
       if (e.data?.needsKyc) setNeedsKyc(true);
       else setError(e.message);
@@ -114,70 +116,67 @@ export default function CreateListing() {
   return (
     <div>
       <div className="list-row">
-        <h1 className="page-title grow">Nouvel envoi</h1>
+        <h1 className="page-title grow">{t('create.title')}</h1>
         <button className="autofill-btn" onClick={autofill} title="Remplir avec des données de test">
           <Icon name="sparkles" size={14} />Remplir (test)
         </button>
       </div>
-      <Stepper labels={['Colis', 'Trajet & prix', 'Douane']} current={step} onGo={setStep} />
+      <Stepper labels={[t('create.step.package'), t('create.step.route'), t('create.step.customs')]} current={step} onGo={setStep} />
 
       {error && <div className="alert alert-danger">{error}</div>}
 
       {step === 0 && (
         <div className="card">
           <div className="field">
-            <label>Que voulez-vous envoyer ?</label>
+            <label>{t('create.what')}</label>
             <select value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
-              <option value="">— Choisir une catégorie autorisée —</option>
+              <option value="">{t('create.cat.choose')}</option>
               {rules.whitelist.map((c) => (
-                <option key={c.id} value={c.id}>{c.label} (max {c.maxQty})</option>
+                <option key={c.id} value={c.id}>{c.label} ({t('create.cat.max')} {c.maxQty})</option>
               ))}
-              <option value="autre">Autre (revue humaine avant publication)</option>
+              <option value="autre">{t('create.cat.other')}</option>
             </select>
             <div className="hint">
-              Certains produits sont interdits (compléments, médicaments, produits non scellés…).{' '}
+              {t('create.forbidden')}{' '}
               <button type="button" className="link-btn" onClick={() => setShowBlacklist(true)}>
-                Voir la liste complète
+                {t('create.forbidden.link')}
               </button>
             </div>
           </div>
           {form.categoryId === 'autre' && (
             <div className="field">
-              <label>Quel type de produit ?</label>
+              <label>{t('create.other.what')}</label>
               <input value={form.categoryLabel} onChange={(e) => set('categoryLabel', e.target.value)}
-                placeholder="Ex. : Confiture d'abricots artisanale" />
-              <div className="hint">
-                Un membre de notre équipe valide cette catégorie avant publication. Une fois approuvée,
-                les envois suivants du même type seront publiés directement.
-              </div>
+                placeholder={t('create.other.ph')} />
+              <div className="hint">{t('create.other.hint')}</div>
             </div>
           )}
           <div className="field">
-            <label>Titre de l'annonce</label>
-            <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Ex. : Huile d'argan pour ma fille" />
+            <label>{t('create.listing.title')}</label>
+            <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={t('create.listing.title.ph')} />
           </div>
           <div className="field">
-            <label>Description précise du contenu</label>
+            <label>{t('create.desc')}</label>
             <textarea rows={3} value={form.description} onChange={(e) => set('description', e.target.value)}
-              placeholder="Marque, conditionnement, scellé ou non…" />
+              placeholder={t('create.desc.ph')} />
           </div>
           <div className="row">
             <div className="field">
-              <label>Poids (kg)</label>
+              <label>{t('create.weight')}</label>
               <input type="number" value={form.weightKg} onChange={(e) => set('weightKg', e.target.value)} />
             </div>
             <div className="field">
-              <label>Valeur (€)</label>
+              <label>{t('create.value')}</label>
               <input type="number" value={form.valueEur} onChange={(e) => set('valueEur', e.target.value)} />
             </div>
           </div>
           <div className="field">
-            <label>Photos du produit (obligatoire, 3 max)</label>
+            <label>{t('create.photos')}</label>
             <div className="photo-picker">
               {form.photos.map((p, i) => (
                 <div key={i} className="photo-thumb">
                   <img src={p} alt={`Photo ${i + 1}`} />
-                  <button type="button" onClick={() => set('photos', form.photos.filter((_, j) => j !== i))} aria-label="Retirer">
+                  <button type="button" onClick={() => set('photos', form.photos.filter((_, j) => j !== i))} aria-label={t('common.remove')}>
                     <Icon name="x" size={12} />
                   </button>
                 </div>
@@ -185,17 +184,17 @@ export default function CreateListing() {
               {form.photos.length < 3 && (
                 <button type="button" className="photo-add" onClick={() => fileRef.current?.click()}>
                   <Icon name="image" size={20} />
-                  Ajouter
+                  {t('create.photos.add')}
                 </button>
               )}
             </div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={addPhotos} />
-            <div className="hint">Le voyageur doit voir exactement ce qu'il transportera.</div>
+            <div className="hint">{t('create.photos.hint')}</div>
           </div>
           <button className="btn btn-primary"
             disabled={!form.categoryId || !form.title || !form.valueEur || form.photos.length === 0
               || (form.categoryId === 'autre' && !form.categoryLabel.trim())}
-            onClick={() => setStep(1)}>Continuer</button>
+            onClick={() => setStep(1)}>{t('common.continue')}</button>
         </div>
       )}
 
@@ -203,35 +202,35 @@ export default function CreateListing() {
         <div className="card">
           <div className="row">
             <div className="field">
-              <label>Départ</label>
+              <label>{t('create.from')}</label>
               <select value={form.from} onChange={(e) => { set('from', e.target.value); set('to', e.target.value === 'Casablanca' ? 'Bruxelles' : 'Casablanca'); }}>
                 <option>Casablanca</option>
                 <option>Bruxelles</option>
               </select>
             </div>
             <div className="field">
-              <label>Arrivée</label>
+              <label>{t('create.to')}</label>
               <input value={form.to} disabled />
             </div>
           </div>
           <div className="row">
             <div className="field">
-              <label>Entre le</label>
+              <label>{t('create.date.from')}</label>
               <input type="date" value={form.dateFrom} onChange={(e) => set('dateFrom', e.target.value)} />
             </div>
             <div className="field">
-              <label>et le</label>
+              <label>{t('create.date.to')}</label>
               <input type="date" value={form.dateTo} onChange={(e) => set('dateTo', e.target.value)} />
             </div>
           </div>
           <div className="field">
-            <label>Rémunération proposée au voyageur (€)</label>
+            <label>{t('create.pay')}</label>
             <input type="number" value={form.travelerPay} onChange={(e) => set('travelerPay', e.target.value)} />
             {(() => {
               const { low, high } = suggestedPay(form.weightKg);
               return (
                 <div className="pay-suggest">
-                  <span className="muted">Suggéré pour {form.weightKg || '?'} kg :</span>
+                  <span className="muted">{t('create.pay.suggest', { w: form.weightKg || '?' })}</span>
                   <button type="button" className="pay-chip" onClick={() => set('travelerPay', low)}>{low} €</button>
                   <button type="button" className="pay-chip" onClick={() => set('travelerPay', high)}>{high} €</button>
                 </div>
@@ -239,18 +238,17 @@ export default function CreateListing() {
             })()}
             {form.travelerPay > 0 && (
               <div className="hint">
-                + commission plateforme 18 % ({Math.round(form.travelerPay * 0.18 * 100) / 100} €) —
-                total payé : {Math.round(form.travelerPay * 1.18 * 100) / 100} €
+                {t('create.pay.commission', { c: Math.round(form.travelerPay * 0.18 * 100) / 100, total: Math.round(form.travelerPay * 1.18 * 100) / 100 })}
               </div>
             )}
           </div>
           <div className="field">
-            <label>Téléphone du destinataire (optionnel)</label>
+            <label>{t('create.recipient')}</label>
             <input value={form.recipientPhone} onChange={(e) => set('recipientPhone', e.target.value)} placeholder="+32…" />
-            <div className="hint">S'il a un compte Wigofly, il validera la livraison.</div>
+            <div className="hint">{t('create.recipient.hint')}</div>
           </div>
           <button className="btn btn-primary" disabled={!form.dateFrom || !form.dateTo || !form.travelerPay}
-            onClick={() => setStep(2)}>Continuer</button>
+            onClick={() => setStep(2)}>{t('common.continue')}</button>
         </div>
       )}
 
@@ -258,29 +256,25 @@ export default function CreateListing() {
         <div>
           {/* Écran douane dédié — acceptation explicite, pas une checkbox CGU (PRD §1.3) */}
           <div className="card">
-            <h2 style={{ marginBottom: 10 }}><Icon name="fileText" size={17} />Règles douanières — {corridor.label}</h2>
+            <h2 style={{ marginBottom: 10 }}><Icon name="fileText" size={17} />{t('create.customs.title', { label: corridor.label })}</h2>
             <div className="alert alert-warn">
-              <b>Franchise applicable : {corridor.franchise}</b>
+              <b>{t('create.customs.franchise', { franchise: corridor.franchise })}</b>
             </div>
             <ul style={{ paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6 }}>
               {corridor.rules.map((r, i) => <li key={i}>{r}</li>)}
-              {selectedCat && <li>Quantité max pour {selectedCat.label.toLowerCase()} : <b>{selectedCat.maxQty}</b> par envoi.</li>}
+              {selectedCat && <li>{t('create.customs.maxqty', { cat: selectedCat.label.toLowerCase(), max: selectedCat.maxQty })}</li>}
             </ul>
             <div className="divider" />
-            <p style={{ fontSize: 13.5, lineHeight: 1.5 }}>
-              <b>Vous êtes responsable</b> de la conformité du contenu déclaré. En cas de saisie douanière d'un
-              produit conforme à votre déclaration, le risque est porté par vous (expéditeur). Le voyageur peut
-              refuser le transport sans pénalité lors de la remise.
-            </p>
+            <p style={{ fontSize: 13.5, lineHeight: 1.5 }}>{t('create.customs.resp')}</p>
             <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 12, fontSize: 14, fontWeight: 700 }}>
               <input type="checkbox" style={{ width: 20, height: 20 }} checked={form.customsAccepted}
                 onChange={(e) => set('customsAccepted', e.target.checked)} />
-              J'ai lu et j'accepte explicitement ces règles et responsabilités.
+              {t('create.customs.accept')}
             </label>
           </div>
           {needsKyc && <KycRequiredNotice />}
           <button className="btn btn-primary" disabled={!form.customsAccepted} onClick={submit}>
-            Publier ma demande d'envoi
+            {t('create.submit')}
           </button>
         </div>
       )}
@@ -290,15 +284,13 @@ export default function CreateListing() {
           <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <Icon name="alert" size={19} />
-              <b>Produits interdits</b>
+              <b>{t('create.blacklist.title')}</b>
               <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={() => setShowBlacklist(false)}>
                 <Icon name="x" size={18} />
               </button>
             </div>
             <div style={{ padding: '0 16px 16px' }}>
-              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-                Ces produits ne peuvent pas être transportés via Wigofly, pour des raisons douanières ou de sécurité.
-              </p>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t('create.blacklist.intro')}</p>
               <ul className="blacklist-list">
                 {rules.blacklist.map((b) => (
                   <li key={b.id}>

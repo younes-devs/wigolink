@@ -5,8 +5,10 @@ import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import Training from '../Training.jsx';
+import { t, useLang } from '../i18n.js';
 
 export default function ListingDetail() {
+  useLang();
   const { id } = useParams();
   const nav = useNavigate();
   const [listing, setListing] = useState(null);
@@ -34,7 +36,7 @@ export default function ListingDetail() {
   };
 
   if (!listing) return <SkeletonCard lines={4} />;
-  if (listing === 'gone') return <div className="alert alert-warn"><Icon name="alert" size={17} />Cette annonce n'est plus disponible.</div>;
+  if (listing === 'gone') return <div className="alert alert-warn"><Icon name="alert" size={17} />{t('listing.gone')}</div>;
 
   const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
 
@@ -60,10 +62,10 @@ export default function ListingDetail() {
         <p style={{ fontSize: 14, lineHeight: 1.55 }}>{listing.description}</p>
         <div className="divider" />
         <div className="stat-grid">
-          <div><div className="muted">Trajet</div><b>{listing.from} → {listing.to}</b></div>
-          <div><div className="muted">Fenêtre</div><b>{listing.dateFrom} → {listing.dateTo}</b></div>
-          <div><div className="muted">Poids</div><b>{listing.weightKg} kg</b></div>
-          <div><div className="muted">Valeur déclarée</div><b>{listing.valueEur} €</b></div>
+          <div><div className="muted">{t('listing.route')}</div><b>{listing.from} → {listing.to}</b></div>
+          <div><div className="muted">{t('listing.window')}</div><b>{listing.dateFrom} → {listing.dateTo}</b></div>
+          <div><div className="muted">{t('listing.weight')}</div><b>{listing.weightKg} kg</b></div>
+          <div><div className="muted">{t('listing.value')}</div><b>{listing.valueEur} €</b></div>
         </div>
       </div>
 
@@ -71,22 +73,22 @@ export default function ListingDetail() {
           rémunération + action principale visibles sans scroll sur mobile. */}
       <div className="card decision-card">
         <div className="decision-earn">
-          <span className="muted">Vous gagnez</span>
+          <span className="muted">{t('listing.earn')}</span>
           <span className="decision-amount">{listing.travelerPay} €</span>
         </div>
         {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
         {needsKyc && <KycRequiredNotice />}
         <button className="btn btn-primary" onClick={accept} disabled={busy}>
-          {busy ? <span className="spinner" /> : 'Accepter ce transport'}
+          {busy ? <span className="spinner" /> : t('listing.accept')}
         </button>
         <div className="decision-note">
           <Icon name="lock" size={14} />
-          <span>Paiement séquestré dès l'acceptation, versé à la livraison validée. Refus possible sans pénalité à la remise.</span>
+          <span>{t('listing.note')}</span>
         </div>
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: 10 }}><Icon name="user" size={17} />Expéditeur</h2>
+        <h2 style={{ marginBottom: 10 }}><Icon name="user" size={17} />{t('listing.sender')}</h2>
         <div className="list-row">
           <Avatar name={listing.sender?.name} photo={listing.sender?.photoUrl} />
           <div className="grow">
@@ -97,12 +99,12 @@ export default function ListingDetail() {
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: 10 }}><Icon name="euro" size={17} />Détail de la rémunération</h2>
+        <h2 style={{ marginBottom: 10 }}><Icon name="euro" size={17} />{t('listing.pay.detail')}</h2>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">Rémunération voyageur</span><b>{listing.travelerPay} €</b>
+          <span className="muted">{t('listing.pay.traveler')}</span><b>{listing.travelerPay} €</b>
         </div>
         <div className="list-row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">Commission plateforme ({Math.round(listing.commissionRate * 100)} %, payée par l'expéditeur)</span>
+          <span className="muted">{t('listing.pay.commission', { pct: Math.round(listing.commissionRate * 100) })}</span>
           <b>{commission} €</b>
         </div>
       </div>
