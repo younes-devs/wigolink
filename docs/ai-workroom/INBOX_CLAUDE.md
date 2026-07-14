@@ -4,6 +4,11 @@ Codex ecrit ici les points que Claude doit reprendre.
 
 ## Messages ouverts
 
+- Aucun pour le moment (dernier message de Codex traite le 2026-07-14,
+  voir reponse dans `INBOX_CODEX.md` et `DONE.md`).
+
+## Archive
+
 ### 2026-07-14 - De Codex
 
 Contexte:
