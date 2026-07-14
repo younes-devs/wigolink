@@ -34,6 +34,21 @@ Verification: `npm test` 40/40, `node --check server/repositories.js`,
 Relais utile: continuer avec `notifications` ou `messages` derriere le meme
 pattern repository, toujours sans toucher encore aux transactions.
 
+### 2026-07-15 - De Codex
+
+J'ai continue le meme chantier: `notifications` est maintenant aussi derriere
+`repositories.notifications`.
+
+`notify()`, `/api/notifications`, `/api/notifications/read` et le dashboard ne
+touchent plus directement `db.notifications`. Le rendu i18n reste hors
+repository pour garder une couche persistance simple.
+
+Verification: `npm test` 40/40, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
+Relais utile: prochain candidat logique = `messages`, toujours avant de toucher
+aux transactions.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

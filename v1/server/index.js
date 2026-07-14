@@ -84,17 +84,16 @@ function audit(actorId, action, targetType, targetId, meta = {}) {
 // une notification est persistée une fois mais peut être lue par un compte qui a changé de
 // langue, ou par un admin dans une autre langue que le destinataire.
 function notify(userIds, textOrKey, txId = null, type = 'transactions', section = null) {
-  db.notifications = db.notifications || [];
   const isKeyed = textOrKey && typeof textOrKey === 'object';
   for (const uid of new Set(userIds.filter(Boolean))) {
     const user = findUser(uid);
     const kind = DEFAULT_NOTIFICATION_SETTINGS[type] === undefined ? 'transactions' : type;
     const prefs = user ? userSettings(user).notifications : DEFAULT_NOTIFICATION_SETTINGS;
     if (kind !== 'security' && prefs[kind] === false) continue;
-    const entry = { id: newId('n'), userId: uid, txId, type: kind, section, read: false, at: Date.now() };
-    if (isKeyed) { entry.key = textOrKey.key; entry.params = textOrKey.params || {}; entry.text = renderNotification('fr', entry); }
-    else entry.text = textOrKey;
-    db.notifications.push(entry);
+    const payload = isKeyed
+      ? { key: textOrKey.key, params: textOrKey.params || {}, text: renderNotification('fr', textOrKey) }
+      : { text: textOrKey };
+    repositories.notifications.append({ userId: uid, txId, type: kind, section, ...payload });
   }
 }
 
@@ -605,18 +604,15 @@ app.post('/api/profile/delete', auth, (req, res) => {
 // ---------- Notifications ----------
 app.get('/api/notifications', auth, (req, res) => {
   runMatchingOfferReminders({ persist: true });
-  const mine = (db.notifications || [])
-    .filter((n) => n.userId === req.user.id)
-    .sort((a, b) => b.at - a.at)
-    .slice(0, 30)
+  const mine = repositories.notifications.listForUser(req.user.id, { limit: 30 })
     // Traduit à la lecture selon req.lang (posé par langMiddleware) — le texte français
     // stocké sert de repli pour les notifications persistées avant l'introduction des clés.
     .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  res.json({ notifications: mine, unread: mine.filter((n) => !n.read).length });
+  res.json({ notifications: mine, unread: repositories.notifications.unreadCount(req.user.id) });
 });
 
 app.post('/api/notifications/read', auth, (req, res) => {
-  for (const n of db.notifications || []) if (n.userId === req.user.id) n.read = true;
+  repositories.notifications.markAllRead(req.user.id);
   save();
   res.json({ ok: true });
 });
@@ -1419,12 +1415,9 @@ app.get('/api/dashboard', auth, (req, res) => {
     (o.status === 'pending_traveler' && o.travelerId === req.user.id)
     || (o.status === 'countered_sender' && o.senderId === req.user.id);
   const activeOffers = myOffers.filter((o) => ['pending_traveler', 'countered_sender'].includes(o.status));
-  const notifications = (db.notifications || [])
-    .filter((n) => n.userId === req.user.id)
-    .sort((a, b) => b.at - a.at)
-    .slice(0, 5)
+  const notifications = repositories.notifications.listForUser(req.user.id, { limit: 5 })
     .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  const unread = (db.notifications || []).filter((n) => n.userId === req.user.id && !n.read).length;
+  const unread = repositories.notifications.unreadCount(req.user.id);
   res.json({
     user: publicUser(req.user),
     trust: {

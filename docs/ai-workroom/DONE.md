@@ -285,3 +285,27 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`,
 
 Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
 `node --check server/index.js`, `npx vite build client` OK.
+
+## 2026-07-15 - Codex : repository notifications
+
+Contexte: suite de l'extraction progressive de la persistance vers des
+repositories JSON remplacables par un adaptateur Postgres/Supabase.
+
+Travail fait:
+
+- Ajout de `repositories.notifications` dans `v1/server/repositories.js`.
+- Extraction des operations notifications:
+  - creation (`append`);
+  - liste par utilisateur (`listForUser`);
+  - compteur non lus (`unreadCount`);
+  - marquage lu (`markAllRead`).
+- `server/index.js` ne lit/ecrit plus directement `db.notifications`; `notify()`,
+  `GET /api/notifications`, `POST /api/notifications/read` et le dashboard
+  passent par le repository.
+- Le rendu i18n reste dans `index.js`/`notify-i18n.js`, donc le repository reste
+  concentre sur la persistance.
+
+Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
+
+Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.

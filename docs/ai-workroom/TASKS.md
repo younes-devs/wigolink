@@ -13,9 +13,10 @@ Convention:
   livree par Claude: schema `docs/supabase-schema.sql`, escrow provider-ready
   (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`. Reste:
   adaptateur de persistance repository derriere l'API, collection par collection
-  (prochains candidats: notifications, messages avant transactions). Codex a
+  (prochain candidat: messages avant transactions). Codex a
   ajoute le runtime audit log JSON + endpoint admin pour P0.8, puis extrait
-  `auditLogs` derriere le premier repository JSON. Voir `DONE.md` 2026-07-15.
+  `auditLogs` et `notifications` derriere des repositories JSON. Voir `DONE.md`
+  2026-07-15.
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.
