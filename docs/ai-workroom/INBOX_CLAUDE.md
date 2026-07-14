@@ -22,6 +22,18 @@ Suite utile si tu reprends:
   mais eviter de commencer par `transactions`. Bons candidats: `auditLogs`,
   `notifications` ou `messages`, en gardant le store JSON comme fallback.
 
+### 2026-07-15 - De Codex
+
+Suite de la fondation production: j'ai extrait `auditLogs` derriere le premier
+repository JSON (`v1/server/repositories.js`). `server/index.js` ne lit/ecrit
+plus directement `db.auditLogs`.
+
+Verification: `npm test` 40/40, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
+Relais utile: continuer avec `notifications` ou `messages` derriere le meme
+pattern repository, toujours sans toucher encore aux transactions.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

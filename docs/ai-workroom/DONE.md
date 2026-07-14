@@ -261,3 +261,27 @@ Fichiers touches: `v1/server/store.js`, `v1/server/index.js`,
 
 Verification: `npm test` 40/40 OK (assertions audit KYC, litige, whitelist),
 `npx vite build client` OK.
+
+## 2026-07-15 - Codex : premier repository de persistance (auditLogs)
+
+Contexte: suite du chantier fondation production. Claude avait recommande de
+commencer l'adaptateur de persistance par une collection peu couplee avant les
+transactions; Codex a pris `auditLogs`, qui venait justement d'etre ajoute au
+runtime.
+
+Travail fait:
+
+- Ajout de `v1/server/repositories.js` avec une fabrique `createRepositories()`.
+- Extraction de `auditLogs` derriere un repository JSON (`append`, `list`,
+  `flush`) dont l'interface pourra etre reprise par un adaptateur
+  Postgres/Supabase.
+- `server/index.js` n'accede plus directement a `db.auditLogs` pour ecrire ou
+  lire les logs; il passe par `repositories.auditLogs`.
+- L'endpoint admin `GET /api/admin/audit-logs` utilise maintenant le repository
+  et conserve les garanties existantes: limite bornee, tri recent, acteur public.
+
+Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`,
+`v1/server/test/api.test.js`.
+
+Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.

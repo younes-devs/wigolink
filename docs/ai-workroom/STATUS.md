@@ -18,7 +18,8 @@ Derniere mise a jour: 2026-07-15 (Codex)
   KYC/litige/whitelist incluses).
 - Build client Vite: OK au dernier controle local Codex.
 - Persistance: encore JSON (`data.json`) en V1. Schema Postgres cible pret,
-  adaptateur repository a construire (relais Codex).
+  premier repository cree pour `auditLogs`; prochains candidats: notifications
+  et messages.
 - Escrow: simule mais modele pret pour un vrai prestataire (provider/providerRef,
   transitions horodatees).
 - Audit: `auditLogs` runtime JSON + endpoint admin `/api/admin/audit-logs`

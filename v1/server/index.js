@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration
 import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
+import { createRepositories } from './repositories.js';
 
 const app = express();
 app.use(cors());
@@ -14,6 +15,7 @@ app.use(express.json({ limit: '25mb' }));
 app.use(langMiddleware);
 
 const db = getDb();
+let repositories;
 
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
@@ -35,6 +37,7 @@ const publicUser = (u) =>
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
+repositories = createRepositories({ db, save, newId, findUser, publicUser });
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
   messages: true,
@@ -72,16 +75,7 @@ function addEvent(tx, type, actorId, meta = {}) {
 }
 
 function audit(actorId, action, targetType, targetId, meta = {}) {
-  db.auditLogs = db.auditLogs || [];
-  db.auditLogs.push({
-    id: newId('audit'),
-    actorId,
-    action,
-    targetType,
-    targetId,
-    meta,
-    at: Date.now(),
-  });
+  repositories.auditLogs.append({ actorId, action, targetType, targetId, meta });
 }
 
 // Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
@@ -2261,15 +2255,7 @@ app.delete('/api/admin/whitelist/:id', auth, adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/audit-logs', auth, adminOnly, (req, res) => {
-  const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 80));
-  const logs = [...(db.auditLogs || [])]
-    .sort((a, b) => b.at - a.at)
-    .slice(0, limit)
-    .map((log) => ({
-      ...log,
-      actor: publicUser(findUser(log.actorId)) || { id: log.actorId, name: 'system' },
-    }));
-  res.json({ logs });
+  res.json({ logs: repositories.auditLogs.list({ limit: req.query.limit }) });
 });
 
 // ---------- Back-office KYC (PRD KYC §5) ----------

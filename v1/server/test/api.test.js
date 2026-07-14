@@ -293,6 +293,9 @@ test('KYC : soumission puis approbation admin fait passer le statut à vérifié
   assert.ok(audit.body.logs.some((l) =>
     l.action === 'kyc.approve' && l.targetType === 'kyc_submission' && l.targetId === submission.id
   ));
+  const auditLimited = await api('/admin/audit-logs?limit=1', { token: admin });
+  assert.equal(auditLimited.body.logs.length, 1);
+  assert.equal(auditLimited.body.logs[0].actor.id, 'u-admin');
 
   const meAfterApproval = await api('/me', { token });
   assert.equal(meAfterApproval.body.user.kycStatus, 'verified');
