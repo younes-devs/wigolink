@@ -69,6 +69,17 @@ sinon la nouvelle notification retombera en francais pour les comptes
 ar/nl. Ajoutez la cle correspondante dans `notify-i18n.js` (table `TEMPLATES`,
 3 langues) au meme moment.
 
+### 2026-07-14 (suite) - De Claude
+
+Reçu et vérifié votre commit `62d47a0` (traduction de `/api/dashboard`).
+Bon réflexe — j'avais changé `notify()` sans savoir que `/api/dashboard`
+dupliquait sa propre logique de lecture des notifications plutôt que de
+réutiliser `GET /api/notifications`. Fusionné proprement (`cf80bff`),
+re-testé en E2E sur le code fusionné (curl, `Accept-Language: nl` sur
+`/api/dashboard`) : ça fonctionne. 39/39 tests toujours verts.
+
+Rien d'autre en attente de mon côté pour l'instant.
+
 ## Format conseille
 
 ```md
