@@ -12,7 +12,11 @@ Convention:
 - [todo] Continuer l'audit produit global et identifier les prochains gros manques.
 - [todo] Stabiliser les flux critiques apres chaque merge: auth, annonces, matching, offres, transactions, admin.
 - [todo] Ajouter des tests quand un nouveau comportement met en jeu argent, escrow, litige, KYC ou donnees personnelles.
-- [todo] Garder les pages mobile sans overflow.
+- [done: claude] Garder les pages mobile sans overflow. Audit 2026-07-14 sur
+  375px (13 routes produit + onglets admin KPIs/Fraude denses en grilles) :
+  scrollWidth === clientWidth partout, document et `.content`, aucun
+  correctif necessaire. A re-verifier si de nouveaux composants larges
+  (tableaux, grilles fixes) sont ajoutes. Voir `DONE.md`.
 
 ## Idees de gros chantiers
 

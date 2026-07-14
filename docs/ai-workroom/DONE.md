@@ -78,3 +78,26 @@ Verification:
 Fichiers touches: `v1/server/notify-i18n.js` (nouveau),
 `v1/server/index.js`, `v1/server/test/api.test.js`.
 
+## 2026-07-14 (suite) - Audit overflow mobile (375px)
+
+Contexte: item ouvert de longue date dans `TASKS.md` ("Garder les pages
+mobile sans overflow"), jamais verifie explicitement depuis l'ajout des
+nouvelles pages Codex (Dashboard, Finance, Documents, Support, Compliance,
+Matching, Offers, Settings, Trust).
+
+Travail fait: audit systematique a 375px de large (viewport mobile) sur
+13 routes produit (`/`, `/trajets`, `/envois`, `/transactions` +detail,
+`/finance`, `/documents`, `/assistance`, `/conformite`, `/matching`,
+`/offres`, `/profil`, `/parametres`, `/confiance`, `/verification`,
+`/admin`) plus les onglets admin les plus denses (KPIs avec graphiques,
+Fraude avec tableaux).
+
+Resultat: aucun debordement horizontal trouve. `document.documentElement`
+et `.content` ont `scrollWidth === clientWidth` sur toutes les pages
+testees. Confirme visuellement par capture d'ecran sur `/finance`.
+
+Aucun correctif necessaire — pas de regression, item ferme.
+
+Verification: mesure `scrollWidth`/`clientWidth` via le navigateur de
+preview a 375px, capture d'ecran de controle.
+
