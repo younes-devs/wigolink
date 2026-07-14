@@ -470,7 +470,7 @@ app.get('/api/profile/export', auth, (req, res) => {
     listings: db.listings.filter((l) => l.senderId === uid),
     trips: db.trips.filter((t) => t.travelerId === uid),
     transactions: db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid)),
-    messages: db.messages.filter((m) => m.from === uid),
+    messages: repositories.messages.listFromUser(uid),
     disputes: db.disputes.filter((d) => d.openedBy === uid),
     // Métadonnées KYC sans les images (données biométriques sensibles — non incluses
     // dans l'export standard, PRD KYC §6 ; communiquées séparément sur demande justifiée).
@@ -1282,7 +1282,7 @@ function trustCenterFor(user) {
     })
     .sort((a, b) => b.createdAt - a.createdAt);
   const openDisputes = disputes.filter((d) => d.status === 'open');
-  const flaggedMessages = db.messages.filter((m) => m.from === user.id && m.flagged);
+  const flaggedMessages = repositories.messages.flaggedFromUser(user.id);
   const kyc = kycUserView(user);
 
   let score = 35;
@@ -1982,7 +1982,7 @@ app.get('/api/transactions/:id/messages', auth, (req, res) => {
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
   if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
     return res.status(403).json({ error: 'Non autorisé' });
-  res.json({ messages: db.messages.filter((m) => m.txId === req.params.id) });
+  res.json({ messages: repositories.messages.listForTransaction(req.params.id) });
 });
 
 app.post('/api/transactions/:id/messages', auth, (req, res) => {
@@ -1992,8 +1992,7 @@ app.post('/api/transactions/:id/messages', auth, (req, res) => {
     return res.status(403).json({ error: 'Non autorisé' });
   const text = String(req.body.text || '').slice(0, 2000);
   const flagged = detectLeak(text);
-  const msg = { id: newId('m'), txId: t.id, from: req.user.id, text, flagged, at: Date.now() };
-  db.messages.push(msg);
+  const msg = repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
   notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
   res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
@@ -2062,7 +2061,7 @@ function adminRiskSignals() {
   return {
     linkedAccounts: groupsFor('phone').length + groupsFor('registerIp').length,
     repeatPairs: Object.values(pairMap).filter((p) => p.transactionCount >= 3).length,
-    flaggedMessaging: new Set(db.messages.filter((m) => m.flagged).map((m) => m.from)).size,
+    flaggedMessaging: repositories.messages.flaggedSenderCount(),
     abnormalCancel: humans.filter((u) => u.completed >= 3 && u.cancelRate > 0.2).length,
     disputeProne: Object.values(disputeCountByUser).filter((count) => count >= 2).length,
     kycRepeatRejections: Object.values(kycRejectionsByUser).filter((count) => count >= 2).length,
@@ -2078,7 +2077,7 @@ function adminOpsSummary() {
   const pendingKyc = db.kycSubmissions.filter((s) => s.status === 'pending');
   const overdueKyc = pendingKyc.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS);
   const openDisputes = db.disputes.filter((d) => d.status === 'open');
-  const flaggedMessages = db.messages.filter((m) => m.flagged);
+  const flaggedMessages = repositories.messages.flagged();
   const escrowHeld = db.transactions
     .filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
     .reduce((s, t) => s + t.escrow.amount, 0);
@@ -2228,7 +2227,7 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
       transactions: db.transactions.length,
       released: db.transactions.filter((t) => t.status === 'released').length,
       disputed: db.transactions.filter((t) => t.status === 'disputed').length,
-      flaggedMessages: db.messages.filter((m) => m.flagged).length,
+      flaggedMessages: repositories.messages.flagged().length,
       escrowHeld: db.transactions.filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
         .reduce((s, t) => s + t.escrow.amount, 0),
     },
@@ -2415,7 +2414,8 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
   const recurringRate = travelerIds.length ? recurring / travelerIds.length : 0;
 
   // Désintermédiation estimée : messages signalés / total messages échangés.
-  const desintermediationRate = db.messages.length ? db.messages.filter((m) => m.flagged).length / db.messages.length : 0;
+  const messageCount = repositories.messages.count();
+  const desintermediationRate = messageCount ? repositories.messages.flagged().length / messageCount : 0;
 
   // Délai moyen de matching : annonce publiée → acceptée.
   const matchDelays = db.transactions.map((t) => {
@@ -2430,7 +2430,7 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
       disputeRate: { value: disputeRate, target: 0.05, direction: 'below' },
       resolutionRate: { value: resolutionRate, target: 0.9, direction: 'above', sampleSize: resolved.length },
       recurringTravelers: { value: recurringRate, target: 0.4, direction: 'above', sampleSize: travelerIds.length },
-      desintermediationRate: { value: desintermediationRate, target: 0.15, direction: 'below', sampleSize: db.messages.length },
+      desintermediationRate: { value: desintermediationRate, target: 0.15, direction: 'below', sampleSize: messageCount },
       avgMatchHours: { value: avgMatchHours, target: 72, direction: 'below' },
       nps: { value: null, target: 50, direction: 'above', note: 'Nécessite un sondage post-transaction — non instrumenté' },
     },
@@ -2489,7 +2489,7 @@ app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
 
   // Désintermédiation : utilisateurs à l'origine de messages signalés (partage de coordonnées).
   const flaggedByUser = {};
-  for (const m of db.messages) {
+  for (const m of repositories.messages.all()) {
     if (!m.flagged) continue;
     (flaggedByUser[m.from] = flaggedByUser[m.from] || 0);
     flaggedByUser[m.from] += 1;

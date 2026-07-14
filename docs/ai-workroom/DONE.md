@@ -286,6 +286,33 @@ Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`,
 Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
 `node --check server/index.js`, `npx vite build client` OK.
 
+## 2026-07-15 - Codex : repository messages
+
+Contexte: suite de l'extraction progressive de la persistance vers des
+repositories JSON remplacables par un adaptateur Postgres/Supabase, dernier
+candidat peu risque avant les collections plus centrales.
+
+Travail fait:
+
+- Ajout de `repositories.messages` dans `v1/server/repositories.js`.
+- Extraction des operations messages:
+  - creation (`append`);
+  - liste par transaction (`listForTransaction`);
+  - export par auteur (`listFromUser`);
+  - signaux de desintermediation/fraude (`flagged`, `flaggedFromUser`,
+    `flaggedSenderCount`);
+  - comptage (`count`, `all`).
+- `server/index.js` ne lit/ecrit plus directement `db.messages`; chat
+  transaction, export RGPD, trust score, KPIs, admin ops et fraude passent par
+  le repository.
+- Les regles metier restent dans `index.js` (autorisation, detection de fuite,
+  notifications), donc le repository reste concentre sur la persistance.
+
+Fichiers touches: `v1/server/repositories.js`, `v1/server/index.js`.
+
+Verification: `npm test` 40/40 OK, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

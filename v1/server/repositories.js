@@ -8,7 +8,51 @@
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
+    messages: createMessageRepository({ db, newId }),
     notifications: createNotificationRepository({ db, newId }),
+  };
+}
+
+function createMessageRepository({ db, newId }) {
+  const ensure = () => {
+    db.messages = db.messages || [];
+    return db.messages;
+  };
+
+  return {
+    append({ txId, from, text, flagged = false, at = Date.now() }) {
+      const msg = { id: newId('m'), txId, from, text, flagged, at };
+      ensure().push(msg);
+      return msg;
+    },
+
+    listForTransaction(txId) {
+      return ensure().filter((m) => m.txId === txId);
+    },
+
+    listFromUser(userId) {
+      return ensure().filter((m) => m.from === userId);
+    },
+
+    flaggedFromUser(userId) {
+      return ensure().filter((m) => m.from === userId && m.flagged);
+    },
+
+    flagged() {
+      return ensure().filter((m) => m.flagged);
+    },
+
+    flaggedSenderCount() {
+      return new Set(this.flagged().map((m) => m.from)).size;
+    },
+
+    count() {
+      return ensure().length;
+    },
+
+    all() {
+      return [...ensure()];
+    },
   };
 }
 

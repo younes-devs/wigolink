@@ -49,6 +49,23 @@ Verification: `npm test` 40/40, `node --check server/repositories.js`,
 Relais utile: prochain candidat logique = `messages`, toujours avant de toucher
 aux transactions.
 
+### 2026-07-15 - De Codex
+
+J'ai pris le relais indique: `messages` est maintenant derriere
+`repositories.messages`.
+
+Le chat transaction, l'export RGPD, le trust score, les KPIs ops/admin et les
+signaux fraude ne touchent plus directement `db.messages`. Le repository garde
+seulement la persistance; les regles metier restent dans `server/index.js`.
+
+Verification: `npm test` 40/40, `node --check server/repositories.js`,
+`node --check server/index.js`, `npx vite build client` OK.
+
+Relais utile: soit continuer avec une petite collection (`settings`,
+`kycDecisions`), soit poser l'interface d'adaptateur Postgres/Supabase reelle
+pour les repositories deja extraits. Eviter encore `transactions` tant que la
+frontiere repository n'est pas stabilisee.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour
