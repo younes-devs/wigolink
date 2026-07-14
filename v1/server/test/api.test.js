@@ -1342,3 +1342,42 @@ test('i18n des erreurs API : Accept-Language traduit body.error (fr/ar/nl)', asy
   const de = await api('/auth/login', { ...bad, lang: 'de' });
   assert.equal(de.body.error, 'Email ou mot de passe incorrect');
 });
+
+test('i18n des notifications : traduites à la lecture, la même notification suit Accept-Language', async () => {
+  const fatima = tokens.fatima;
+  // Compte voyageur dédié (pas le karim partagé) : les tests précédents peuvent avoir
+  // déjà saturé son plafond de transactions actives (voir le même pattern plus haut,
+  // ex. "centre matching expediteur").
+  const karim = (await registerKycVerifiedUser(tokens.admin, 'NotifI18nVoyageur')).token;
+  await completeTraining(karim);
+
+  const listing = await api('/listings', {
+    method: 'POST', token: fatima,
+    body: {
+      title: 'Notif i18n test', categoryId: 'argan', categoryLabel: "Huile d'argan",
+      description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+      valueEur: 30, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+      travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+    },
+  });
+  assert.equal(listing.status, 200);
+
+  const accepted = await api(`/listings/${listing.body.listing.id}/accept`, { method: 'POST', token: karim });
+  assert.equal(accepted.status, 200);
+
+  const fr = await api('/notifications', { token: fatima, lang: 'fr' });
+  const first = fr.body.notifications[0];
+  assert.match(first.text, /transporte/);
+  assert.ok(first.key, 'la notification doit porter une clé de template, pas juste du texte figé');
+
+  // Même notification persistée, lue en arabe puis en néerlandais : le texte change,
+  // pas l'entrée en base — la traduction se fait à la lecture, pas à la création.
+  const ar = await api('/notifications', { token: fatima, lang: 'ar' });
+  assert.match(ar.body.notifications[0].text, /ينقل/);
+
+  const nl = await api('/notifications', { token: fatima, lang: 'nl' });
+  assert.match(nl.body.notifications[0].text, /vervoert/);
+
+  assert.equal(fr.body.notifications[0].id, ar.body.notifications[0].id);
+  assert.equal(fr.body.notifications[0].id, nl.body.notifications[0].id);
+});

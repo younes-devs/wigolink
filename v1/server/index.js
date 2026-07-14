@@ -4,6 +4,7 @@ import { getDb, save, newId } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
+import { renderNotification } from './notify-i18n.js';
 
 const app = express();
 app.use(cors());
@@ -69,15 +70,23 @@ function addEvent(tx, type, actorId, meta = {}) {
   tx.events.push({ id: newId('e'), type, actorId, meta, at: Date.now() });
 }
 
-// Notifications in-app aux transitions d'état (PRD §4.5)
-function notify(userIds, text, txId = null, type = 'transactions', section = null) {
+// Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
+// chaîne française littérale (legacy), soit { key, params } — dans ce cas la traduction
+// se fait à la LECTURE selon la langue du lecteur (voir notify-i18n.js), pas à la création :
+// une notification est persistée une fois mais peut être lue par un compte qui a changé de
+// langue, ou par un admin dans une autre langue que le destinataire.
+function notify(userIds, textOrKey, txId = null, type = 'transactions', section = null) {
   db.notifications = db.notifications || [];
+  const isKeyed = textOrKey && typeof textOrKey === 'object';
   for (const uid of new Set(userIds.filter(Boolean))) {
     const user = findUser(uid);
     const kind = DEFAULT_NOTIFICATION_SETTINGS[type] === undefined ? 'transactions' : type;
     const prefs = user ? userSettings(user).notifications : DEFAULT_NOTIFICATION_SETTINGS;
     if (kind !== 'security' && prefs[kind] === false) continue;
-    db.notifications.push({ id: newId('n'), userId: uid, text, txId, type: kind, section, read: false, at: Date.now() });
+    const entry = { id: newId('n'), userId: uid, txId, type: kind, section, read: false, at: Date.now() };
+    if (isKeyed) { entry.key = textOrKey.key; entry.params = textOrKey.params || {}; entry.text = renderNotification('fr', entry); }
+    else entry.text = textOrKey;
+    db.notifications.push(entry);
   }
 }
 
@@ -101,14 +110,14 @@ function runMatchingOfferReminders({ persist = false } = {}) {
       const expiresIn = (offer.expiresAt || 0) - now;
       if (waitingUserId && expiresIn > 0 && expiresIn <= OFFER_REMINDER_MS && !offer.reminders.expiresSoonAt) {
         offer.reminders.expiresSoonAt = now;
-        notify([waitingUserId], `Rappel : la proposition « ${title} » expire bientôt.`, null, 'reminders', 'matching');
+        notify([waitingUserId], { key: 'offer.expiring', params: { title } }, null, 'reminders', 'matching');
         changed = true;
       }
     }
 
     if (offer.status === 'expired' && !offer.reminders.expiredAt) {
       offer.reminders.expiredAt = now;
-      notify([offer.senderId, offer.travelerId], `La proposition « ${title} » a expiré.`, null, 'reminders', 'matching');
+      notify([offer.senderId, offer.travelerId], { key: 'offer.expired', params: { title } }, null, 'reminders', 'matching');
       changed = true;
     }
   }
@@ -585,7 +594,10 @@ app.get('/api/notifications', auth, (req, res) => {
   const mine = (db.notifications || [])
     .filter((n) => n.userId === req.user.id)
     .sort((a, b) => b.at - a.at)
-    .slice(0, 30);
+    .slice(0, 30)
+    // Traduit à la lecture selon req.lang (posé par langMiddleware) — le texte français
+    // stocké sert de repli pour les notifications persistées avant l'introduction des clés.
+    .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
   res.json({ notifications: mine, unread: mine.filter((n) => !n.read).length });
 });
 
@@ -1043,7 +1055,7 @@ app.post('/api/matching-offers', auth, (req, res) => {
     createdAt: now, expiresAt: now + ttlHours * 36e5, respondedAt: null, txId: null,
   };
   db.matchingOffers.push(offer);
-  notify([offer.travelerId], `${req.user.name} vous propose de transporter « ${listing.title} ».`, null, 'messages', 'matching');
+  notify([offer.travelerId], { key: 'offer.received', params: { name: req.user.name, title: listing.title } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
@@ -1510,7 +1522,7 @@ function acceptListingWithTraveler(listing, traveler, offer = null) {
     sealingVideo: null, events: [], createdAt: Date.now(),
   };
   addEvent(tx, 'accepted', traveler.id, { escrowHeld: total, offerId: offer?.id || null });
-  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], `${traveler.name} transporte « ${listing.title} ». Paiement séquestré.`, tx.id, 'transactions', 'suivi');
+  notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], { key: 'tx.accepted', params: { name: traveler.name, title: listing.title } }, tx.id, 'transactions', 'suivi');
   db.transactions.push(tx);
   for (const o of db.matchingOffers || []) {
     normalizeMatchingOffer(o);
@@ -1566,7 +1578,7 @@ app.post('/api/matching-offers/:id/decline', auth, (req, res) => {
   offer.status = 'declined';
   offer.respondedAt = Date.now();
   offer.history.push({ by: req.user.id, type: 'declined', pay: offer.offeredPay, message: '', at: Date.now() });
-  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], `${req.user.name} a décliné la proposition.`, null, 'messages', 'matching');
+  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.declined', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
@@ -1580,7 +1592,7 @@ app.post('/api/matching-offers/:id/withdraw', auth, (req, res) => {
   offer.status = 'withdrawn';
   offer.respondedAt = Date.now();
   offer.history.push({ by: req.user.id, type: 'withdrawn', pay: offer.offeredPay, message: '', at: Date.now() });
-  notify([offer.travelerId], `${req.user.name} a retiré sa proposition.`, null, 'messages', 'matching');
+  notify([offer.travelerId], { key: 'offer.withdrawn', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
@@ -1599,7 +1611,7 @@ app.post('/api/matching-offers/:id/counter', auth, (req, res) => {
   offer.status = req.user.id === offer.travelerId ? 'countered_sender' : 'pending_traveler';
   offer.expiresAt = Date.now() + 72 * 36e5;
   offer.history.push({ by: req.user.id, type: 'counter', pay, message, at: Date.now() });
-  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], `${req.user.name} a envoyé une contre-proposition.`, null, 'messages', 'matching');
+  notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.countered', params: { name: req.user.name } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
 });
@@ -1615,7 +1627,7 @@ app.post('/api/transactions/:id/sealing-video', auth, (req, res) => {
   };
   t.status = 'sealed';
   addEvent(t, 'sealed', req.user.id, { simulated: !!req.body.simulated });
-  notify([t.travelerId], `Colis scellé et filmé pour « ${db.listings.find((l) => l.id === t.listingId)?.title} ». Organisez la remise.`, t.id, 'shipments', 'actions');
+  notify([t.travelerId], { key: 'tx.sealed', params: { title: db.listings.find((l) => l.id === t.listingId)?.title } }, t.id, 'shipments', 'actions');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -1629,7 +1641,7 @@ app.post('/api/transactions/:id/confirm-pickup', auth, (req, res) => {
     return res.status(400).json({ error: 'Code invalide — scannez le QR de l\'expéditeur' });
   t.status = 'in_transit';
   addEvent(t, 'in_transit', req.user.id, { responsibility: 'traveler' });
-  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], 'Colis pris en charge par le voyageur — en transit.', t.id, 'shipments', 'suivi');
+  notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], { key: 'tx.pickedUp' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -1644,7 +1656,7 @@ app.post('/api/transactions/:id/refuse', auth, (req, res) => {
   const listing = db.listings.find((l) => l.id === t.listingId);
   if (listing) listing.status = 'published';
   addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
-  notify([t.senderId], 'Le voyageur a refusé le transport (sans pénalité). Votre annonce est republiée et remboursée.', t.id, 'shipments', 'suivi');
+  notify([t.senderId], { key: 'tx.refused' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -1669,8 +1681,8 @@ app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
   if (sender.completed !== undefined) sender.completed += 1;
   if (sender.completed >= 3) { sender.maxValue = 500; sender.maxActive = 3; }
   addEvent(t, 'delivered_and_released', req.user.id, { released: t.escrow.travelerPay });
-  notify([t.travelerId], `Livraison validée — ${t.escrow.travelerPay} € versés sur votre compte.`, t.id, 'shipments', 'suivi');
-  notify([t.senderId], 'Colis livré et validé par le destinataire. Pensez à noter vos partenaires.', t.id, 'shipments', 'suivi');
+  notify([t.travelerId], { key: 'tx.delivered.traveler', params: { amount: t.escrow.travelerPay } }, t.id, 'shipments', 'suivi');
+  notify([t.senderId], { key: 'tx.delivered.sender' }, t.id, 'shipments', 'suivi');
   save();
   res.json({ transaction: txView(req.user)(t) });
 });
@@ -1924,7 +1936,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   db.disputes.push(dispute);
   db.reviewQueue.push({ id: newId('rq'), type: 'dispute', refId: dispute.id, status: 'open', createdAt: Date.now() });
   addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
-  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.', t.id, 'security', 'litige');
+  notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, t.id, 'security', 'litige');
   save();
   res.json({ dispute: disputeView(dispute, t) });
 });
@@ -1975,7 +1987,7 @@ app.post('/api/transactions/:id/messages', auth, (req, res) => {
   const flagged = detectLeak(text);
   const msg = { id: newId('m'), txId: t.id, from: req.user.id, text, flagged, at: Date.now() };
   db.messages.push(msg);
-  notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), `${req.user.name} vous a envoyé un message.`, t.id, 'messages', 'messages');
+  notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
   res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
 });
@@ -2323,22 +2335,22 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, (req, res) => {
   if (decision === 'approve') {
     s.status = 'approved';
     user.kycStatus = 'verified';
-    notify([user.id], 'Votre identité a été vérifiée. Vous pouvez maintenant envoyer et transporter.', null, 'security');
+    notify([user.id], { key: 'kyc.verified' }, null, 'security');
   } else if (decision === 'reject') {
     s.status = 'rejected';
     const rejectedCount = db.kycSubmissions.filter((x) => x.userId === user.id && x.status === 'rejected').length;
     // Passage automatique en refus définitif au-delà de la limite (PRD §7).
     if (rejectedCount >= MAX_KYC_ATTEMPTS) {
       user.kycStatus = 'refused';
-      notify([user.id], 'Votre vérification a été refusée définitivement après plusieurs tentatives. Contactez le support.', null, 'security');
+      notify([user.id], { key: 'kyc.refusedFinal' }, null, 'security');
     } else {
       user.kycStatus = 'rejected';
-      notify([user.id], `Votre vérification a été rejetée : ${cleanReason}. Vous pouvez soumettre à nouveau.`, null, 'security');
+      notify([user.id], { key: 'kyc.rejected', params: { reason: cleanReason } }, null, 'security');
     }
   } else { // refuse
     s.status = 'refused';
     user.kycStatus = 'refused';
-    notify([user.id], `Votre vérification a été définitivement refusée : ${cleanReason}. Contactez le support.`, null, 'security');
+    notify([user.id], { key: 'kyc.refused', params: { reason: cleanReason } }, null, 'security');
   }
 
   db.kycDecisions.push({
@@ -2537,7 +2549,7 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
       t.status = 'refunded'; t.escrow.state = 'refunded';
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
-    notify([t.senderId, t.travelerId, t.recipientId], decision === 'release_traveler' ? 'Litige tranché : paiement versé au voyageur.' : 'Litige tranché : expéditeur remboursé.', t.id, 'security', 'litige');
+    notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');
   }
   save();
   res.json({ ok: true });
