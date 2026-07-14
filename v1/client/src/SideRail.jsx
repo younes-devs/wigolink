@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from './api';
 import { Icon } from './Icons.jsx';
+import { t, useLang } from './i18n.js';
 
 // Panneau contextuel affiché à droite sur grand écran (≥1200px).
 // Le contenu s'adapte à la page consultée.
 export default function SideRail({ user }) {
+  useLang();
   const { pathname } = useLocation();
   const [rules, setRules] = useState(null);
   const [listingsCount, setListingsCount] = useState(null);
@@ -48,29 +50,24 @@ export default function SideRail({ user }) {
           <span>Bruxelles</span>
         </div>
         <div className="rail-corridor-stats">
-          <div><b>{listingsCount ?? '—'}</b><span>annonces ouvertes</span></div>
-          <div><b>{active}</b><span>en cours pour vous</span></div>
+          <div><b>{listingsCount ?? '—'}</b><span>{t('rail.open.listings')}</span></div>
+          <div><b>{active}</b><span>{t('rail.active.foryou')}</span></div>
         </div>
         {franchise && (
           <div className="rail-note">
             <Icon name="fileText" size={13} />
-            Franchise douanière : {franchise}
+            {t('rail.franchise', { f: franchise })}
           </div>
         )}
       </div>
 
       {isFeed && (
         <div className="rail-card">
-          <h3>Comment ça marche</h3>
-          {[
-            ['Accord', "Vous acceptez une annonce, le paiement est immédiatement séquestré."],
-            ['Remise', 'Vidéo de scellage, inspection du contenu, validation par QR croisé.'],
-            ['Transport', 'Récapitulatif douane à présenter en cas de contrôle.'],
-            ['Paiement', 'Le destinataire valide, votre rémunération est versée en quelques minutes.'],
-          ].map(([t, d], i) => (
-            <div className="rail-step" key={t}>
-              <span className="rail-step-num">{i + 1}</span>
-              <div><b>{t}</b><p>{d}</p></div>
+          <h3>{t('rail.how.title')}</h3>
+          {[1, 2, 3, 4].map((n) => (
+            <div className="rail-step" key={n}>
+              <span className="rail-step-num">{n}</span>
+              <div><b>{t(`rail.how.${n}.t`)}</b><p>{t(`rail.how.${n}.d`)}</p></div>
             </div>
           ))}
         </div>
@@ -80,18 +77,18 @@ export default function SideRail({ user }) {
         <>
           {escrowHeld > 0 && (
             <div className="rail-card">
-              <h3>Escrow en cours</h3>
+              <h3>{t('rail.escrow.title')}</h3>
               <div className="rail-big">{escrowHeld.toFixed(2).replace('.', ',')} €</div>
-              <p className="rail-muted">séquestrés chez notre prestataire de paiement, libérés à la double validation finale.</p>
+              <p className="rail-muted">{t('rail.escrow.text')}</p>
             </div>
           )}
           <div className="rail-card">
-            <h3>Règles d'or</h3>
+            <h3>{t('rail.golden.title')}</h3>
             <ul className="rail-list">
-              <li>Ne transportez jamais ce que vous n'avez pas vu ouvert.</li>
-              <li>Rendez-vous en lieu public, de jour.</li>
-              <li>Comparez toujours le colis à la vidéo de scellage.</li>
-              <li>Tout se passe dans l'app : hors app, aucune protection.</li>
+              <li>{t('rail.golden.1')}</li>
+              <li>{t('rail.golden.2')}</li>
+              <li>{t('rail.golden.3')}</li>
+              <li>{t('rail.golden.4')}</li>
             </ul>
           </div>
         </>
@@ -99,33 +96,33 @@ export default function SideRail({ user }) {
 
       {isShip && rules && (
         <div className="rail-card">
-          <h3>Produits autorisés</h3>
+          <h3>{t('rail.allowed.title')}</h3>
           <ul className="rail-list">
             {rules.whitelist.slice(0, 6).map((c) => (
-              <li key={c.id}>{c.label} <span className="rail-muted">· max {c.maxQty}</span></li>
+              <li key={c.id}>{c.label} <span className="rail-muted">{t('rail.allowed.max', { q: c.maxQty })}</span></li>
             ))}
           </ul>
           <div className="rail-note" style={{ marginTop: 10 }}>
             <Icon name="alert" size={13} />
-            Compléments alimentaires, médicaments, liquides non scellés : refusés.
+            {t('rail.allowed.note')}
           </div>
         </div>
       )}
 
       {isProfile && (
         <div className="rail-card">
-          <h3>Badge voyageur confirmé</h3>
+          <h3>{t('rail.badge.title')}</h3>
           <div className="rail-progress">
             <div className="rail-progress-bar" style={{ width: `${Math.min(100, (user.completed / 5) * 100)}%` }} />
           </div>
           <p className="rail-muted">
             {user.completed >= 5
-              ? 'Obtenu — votre profil inspire confiance.'
-              : `${user.completed}/5 livraisons réussies. Encore ${5 - user.completed} pour débloquer le badge.`}
+              ? t('rail.badge.earned')
+              : t('rail.badge.progress', { n: user.completed, left: 5 - user.completed })}
           </p>
           {me && (
             <p className="rail-muted" style={{ marginTop: 8 }}>
-              Plafond actuel : <b>{me.maxValue} €</b> par envoi, <b>{me.maxActive}</b> transaction(s) simultanée(s).
+              {t('rail.caps', { value: me.maxValue, active: me.maxActive })}
             </p>
           )}
         </div>
@@ -144,8 +141,8 @@ export default function SideRail({ user }) {
 
       {isFeed && (
         <div className="rail-cta">
-          <p>Quelque chose à envoyer ?</p>
-          <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">Créer une demande</button></Link>
+          <p>{t('rail.cta.text')}</p>
+          <Link to="/envois/nouveau"><button className="btn btn-primary btn-sm">{t('rail.cta.btn')}</button></Link>
         </div>
       )}
     </aside>

@@ -40,8 +40,8 @@ export default function Login() {
   });
 
   const submitRegister = () => run(async () => {
-    if (form.password !== form.confirm) throw new Error('Les mots de passe ne correspondent pas');
-    if (!cguAccepted) throw new Error('Vous devez accepter les Conditions Générales d\'Utilisation');
+    if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
+    if (!cguAccepted) throw new Error(t('err.cgu.required'));
     const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted } });
     setHint(d.demoHint);
     switchMode('verify');
@@ -64,13 +64,13 @@ export default function Login() {
   });
 
   const submitReset = () => run(async () => {
-    if (form.password !== form.confirm) throw new Error('Les mots de passe ne correspondent pas');
+    if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     const d = await api('/auth/reset', { method: 'POST', body: { email: form.email, code: form.code, password: form.password } });
     finishAuth(d);
   });
 
   const googleSignIn = (email, name) => run(async () => {
-    if (googleRequireCgu && !googleCguChecked) throw new Error('Vous devez accepter les Conditions Générales d\'Utilisation');
+    if (googleRequireCgu && !googleCguChecked) throw new Error(t('err.cgu.required'));
     setGoogleOpen(false);
     const d = await api('/auth/google', { method: 'POST', body: { email, name, cguAccepted: googleCguChecked || !googleRequireCgu } });
     finishAuth(d);

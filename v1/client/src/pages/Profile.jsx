@@ -59,7 +59,7 @@ export default function Profile() {
         flash(t('profile.photo.updated'));
       } catch (er) { setErr(er.message); }
     };
-    img.onerror = () => setErr('Impossible de lire cette image');
+    img.onerror = () => setErr(t('err.image.unreadable'));
     img.src = URL.createObjectURL(file);
     e.target.value = '';
   };

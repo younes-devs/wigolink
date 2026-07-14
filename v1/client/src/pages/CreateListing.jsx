@@ -29,7 +29,7 @@ function resizeImage(file, maxPx = 720) {
       URL.revokeObjectURL(img.src);
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
-    img.onerror = () => reject(new Error('Image illisible'));
+    img.onerror = () => reject(new Error(t('err.image.unreadable')));
     img.src = URL.createObjectURL(file);
   });
 }

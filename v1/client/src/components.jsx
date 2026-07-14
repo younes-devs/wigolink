@@ -280,7 +280,7 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
       <div className="modal capture-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <Icon name="camera" size={19} />
-          <b>{guide || 'Prendre la photo'}</b>
+          <b>{guide || t('kyc.photo.take')}</b>
           <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
             <Icon name="x" size={18} />
           </button>
