@@ -1,12 +1,13 @@
 import { createRepositories } from './repositories.js';
 import {
   createPostgresAuditLogRepository,
+  createPostgresMessageRepository,
   createPostgresNotificationRepository,
   createPostgresPool,
 } from './postgres-repositories.js';
 
 const VALID_DRIVERS = new Set(['json', 'postgres']);
-const PARTIAL_POSTGRES_COLLECTIONS = new Set(['auditLogs', 'notifications']);
+const PARTIAL_POSTGRES_COLLECTIONS = new Set(['auditLogs', 'messages', 'notifications']);
 
 export function persistenceConfig(env = process.env) {
   const requested = String(env.PERSISTENCE_DRIVER || '').trim().toLowerCase();
@@ -39,7 +40,7 @@ export function createPersistence({ db, save, newId, findUser, publicUser, env =
       throw new Error(
         'PERSISTENCE_DRIVER=postgres demande un adaptateur Postgres complet. ' +
         'Pour tester une migration partielle explicite, definir PERSISTENCE_ALLOW_PARTIAL=true ' +
-        'et PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications.'
+        'et PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages.'
       );
     }
 
@@ -49,6 +50,9 @@ export function createPersistence({ db, save, newId, findUser, publicUser, env =
     }
     if (config.partialPostgresCollections.includes('notifications')) {
       repositories.notifications = createPostgresNotificationRepository({ pool: postgresPool });
+    }
+    if (config.partialPostgresCollections.includes('messages')) {
+      repositories.messages = createPostgresMessageRepository({ pool: postgresPool });
     }
   }
 

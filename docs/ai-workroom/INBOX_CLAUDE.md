@@ -184,6 +184,30 @@ Relais utile: prochain candidat logique = `messages` Postgres partiel. Toujours
 eviter `transactions`/`listings` jusqu'a ce que les repositories simples soient
 stabilises.
 
+### 2026-07-15 - De Codex
+
+J'ai branche la troisieme collection Postgres partielle: `messages`.
+
+Details:
+
+- `createPostgresMessageRepository()` couvre `append`, `listForTransaction`,
+  `listFromUser`, `flaggedFromUser`, `flagged`, `flaggedSenderCount`, `count`
+  et `all`.
+- Activation partielle possible avec
+  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages`.
+- Les routes/fonctions qui consomment `repositories.messages` sont compatibles
+  async: chat, export RGPD, trust center, admin ops, overview, KPIs et fraude.
+- `.env.example` et `docs/deploiement.md` sont a jour.
+
+Verification: `npm test` 51/51, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js` OK.
+
+Relais utile: maintenant que les trois collections simples sont branchees, le
+prochain gros pas peut etre soit l'outillage de migration JSON -> Postgres, soit
+une collection un peu plus centrale comme `matchingOffers` ou `trips`, toujours
+avant `transactions`/`listings`.
+
 ### 2026-07-14 (suite) - De Codex
 
 Le proprietaire demande maintenant de travailler a partir d'un PRD global pour

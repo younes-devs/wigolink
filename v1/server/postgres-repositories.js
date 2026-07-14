@@ -81,6 +81,86 @@ export function createPostgresNotificationRepository({ pool }) {
   };
 }
 
+export function createPostgresMessageRepository({ pool }) {
+  return {
+    async append({ txId, from, text, flagged = false, at = Date.now() }) {
+      const result = await pool.query(
+        `insert into messages (id, tx_id, from_id, text, flagged, at)
+         values ($1, $2, $3, $4, $5, to_timestamp($6 / 1000.0))
+         returning id, tx_id, from_id, text, flagged, at`,
+        [messageId(), txId, from, text, !!flagged, at]
+      );
+      return fromMessageRow(result.rows[0]);
+    },
+
+    async listForTransaction(txId) {
+      const result = await pool.query(
+        `select id, tx_id, from_id, text, flagged, at
+         from messages
+         where tx_id = $1
+         order by at asc`,
+        [txId]
+      );
+      return result.rows.map(fromMessageRow);
+    },
+
+    async listFromUser(userId) {
+      const result = await pool.query(
+        `select id, tx_id, from_id, text, flagged, at
+         from messages
+         where from_id = $1
+         order by at desc`,
+        [userId]
+      );
+      return result.rows.map(fromMessageRow);
+    },
+
+    async flaggedFromUser(userId) {
+      const result = await pool.query(
+        `select id, tx_id, from_id, text, flagged, at
+         from messages
+         where from_id = $1 and flagged = true
+         order by at desc`,
+        [userId]
+      );
+      return result.rows.map(fromMessageRow);
+    },
+
+    async flagged() {
+      const result = await pool.query(
+        `select id, tx_id, from_id, text, flagged, at
+         from messages
+         where flagged = true
+         order by at desc`
+      );
+      return result.rows.map(fromMessageRow);
+    },
+
+    async flaggedSenderCount() {
+      const result = await pool.query(
+        `select count(distinct from_id)::int as count
+         from messages
+         where flagged = true`
+      );
+      return Number(result.rows[0]?.count || 0);
+    },
+
+    async count() {
+      const result = await pool.query(`select count(*)::int as count from messages`);
+      return Number(result.rows[0]?.count || 0);
+    },
+
+    async all() {
+      const result = await pool.query(
+        `select id, tx_id, from_id, text, flagged, at
+         from messages
+         order by at desc`
+      );
+      return result.rows.map(fromMessageRow);
+    },
+  };
+}
+
 function fromAuditRow(row, { findUser, publicUser }) {
   if (!row) return null;
   const actorId = row.actor_id;
@@ -93,6 +173,18 @@ function fromAuditRow(row, { findUser, publicUser }) {
     meta: row.meta || {},
     at: row.at instanceof Date ? row.at.getTime() : new Date(row.at).getTime(),
     actor: publicUser(findUser(actorId)) || { id: actorId, name: 'system' },
+  };
+}
+
+function fromMessageRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    txId: row.tx_id,
+    from: row.from_id,
+    text: row.text,
+    flagged: !!row.flagged,
+    at: row.at instanceof Date ? row.at.getTime() : new Date(row.at).getTime(),
   };
 }
 
@@ -114,4 +206,8 @@ function fromNotificationRow(row) {
 
 function notificationId() {
   return `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function messageId() {
+  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

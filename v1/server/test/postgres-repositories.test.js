@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPostgresAuditLogRepository, createPostgresNotificationRepository } from '../postgres-repositories.js';
+import {
+  createPostgresAuditLogRepository,
+  createPostgresMessageRepository,
+  createPostgresNotificationRepository,
+} from '../postgres-repositories.js';
 
 test('postgres auditLogs : append mappe vers audit_logs', async () => {
   const calls = [];
@@ -152,4 +156,80 @@ test('postgres notifications : list, unread et markAllRead utilisent le scope ut
   assert.equal(changed, 2);
   assert.deepEqual(calls[1].params, ['u-fatima']);
   assert.deepEqual(calls[2].params, ['u-fatima']);
+});
+
+test('postgres messages : append et listForTransaction mappent les colonnes SQL', async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      return {
+        rows: [{
+          id: params?.[0] || 'm-1',
+          tx_id: params?.[1] || 'tx-1',
+          from_id: params?.[2] || 'u-fatima',
+          text: params?.[3] || 'Bonjour',
+          flagged: !!params?.[4],
+          at: new Date('2026-07-15T14:00:00.000Z'),
+        }],
+      };
+    },
+  };
+  const repo = createPostgresMessageRepository({ pool });
+
+  const msg = await repo.append({
+    txId: 'tx-1',
+    from: 'u-fatima',
+    text: 'Appelle-moi',
+    flagged: true,
+    at: Date.parse('2026-07-15T14:00:00.000Z'),
+  });
+  const list = await repo.listForTransaction('tx-1');
+
+  assert.match(calls[0].sql, /insert into messages/);
+  assert.deepEqual(calls[0].params.slice(1), ['tx-1', 'u-fatima', 'Appelle-moi', true, Date.parse('2026-07-15T14:00:00.000Z')]);
+  assert.match(calls[1].sql, /where tx_id = \$1/);
+  assert.deepEqual(calls[1].params, ['tx-1']);
+  assert.equal(msg.from, 'u-fatima');
+  assert.equal(msg.txId, 'tx-1');
+  assert.equal(msg.flagged, true);
+  assert.equal(list[0].at, Date.parse('2026-07-15T14:00:00.000Z'));
+});
+
+test('postgres messages : compteurs et listes fraude utilisent les bons filtres', async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/count\(distinct from_id\)/.test(sql)) return { rows: [{ count: 2 }] };
+      if (/count\(\*\)/.test(sql)) return { rows: [{ count: 5 }] };
+      return {
+        rows: [{
+          id: 'm-flagged',
+          tx_id: 'tx-1',
+          from_id: 'u-karim',
+          text: '0612345678',
+          flagged: true,
+          at: '2026-07-15T15:00:00.000Z',
+        }],
+      };
+    },
+  };
+  const repo = createPostgresMessageRepository({ pool });
+
+  const fromUser = await repo.flaggedFromUser('u-karim');
+  const flagged = await repo.flagged();
+  const all = await repo.all();
+  const flaggedSenders = await repo.flaggedSenderCount();
+  const count = await repo.count();
+
+  assert.match(calls[0].sql, /from_id = \$1 and flagged = true/);
+  assert.deepEqual(calls[0].params, ['u-karim']);
+  assert.match(calls[1].sql, /where flagged = true/);
+  assert.match(calls[2].sql, /from messages/);
+  assert.equal(fromUser[0].from, 'u-karim');
+  assert.equal(flagged[0].flagged, true);
+  assert.equal(all[0].txId, 'tx-1');
+  assert.equal(flaggedSenders, 2);
+  assert.equal(count, 5);
 });

@@ -450,7 +450,7 @@ app.post('/api/profile/photo', auth, (req, res) => {
 });
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
-app.get('/api/profile/export', auth, (req, res) => {
+app.get('/api/profile/export', auth, async (req, res) => {
   const uid = req.user.id;
   const { passwordHash, ...userSafe } = req.user;
   const data = {
@@ -459,7 +459,7 @@ app.get('/api/profile/export', auth, (req, res) => {
     listings: db.listings.filter((l) => l.senderId === uid),
     trips: db.trips.filter((t) => t.travelerId === uid),
     transactions: db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid)),
-    messages: repositories.messages.listFromUser(uid),
+    messages: await repositories.messages.listFromUser(uid),
     disputes: db.disputes.filter((d) => d.openedBy === uid),
     // Métadonnées KYC sans les images (données biométriques sensibles — non incluses
     // dans l'export standard, PRD KYC §6 ; communiquées séparément sur demande justifiée).
@@ -1255,7 +1255,7 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-function trustCenterFor(user) {
+async function trustCenterFor(user) {
   const txs = db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id));
   const active = txs.filter((t) => !CLOSED_STATUSES.includes(t.status));
   const released = txs.filter((t) => t.status === 'released');
@@ -1267,7 +1267,7 @@ function trustCenterFor(user) {
     })
     .sort((a, b) => b.createdAt - a.createdAt);
   const openDisputes = disputes.filter((d) => d.status === 'open');
-  const flaggedMessages = repositories.messages.flaggedFromUser(user.id);
+  const flaggedMessages = await repositories.messages.flaggedFromUser(user.id);
   const kyc = kycUserView(user);
 
   let score = 35;
@@ -1361,8 +1361,8 @@ function trustCenterFor(user) {
   };
 }
 
-app.get('/api/trust-center', auth, (req, res) => {
-  res.json({ trust: trustCenterFor(req.user) });
+app.get('/api/trust-center', auth, async (req, res) => {
+  res.json({ trust: await trustCenterFor(req.user) });
 });
 
 app.get('/api/dashboard', auth, async (req, res) => {
@@ -1962,12 +1962,12 @@ app.post('/api/disputes/:id/evidence', auth, (req, res) => {
 });
 
 // ---------- Messagerie (PRD §4.5) ----------
-app.get('/api/transactions/:id/messages', auth, (req, res) => {
+app.get('/api/transactions/:id/messages', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
   if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
     return res.status(403).json({ error: 'Non autorisé' });
-  res.json({ messages: repositories.messages.listForTransaction(req.params.id) });
+  res.json({ messages: await repositories.messages.listForTransaction(req.params.id) });
 });
 
 app.post('/api/transactions/:id/messages', auth, async (req, res) => {
@@ -1977,7 +1977,7 @@ app.post('/api/transactions/:id/messages', auth, async (req, res) => {
     return res.status(403).json({ error: 'Non autorisé' });
   const text = String(req.body.text || '').slice(0, 2000);
   const flagged = detectLeak(text);
-  const msg = repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
+  const msg = await repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
   await notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
   res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
@@ -2010,7 +2010,7 @@ function adminOnly(req, res, next) {
 const KYC_SLA_MS = 24 * 3600e3;
 const OFFER_WATCH_MS = 24 * 3600e3;
 
-function adminRiskSignals() {
+async function adminRiskSignals() {
   const humans = db.users.filter((u) => !u.isAdmin);
   const groupsFor = (key) => {
     const groups = {};
@@ -2042,7 +2042,7 @@ function adminRiskSignals() {
   return {
     linkedAccounts: groupsFor('phone').length + groupsFor('registerIp').length,
     repeatPairs: Object.values(pairMap).filter((p) => p.transactionCount >= 3).length,
-    flaggedMessaging: repositories.messages.flaggedSenderCount(),
+    flaggedMessaging: await repositories.messages.flaggedSenderCount(),
     abnormalCancel: humans.filter((u) => u.completed >= 3 && u.cancelRate > 0.2).length,
     disputeProne: Object.values(disputeCountByUser).filter((count) => count >= 2).length,
     kycRepeatRejections: Object.values(kycRejectionsByUser).filter((count) => count >= 2).length,
@@ -2058,11 +2058,11 @@ async function adminOpsSummary() {
   const pendingKyc = repositories.kyc.pending();
   const overdueKyc = pendingKyc.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS);
   const openDisputes = db.disputes.filter((d) => d.status === 'open');
-  const flaggedMessages = repositories.messages.flagged();
+  const flaggedMessages = await repositories.messages.flagged();
   const escrowHeld = db.transactions
     .filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
     .reduce((s, t) => s + t.escrow.amount, 0);
-  const risk = adminRiskSignals();
+  const risk = await adminRiskSignals();
   const riskCount = Object.values(risk).reduce((s, n) => s + n, 0);
   const activeOfferStatuses = ['pending_traveler', 'countered_sender'];
   const offerQueue = (db.matchingOffers || [])
@@ -2193,7 +2193,7 @@ app.get('/api/admin/ops', auth, adminOnly, async (req, res) => {
   res.json({ ops: await adminOpsSummary() });
 });
 
-app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
+app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
   res.json({
     reviewQueue: repositories.reviewQueue.open().map((r) => ({
       ...r,
@@ -2208,7 +2208,7 @@ app.get('/api/admin/overview', auth, adminOnly, (req, res) => {
       transactions: db.transactions.length,
       released: db.transactions.filter((t) => t.status === 'released').length,
       disputed: db.transactions.filter((t) => t.status === 'disputed').length,
-      flaggedMessages: repositories.messages.flagged().length,
+      flaggedMessages: (await repositories.messages.flagged()).length,
       escrowHeld: db.transactions.filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
         .reduce((s, t) => s + t.escrow.amount, 0),
     },
@@ -2342,7 +2342,7 @@ app.post('/api/admin/kyc/:id/decide', auth, adminOnly, async (req, res) => {
 });
 
 // KPIs de suivi (PRD §8, plan de projet §7) — instrumentés dès la V1, pas après coup.
-app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
+app.get('/api/admin/kpis', auth, adminOnly, async (req, res) => {
   const now = Date.now();
   const DAY = 864e5;
   const released = db.transactions.filter((t) => t.status === 'released');
@@ -2378,8 +2378,9 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
   const recurringRate = travelerIds.length ? recurring / travelerIds.length : 0;
 
   // Désintermédiation estimée : messages signalés / total messages échangés.
-  const messageCount = repositories.messages.count();
-  const desintermediationRate = messageCount ? repositories.messages.flagged().length / messageCount : 0;
+  const messageCount = await repositories.messages.count();
+  const flaggedMessageCount = (await repositories.messages.flagged()).length;
+  const desintermediationRate = messageCount ? flaggedMessageCount / messageCount : 0;
 
   // Délai moyen de matching : annonce publiée → acceptée.
   const matchDelays = db.transactions.map((t) => {
@@ -2410,7 +2411,7 @@ app.get('/api/admin/kpis', auth, adminOnly, (req, res) => {
 // Dashboard fraude (PRD §4.7) : comptes liés, patterns anormaux, transactions atypiques.
 // Signaux, pas verdicts — un rapprochement d'IP ou un taux d'annulation élevé appelle une
 // revue humaine, jamais une sanction automatique.
-app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
+app.get('/api/admin/fraud', auth, adminOnly, async (req, res) => {
   const humans = db.users.filter((u) => !u.isAdmin);
 
   const groupBy = (key) => {
@@ -2453,7 +2454,7 @@ app.get('/api/admin/fraud', auth, adminOnly, (req, res) => {
 
   // Désintermédiation : utilisateurs à l'origine de messages signalés (partage de coordonnées).
   const flaggedByUser = {};
-  for (const m of repositories.messages.all()) {
+  for (const m of await repositories.messages.all()) {
     if (!m.flagged) continue;
     (flaggedByUser[m.from] = flaggedByUser[m.from] || 0);
     flaggedByUser[m.from] += 1;

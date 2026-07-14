@@ -466,6 +466,41 @@ Verification: `npm test` 49/49 OK, `node --check server/persistence.js`,
 `node --check server/postgres-repositories.js`, `node --check server/index.js`,
 `node --check server/repositories.js`.
 
+## 2026-07-15 - Codex : repository Postgres partiel messages
+
+Contexte: troisieme collection simple branchee sur le mode Postgres partiel,
+apres `auditLogs` et `notifications`. Les messages alimentent le chat, l'export
+RGPD, le trust score, les KPIs et les signaux de desintermediation.
+
+Travail fait:
+
+- Ajout de `createPostgresMessageRepository()` dans
+  `v1/server/postgres-repositories.js`.
+- Operations Postgres couvertes:
+  - creation dans `messages`;
+  - liste par transaction;
+  - liste par auteur pour l'export RGPD;
+  - messages signales par auteur;
+  - tous les messages signales;
+  - compteur de messages;
+  - compteur d'expediteurs signales distincts;
+  - lecture complete pour le dashboard fraude.
+- `PERSISTENCE_POSTGRES_COLLECTIONS` accepte maintenant
+  `auditLogs,notifications,messages`.
+- Les routes/fonctions qui lisent ou ecrivent `repositories.messages` sont
+  compatibles async.
+- Tests SQL/mapping ajoutes pour messages.
+
+Fichiers touches: `v1/server/postgres-repositories.js`,
+`v1/server/persistence.js`, `v1/server/index.js`,
+`v1/server/test/postgres-repositories.test.js`,
+`v1/server/test/persistence.test.js`, `v1/.env.example`,
+`docs/deploiement.md`.
+
+Verification: `npm test` 51/51 OK, `node --check server/persistence.js`,
+`node --check server/postgres-repositories.js`, `node --check server/index.js`,
+`node --check server/repositories.js`.
+
 ## 2026-07-15 - Codex : repository notifications
 
 Contexte: suite de l'extraction progressive de la persistance vers des

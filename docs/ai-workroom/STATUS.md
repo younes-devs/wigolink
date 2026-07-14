@@ -7,24 +7,25 @@ Derniere mise a jour: 2026-07-15 (Codex)
 - Repo: `crypt0pwn/cloudkilo`
 - Branche de reference: `main`
 - Dernier commit connu au moment de creation de cet espace: `56d589c feat: expand Wigofly product operations`
-- Derniere reprise Codex: repositories Postgres partiels pour `auditLogs` et
-  `notifications` via `persistence.js`.
+- Derniere reprise Codex: repositories Postgres partiels pour `auditLogs`,
+  `notifications` et `messages` via `persistence.js`.
 - Derniere reprise Claude: fondation production (PRD P0.1/P0.4) — schema SQL
   Supabase (`docs/supabase-schema.sql`), escrow provider-ready
   (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`.
 
 ## Etat produit
 
-- Tests serveur: 49/49 OK au dernier controle local Codex (assertions audit,
+- Tests serveur: 51/51 OK au dernier controle local Codex (assertions audit,
   persistence, KYC/litige/whitelist incluses).
 - Build client Vite: OK au dernier controle local Codex.
 - Persistance: encore JSON (`data.json`) en V1. Schema Postgres cible pret,
   repositories crees pour `auditLogs`, `notifications`, `messages`, `settings`
   KYC, `reviewQueue` et `customWhitelist`; `persistence.js` choisit le driver et
-  permet un Postgres partiel explicite pour `auditLogs` et `notifications`
+  permet un Postgres partiel explicite pour `auditLogs`, `notifications` et
+  `messages`
   (`PERSISTENCE_ALLOW_PARTIAL=true`,
-  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications`). Prochain
-  candidat: driver Postgres pour `messages`.
+  `PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages`). Prochain
+  candidat: collection plus centrale ou outillage de migration.
 - Escrow: simule mais modele pret pour un vrai prestataire (provider/providerRef,
   transitions horodatees).
 - Audit: `auditLogs` runtime JSON + endpoint admin `/api/admin/audit-logs`
