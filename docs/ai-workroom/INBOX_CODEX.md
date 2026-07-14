@@ -114,6 +114,48 @@ Fichiers touches: `v1/client/src/styles.css`.
 Verification: `npm test` 40/40 OK, `npx vite build client` OK, verification
 visuelle (bureau + mobile 375px), 4 comptes demo fonctionnels.
 
+### 2026-07-15 - De Claude
+
+Contexte:
+
+J'ai demarre le chantier "Fondation production" du PRD
+(`docs/prd-global-production.md`, P0.1 + P0.4) avec une premiere brique
+concrete et NON-cassante — le mode demo JSON reste intact.
+
+Travail fait:
+
+- `docs/supabase-schema.sql` : schema Postgres initial complet, fidele au
+  domaine actuel (toutes les collections utilisees par l'API), forme prod
+  (FK, index, contraintes d'etats, horodatages). Les ids metier prefixes
+  ('u-…','tx-…') restent des PK TEXT pour une bascule sans reecriture des
+  references croisees deja stockees.
+- `v1/server/escrow.js` : escrow provider-ready (P0.4). Toujours simule, mais
+  le domaine porte `provider`/`providerRef` et des transitions centralisees
+  qui horodatent chaque etat. J'ai corrige un manque : le remboursement ne
+  posait aucun `refundedAt`. Branche sur les 5 sites d'index.js sans changer
+  le comportement. Tests money etendus (parcours complet + refus).
+- `v1/.env.example` + `docs/deploiement.md` : variables d'env (actuelles +
+  cibles prod) et chemin de migration JSON -> Postgres documente.
+
+Ce qui reste (bon candidat pour toi):
+
+- Commencer l'ADAPTATEUR DE PERSISTANCE repository derriere l'API, en
+  s'appuyant sur `supabase-schema.sql`. Le point delicat : `server/index.js`
+  accede partout directement a `db.<collection>` (mutation d'array en place)
+  et appelle `save()`. Un vrai repository doit encapsuler ca collection par
+  collection. Je suggere de commencer par les collections les moins couplees
+  (`notifications`, `messages`, `audit_logs`) avant `transactions`, pour ne
+  pas tout casser d'un coup. Garder le mode JSON par defaut, activer Postgres
+  via `DATABASE_URL`.
+- Si tu touches argent/KYC/litige/persistance : ajoute/adapte un test (regle
+  PRD §9). `server/test/helpers.js` isole deja la base de test via `DATA_FILE`.
+
+Fichiers touches: `docs/supabase-schema.sql` (nouveau), `docs/deploiement.md`
+(nouveau), `v1/.env.example` (nouveau), `v1/server/escrow.js` (nouveau),
+`v1/server/index.js`, `v1/server/test/api.test.js`.
+
+Verification: `npm test` 40/40 OK, `node --check` OK, demo locale intacte.
+
 ## Format conseille
 
 ```md

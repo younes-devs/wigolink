@@ -5,6 +5,7 @@ import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './r
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
+import { createEscrow, transitionEscrow } from './escrow.js';
 
 const app = express();
 app.use(cors());
@@ -1524,7 +1525,7 @@ function acceptListingWithTraveler(listing, traveler, offer = null) {
     id: newId('tx'), listingId: listing.id, senderId: listing.senderId,
     travelerId: traveler.id, recipientId: listing.recipientId || listing.senderId,
     status: 'accepted',
-    escrow: { amount: total, travelerPay: listing.travelerPay, commission, state: 'held', heldAt: Date.now() },
+    escrow: createEscrow({ travelerPay: listing.travelerPay, commission }),
     pickupCode: code6(), deliveryCode: code6(),
     sealingVideo: null, events: [], createdAt: Date.now(),
   };
@@ -1659,7 +1660,7 @@ app.post('/api/transactions/:id/refuse', auth, (req, res) => {
   if (!t || !['accepted', 'sealed'].includes(t.status)) return res.status(400).json({ error: 'Étape invalide' });
   if (t.travelerId !== req.user.id) return res.status(403).json({ error: 'Réservé au voyageur' });
   t.status = 'cancelled';
-  t.escrow.state = 'refunded';
+  transitionEscrow(t.escrow, 'refunded');
   const listing = db.listings.find((l) => l.id === t.listingId);
   if (listing) listing.status = 'published';
   addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
@@ -1676,8 +1677,7 @@ app.post('/api/transactions/:id/confirm-delivery', auth, (req, res) => {
   if ((req.body.code || '').toUpperCase() !== t.deliveryCode)
     return res.status(400).json({ error: 'Code invalide — scannez le QR du voyageur' });
   t.status = 'released';
-  t.escrow.state = 'released';
-  t.escrow.releasedAt = Date.now();
+  transitionEscrow(t.escrow, 'released');
   const traveler = findUser(t.travelerId);
   traveler.completed += 1;
   if (traveler.completed >= 5 && !traveler.badges.includes('voyageur-confirme'))
@@ -1935,7 +1935,7 @@ app.post('/api/transactions/:id/dispute', auth, (req, res) => {
   if (!req.body.reason || String(req.body.reason).trim().length < 10)
     return res.status(400).json({ error: 'Merci de détailler le motif (10 caractères minimum)' });
   t.status = 'disputed';
-  t.escrow.state = 'frozen';
+  transitionEscrow(t.escrow, 'frozen');
   const dispute = {
     id: newId('d'), txId: t.id, openedBy: req.user.id, reason: String(req.body.reason).trim().slice(0, 2000),
     evidence: [], status: 'open', createdAt: Date.now(),
@@ -2551,9 +2551,9 @@ app.post('/api/admin/review/:id', auth, adminOnly, (req, res) => {
     d.resolution = decision; // release_traveler | refund_sender
     d.resolvedAt = Date.now();
     if (decision === 'release_traveler') {
-      t.status = 'released'; t.escrow.state = 'released';
+      t.status = 'released'; transitionEscrow(t.escrow, 'released');
     } else {
-      t.status = 'refunded'; t.escrow.state = 'refunded';
+      t.status = 'refunded'; transitionEscrow(t.escrow, 'refunded');
     }
     addEvent(t, 'dispute_resolved', req.user.id, { decision });
     notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');

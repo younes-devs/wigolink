@@ -195,3 +195,44 @@ Fichiers touches: `v1/client/src/styles.css`.
 Verification: `npm test` 40/40 OK, `npx vite build client` OK, verification
 visuelle du correctif (bureau + mobile 375px), 4 comptes demo fonctionnels
 apres nettoyage des donnees de test.
+
+## 2026-07-15 - Claude : fondation production (schema Supabase + escrow provider-ready)
+
+Contexte: demarrage du chantier "Fondation production" du PRD
+(`docs/prd-global-production.md`, P0.1 + P0.4), premiere brique concrete et
+non-cassante avant le gros refactor persistance.
+
+Travail fait:
+
+- **Schema Postgres initial** `docs/supabase-schema.sql` : modelise fidelement
+  tout le domaine actuel (users, sessions, verifications, kyc_submissions/
+  decisions, trips, listings, matching_offers, transactions +
+  transaction_events, messages, disputes, notifications, review_queue,
+  custom_whitelist, audit_logs) en forme production — cles etrangeres, index,
+  contraintes d'etats, horodatages. Ordre de creation verifie (contrainte
+  croisee matching_offers -> transactions ajoutee en fin via ALTER).
+- **Escrow "provider-ready"** (P0.4) `v1/server/escrow.js` : l'escrow reste
+  simule (aucun mouvement reel) mais le domaine porte maintenant `provider`
+  ('simulated'), `providerRef` (null), et des transitions centralisees qui
+  horodatent chaque etat (held/frozen/released/refunded). Corrige au passage
+  un manque : le remboursement ne laissait aucun horodatage (`refundedAt`
+  absent). Branche sur les 5 sites de transition d'index.js sans changer les
+  appelants ni le comportement simule. `txView` expose deja les nouveaux
+  champs (spread), aucun changement client requis.
+- **Config deploiement** : `v1/.env.example` (variables actuelles + cibles
+  prod commentees : DATABASE_URL, RESEND_API_KEY, APP_URL, PAYMENT_PROVIDER)
+  et `docs/deploiement.md` (architecture cible, chemin de migration JSON ->
+  Postgres sans casser la demo, checklist secure-by-default avant prod).
+
+Ce qui reste (relais possible Codex): commencer l'adaptateur de persistance
+repository derriere l'API, collection par collection, en s'appuyant sur le
+schema. Details dans `INBOX_CODEX.md`.
+
+Fichiers touches: `docs/supabase-schema.sql` (nouveau), `docs/deploiement.md`
+(nouveau), `v1/.env.example` (nouveau), `v1/server/escrow.js` (nouveau),
+`v1/server/index.js`, `v1/server/test/api.test.js`.
+
+Verification: `npm test` 40/40 OK (tests money etendus : les nouveaux champs
+escrow provider/providerRef/heldAt/releasedAt et l'horodatage refundedAt sont
+asseres de bout en bout contre un vrai serveur Express). `node --check` sur
+escrow.js et index.js OK. Mode demo local intact (escrow simule inchange).

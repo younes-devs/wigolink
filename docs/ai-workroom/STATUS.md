@@ -1,6 +1,6 @@
 # Status
 
-Derniere mise a jour: 2026-07-14 (Claude)
+Derniere mise a jour: 2026-07-15 (Claude)
 
 ## Etat Git
 
@@ -8,14 +8,20 @@ Derniere mise a jour: 2026-07-14 (Claude)
 - Branche de reference: `main`
 - Dernier commit connu au moment de creation de cet espace: `56d589c feat: expand Wigofly product operations`
 - Derniere reprise Codex: onboarding premier lancement persistant par compte.
-- Derniere reprise Claude: revue UX creation annonce -> matching -> transaction,
-  correctif `.shipment-card-head` (flexbox, carte ecrasee sur grille etroite)
-  dans `v1/client/src/styles.css`.
+- Derniere reprise Claude: fondation production (PRD P0.1/P0.4) — schema SQL
+  Supabase (`docs/supabase-schema.sql`), escrow provider-ready
+  (`v1/server/escrow.js`), `.env.example` + `docs/deploiement.md`.
 
 ## Etat produit
 
-- Tests serveur: 40/40 OK au dernier controle local Claude.
-- Build client Vite: OK au dernier controle local Claude.
+- Tests serveur: 40/40 OK au dernier controle local Claude (assertions escrow
+  provider-ready incluses).
+- Build client Vite: OK au dernier controle local Claude (client non touche
+  par la derniere reprise).
+- Persistance: encore JSON (`data.json`) en V1. Schema Postgres cible pret,
+  adaptateur repository a construire (relais Codex).
+- Escrow: simule mais modele pret pour un vrai prestataire (provider/providerRef,
+  transitions horodatees).
 - Onboarding: affiche une seule fois par compte, avec sauvegarde serveur et
   fallback local.
 - i18n: fr/ar/nl a parite complete. Erreurs API, categories de regles et notifications serveur sont traduites cote serveur via `Accept-Language`.

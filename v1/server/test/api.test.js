@@ -154,6 +154,11 @@ test('parcours complet : annonce → escrow → scellage → double validation �
   assert.equal(tx.escrow.state, 'held');
   const expectedTotal = Math.round((12 + 12 * 0.18) * 100) / 100;
   assert.equal(tx.escrow.amount, expectedTotal);
+  // Modèle escrow « provider-ready » (P0.4) : le domaine porte dès maintenant les champs
+  // qui permettront de brancher un vrai prestataire, même si V1 est simulé.
+  assert.equal(tx.escrow.provider, 'simulated');
+  assert.equal(tx.escrow.providerRef, null);
+  assert.ok(tx.escrow.heldAt, 'l\'escrow séquestré doit être horodaté (heldAt)');
 
   const sealed = await api(`/transactions/${tx.id}/sealing-video`, {
     method: 'POST', token: fatima, body: { simulated: true, geo: '33.57311, -7.58984 (±25 m)' },
@@ -178,6 +183,9 @@ test('parcours complet : annonce → escrow → scellage → double validation �
   assert.equal(delivered.status, 200);
   assert.equal(delivered.body.transaction.status, 'released');
   assert.equal(delivered.body.transaction.escrow.state, 'released');
+  // La libération pose un horodatage (audit paiement P0.4/P0.8) et n'a jamais été un remboursement.
+  assert.ok(delivered.body.transaction.escrow.releasedAt, 'la libération doit être horodatée (releasedAt)');
+  assert.equal(delivered.body.transaction.escrow.refundedAt, undefined);
 
   const cleanRating = await api(`/transactions/${tx.id}/rate`, {
     method: 'POST', token: fatima, body: { targetId: 'u-karim', stars: 5, comment: 'Voyageur fiable, colis intact' },
@@ -481,6 +489,9 @@ test('refus sans pénalité : republie l\'annonce et rembourse l\'escrow', async
   assert.equal(refused.status, 200);
   assert.equal(refused.body.transaction.status, 'cancelled');
   assert.equal(refused.body.transaction.escrow.state, 'refunded');
+  // Le remboursement est désormais horodaté (refundedAt) — indispensable pour tracer un vrai
+  // remboursement prestataire (P0.4) et auditer les mouvements (P0.8). Auparavant absent.
+  assert.ok(refused.body.transaction.escrow.refundedAt, 'le remboursement doit être horodaté (refundedAt)');
 
   const mine = await api('/listings/mine', { token: fatima });
   const listingAfter = mine.body.listings.find((l) => l.id === listing.body.listing.id);
