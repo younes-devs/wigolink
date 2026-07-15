@@ -1539,6 +1539,22 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(messages.status, 200);
   assert.equal(messages.body.messages.length, 1);
 
+  const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
+    method: 'POST',
+    token: fatima,
+    body: { descriptionParcel: 'Demande test refus voyageur', price: trip.price },
+  });
+  assert.equal(acceptedThenRejected.status, 200, JSON.stringify(acceptedThenRejected.body));
+  assert.equal(acceptedThenRejected.body.operation.operationStatus, 'attente_confirmation');
+  const rejected = await api(`/operations/${acceptedThenRejected.body.operation.id}/reject`, {
+    method: 'POST',
+    token: karim,
+    body: { reason: 'Plus de place disponible' },
+  });
+  assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  assert.equal(rejected.body.operation.operationStatus, 'termine');
+  assert.equal(rejected.body.operation.status, 'cancelled');
+
   const accepted = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
     token: fatima,
@@ -1546,7 +1562,11 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   });
   assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   assert.equal(accepted.body.operation.trip.id, trip.id);
-  assert.equal(accepted.body.operation.operationStatus, 'paiement_requis');
+  assert.equal(accepted.body.operation.operationStatus, 'attente_confirmation');
+  assert.equal(accepted.body.operation.paymentStatus, 'pending');
+
+  const payTooSoon = await api(`/operations/${accepted.body.operation.id}/pay`, { method: 'POST', token: fatima });
+  assert.equal(payTooSoon.status, 400, 'le paiement doit attendre la confirmation du voyageur');
 
   const mineWithOperation = await api('/trips/mine', { token: karim });
   assert.equal(mineWithOperation.status, 200);
@@ -1554,6 +1574,14 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.ok(mineActive.activeOperations >= 1, 'le profil doit signaler les operations actives sur un trajet');
   const removeBlocked = await api(`/trips/${trip.id}`, { method: 'DELETE', token: karim });
   assert.equal(removeBlocked.status, 400, 'un trajet avec operation active ne peut pas etre retire');
+
+  const navKarimAction = await api('/navigation-summary', { token: karim });
+  assert.equal(navKarimAction.status, 200);
+  assert.equal(navKarimAction.body.operationsActionRequired >= 1, true, 'le badge en cours doit compter les demandes a confirmer');
+
+  const travelerConfirmed = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: karim });
+  assert.equal(travelerConfirmed.status, 200, JSON.stringify(travelerConfirmed.body));
+  assert.equal(travelerConfirmed.body.operation.operationStatus, 'paiement_requis');
 
   const navFatimaAction = await api('/navigation-summary', { token: fatima });
   assert.equal(navFatimaAction.status, 200);

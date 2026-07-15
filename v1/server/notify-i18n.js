@@ -31,6 +31,11 @@ const TEMPLATES = {
     ar: (p) => `${p.name} رفض العرض.`,
     nl: (p) => `${p.name} heeft het voorstel geweigerd.`,
   },
+  'offer.refused': {
+    fr: () => 'Le voyageur a refuse la demande. Aucun paiement n a ete pris.',
+    ar: () => 'رفض المسافر الطلب. لم يتم أخذ أي دفعة.',
+    nl: () => 'De reiziger heeft de aanvraag geweigerd. Er is geen betaling genomen.',
+  },
   'offer.withdrawn': {
     fr: (p) => `${p.name} a retiré sa proposition.`,
     ar: (p) => `${p.name} سحب عرضه.`,

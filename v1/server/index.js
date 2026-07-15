@@ -903,6 +903,7 @@ function operationView(tx, user) {
 
 function operationNeedsAction(tx, userId) {
   const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
+  if (status === 'attente_confirmation') return tx.travelerId === userId;
   if (status === 'paiement_requis') return tx.senderId === userId;
   if (['paye', 'collecte_prevue', 'en_transport', 'litige'].includes(status)) return isPartyToTx(tx, userId);
   return false;
@@ -972,10 +973,11 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
     travelerId: trip.travelerId,
     recipientId: req.user.id,
     status: 'accepted',
-    operationStatus: 'paiement_requis',
+    operationStatus: 'attente_confirmation',
     price,
     currency: view.currency,
     descriptionParcel,
+    paymentStatus: 'pending',
     escrow: createEscrow({ travelerPay: price, commission }),
     pickupCode: code6(),
     deliveryCode: code6(),
@@ -983,6 +985,8 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
     events: [],
     createdAt: Date.now(),
   };
+  tx.escrow.state = 'pending';
+  delete tx.escrow.heldAt;
   addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price });
   db.transactions.push(tx);
   const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
@@ -1048,8 +1052,11 @@ app.post('/api/operations/:id/pay', auth, (req, res) => {
   const tx = db.transactions.find((t) => t.id === req.params.id);
   if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
   if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'Paiement réservé à l expéditeur' });
+  if (tx.operationStatus !== 'paiement_requis')
+    return res.status(400).json({ error: 'Le paiement attend la confirmation du voyageur' });
   tx.operationStatus = 'paye';
   tx.paymentStatus = 'paid';
+  transitionEscrow(tx.escrow, 'held');
   addEvent(tx, 'operation_paid', req.user.id);
   save();
   res.json({ operation: operationView(tx, req.user) });
@@ -1060,12 +1067,15 @@ app.post('/api/operations/:id/confirm', auth, async (req, res) => {
   if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
   const current = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : null);
   const transitions = {
+    attente_confirmation: { next: 'paiement_requis', event: 'traveler_confirmed', role: 'traveler' },
     paye: { next: 'collecte_prevue', event: 'rendezvous_confirmed' },
     collecte_prevue: { next: 'en_transport', event: 'pickup_confirmed', txStatus: 'in_transit' },
     en_transport: { next: 'termine', event: 'delivery_confirmed', txStatus: 'released', escrow: 'released' },
   };
   const transition = transitions[current];
   if (!transition) return res.status(400).json({ error: 'Aucune confirmation disponible a cette etape' });
+  if (transition.role === 'traveler' && tx.travelerId !== req.user.id)
+    return res.status(403).json({ error: 'Confirmation reservee au voyageur' });
 
   tx.operationStatus = transition.next;
   if (transition.txStatus) tx.status = transition.txStatus;
@@ -1083,6 +1093,24 @@ app.post('/api/operations/:id/confirm', auth, async (req, res) => {
     await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
   }
 
+  save();
+  res.json({ operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/reject', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.travelerId !== req.user.id) return res.status(403).json({ error: 'Refus reserve au voyageur' });
+  if (tx.operationStatus !== 'attente_confirmation')
+    return res.status(400).json({ error: 'Cette operation ne peut plus etre refusee' });
+  tx.status = 'cancelled';
+  tx.operationStatus = 'termine';
+  tx.paymentStatus = 'cancelled';
+  transitionEscrow(tx.escrow, 'refunded');
+  addEvent(tx, 'traveler_rejected', req.user.id, {
+    reason: String(req.body?.reason || '').trim().slice(0, 300),
+  });
+  await notify([tx.senderId], { key: 'offer.refused' }, tx.id, 'transactions', 'suivi');
   save();
   res.json({ operation: operationView(tx, req.user) });
 });

@@ -54,6 +54,23 @@ export default function OperationDetailSimple() {
     }
   };
 
+  const reject = async () => {
+    setBusy('reject');
+    try {
+      const data = await api(`/operations/${id}/reject`, {
+        method: 'POST',
+        body: { reason: issue || 'Demande refusee par le voyageur' },
+      });
+      setOperation(data.operation);
+      setIssue('');
+      toast.info('Demande refusée');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const openDispute = async () => {
     setBusy('dispute');
     try {
@@ -98,9 +115,20 @@ export default function OperationDetailSimple() {
 
         <div className="trip-detail-grid">
           <div><span>Montant</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
-          <div><span>Paiement</span><b>{operation.paymentStatus === 'paid' ? 'Payé' : 'À faire'}</b></div>
-          <div><span>Escrow</span><b>{operation.escrow?.state || 'prévu'}</b></div>
+          <div><span>Paiement</span><b>{paymentLabel(operation)}</b></div>
+          <div><span>Escrow</span><b>{escrowLabel(operation.escrow?.state)}</b></div>
         </div>
+
+        {operation.operationStatus === 'attente_confirmation' && (
+          <div className="alert alert-warn">
+            <Icon name="clock" size={17} />
+            <span>
+              {operation.myRole === 'traveler'
+                ? 'L’expéditeur attend votre accord avant de payer.'
+                : 'Le voyageur doit confirmer avant le paiement.'}
+            </span>
+          </div>
+        )}
 
         {operation.descriptionParcel && (
           <div className="trip-detail-copy">
@@ -134,6 +162,12 @@ export default function OperationDetailSimple() {
               {nextAction(operation)}
             </button>
           )}
+          {operation.myRole === 'traveler' && operation.operationStatus === 'attente_confirmation' && (
+            <button className="btn btn-ghost" onClick={reject} disabled={!!busy}>
+              {busy === 'reject' ? <span className="spinner" /> : <Icon name="x" size={17} />}
+              Refuser
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={message} disabled={!!busy}>
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             Message
@@ -158,6 +192,7 @@ export default function OperationDetailSimple() {
 }
 
 function nextAction(operation) {
+  if (operation.operationStatus === 'attente_confirmation' && operation.myRole === 'traveler') return 'Accepter la demande';
   if (operation.operationStatus === 'paye') return 'Confirmer le rendez-vous';
   if (operation.operationStatus === 'collecte_prevue') return 'Confirmer la prise en charge';
   if (operation.operationStatus === 'en_transport') return 'Confirmer la livraison';
@@ -165,8 +200,27 @@ function nextAction(operation) {
 }
 
 function confirmToast(status) {
+  if (status === 'paiement_requis') return 'Demande acceptée';
   if (status === 'collecte_prevue') return 'Rendez-vous confirmé';
   if (status === 'en_transport') return 'Colis en transport';
   if (status === 'termine') return 'Opération terminée';
   return 'Opération mise à jour';
+}
+
+function paymentLabel(operation) {
+  if (operation.paymentStatus === 'paid') return 'Payé';
+  if (operation.paymentStatus === 'cancelled') return 'Annulé';
+  if (operation.operationStatus === 'attente_confirmation') return 'En attente';
+  return 'À faire';
+}
+
+function escrowLabel(state) {
+  const labels = {
+    pending: 'Prévu',
+    held: 'Sécurisé',
+    frozen: 'Gelé',
+    released: 'Libéré',
+    refunded: 'Remboursé',
+  };
+  return labels[state] || 'Prévu';
 }
