@@ -2522,7 +2522,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .my-trip-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
@@ -2556,6 +2556,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border-radius: 8px;
   padding: 10px;
   color: var(--ink-soft);
+}
+.my-trip-edit {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface-soft);
+}
+.my-trip-edit .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+.my-trip-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 520px) {

@@ -771,9 +771,46 @@ app.post('/api/trips', auth, (req, res) => {
     description: String(description || 'Voyageur disponible pour transporter un colis propre et conforme.').trim().slice(0, 700),
     conditions: String(conditions || 'Petit colis propre, ferme et conforme aux regles douanieres.').trim().slice(0, 500),
     status: 'published',
-    capacityKg: Math.max(1, Math.min(30, Number(capacityKg) || 5)), createdAt: Date.now(),
+    capacityKg: Math.max(1, Math.min(30, Number(capacityKg) || 5)),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
   db.trips.push(trip);
+  save();
+  res.json({ trip: tripPostView(trip, req.user) });
+});
+
+app.patch('/api/trips/:id', auth, (req, res) => {
+  const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
+  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+  if ((trip.status || 'published') !== 'published')
+    return res.status(400).json({ error: 'Trajet indisponible' });
+  const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
+  if (activeOperations.length > 0)
+    return res.status(400).json({ error: 'Impossible de modifier un trajet avec operation en cours' });
+
+  const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body || {};
+  const travelDate = date || departureDate || trip.departureDate || trip.date;
+  const nextFrom = String(from ?? trip.from).trim().slice(0, 60);
+  const nextTo = String(to ?? trip.to).trim().slice(0, 60);
+  if (!nextFrom || !nextTo || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
+  if (nextFrom === nextTo) return res.status(400).json({ error: 'Depart et arrivee identiques' });
+  if (new Date(travelDate) < new Date(new Date().toDateString()))
+    return res.status(400).json({ error: 'La date est deja passee' });
+  const proposedPrice = positiveNumber(price === undefined ? trip.price : price);
+  if (proposedPrice === null) return res.status(400).json({ error: 'Prix invalide' });
+
+  trip.from = nextFrom;
+  trip.to = nextTo;
+  trip.date = travelDate;
+  trip.departureDate = travelDate;
+  trip.price = proposedPrice;
+  trip.capacityKg = Math.max(1, Math.min(30, Number(capacityKg ?? trip.capacityKg) || 5));
+  trip.description = String(description ?? trip.description ?? '').trim().slice(0, 700)
+    || 'Voyageur disponible pour transporter un colis propre et conforme.';
+  trip.conditions = String(conditions ?? trip.conditions ?? '').trim().slice(0, 500)
+    || 'Petit colis propre, ferme et conforme aux regles douanieres.';
+  trip.updatedAt = Date.now();
   save();
   res.json({ trip: tripPostView(trip, req.user) });
 });

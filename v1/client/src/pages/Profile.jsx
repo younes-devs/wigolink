@@ -209,6 +209,8 @@ function MyPublishedTrips() {
   const [trips, setTrips] = useState(null);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  const [editId, setEditId] = useState('');
+  const [editForm, setEditForm] = useState(null);
 
   const load = () => api('/trips/mine').then((data) => setTrips(data.trips)).catch(() => setTrips([]));
   useEffect(() => { load(); }, []);
@@ -221,6 +223,36 @@ function MyPublishedTrips() {
       await load();
     } catch (e) {
       setErr(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const startEdit = (trip) => {
+    setErr('');
+    setEditId(trip.id);
+    setEditForm({
+      from: trip.from || '',
+      to: trip.to || '',
+      date: (trip.departureDate || trip.date || '').slice(0, 10),
+      capacityKg: trip.capacityKg || 1,
+      price: trip.price || 1,
+      description: trip.description || '',
+      conditions: trip.conditions || '',
+    });
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    setBusy(editId);
+    setErr('');
+    try {
+      await api(`/trips/${editId}`, { method: 'PATCH', body: editForm });
+      setEditId('');
+      setEditForm(null);
+      await load();
+    } catch (error) {
+      setErr(error.message);
     } finally {
       setBusy('');
     }
@@ -245,19 +277,68 @@ function MyPublishedTrips() {
       )}
       <div className="my-trip-list">
         {visibleTrips.slice(0, 5).map((trip) => (
-          <article className="my-trip-row" key={trip.id}>
-            <div className="grow">
-              <b>{trip.from} {'->'} {trip.to}</b>
-              <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
-              {trip.activeOperations > 0 && <small>{trip.activeOperations} opération(s) en cours</small>}
-            </div>
-            <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
-              {trip.status === 'published' ? 'Publié' : trip.status}
-            </span>
-            <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title="Retirer">
-              {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
-            </button>
-          </article>
+          editId === trip.id ? (
+            <form className="my-trip-edit" key={trip.id} onSubmit={saveEdit}>
+              <div className="row">
+                <label className="field">
+                  <span>Depart</span>
+                  <input value={editForm.from} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Arrivee</span>
+                  <input value={editForm.to} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })} />
+                </label>
+              </div>
+              <div className="row">
+                <label className="field">
+                  <span>Date</span>
+                  <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Kg</span>
+                  <input type="number" min="1" max="30" value={editForm.capacityKg} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Prix</span>
+                  <input type="number" min="1" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+                </label>
+              </div>
+              <label className="field">
+                <span>Description</span>
+                <textarea rows={2} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+              </label>
+              <label className="field">
+                <span>Conditions</span>
+                <textarea rows={2} value={editForm.conditions} onChange={(e) => setEditForm({ ...editForm, conditions: e.target.value })} />
+              </label>
+              <div className="my-trip-edit-actions">
+                <button className="btn btn-primary btn-sm" disabled={busy === trip.id || !editForm.from || !editForm.to || !editForm.date}>
+                  {busy === trip.id ? <span className="spinner" /> : <Icon name="check" size={15} />}
+                  Enregistrer
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditId(''); setEditForm(null); }}>
+                  <Icon name="x" size={15} />Annuler
+                </button>
+              </div>
+            </form>
+          ) : (
+            <article className="my-trip-row" key={trip.id}>
+              <div className="grow">
+                <b>{trip.from} {'->'} {trip.to}</b>
+                <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
+                {trip.activeOperations > 0 && <small>{trip.activeOperations} opération(s) en cours</small>}
+              </div>
+              <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
+                {trip.status === 'published' ? 'Publié' : trip.status}
+              </span>
+              <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title="Modifier">
+                <Icon name="pencil" size={16} />
+              </button>
+              <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title="Retirer">
+                {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
+              </button>
+            </article>
+          )
         ))}
       </div>
     </div>

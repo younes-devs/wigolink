@@ -1489,6 +1489,31 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
     },
   });
   assert.equal(removable.status, 200, JSON.stringify(removable.body));
+  const editByOther = await api(`/trips/${removable.body.trip.id}`, {
+    method: 'PATCH',
+    token: fatima,
+    body: { price: 22 },
+  });
+  assert.equal(editByOther.status, 404, 'un utilisateur ne peut pas modifier le trajet d un autre');
+  const edited = await api(`/trips/${removable.body.trip.id}`, {
+    method: 'PATCH',
+    token: karim,
+    body: {
+      from: 'Fes',
+      to: 'Lyon',
+      date: '2026-10-02',
+      capacityKg: 5,
+      price: 21,
+      description: 'Trajet test modifie avant retrait.',
+      conditions: 'Colis ferme uniquement.',
+    },
+  });
+  assert.equal(edited.status, 200, JSON.stringify(edited.body));
+  assert.equal(edited.body.trip.to, 'Lyon');
+  assert.equal(edited.body.trip.price, 21);
+  const feedAfterEdit = await api('/trips?to=Lyon', { token: fatima });
+  assert.equal(feedAfterEdit.status, 200);
+  assert.ok(feedAfterEdit.body.trips.some((t) => t.id === removable.body.trip.id && t.price === 21), 'un trajet modifie apparait avec ses nouvelles infos');
   const removed = await api(`/trips/${removable.body.trip.id}`, { method: 'DELETE', token: karim });
   assert.equal(removed.status, 200, JSON.stringify(removed.body));
   const feedAfterRemove = await api('/trips', { token: fatima });
@@ -1574,6 +1599,12 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.ok(mineActive.activeOperations >= 1, 'le profil doit signaler les operations actives sur un trajet');
   const removeBlocked = await api(`/trips/${trip.id}`, { method: 'DELETE', token: karim });
   assert.equal(removeBlocked.status, 400, 'un trajet avec operation active ne peut pas etre retire');
+  const editBlocked = await api(`/trips/${trip.id}`, {
+    method: 'PATCH',
+    token: karim,
+    body: { price: trip.price + 3 },
+  });
+  assert.equal(editBlocked.status, 400, 'un trajet avec operation active ne peut pas etre modifie');
 
   const navKarimAction = await api('/navigation-summary', { token: karim });
   assert.equal(navKarimAction.status, 200);
