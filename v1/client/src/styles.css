@@ -489,14 +489,11 @@ body {
 .operation-event b { display: block; text-transform: capitalize; }
 .operation-event small { color: var(--ink-soft); }
 .messages-shell {
-  width: min(1180px, 100%);
+  width: min(920px, 100%);
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: stretch;
+  display: block;
 }
-.messages-inbox, .messages-welcome {
+.messages-inbox {
   min-width: 0;
 }
 .messages-head {
@@ -545,13 +542,13 @@ body {
 }
 .conversation-search button:hover { background: rgba(22, 24, 29, 0.06); color: var(--ink); }
 .message-filters {
-  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
-  margin-bottom: 12px;
+  display: flex; gap: 7px;
+  margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
 }
 .message-filters button {
-  min-width: 0; min-height: 40px; border: 1px solid var(--hairline); border-radius: 10px;
+  flex: 0 0 auto; min-width: 92px; min-height: 40px; border: 1px solid var(--hairline); border-radius: 10px;
   background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 12.5px;
-  display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; padding: 0 10px;
 }
 .message-filters span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-filters button.active {
@@ -663,19 +660,6 @@ body {
 .message-state.compact { min-height: 150px; }
 .message-state b { color: var(--ink); font-size: 15px; }
 .message-state p { margin: 0; max-width: 360px; line-height: 1.45; }
-.messages-welcome {
-  border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface);
-  min-height: 520px; display: grid; place-items: center; box-shadow: var(--shadow);
-}
-.messages-welcome-inner { width: min(100%, 420px); display: grid; gap: 13px; padding: 28px; }
-.messages-welcome-icon {
-  width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center;
-  background: var(--accent-tint); color: var(--accent);
-}
-.messages-welcome h2 { margin: 0; font-size: 22px; letter-spacing: 0; }
-.messages-welcome p { margin: 0; color: var(--ink-soft); line-height: 1.55; }
-.messages-welcome ul { display: grid; gap: 9px; list-style: none; padding: 0; margin: 0; }
-.messages-welcome li { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 13.5px; }
 .conversation-detail {
   height: calc(100vh - 96px); min-height: 560px;
   display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto;
@@ -2793,14 +2777,13 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 
 @media (max-width: 899px) {
   .messages-shell { display: block; }
-  .messages-welcome { display: none; }
 }
 
 @media (min-width: 900px) {
   .simple-filters { grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(110px, 1fr)); }
   .trip-post-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
   .trip-post { margin-bottom: 0; }
-  .content:has(.messages-shell) { max-width: 1240px; flex-basis: 1240px; }
+  .content:has(.messages-shell) { max-width: 1040px; flex-basis: 1040px; }
   .conversation-detail { min-height: calc(100vh - 140px); }
 }
 
@@ -2817,10 +2800,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   }
   .conversation-header { flex-wrap: wrap; }
   .messages-shell { display: block; }
-  .messages-welcome { display: none; }
   .messages-head { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
-  .message-filters { overflow-x: auto; display: flex; padding-bottom: 2px; }
-  .message-filters button { flex: 0 0 auto; padding: 0 10px; }
+  .message-filters button { min-width: 88px; }
   .conversation-row { grid-template-columns: minmax(0, 1fr) auto; }
   .conversation-row-main { gap: 10px; padding: 12px 0 12px 10px; }
   .conversation-side { align-self: center; }

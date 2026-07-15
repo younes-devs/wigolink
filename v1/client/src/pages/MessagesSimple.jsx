@@ -25,6 +25,7 @@ export default function MessagesSimple() {
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const load = () => {
+    setOpenMenuId(null);
     setError('');
     Promise.all([api('/conversations'), api('/conversations?filter=archived')])
       .then(([activeData, archivedData]) => {
@@ -129,9 +130,9 @@ export default function MessagesSimple() {
 
         <label className="message-search">
           <Icon name="search" size={17} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('messages.search.placeholder')} />
+          <input value={q} onChange={(e) => { setOpenMenuId(null); setQ(e.target.value); }} placeholder={t('messages.search.placeholder')} />
           {q && (
-            <button type="button" onClick={() => setQ('')} aria-label={t('messages.search.clear')}>
+            <button type="button" onClick={() => { setOpenMenuId(null); setQ(''); }} aria-label={t('messages.search.clear')}>
               <Icon name="x" size={15} />
             </button>
           )}
@@ -143,7 +144,7 @@ export default function MessagesSimple() {
               type="button"
               key={item.id}
               className={filter === item.id ? 'active' : ''}
-              onClick={() => setFilter(item.id)}
+              onClick={() => { setOpenMenuId(null); setFilter(item.id); }}
             >
               <span>{t(item.label)}</span>
               <b>{counts[item.id] || 0}</b>
@@ -173,7 +174,7 @@ export default function MessagesSimple() {
             <Icon name="search" size={22} />
             <b>{t('messages.noresult.title')}</b>
             <p>{t('messages.noresult.body')}</p>
-            <button className="btn btn-sm" onClick={() => { setQ(''); setFilter('all'); }}>{t('messages.noresult.reset')}</button>
+            <button className="btn btn-sm" onClick={() => { setOpenMenuId(null); setQ(''); setFilter('all'); }}>{t('messages.noresult.reset')}</button>
           </div>
         )}
 
@@ -193,9 +194,6 @@ export default function MessagesSimple() {
         </div>
       </section>
 
-      <aside className="messages-welcome" aria-label={t('messages.welcome.aria')}>
-        <WelcomePanel />
-      </aside>
     </div>
   );
 }
@@ -268,22 +266,6 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
         )}
       </div>
     </article>
-  );
-}
-
-function WelcomePanel() {
-  return (
-    <div className="messages-welcome-inner">
-      <span className="messages-welcome-icon"><Icon name="chat" size={28} /></span>
-      <h2>{t('messages.welcome.title')}</h2>
-      <p>{t('messages.welcome.body')}</p>
-      <ul>
-        <li><Icon name="plane" size={15} /> {t('messages.welcome.trip')}</li>
-        <li><Icon name="repeat" size={15} /> {t('messages.welcome.operation')}</li>
-        <li><Icon name="shieldCheck" size={15} /> {t('messages.welcome.safe')}</li>
-      </ul>
-      <Link to="/trajets" className="btn btn-primary btn-sm">{t('messages.action.viewTrips')}</Link>
-    </div>
   );
 }
 
