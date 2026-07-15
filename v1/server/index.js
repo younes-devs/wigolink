@@ -886,20 +886,136 @@ function conversationParticipants(conversation, viewerId) {
   return conversation.participantIds.map((id) => publicUser(findUser(id))).filter(Boolean);
 }
 
+function operationAction(tx, viewerId) {
+  if (!tx) return { actionRequired: false, actionLabel: null, actionHref: null };
+  const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
+  const href = `/operations/${tx.id}`;
+  if (status === 'attente_confirmation') {
+    return {
+      actionRequired: tx.travelerId === viewerId,
+      actionLabel: tx.travelerId === viewerId ? 'Confirmer le trajet' : 'En attente du voyageur',
+      actionHref: href,
+    };
+  }
+  if (status === 'paiement_requis') {
+    return {
+      actionRequired: tx.senderId === viewerId,
+      actionLabel: tx.senderId === viewerId ? 'Payer pour continuer' : 'Paiement attendu',
+      actionHref: href,
+    };
+  }
+  if (status === 'paye') return { actionRequired: true, actionLabel: 'Organiser la remise', actionHref: href };
+  if (status === 'collecte_prevue') return { actionRequired: true, actionLabel: 'Confirmer la collecte', actionHref: href };
+  if (status === 'en_transport') return { actionRequired: true, actionLabel: 'Suivre la livraison', actionHref: href };
+  if (status === 'litige') return { actionRequired: true, actionLabel: 'Suivre le litige', actionHref: href };
+  return { actionRequired: false, actionLabel: 'Consulter le recap', actionHref: href };
+}
+
+function conversationStatus(conversation, viewerId, operation) {
+  if ((conversation.archivedBy || []).includes(viewerId)) return 'archived';
+  if (operation) {
+    const status = operation.operationStatus || operation.status;
+    if (['termine', 'released', 'refunded', 'cancelled'].includes(status)) return 'completed';
+    const action = operationAction(operation, viewerId);
+    return action.actionRequired ? 'waiting_user' : 'waiting_other';
+  }
+  const trip = conversation.tripId ? db.trips.find((t) => t.id === conversation.tripId) : null;
+  if (trip && (trip.departureDate || trip.date) < TODAY_ISO()) return 'completed';
+  return 'active';
+}
+
+function conversationContextSummary({ trip, operation }) {
+  if (operation) {
+    return {
+      type: 'operation',
+      label: operation.title || 'Operation en cours',
+      detail: operation.operationStatus || operation.status || 'en cours',
+      href: `/operations/${operation.id}`,
+    };
+  }
+  if (trip) {
+    return {
+      type: 'trip',
+      label: `${trip.from} -> ${trip.to}`,
+      detail: trip.departureDate || trip.date || null,
+      href: `/trajets/${trip.id}`,
+    };
+  }
+  return { type: 'direct', label: 'Discussion directe', detail: null, href: null };
+}
+
 function conversationView(conversation, viewerId) {
   const messages = db.messages.filter((m) => m.conversationId === conversation.id).sort((a, b) => a.at - b.at);
   const lastMessage = messages[messages.length - 1] || null;
   const unread = messages.filter((m) => m.from !== viewerId && !(m.readBy || []).includes(viewerId)).length;
   const trip = conversation.tripId ? db.trips.find((t) => t.id === conversation.tripId) : null;
   const operation = conversation.operationId ? db.transactions.find((t) => t.id === conversation.operationId) : null;
+  const operationUi = operation ? operationView(operation, findUser(viewerId)) : null;
+  const tripUi = trip ? tripPostView(trip) : null;
+  const action = operation ? operationAction(operation, viewerId) : {
+    actionRequired: false,
+    actionLabel: trip ? 'Voir le trajet' : null,
+    actionHref: trip ? `/trajets/${trip.id}` : null,
+  };
+  const status = conversationStatus(conversation, viewerId, operation);
+  const lastMessageAt = lastMessage?.at || conversation.lastMessageAt || conversation.createdAt;
+  const lastMessagePreview = lastMessage?.flagged
+    ? 'Message signale par securite'
+    : (lastMessage?.text || (lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
   return {
     ...conversation,
     participants: conversationParticipants(conversation, viewerId),
     other: conversationParticipants(conversation, viewerId).find((u) => u.id !== viewerId) || null,
     lastMessage,
+    lastMessageAt,
+    lastMessagePreview,
     unread,
-    trip: trip ? tripPostView(trip) : null,
-    operation: operation ? operationView(operation, findUser(viewerId)) : null,
+    unreadCount: unread,
+    status,
+    archived: (conversation.archivedBy || []).includes(viewerId),
+    pinned: (conversation.pinnedBy || []).includes(viewerId),
+    actionRequired: action.actionRequired,
+    actionLabel: action.actionLabel,
+    actionHref: action.actionHref,
+    contextType: operation ? 'operation' : trip ? 'trip' : 'direct',
+    context: conversationContextSummary({ trip: tripUi, operation: operationUi }),
+    updatedAt: lastMessageAt,
+    trip: tripUi,
+    operation: operationUi,
+  };
+}
+
+function adminConversationModerationView(conversation) {
+  if (!conversation) return null;
+  const trip = conversation.tripId ? db.trips.find((t) => t.id === conversation.tripId) : null;
+  const operation = conversation.operationId ? db.transactions.find((t) => t.id === conversation.operationId) : null;
+  const operationUi = operation ? operationView(operation, findUser(conversation.participantIds[0])) : null;
+  const tripUi = trip ? tripPostView(trip) : null;
+  const reports = (conversation.reports || [])
+    .slice()
+    .sort((a, b) => b.at - a.at)
+    .map((report) => ({
+      ...report,
+      reporter: publicUser(findUser(report.reporterId)),
+    }));
+  const messages = conversationMessages(conversation)
+    .slice(-8)
+    .map((message) => ({
+      ...message,
+      fromUser: message.from ? publicUser(findUser(message.from)) : null,
+    }));
+  return {
+    id: conversation.id,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.lastMessageAt || conversation.createdAt,
+    contextType: operation ? 'operation' : trip ? 'trip' : 'direct',
+    context: conversationContextSummary({ trip: tripUi, operation: operationUi }),
+    participants: conversation.participantIds.map((id) => publicUser(findUser(id))).filter(Boolean),
+    reportCount: reports.length,
+    reports,
+    messages,
+    lastMessagePreview: messages[messages.length - 1]?.text || null,
+    moderationStatus: conversation.moderationStatus || 'pending',
   };
 }
 
@@ -915,6 +1031,76 @@ function findOrCreateConversation({ participantIds, tripId = null, operationId =
     db.conversations.push(conversation);
   }
   return conversation;
+}
+
+const SYSTEM_EVENT_TEXT = {
+  trip_accepted: 'Discussion ouverte pour ce trajet.',
+  traveler_confirmed: 'Trajet confirme par le voyageur.',
+  operation_paid: 'Paiement recu. La remise peut etre organisee.',
+  rendezvous_confirmed: 'Rendez-vous de remise planifie.',
+  pickup_confirmed: 'Colis remis au voyageur.',
+  delivery_confirmed: 'Livraison confirmee.',
+  traveler_rejected: 'Operation refusee par le voyageur.',
+  sender_cancelled: 'Operation annulee.',
+  dispute_opened: 'Litige ouvert.',
+  evidence_added: 'Element ajoute au litige.',
+};
+
+function conversationMessages(conversation) {
+  const userMessages = db.messages
+    .filter((m) => m.conversationId === conversation.id)
+    .map((m) => ({
+      ...m,
+      type: m.type || (m.flagged ? 'warning' : 'text'),
+      deliveryStatus: m.deliveryStatus || 'sent',
+      createdAt: m.createdAt || m.at,
+      updatedAt: m.updatedAt || m.at,
+    }));
+  const operation = conversation.operationId ? db.transactions.find((t) => t.id === conversation.operationId) : null;
+  const systemMessages = (operation?.events || [])
+    .filter((event) => SYSTEM_EVENT_TEXT[event.type])
+    .map((event) => ({
+      id: `sys-${event.id}`,
+      conversationId: conversation.id,
+      txId: operation.id,
+      from: null,
+      text: SYSTEM_EVENT_TEXT[event.type],
+      type: 'system',
+      systemEvent: { type: event.type, meta: event.meta || {} },
+      readBy: conversation.participantIds,
+      at: event.at,
+      createdAt: event.at,
+      updatedAt: event.at,
+      deliveryStatus: 'sent',
+    }));
+  return [...systemMessages, ...userMessages].sort((a, b) => a.at - b.at);
+}
+
+function conversationMessagesPage(conversation, query = {}) {
+  let messages = conversationMessages(conversation);
+  const q = String(query.q || '').trim().toLowerCase();
+  if (q) {
+    messages = messages.filter((message) =>
+      `${message.text || ''} ${message.systemEvent?.type || ''} ${(message.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes(q)
+    );
+  }
+  const before = Number(query.before || 0);
+  if (before > 0) messages = messages.filter((message) => message.at < before);
+  const requestedLimit = Number(query.limit || 0);
+  const limit = requestedLimit > 0 ? Math.max(1, Math.min(100, requestedLimit)) : 0;
+  const total = messages.length;
+  if (limit > 0 && messages.length > limit) messages = messages.slice(-limit);
+  const nextBefore = limit > 0 && total > messages.length ? messages[0]?.at || null : null;
+  return {
+    messages,
+    page: {
+      limit: limit || null,
+      total,
+      hasMore: !!nextBefore,
+      nextBefore,
+      q,
+    },
+  };
 }
 
 function operationView(tx, user) {
@@ -1249,21 +1435,38 @@ app.post('/api/conversations', auth, (req, res) => {
 });
 
 app.get('/api/conversations', auth, (req, res) => {
+  const filter = String(req.query.filter || 'all');
+  const q = String(req.query.q || '').trim().toLowerCase();
   const conversations = db.conversations
     .filter((c) => c.participantIds.includes(req.user.id))
-    .sort((a, b) => (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt))
-    .map((c) => conversationView(c, req.user.id));
+    .map((c) => conversationView(c, req.user.id))
+    .filter((c) => filter === 'archived' || !c.archived)
+    .filter((c) => {
+      if (filter === 'unread') return c.unreadCount > 0;
+      if (filter === 'action') return c.actionRequired;
+      if (filter === 'pinned') return c.pinned;
+      if (filter === 'active') return ['active', 'waiting_user', 'waiting_other'].includes(c.status);
+      if (filter === 'done') return c.status === 'completed' || c.status === 'archived';
+      if (filter === 'archived') return c.archived;
+      return true;
+    })
+    .filter((c) => !q || `${c.other?.name || ''} ${c.lastMessagePreview || ''} ${c.context?.label || ''} ${c.context?.detail || ''}`.toLowerCase().includes(q))
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt));
   res.json({ conversations });
+});
+
+app.get('/api/conversations/:id', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  res.json({ conversation: conversationView(conversation, req.user.id) });
 });
 
 app.get('/api/conversations/:id/messages', auth, (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const messages = db.messages
-    .filter((m) => m.conversationId === conversation.id)
-    .sort((a, b) => a.at - b.at);
+  const { messages, page } = conversationMessagesPage(conversation, req.query);
   if (markConversationRead(conversation.id, req.user.id)) save();
-  res.json({ conversation: conversationView(conversation, req.user.id), messages });
+  res.json({ conversation: conversationView(conversation, req.user.id), messages, page });
 });
 
 app.post('/api/conversations/:id/read', auth, (req, res) => {
@@ -1278,15 +1481,131 @@ app.post('/api/conversations/:id/read', auth, (req, res) => {
   });
 });
 
+app.post('/api/conversations/:id/unread', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const lastOther = db.messages
+    .filter((m) => m.conversationId === conversation.id && m.from !== req.user.id)
+    .sort((a, b) => b.at - a.at)[0];
+  if (lastOther) {
+    lastOther.readBy = (lastOther.readBy || []).filter((id) => id !== req.user.id);
+    save();
+  }
+  res.json({
+    ok: true,
+    conversation: conversationView(conversation, req.user.id),
+    messagesUnread: unreadConversationCount(req.user.id),
+  });
+});
+
+app.post('/api/conversations/:id/archive', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const archived = req.body?.archived !== false;
+  const archivedBy = new Set(conversation.archivedBy || []);
+  if (archived) archivedBy.add(req.user.id);
+  else archivedBy.delete(req.user.id);
+  conversation.archivedBy = [...archivedBy];
+  save();
+  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
+});
+
+app.post('/api/conversations/:id/pin', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const pinned = req.body?.pinned !== false;
+  const pinnedBy = new Set(conversation.pinnedBy || []);
+  if (pinned) pinnedBy.add(req.user.id);
+  else pinnedBy.delete(req.user.id);
+  conversation.pinnedBy = [...pinnedBy];
+  save();
+  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
+});
+
+app.post('/api/conversations/:id/report', auth, async (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const allowedReasonCodes = new Set(['external_payment', 'abuse', 'suspicious', 'off_platform', 'other']);
+  const reasonCode = String(req.body?.reasonCode || 'other').trim();
+  const safeReasonCode = allowedReasonCodes.has(reasonCode) ? reasonCode : 'other';
+  const reason = String(req.body?.reason || '').trim().slice(0, 500);
+  const comment = String(req.body?.comment || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'Motif requis' });
+  const report = {
+    id: newId('cr'),
+    conversationId: conversation.id,
+    reporterId: req.user.id,
+    reasonCode: safeReasonCode,
+    reason,
+    comment,
+    at: Date.now(),
+  };
+  conversation.reports = conversation.reports || [];
+  conversation.reports.push(report);
+  conversation.reportedBy = [...new Set([...(conversation.reportedBy || []), req.user.id])];
+  const alreadyQueued = repositories.reviewQueue.open()
+    .some((item) => item.type === 'conversation' && item.refId === conversation.id);
+  if (!alreadyQueued) repositories.reviewQueue.append({ type: 'conversation', refId: conversation.id });
+  await audit(req.user.id, 'conversation.report', 'conversation', conversation.id, { reason, reasonCode: safeReasonCode });
+  save();
+  res.json({ ok: true, report, conversation: conversationView(conversation, req.user.id) });
+});
+
 app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
   const text = String(req.body?.text || '').trim().slice(0, 1000);
-  if (!text) return res.status(400).json({ error: 'Message vide' });
+  const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments.slice(0, 1) : [];
+  if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message vide' });
+  if (attachments.length > 0 && !validPhotos(attachments.map((a) => a?.dataUrl || a)))
+    return res.status(400).json({ error: 'Piece jointe invalide' });
+  const normalizedAttachments = attachments.map((attachment, index) => {
+    const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
+    const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
+    return {
+      id: newId('att'),
+      type: 'image',
+      name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
+      mime,
+      dataUrl,
+      size: dataUrl.length,
+    };
+  });
+  const clientId = String(req.body?.clientId || '').trim().slice(0, 80) || null;
+  if (clientId) {
+    const existing = db.messages.find((m) =>
+      m.conversationId === conversation.id && m.from === req.user.id && m.clientId === clientId
+    );
+    if (existing) {
+      return res.json({
+        message: existing,
+        conversation: conversationView(conversation, req.user.id),
+        warning: existing.flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
+      });
+    }
+  }
   const flagged = detectLeak(text);
-  const msg = { id: newId('m'), conversationId: conversation.id, txId: conversation.operationId || null, from: req.user.id, text, flagged, readBy: [req.user.id], at: Date.now() };
+  const now = Date.now();
+  const msg = {
+    id: newId('m'),
+    clientId,
+    conversationId: conversation.id,
+    txId: conversation.operationId || null,
+    from: req.user.id,
+    text,
+    flagged,
+    flagReason: flagged ? 'contact_outside_app' : null,
+    type: normalizedAttachments.length ? 'attachment' : flagged ? 'warning' : 'text',
+    attachments: normalizedAttachments,
+    deliveryStatus: 'sent',
+    readBy: [req.user.id],
+    at: now,
+    createdAt: now,
+    updatedAt: now,
+  };
   db.messages.push(msg);
   conversation.lastMessageAt = msg.at;
+  conversation.archivedBy = (conversation.archivedBy || []).filter((id) => id !== req.user.id);
   await notify(conversation.participantIds.filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, conversation.operationId || null, 'messages', 'messages');
   save();
   res.json({
@@ -2251,6 +2570,34 @@ app.get('/api/users/:id/reviews', auth, (req, res) => {
   res.json({ reviews, rating: target.rating, ratingCount: target.ratingCount });
 });
 
+app.get('/api/users/:id', auth, (req, res) => {
+  const target = findUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Introuvable' });
+  const trips = db.trips
+    .filter((trip) => trip.travelerId === target.id && (trip.status || 'published') === 'published')
+    .sort((a, b) => String(a.departureDate || a.date).localeCompare(String(b.departureDate || b.date)))
+    .slice(0, 4)
+    .map((trip) => ({
+      id: trip.id,
+      from: trip.from,
+      to: trip.to,
+      departureDate: trip.departureDate || trip.date,
+      price: trip.price,
+      currency: trip.currency || 'EUR',
+      capacityKg: trip.capacityKg,
+    }));
+  res.json({
+    user: publicUser(target),
+    trips,
+    stats: {
+      completed: target.completed || 0,
+      rating: target.rating,
+      ratingCount: target.ratingCount || 0,
+      cancelRate: target.cancelRate || 0,
+    },
+  });
+});
+
 // ---------- Litiges (PRD §3 Phase 6, §4.6) ----------
 const EVIDENCE_WINDOW_MS = 72 * 3600e3; // 72h pour soumettre des preuves (PRD §3 Phase 6)
 const RESOLUTION_TARGET_MS = 7 * 864e5; // cible 7 jours (PRD §4.6)
@@ -2582,6 +2929,7 @@ async function adminOpsSummary() {
   const reviewOpen = repositories.reviewQueue.open();
   const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
   const reviewListings = reviewOpen.filter((r) => r.type === 'listing');
+  const reviewConversations = reviewOpen.filter((r) => r.type === 'conversation');
   const pendingKyc = repositories.kyc.pending();
   const overdueKyc = pendingKyc.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS);
   const openDisputes = db.disputes.filter((d) => d.status === 'open');
@@ -2652,6 +3000,14 @@ async function adminOpsSummary() {
       body: 'Catégories à accepter, refuser ou promouvoir en liste blanche.',
     },
     {
+      id: 'review-conversations',
+      severity: reviewConversations.length ? 'warning' : 'ok',
+      count: reviewConversations.length,
+      tab: 'review',
+      title: 'Conversations signalees',
+      body: 'Messages, participants et contexte a verifier avant decision.',
+    },
+    {
       id: 'fraud-signals',
       severity: riskCount ? 'warning' : 'ok',
       count: riskCount,
@@ -2674,6 +3030,7 @@ async function adminOpsSummary() {
     health: {
       status: reviewDisputes.length || overdueKyc.length ? 'critical' : reviewOpen.length || riskCount || offersAtRisk ? 'watch' : 'clear',
       reviewOpen: reviewOpen.length,
+      conversationReports: reviewConversations.length,
       kycPending: pendingKyc.length,
       kycOverdue: overdueKyc.length,
       openDisputes: openDisputes.length,
@@ -2696,7 +3053,9 @@ async function adminOpsSummary() {
           refId: r.refId,
           label: r.type === 'listing'
             ? db.listings.find((l) => l.id === r.refId)?.title
-            : db.disputes.find((d) => d.id === r.refId)?.reason,
+            : r.type === 'dispute'
+              ? db.disputes.find((d) => d.id === r.refId)?.reason
+              : adminConversationModerationView(db.conversations.find((c) => c.id === r.refId))?.reports?.[0]?.reason,
         })),
       kyc: pendingKyc
         .sort((a, b) => a.submittedAt - b.submittedAt)
@@ -2727,6 +3086,9 @@ app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
       listing: r.type === 'listing' ? db.listings.find((l) => l.id === r.refId) : null,
       dispute: r.type === 'dispute'
         ? (() => { const d = db.disputes.find((x) => x.id === r.refId); return d ? disputeView(d) : null; })()
+        : null,
+      conversation: r.type === 'conversation'
+        ? adminConversationModerationView(db.conversations.find((c) => c.id === r.refId))
         : null,
     })),
     stats: {
@@ -3062,6 +3424,23 @@ app.post('/api/admin/review/:id', auth, adminOnly, async (req, res) => {
       escrowState: t.escrow?.state || null,
     });
     await notify([t.senderId, t.travelerId, t.recipientId], { key: decision === 'release_traveler' ? 'dispute.resolved.traveler' : 'dispute.resolved.sender' }, t.id, 'security', 'litige');
+  }
+  if (item.type === 'conversation') {
+    const conversation = db.conversations.find((x) => x.id === item.refId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+    conversation.moderationStatus = decision || 'reviewed';
+    conversation.moderatedAt = Date.now();
+    conversation.moderatedBy = req.user.id;
+    conversation.reports = (conversation.reports || []).map((report) => ({
+      ...report,
+      reviewedAt: conversation.moderatedAt,
+      reviewedBy: req.user.id,
+      decision: conversation.moderationStatus,
+    }));
+    await audit(req.user.id, `review.conversation.${conversation.moderationStatus}`, 'conversation', conversation.id, {
+      reviewId: item.id,
+      reportCount: conversation.reports.length,
+    });
   }
   save();
   res.json({ ok: true });

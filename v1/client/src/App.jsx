@@ -26,6 +26,7 @@ import ComplianceCenter from './pages/ComplianceCenter.jsx';
 import SenderMatching from './pages/SenderMatching.jsx';
 import OffersCenter from './pages/OffersCenter.jsx';
 import Profile from './pages/Profile.jsx';
+import PublicProfile from './pages/PublicProfile.jsx';
 import Settings from './pages/Settings.jsx';
 import TrustCenter from './pages/TrustCenter.jsx';
 import Admin from './pages/Admin.jsx';
@@ -124,6 +125,7 @@ export default function App() {
                   <Route path="/matching" element={<SenderMatching />} />
                   <Route path="/offres" element={<OffersCenter />} />
                   <Route path="/profil" element={<Profile />} />
+                  <Route path="/membres/:id" element={<PublicProfile />} />
                   <Route path="/parametres" element={<Settings />} />
                   <Route path="/confiance" element={<TrustCenter />} />
                   <Route path="/verification" element={<Kyc />} />

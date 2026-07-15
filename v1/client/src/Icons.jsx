@@ -48,6 +48,8 @@ PATHS.arrowLeft = <path d="m12 19-7-7 7-7M5 12h14" />;
 PATHS.arrowRight = <path d="M5 12h14M12 5l7 7-7 7" />;
 PATHS.share = <><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v13" /></>;
 PATHS.info = <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></>;
+PATHS.moreVertical = <><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></>;
+PATHS.pin = <><path d="M12 17v5" /><path d="M5 17h14" /><path d="m7 9 3-6h4l3 6" /><path d="M8 9h8l1 8H7Z" /></>;
 
 // Logo Google officiel (multicolore, fill)
 export function GoogleLogo({ size = 18 }) {

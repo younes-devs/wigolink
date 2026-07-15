@@ -135,6 +135,9 @@ export default function Admin() {
                   </div>
                 </>
               )}
+              {item.type === 'conversation' && item.conversation && (
+                <ConversationReviewCard item={item} decide={decide} />
+              )}
             </div>
           ))}
         </>
@@ -208,9 +211,9 @@ function OpsPanel({ ops, error, setTab, reload }) {
             <p className="muted" style={{ fontSize: 13 }}>Aucun dossier en revue.</p>
           ) : ops.latest.reviewQueue.map((item) => (
             <button key={item.id} className="ops-row" onClick={() => setTab('review')}>
-              <Icon name={item.type === 'dispute' ? 'alert' : 'package'} size={16} />
+              <Icon name={item.type === 'dispute' ? 'alert' : item.type === 'conversation' ? 'chat' : 'package'} size={16} />
               <span className="grow">
-                <b>{item.type === 'dispute' ? 'Litige' : 'Annonce zone grise'}</b>
+                <b>{item.type === 'dispute' ? 'Litige' : item.type === 'conversation' ? 'Conversation signalee' : 'Annonce zone grise'}</b>
                 <small>{item.label || item.refId}</small>
               </span>
               <small>{DT_FMT.format(item.createdAt)}</small>
@@ -341,6 +344,61 @@ function ListingReviewCard({ item, decide }) {
       )}
     </>
   );
+}
+
+function ConversationReviewCard({ item, decide }) {
+  const c = item.conversation;
+  const people = (c.participants || []).map((p) => p.name).filter(Boolean).join(' ↔ ');
+  const latestReport = c.reports?.[0];
+  return (
+    <>
+      <span className="pill pill-danger mb"><Icon name="alert" size={13} />Conversation signalee</span>
+      <div className="mt"><b>{people || c.id}</b></div>
+      <div className="muted mb" style={{ fontSize: 13 }}>
+        {c.context?.label || 'Conversation directe'}{c.context?.detail ? ` · ${c.context.detail}` : ''} · {c.reportCount} signalement(s)
+      </div>
+
+      {latestReport && (
+        <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
+          <Icon name="alert" size={16} />
+          <span>
+            <b>Motif :</b> {reportReasonLabel(latestReport.reasonCode)} · {latestReport.reason}
+            {latestReport.comment ? <><br /><b>Commentaire :</b> {latestReport.comment}</> : null}
+          </span>
+        </div>
+      )}
+
+      <div className="admin-message-review">
+        {(c.messages || []).length === 0 ? (
+          <p className="muted">Aucun message recent a afficher.</p>
+        ) : c.messages.map((message) => (
+          <div className={`admin-message-line ${message.flagged || message.type === 'warning' ? 'is-warning' : ''}`} key={message.id}>
+            <small>{message.fromUser?.name || 'Systeme'} · {new Date(message.at).toLocaleString('fr-BE')}</small>
+            <p>{message.text || (message.attachments?.length ? 'Piece jointe' : 'Message sans texte')}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="row">
+        <button className="btn btn-ghost btn-sm" onClick={() => decide(item.id, 'conversation_dismissed')}>
+          <Icon name="check" size={15} />Classer sans suite
+        </button>
+        <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'conversation_watch')}>
+          <Icon name="alert" size={15} />Surveiller
+        </button>
+      </div>
+    </>
+  );
+}
+
+function reportReasonLabel(code) {
+  return {
+    external_payment: 'Paiement externe',
+    abuse: 'Insultes ou menace',
+    suspicious: 'Comportement suspect',
+    off_platform: 'Contact hors plateforme',
+    other: 'Autre',
+  }[code] || 'Autre';
 }
 
 function CategoriesPanel({ customWhitelist, reload }) {

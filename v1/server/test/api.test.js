@@ -1452,6 +1452,8 @@ test('i18n des notifications : traduites à la lecture, la même notification su
 test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;
+  const mehdi = tokens.mehdi;
+  const admin = tokens.admin;
 
   const published = await api('/trips', {
     method: 'POST',
@@ -1562,6 +1564,47 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   });
   assert.equal(sent.status, 200, JSON.stringify(sent.body));
   assert.equal(sent.body.message.flagged, false);
+  assert.equal(sent.body.conversation.contextType, 'trip');
+  assert.ok(sent.body.conversation.lastMessagePreview);
+
+  const retryClientId = `client-test-${Date.now()}`;
+  const retry1 = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: { text: 'Message idempotent', clientId: retryClientId },
+  });
+  const retry2 = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: { text: 'Message idempotent', clientId: retryClientId },
+  });
+  assert.equal(retry1.status, 200, JSON.stringify(retry1.body));
+  assert.equal(retry2.status, 200, JSON.stringify(retry2.body));
+  assert.equal(retry2.body.message.id, retry1.body.message.id, 'un retry avec le meme clientId ne duplique pas le message');
+
+  const attached = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: {
+      text: 'Voici la photo du colis.',
+      clientId: `client-attachment-${Date.now()}`,
+      attachments: [{ name: 'colis.png', dataUrl: TINY_PNG }],
+    },
+  });
+  assert.equal(attached.status, 200, JSON.stringify(attached.body));
+  assert.equal(attached.body.message.type, 'attachment');
+  assert.equal(attached.body.message.attachments.length, 1);
+  assert.equal(attached.body.message.attachments[0].type, 'image');
+
+  const badAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: {
+      text: 'Fichier invalide',
+      attachments: [{ name: 'note.txt', dataUrl: 'data:text/plain;base64,SGVsbG8=' }],
+    },
+  });
+  assert.equal(badAttachment.status, 400);
 
   const flaggedConversationMessage = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
@@ -1579,13 +1622,116 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const readByKarim = await api(`/conversations/${conversation.body.conversation.id}/read`, { method: 'POST', token: karim });
   assert.equal(readByKarim.status, 200, JSON.stringify(readByKarim.body));
   assert.equal(readByKarim.body.conversation.unread, 0);
+  const unreadAgain = await api(`/conversations/${conversation.body.conversation.id}/unread`, { method: 'POST', token: karim });
+  assert.equal(unreadAgain.status, 200, JSON.stringify(unreadAgain.body));
+  assert.equal(unreadAgain.body.conversation.unreadCount >= 1, true, 'marquer non lu restaure un compteur local');
+  await api(`/conversations/${conversation.body.conversation.id}/read`, { method: 'POST', token: karim });
+
+  const unreadFilter = await api('/conversations?filter=unread', { token: karim });
+  assert.equal(unreadFilter.status, 200);
+  assert.equal(unreadFilter.body.conversations.some((c) => c.id === conversation.body.conversation.id), false);
+
+  const pinned = await api(`/conversations/${conversation.body.conversation.id}/pin`, {
+    method: 'POST',
+    token: fatima,
+    body: { pinned: true },
+  });
+  assert.equal(pinned.status, 200, JSON.stringify(pinned.body));
+  assert.equal(pinned.body.conversation.pinned, true);
+  const pinnedFilter = await api('/conversations?filter=pinned', { token: fatima });
+  assert.equal(pinnedFilter.status, 200);
+  assert.equal(pinnedFilter.body.conversations[0].id, conversation.body.conversation.id);
+  await api(`/conversations/${conversation.body.conversation.id}/pin`, {
+    method: 'POST',
+    token: fatima,
+    body: { pinned: false },
+  });
+
+  const archived = await api(`/conversations/${conversation.body.conversation.id}/archive`, {
+    method: 'POST',
+    token: fatima,
+    body: { archived: true },
+  });
+  assert.equal(archived.status, 200, JSON.stringify(archived.body));
+  assert.equal(archived.body.conversation.archived, true);
+  const hiddenAfterArchive = await api('/conversations', { token: fatima });
+  assert.equal(hiddenAfterArchive.body.conversations.some((c) => c.id === conversation.body.conversation.id), false);
+  const archivedList = await api('/conversations?filter=archived', { token: fatima });
+  assert.equal(archivedList.body.conversations.some((c) => c.id === conversation.body.conversation.id), true);
+  const restored = await api(`/conversations/${conversation.body.conversation.id}/archive`, {
+    method: 'POST',
+    token: fatima,
+    body: { archived: false },
+  });
+  assert.equal(restored.status, 200, JSON.stringify(restored.body));
+  assert.equal(restored.body.conversation.archived, false);
+  const archivedListAfterRestore = await api('/conversations?filter=archived', { token: fatima });
+  assert.equal(archivedListAfterRestore.body.conversations.some((c) => c.id === conversation.body.conversation.id), false);
+
+  const report = await api(`/conversations/${conversation.body.conversation.id}/report`, {
+    method: 'POST',
+    token: fatima,
+    body: {
+      reasonCode: 'suspicious',
+      reason: 'Comportement suspect dans la discussion',
+      comment: 'La personne insiste pour sortir de Wigofly',
+    },
+  });
+  assert.equal(report.status, 200, JSON.stringify(report.body));
+  assert.equal(report.body.report.conversationId, conversation.body.conversation.id);
+  assert.equal(report.body.report.reasonCode, 'suspicious');
+  assert.match(report.body.report.comment, /sortir de Wigofly/);
+  const adminOverview = await api('/admin/overview', { token: admin });
+  assert.equal(adminOverview.status, 200, JSON.stringify(adminOverview.body));
+  const conversationReview = adminOverview.body.reviewQueue.find((item) =>
+    item.type === 'conversation' && item.refId === conversation.body.conversation.id
+  );
+  assert.ok(conversationReview, 'le signalement conversation doit entrer en file admin');
+  assert.equal(conversationReview.conversation.reportCount, 1);
+  assert.equal(conversationReview.conversation.reports[0].reasonCode, 'suspicious');
+  assert.match(conversationReview.conversation.reports[0].comment, /sortir de Wigofly/);
+  assert.equal(conversationReview.conversation.participants.length, 2);
+  assert.ok(conversationReview.conversation.messages.length >= 1);
+  const adminOps = await api('/admin/ops', { token: admin });
+  assert.equal(adminOps.status, 200, JSON.stringify(adminOps.body));
+  assert.ok(adminOps.body.ops.tasks.some((task) => task.id === 'review-conversations' && task.count >= 1));
+  const actionFilter = await api('/conversations?filter=action', { token: fatima });
+  assert.equal(actionFilter.status, 200);
+  assert.ok(Array.isArray(actionFilter.body.conversations));
+  const reviewedConversation = await api(`/admin/review/${conversationReview.id}`, {
+    method: 'POST',
+    token: admin,
+    body: { decision: 'conversation_dismissed' },
+  });
+  assert.equal(reviewedConversation.status, 200, JSON.stringify(reviewedConversation.body));
+  const overviewAfterConversationReview = await api('/admin/overview', { token: admin });
+  assert.equal(overviewAfterConversationReview.body.reviewQueue.some((item) => item.id === conversationReview.id), false);
+  const outsiderReport = await api(`/conversations/${conversation.body.conversation.id}/report`, {
+    method: 'POST',
+    token: mehdi,
+    body: { reason: 'Je ne devrais pas pouvoir signaler ceci' },
+  });
+  assert.equal(outsiderReport.status, 404);
+
   const navKarimRead = await api('/navigation-summary', { token: karim });
   assert.equal(navKarimRead.status, 200);
   assert.equal(navKarimRead.body.messagesUnread, 0, 'le badge messagerie redescend apres marquage lu');
 
   const messages = await api(`/conversations/${conversation.body.conversation.id}/messages`, { token: fatima });
   assert.equal(messages.status, 200);
-  assert.equal(messages.body.messages.length, 2);
+  assert.equal(messages.body.messages.filter((m) => m.clientId === retryClientId).length, 1);
+  const pagedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?limit=2`, { token: fatima });
+  assert.equal(pagedMessages.status, 200);
+  assert.equal(pagedMessages.body.messages.length, 2);
+  assert.equal(pagedMessages.body.page.hasMore, true);
+  const olderMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?limit=2&before=${pagedMessages.body.page.nextBefore}`, { token: fatima });
+  assert.equal(olderMessages.status, 200);
+  assert.equal(olderMessages.body.messages.length >= 1, true);
+  assert.ok(olderMessages.body.messages.every((m) => m.at < pagedMessages.body.page.nextBefore));
+  const searchedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?q=photo%20du%20colis`, { token: fatima });
+  assert.equal(searchedMessages.status, 200);
+  assert.equal(searchedMessages.body.messages.some((m) => m.id === attached.body.message.id), true);
+  assert.equal(searchedMessages.body.messages.every((m) => `${m.text || ''} ${(m.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes('photo du colis')), true);
 
   const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
@@ -1712,6 +1858,11 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const travelerReviews = await api(`/users/${detailAfterDelivery.body.operation.travelerId}/reviews`, { token: fatima });
   assert.equal(travelerReviews.status, 200);
   assert.ok(travelerReviews.body.reviews.some((r) => r.comment === 'Voyageur fiable sur ce trajet.'), 'la notation simple apparait sur le profil');
+  const travelerProfile = await api(`/users/${detailAfterDelivery.body.operation.travelerId}`, { token: fatima });
+  assert.equal(travelerProfile.status, 200);
+  assert.equal(travelerProfile.body.user.id, detailAfterDelivery.body.operation.travelerId);
+  assert.ok(Array.isArray(travelerProfile.body.trips));
+  assert.equal(typeof travelerProfile.body.stats.completed, 'number');
 
   const acceptedForDispute = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
