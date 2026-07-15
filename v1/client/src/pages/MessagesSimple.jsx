@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
+import { useToast } from '../Toast.jsx';
 
 const FILTERS = [
   { id: 'all', label: 'messages.filter.all' },
@@ -16,10 +17,12 @@ const FILTERS = [
 
 export default function MessagesSimple() {
   useLang();
+  const toast = useToast();
   const [conversations, setConversations] = useState(null);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   const load = () => {
     setError('');
@@ -71,23 +74,43 @@ export default function MessagesSimple() {
   const unreadTotal = (conversations || []).reduce((sum, conversation) => sum + unreadCount(conversation), 0);
 
   const archive = async (conversationId) => {
-    await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: true } });
-    load();
+    try {
+      await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: true } });
+      toast.success(t('messages.toast.archived'));
+      load();
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    }
   };
 
   const restore = async (conversationId) => {
-    await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: false } });
-    load();
+    try {
+      await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: false } });
+      toast.success(t('messages.toast.restored'));
+      load();
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    }
   };
 
   const markUnread = async (conversationId) => {
-    await api(`/conversations/${conversationId}/unread`, { method: 'POST' });
-    load();
+    try {
+      await api(`/conversations/${conversationId}/unread`, { method: 'POST' });
+      toast.success(t('messages.toast.markedUnread'));
+      load();
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    }
   };
 
   const togglePin = async (conversation) => {
-    await api(`/conversations/${conversation.id}/pin`, { method: 'POST', body: { pinned: !conversation.pinned } });
-    load();
+    try {
+      const data = await api(`/conversations/${conversation.id}/pin`, { method: 'POST', body: { pinned: !conversation.pinned } });
+      toast.success(data.conversation.pinned ? t('messages.toast.pinned') : t('messages.toast.unpinned'));
+      load();
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    }
   };
 
   return (
@@ -159,6 +182,8 @@ export default function MessagesSimple() {
             <ConversationRow
               key={conversation.id}
               conversation={conversation}
+              menuOpen={openMenuId === conversation.id}
+              onMenuOpenChange={(open) => setOpenMenuId(open ? conversation.id : null)}
               onArchive={archive}
               onRestore={restore}
               onUnread={markUnread}
@@ -175,13 +200,14 @@ export default function MessagesSimple() {
   );
 }
 
-function ConversationRow({ conversation, onArchive, onRestore, onUnread, onTogglePin }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, onRestore, onUnread, onTogglePin }) {
+  const menuRef = useRef(null);
   const unread = unreadCount(conversation);
   const status = statusLabel(conversation);
   const context = conversation.context?.label || conversationContext(conversation);
   const preview = conversation.lastMessagePreview || conversation.lastMessage?.text || conversationLabel(conversation);
-  const closeMenu = () => setMenuOpen(false);
+  useDismissibleMenu(menuOpen, menuRef, () => onMenuOpenChange(false));
+  const closeMenu = () => onMenuOpenChange(false);
   const runAction = async (action) => {
     closeMenu();
     await action();
@@ -205,14 +231,17 @@ function ConversationRow({ conversation, onArchive, onRestore, onUnread, onToggl
           <p>{preview}</p>
         </div>
       </Link>
-      <div className="conversation-side">
+      <div className="conversation-side" ref={menuRef}>
         {conversation.pinned && <span className="pin-dot" aria-label={t('messages.status.pinned')} title={t('messages.status.pinned')}><Icon name="pin" size={12} /></span>}
         {conversation.actionRequired && <span className="action-dot">{t('messages.status.action')}</span>}
         {unread > 0 && <span className="unread-badge">{unread}</span>}
         <button
           type="button"
           className="conversation-more"
-          onClick={() => setMenuOpen((value) => !value)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMenuOpenChange(!menuOpen);
+          }}
           aria-label={t('messages.action.openMenu')}
           aria-expanded={menuOpen}
         >
@@ -272,6 +301,25 @@ function InboxSkeleton() {
       ))}
     </div>
   );
+}
+
+function useDismissibleMenu(open, ref, onClose) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) return;
+      onClose();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, ref, onClose]);
 }
 
 function unreadCount(conversation) {

@@ -35,6 +35,7 @@ export default function ConversationDetail() {
   const threadRef = useRef(null);
   const endRef = useRef(null);
   const fileRef = useRef(null);
+  const menuRef = useRef(null);
   const latestMessageAtRef = useRef(0);
   const nearBottomRef = useRef(true);
 
@@ -115,6 +116,8 @@ export default function ConversationDetail() {
     if (nearBottom) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     if (nearBottom) setNewMessageCount(0);
   }, [messages.length, nearBottom]);
+
+  useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
 
   const conversationOpen = conversation && conversation.status !== 'completed' && conversation.status !== 'archived';
   const canWrite = conversationOpen && isOnline;
@@ -255,6 +258,17 @@ export default function ConversationDetail() {
     }
   };
 
+  const markUnread = async () => {
+    try {
+      await api(`/conversations/${id}/unread`, { method: 'POST' });
+      toast.success(t('messages.toast.markedUnread'));
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    } finally {
+      setMenuOpen(false);
+    }
+  };
+
   const addAttachment = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -294,11 +308,15 @@ export default function ConversationDetail() {
           <b>{conversation.other?.name || t('messages.contact')}</b>
           <span>{conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic')} - {conversation.context?.label || contextLabel(conversation)}</span>
         </div>
-        <div className="conversation-actions">
+        <div className="conversation-actions" ref={menuRef}>
           {conversation.actionHref && <Link to={conversation.actionHref} className="btn btn-sm">{conversation.actionLabel || t('messages.action.view')}</Link>}
           <button
             className="icon-btn"
-            onClick={() => setMenuOpen((value) => !value)}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setMenuOpen((value) => !value);
+            }}
             aria-label={t('messages.action.openMenu')}
             aria-expanded={menuOpen}
           >
@@ -307,7 +325,7 @@ export default function ConversationDetail() {
           {menuOpen && (
             <div className="conversation-header-menu" role="menu">
               {conversation.other?.id && (
-                <Link to={`/membres/${conversation.other.id}`} role="menuitem">
+                <Link to={`/membres/${conversation.other.id}`} role="menuitem" onClick={() => setMenuOpen(false)}>
                   <Icon name="user" size={15} /> {t('messages.action.viewProfile')}
                 </Link>
               )}
@@ -315,14 +333,14 @@ export default function ConversationDetail() {
                 <Icon name="search" size={15} /> {t('messages.action.searchInConversation')}
               </button>
               {conversation.actionHref && (
-                <Link to={conversation.actionHref} role="menuitem">
+                <Link to={conversation.actionHref} role="menuitem" onClick={() => setMenuOpen(false)}>
                   <Icon name={conversation.contextType === 'trip' ? 'plane' : 'repeat'} size={15} /> {conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}
                 </Link>
               )}
               <button type="button" role="menuitem" onClick={togglePin}>
                 <Icon name="pin" size={15} /> {conversation.pinned ? t('messages.action.unpin') : t('messages.action.pin')}
               </button>
-              <button type="button" role="menuitem" onClick={() => api(`/conversations/${id}/unread`, { method: 'POST' }).then(() => toast.success(t('messages.toast.markedUnread'))).finally(() => setMenuOpen(false))}>
+              <button type="button" role="menuitem" onClick={markUnread}>
                 <Icon name="mail" size={15} /> {t('messages.action.markUnread')}
               </button>
               <button type="button" role="menuitem" onClick={() => toggleArchive(!conversation.archived)}>
@@ -604,6 +622,25 @@ function resizeImage(file, maxPx = 900) {
     img.onerror = reject;
     img.src = URL.createObjectURL(file);
   });
+}
+
+function useDismissibleMenu(open, ref, onClose) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) return;
+      onClose();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, ref, onClose]);
 }
 
 function ConversationSkeleton() {
