@@ -1560,6 +1560,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(navKarimUnread.status, 200);
   assert.equal(navKarimUnread.body.messagesUnread >= 1, true, 'le badge messagerie doit compter les messages non lus');
 
+  const readByKarim = await api(`/conversations/${conversation.body.conversation.id}/read`, { method: 'POST', token: karim });
+  assert.equal(readByKarim.status, 200, JSON.stringify(readByKarim.body));
+  assert.equal(readByKarim.body.conversation.unread, 0);
+  const navKarimRead = await api('/navigation-summary', { token: karim });
+  assert.equal(navKarimRead.status, 200);
+  assert.equal(navKarimRead.body.messagesUnread, 0, 'le badge messagerie redescend apres marquage lu');
+
   const messages = await api(`/conversations/${conversation.body.conversation.id}/messages`, { token: fatima });
   assert.equal(messages.status, 200);
   assert.equal(messages.body.messages.length, 1);

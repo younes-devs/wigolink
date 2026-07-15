@@ -17,7 +17,13 @@ export default function ConversationDetail() {
   const endRef = useRef(null);
 
   const load = () => api(`/conversations/${id}/messages`)
-    .then((data) => { setConversation(data.conversation); setMessages(data.messages); })
+    .then((data) => {
+      setConversation(data.conversation);
+      setMessages(data.messages);
+      api(`/conversations/${id}/read`, { method: 'POST' })
+        .then((read) => setConversation(read.conversation))
+        .catch(() => {});
+    })
     .catch(() => setConversation(false));
 
   useEffect(() => { load(); }, [id]);

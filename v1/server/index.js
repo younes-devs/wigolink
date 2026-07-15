@@ -959,6 +959,20 @@ function unreadConversationCount(userId) {
     }, 0);
 }
 
+function markConversationRead(conversationId, userId) {
+  let changed = false;
+  for (const message of db.messages) {
+    if (message.conversationId !== conversationId || message.from === userId) continue;
+    const readBy = new Set(message.readBy || []);
+    if (!readBy.has(userId)) {
+      readBy.add(userId);
+      message.readBy = [...readBy];
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 // ---------- Nouvelle experience simple : trajets voyageurs ----------
 app.get('/api/navigation-summary', auth, (req, res) => {
   const operationsActionRequired = db.transactions
@@ -1213,11 +1227,20 @@ app.get('/api/conversations/:id/messages', auth, (req, res) => {
   const messages = db.messages
     .filter((m) => m.conversationId === conversation.id)
     .sort((a, b) => a.at - b.at);
-  for (const message of messages) {
-    if (message.from !== req.user.id) message.readBy = [...new Set([...(message.readBy || []), req.user.id])];
-  }
-  save();
+  if (markConversationRead(conversation.id, req.user.id)) save();
   res.json({ conversation: conversationView(conversation, req.user.id), messages });
+});
+
+app.post('/api/conversations/:id/read', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const changed = markConversationRead(conversation.id, req.user.id);
+  if (changed) save();
+  res.json({
+    ok: true,
+    conversation: conversationView(conversation, req.user.id),
+    messagesUnread: unreadConversationCount(req.user.id),
+  });
 });
 
 app.post('/api/conversations/:id/messages', auth, async (req, res) => {
