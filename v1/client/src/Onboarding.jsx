@@ -14,10 +14,10 @@ export function shouldOnboard(user) {
 }
 
 const STEPS = [
-  { icon: 'lock', k: 'escrow' },
-  { icon: 'video', k: 'video' },
-  { icon: 'shieldCheck', k: 'validation' },
-  { icon: 'euro', k: 'pay' },
+  { icon: 'plane', k: 'escrow' },
+  { icon: 'chat', k: 'video' },
+  { icon: 'repeat', k: 'validation' },
+  { icon: 'star', k: 'pay' },
 ];
 
 export default function Onboarding({ user, onClose }) {
@@ -63,16 +63,16 @@ export default function Onboarding({ user, onClose }) {
           <div className="onboard-screen">
             <h1 className="onboard-title">{t('onboard.q')}</h1>
             <p className="onboard-sub">{t('onboard.q.sub')}</p>
-            <button className="onboard-choice" onClick={() => finish('/envois/nouveau')}>
-              <div className="onboard-choice-icon"><Icon name="package" size={24} /></div>
+            <button className="onboard-choice" onClick={() => finish('/trajets')}>
+              <div className="onboard-choice-icon"><Icon name="plane" size={24} /></div>
               <div className="grow">
                 <b>{t('onboard.send.t')}</b>
                 <div className="onboard-step-text">{t('onboard.send.d')}</div>
               </div>
               <Icon name="arrowRight" size={18} />
             </button>
-            <button className="onboard-choice" onClick={() => finish('/')}>
-              <div className="onboard-choice-icon"><Icon name="luggage" size={24} /></div>
+            <button className="onboard-choice" onClick={() => finish('/trajets')}>
+              <div className="onboard-choice-icon"><Icon name="plus" size={24} /></div>
               <div className="grow">
                 <b>{t('onboard.carry.t')}</b>
                 <div className="onboard-step-text">{t('onboard.carry.d')}</div>
