@@ -1729,4 +1729,15 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(disputed.body.operation.operationStatus, 'litige');
   assert.equal(disputed.body.operation.status, 'disputed');
   assert.match(disputed.body.dispute.reason, /rendez-vous/);
+  const detailWithDispute = await api(`/operations/${acceptedForDispute.body.operation.id}`, { token: fatima });
+  assert.equal(detailWithDispute.status, 200);
+  assert.equal(detailWithDispute.body.operation.dispute.id, disputed.body.dispute.id);
+  const evidence = await api(`/operations/${acceptedForDispute.body.operation.id}/evidence`, {
+    method: 'POST',
+    token: fatima,
+    body: { text: 'Capture de conversation et heure du rendez-vous ajoutees.' },
+  });
+  assert.equal(evidence.status, 200, JSON.stringify(evidence.body));
+  assert.equal(evidence.body.operation.dispute.evidence.length, 1);
+  assert.match(evidence.body.operation.dispute.evidence[0].text, /Capture de conversation/);
 });

@@ -16,6 +16,7 @@ export default function OperationDetailSimple() {
   const [operation, setOperation] = useState(null);
   const [busy, setBusy] = useState('');
   const [issue, setIssue] = useState('');
+  const [evidenceText, setEvidenceText] = useState('');
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
 
@@ -129,6 +130,24 @@ export default function OperationDetailSimple() {
     }
   };
 
+  const submitEvidence = async () => {
+    if (!evidenceText.trim()) return;
+    setBusy('evidence');
+    try {
+      const data = await api(`/operations/${id}/evidence`, {
+        method: 'POST',
+        body: { text: evidenceText },
+      });
+      setOperation(data.operation);
+      setEvidenceText('');
+      toast.success('Preuve ajoutee');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   if (operation === null) return <div className="card"><span className="spinner" /> Chargement...</div>;
   if (operation === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>Opération introuvable.</p></div>;
 
@@ -177,6 +196,16 @@ export default function OperationDetailSimple() {
             <p>{operation.descriptionParcel}</p>
           </div>
         )}
+
+        <div className="operation-checklist">
+          <h2><Icon name="check" size={17} />Checklist</h2>
+          {operationChecklist(operation).map((item) => (
+            <div className={`operation-check ${item.done ? 'done' : ''}`} key={item.label}>
+              <Icon name={item.done ? 'check' : 'clock'} size={15} />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
 
         <div className="operation-timeline">
           {(operation.events || []).map((event) => (
@@ -234,6 +263,32 @@ export default function OperationDetailSimple() {
           </div>
         )}
 
+        {operation.operationStatus === 'litige' && (
+          <div className="operation-evidence">
+            <h2><Icon name="alert" size={17} />Preuves</h2>
+            {operation.dispute?.evidence?.length ? (
+              <div className="evidence-list">
+                {operation.dispute.evidence.map((evidence, index) => (
+                  <div className="evidence-item" key={`${evidence.at}-${index}`}>
+                    <p>{evidence.text || 'Photo ajoutee'}</p>
+                    <span className="evidence-time">{new Date(evidence.at).toLocaleString('fr-FR')}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Aucune preuve ajoutee pour le moment.</p>
+            )}
+            <label className="field">
+              <span>Ajouter une preuve</span>
+              <textarea rows={2} value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} placeholder="Ajoutez un fait, une reference ou une explication utile au support." />
+            </label>
+            <button className="btn btn-primary btn-sm" onClick={submitEvidence} disabled={!!busy || !evidenceText.trim()}>
+              {busy === 'evidence' ? <span className="spinner" /> : <Icon name="check" size={15} />}
+              Ajouter
+            </button>
+          </div>
+        )}
+
         {operation.status === 'released' && (
           <div className="operation-rating">
             <h2><Icon name="star" size={17} />Noter {other?.name || 'ce membre'}</h2>
@@ -262,6 +317,24 @@ export default function OperationDetailSimple() {
 
 function alreadyRated(operation, userId, targetId) {
   return !!userId && !!targetId && (operation.ratings || []).some((r) => r.by === userId && r.target === targetId);
+}
+
+function operationChecklist(operation) {
+  const status = operation.operationStatus;
+  const reached = {
+    request: true,
+    traveler: !['attente_confirmation'].includes(status),
+    payment: ['paye', 'collecte_prevue', 'en_transport', 'litige', 'termine'].includes(status) || operation.paymentStatus === 'paid',
+    pickup: ['en_transport', 'litige', 'termine'].includes(status),
+    delivery: status === 'termine' && operation.status === 'released',
+  };
+  return [
+    { label: 'Demande creee', done: reached.request },
+    { label: 'Accord du voyageur', done: reached.traveler },
+    { label: 'Paiement securise', done: reached.payment },
+    { label: 'Colis pris en charge', done: reached.pickup },
+    { label: 'Livraison confirmee', done: reached.delivery },
+  ];
 }
 
 function nextAction(operation) {

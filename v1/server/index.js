@@ -920,6 +920,7 @@ function findOrCreateConversation({ participantIds, tripId = null, operationId =
 function operationView(tx, user) {
   const listing = db.listings.find((l) => l.id === tx.listingId) || null;
   const trip = db.trips.find((t) => t.id === tx.tripId) || null;
+  const dispute = db.disputes.find((d) => d.txId === tx.id && d.status === 'open') || db.disputes.find((d) => d.txId === tx.id) || null;
   const statusMap = {
     accepted: 'paiement_requis',
     sealed: 'collecte_prevue',
@@ -935,6 +936,7 @@ function operationView(tx, user) {
     title: trip ? `${trip.from} -> ${trip.to}` : listing?.title || tx.id,
     trip: trip ? tripPostView(trip, user) : null,
     price: tx.price || tx.escrow?.travelerPay || listing?.travelerPay || trip?.price || 0,
+    dispute: dispute ? disputeView(dispute, tx) : null,
   };
 }
 
@@ -1207,6 +1209,21 @@ app.post('/api/operations/:id/dispute', auth, async (req, res) => {
   repositories.reviewQueue.append({ type: 'dispute', refId: dispute.id });
   addEvent(tx, 'dispute_opened', req.user.id, { reason: dispute.reason });
   await notify([tx.senderId, tx.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, tx.id, 'security', 'litige');
+  save();
+  res.json({ operation: operationView(tx, req.user), dispute: disputeView(dispute, tx) });
+});
+
+app.post('/api/operations/:id/evidence', auth, (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  const dispute = db.disputes.find((d) => d.txId === tx.id && d.status === 'open');
+  if (!dispute) return res.status(400).json({ error: 'Aucun litige ouvert sur cette operation' });
+  const text = String(req.body?.text || '').trim().slice(0, 2000);
+  const { photo } = req.body || {};
+  if (!text && !photo) return res.status(400).json({ error: 'Ajoutez un commentaire ou une photo' });
+  if (photo && !validPhotos([photo])) return res.status(400).json({ error: 'Photo invalide' });
+  dispute.evidence.push({ by: req.user.id, text: text || null, photo: photo || null, at: Date.now() });
+  addEvent(tx, 'evidence_added', req.user.id);
   save();
   res.json({ operation: operationView(tx, req.user), dispute: disputeView(dispute, tx) });
 });
