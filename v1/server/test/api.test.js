@@ -1535,6 +1535,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(detail.body.trip.price > 0, true);
   assert.ok(detail.body.trip.description);
 
+  const filteredByDate = await api('/trips?date=2026-09-01', { token: fatima });
+  assert.equal(filteredByDate.status, 200);
+  assert.ok(filteredByDate.body.trips.some((t) => t.id === trip.id), 'le filtre date minimum garde les trajets posterieurs');
+  const verifiedOnly = await api('/trips?verified=1', { token: fatima });
+  assert.equal(verifiedOnly.status, 200);
+  assert.ok(verifiedOnly.body.trips.every((t) => t.traveler?.kycStatus === 'verified'), 'le filtre verifie ne garde que les voyageurs KYC');
+
   const saved1 = await api(`/saved-trips/${trip.id}`, { method: 'POST', token: fatima });
   assert.equal(saved1.status, 200);
   assert.equal(saved1.body.trip.saved, true);

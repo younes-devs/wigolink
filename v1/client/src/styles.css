@@ -398,6 +398,15 @@ body {
 .simple-page { padding-bottom: 18px; }
 .simple-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .simple-filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px; }
+.filter-toggle {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 42px; border: 1px solid var(--line); border-radius: 8px;
+  padding: 0 12px; background: var(--surface);
+  color: var(--ink); font-size: 13px; font-weight: 650;
+}
+.filter-toggle input {
+  width: 16px; height: 16px; accent-color: var(--accent);
+}
 .trip-publish-form { display: grid; gap: 12px; margin-bottom: 14px; }
 .trip-publish-form .btn { justify-self: end; }
 .profile-simple-links { display: grid; gap: 0; margin-bottom: 12px; }

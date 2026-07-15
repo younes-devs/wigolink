@@ -7,7 +7,8 @@ import { useToast } from '../Toast.jsx';
 
 export default function TripFeedSimple() {
   const [trips, setTrips] = useState(null);
-  const [filters, setFilters] = useState({ q: '', from: '', to: '', maxPrice: '', capacityKg: '' });
+  const today = new Date().toISOString().slice(0, 10);
+  const [filters, setFilters] = useState({ q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '', verified: '' });
   const [publishing, setPublishing] = useState(false);
   const toast = useToast();
 
@@ -56,8 +57,13 @@ export default function TripFeedSimple() {
         <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Rechercher ville, voyageur, description" />
         <input className="chat-input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder="Départ" />
         <input className="chat-input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder="Arrivée" />
+        <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label="Date minimum" />
         <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder="Prix max" />
         <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder="Kg min" />
+        <label className="filter-toggle">
+          <input type="checkbox" checked={filters.verified === '1'} onChange={(e) => setFilters({ ...filters, verified: e.target.checked ? '1' : '' })} />
+          <span>Vérifiés</span>
+        </label>
       </section>
 
       {trips === null && <SkeletonList count={4} />}
