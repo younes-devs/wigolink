@@ -59,7 +59,7 @@ export function Header({ user }) {
   return (
     <header className="app-header">
       <div className="brand">
-        <Link to="/" className="brand-link">
+        <Link to="/trajets" className="brand-link">
           <img className="brand-mark" src="/assets/logo-mark-192.png" alt="Wigofly" />
           <span>Wigofly</span>
         </Link>
@@ -73,17 +73,16 @@ export function Header({ user }) {
 export function BottomNav({ user }) {
   useLang();
   const tabs = [
-    { to: '/', icon: 'sparkles', label: t('nav.home') },
-    { to: '/trajets', icon: 'luggage', label: t('nav.trips') },
-    { to: '/envois', icon: 'package', label: t('nav.shipments') },
-    { to: '/transactions', icon: 'repeat', label: t('nav.transactions') },
-    { to: '/profil', icon: 'user', label: t('nav.profile') },
+    { to: '/trajets', icon: 'plane', label: 'Trajet' },
+    { to: '/en-cours', icon: 'repeat', label: 'En cours' },
+    { to: '/enregistres', icon: 'star', label: 'Enregistrés' },
+    { to: '/messages', icon: 'chat', label: 'Messagerie' },
+    { to: '/profil', icon: 'user', label: 'Profil' },
   ];
-  if (user?.isAdmin) tabs.push({ to: '/admin', icon: 'shield', label: t('nav.admin') });
   return (
     <nav className="bottom-nav">
       {tabs.map((tab) => (
-        <NavLink key={tab.to} to={tab.to} end={tab.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+        <NavLink key={tab.to} to={tab.to} end={tab.to === '/trajets'} className={({ isActive }) => (isActive ? 'active' : '')}>
           <Icon name={tab.icon} size={21} />
           {tab.label}
         </NavLink>

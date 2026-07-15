@@ -28,6 +28,14 @@ export default function SideRail({ user }) {
 
   if (!user) return null;
 
+  const isSimpleRoute = pathname === '/trajets'
+    || pathname.startsWith('/trajets/')
+    || pathname.startsWith('/en-cours')
+    || pathname.startsWith('/operations')
+    || pathname.startsWith('/enregistres')
+    || pathname.startsWith('/messages');
+  if (isSimpleRoute) return null;
+
   const escrowHeld = txs
     .filter((t) => ['held', 'frozen'].includes(t.escrow?.state))
     .reduce((s, t) => s + t.escrow.amount, 0);

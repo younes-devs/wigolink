@@ -64,6 +64,8 @@ function seed() {
     ],
     transactions: [],
     matchingOffers: [],
+    savedTrips: [],
+    conversations: [],
     messages: [],
     disputes: [],
     reviewQueue: [],
@@ -107,6 +109,8 @@ if (!db.customWhitelist) { db.customWhitelist = []; migrated = true; }
 if (!db.kycSubmissions) { db.kycSubmissions = []; migrated = true; }
 if (!db.kycDecisions) { db.kycDecisions = []; migrated = true; }
 if (!db.matchingOffers) { db.matchingOffers = []; migrated = true; }
+if (!db.savedTrips) { db.savedTrips = []; migrated = true; }
+if (!db.conversations) { db.conversations = []; migrated = true; }
 if (!db.auditLogs) { db.auditLogs = []; migrated = true; }
 
 export function save() {

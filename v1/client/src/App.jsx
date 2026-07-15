@@ -1,12 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
 import DevBar from './DevBar.jsx';
 import SideRail from './SideRail.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import Login from './pages/Login.jsx';
+import TripFeedSimple from './pages/TripFeedSimple.jsx';
+import TripDetailSimple from './pages/TripDetailSimple.jsx';
+import SavedTrips from './pages/SavedTrips.jsx';
+import MessagesSimple from './pages/MessagesSimple.jsx';
+import ConversationDetail from './pages/ConversationDetail.jsx';
+import OperationsSimple from './pages/OperationsSimple.jsx';
+import OperationDetailSimple from './pages/OperationDetailSimple.jsx';
 import Feed from './pages/Feed.jsx';
 import ListingDetail from './pages/ListingDetail.jsx';
 import CreateListing from './pages/CreateListing.jsx';
@@ -97,8 +103,15 @@ export default function App() {
                 <Route path="*" element={<Login />} />
               ) : (
                 <>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/trajets" element={<Feed />} />
+                  <Route path="/" element={<Navigate to="/trajets" replace />} />
+                  <Route path="/trajets" element={<TripFeedSimple />} />
+                  <Route path="/trajets/:id" element={<TripDetailSimple />} />
+                  <Route path="/en-cours" element={<OperationsSimple />} />
+                  <Route path="/operations/:id" element={<OperationDetailSimple />} />
+                  <Route path="/enregistres" element={<SavedTrips />} />
+                  <Route path="/messages" element={<MessagesSimple />} />
+                  <Route path="/messages/:id" element={<ConversationDetail />} />
+                  <Route path="/ancien-feed" element={<Feed />} />
                   <Route path="/annonce/:id" element={<ListingDetail />} />
                   <Route path="/envois" element={<MyShipments />} />
                   <Route path="/envois/nouveau" element={<CreateListing />} />

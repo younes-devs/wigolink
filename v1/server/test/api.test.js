@@ -1448,3 +1448,62 @@ test('i18n des notifications : traduites à la lecture, la même notification su
   assert.equal(fr.body.notifications[0].id, ar.body.notifications[0].id);
   assert.equal(fr.body.notifications[0].id, nl.body.notifications[0].id);
 });
+
+test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {
+  const fatima = tokens.fatima;
+
+  const feed = await api('/trips', { token: fatima });
+  assert.equal(feed.status, 200);
+  assert.ok(feed.body.trips.length >= 1, 'le feed doit exposer des posts voyageurs');
+  const trip = feed.body.trips.find((t) => t.from === 'Casablanca' && t.to === 'Bruxelles') || feed.body.trips[0];
+  assert.equal(trip.status, 'published');
+  assert.ok(trip.traveler);
+  assert.equal(trip.saved, false);
+
+  const detail = await api(`/trips/${trip.id}`, { token: fatima });
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.trip.price > 0, true);
+  assert.ok(detail.body.trip.description);
+
+  const saved1 = await api(`/saved-trips/${trip.id}`, { method: 'POST', token: fatima });
+  assert.equal(saved1.status, 200);
+  assert.equal(saved1.body.trip.saved, true);
+  const saved2 = await api(`/saved-trips/${trip.id}`, { method: 'POST', token: fatima });
+  assert.equal(saved2.status, 200);
+  const savedList = await api('/saved-trips', { token: fatima });
+  assert.equal(savedList.status, 200);
+  assert.equal(savedList.body.trips.filter((t) => t.id === trip.id).length, 1, 'un trajet enregistre reste unique');
+
+  const conversation = await api('/conversations', { method: 'POST', token: fatima, body: { tripId: trip.id } });
+  assert.equal(conversation.status, 200, JSON.stringify(conversation.body));
+  assert.equal(conversation.body.conversation.trip.id, trip.id);
+
+  const sent = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: { text: 'Bonjour, votre trajet est-il toujours disponible ?' },
+  });
+  assert.equal(sent.status, 200, JSON.stringify(sent.body));
+  assert.equal(sent.body.message.flagged, false);
+
+  const messages = await api(`/conversations/${conversation.body.conversation.id}/messages`, { token: fatima });
+  assert.equal(messages.status, 200);
+  assert.equal(messages.body.messages.length, 1);
+
+  const accepted = await api(`/trips/${trip.id}/accept`, {
+    method: 'POST',
+    token: fatima,
+    body: { descriptionParcel: 'Petit colis propre, 2 kg', price: trip.price },
+  });
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+  assert.equal(accepted.body.operation.trip.id, trip.id);
+  assert.equal(accepted.body.operation.operationStatus, 'paiement_requis');
+
+  const operations = await api('/operations', { token: fatima });
+  assert.equal(operations.status, 200);
+  assert.ok(operations.body.operations.some((op) => op.id === accepted.body.operation.id));
+
+  const paid = await api(`/operations/${accepted.body.operation.id}/pay`, { method: 'POST', token: fatima });
+  assert.equal(paid.status, 200);
+  assert.equal(paid.body.operation.operationStatus, 'paye');
+});

@@ -45,6 +45,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   security: true,
 };
 const OFFER_REMINDER_MS = 6 * 3600e3;
+const TODAY_ISO = () => new Date().toISOString().slice(0, 10);
 
 function userSettings(user) {
   return repositories.settings.ensure(user);
@@ -771,6 +772,286 @@ function matchesTrip(listing, trip) {
     && listing.dateFrom <= trip.date && trip.date <= listing.dateTo
     && (!listing.weightKg || listing.weightKg <= trip.capacityKg);
 }
+
+function tripPostView(trip, user = null) {
+  const traveler = findUser(trip.travelerId);
+  const saved = user ? db.savedTrips.some((s) => s.userId === user.id && s.tripId === trip.id) : false;
+  const price = Number(trip.price ?? trip.proposedPrice ?? trip.travelerPay ?? trip.priceEur ?? 25);
+  return {
+    ...trip,
+    departureDate: trip.departureDate || trip.date,
+    ticketDate: trip.ticketDate || trip.date,
+    price,
+    currency: trip.currency || 'EUR',
+    capacityKg: Number(trip.capacityKg || 0),
+    description: trip.description || 'Voyageur disponible pour transporter un colis propre et conforme.',
+    conditions: trip.conditions || 'Petit colis propre, ferme et conforme aux regles douanieres.',
+    status: trip.status || (trip.date < TODAY_ISO() ? 'expired' : 'published'),
+    traveler: publicUser(traveler),
+    saved,
+  };
+}
+
+function availableTripPosts(user, query = {}) {
+  const today = TODAY_ISO();
+  let trips = db.trips
+    .map((trip) => ({ ...trip, status: trip.status || (trip.date < today ? 'expired' : 'published') }))
+    .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today);
+  if (query.from) trips = trips.filter((t) => t.from.toLowerCase().includes(String(query.from).toLowerCase()));
+  if (query.to) trips = trips.filter((t) => t.to.toLowerCase().includes(String(query.to).toLowerCase()));
+  if (query.date) trips = trips.filter((t) => (t.departureDate || t.date) >= String(query.date));
+  if (query.capacityKg) trips = trips.filter((t) => Number(t.capacityKg || 0) >= Number(query.capacityKg));
+  if (query.maxPrice) trips = trips.filter((t) => Number(t.price ?? t.proposedPrice ?? 25) <= Number(query.maxPrice));
+  if (query.verified === '1') trips = trips.filter((t) => findUser(t.travelerId)?.kycStatus === 'verified');
+  if (query.q) {
+    const needle = String(query.q).toLowerCase();
+    trips = trips.filter((t) => `${t.from} ${t.to} ${t.description || ''} ${findUser(t.travelerId)?.name || ''}`.toLowerCase().includes(needle));
+  }
+  return trips.sort((a, b) => (a.departureDate || a.date).localeCompare(b.departureDate || b.date)).map((t) => tripPostView(t, user));
+}
+
+function cleanupSavedTrips() {
+  const today = TODAY_ISO();
+  const before = db.savedTrips.length;
+  db.savedTrips = db.savedTrips.filter((saved) => {
+    const trip = db.trips.find((t) => t.id === saved.tripId);
+    return trip && (trip.status || 'published') === 'published' && (trip.departureDate || trip.date) >= today;
+  });
+  return before !== db.savedTrips.length;
+}
+
+function conversationParticipants(conversation, viewerId) {
+  return conversation.participantIds.map((id) => publicUser(findUser(id))).filter(Boolean);
+}
+
+function conversationView(conversation, viewerId) {
+  const messages = db.messages.filter((m) => m.conversationId === conversation.id).sort((a, b) => a.at - b.at);
+  const lastMessage = messages[messages.length - 1] || null;
+  const unread = messages.filter((m) => m.from !== viewerId && !(m.readBy || []).includes(viewerId)).length;
+  const trip = conversation.tripId ? db.trips.find((t) => t.id === conversation.tripId) : null;
+  const operation = conversation.operationId ? db.transactions.find((t) => t.id === conversation.operationId) : null;
+  return {
+    ...conversation,
+    participants: conversationParticipants(conversation, viewerId),
+    other: conversationParticipants(conversation, viewerId).find((u) => u.id !== viewerId) || null,
+    lastMessage,
+    unread,
+    trip: trip ? tripPostView(trip) : null,
+    operation: operation ? operationView(operation, findUser(viewerId)) : null,
+  };
+}
+
+function findOrCreateConversation({ participantIds, tripId = null, operationId = null }) {
+  const ids = [...new Set(participantIds)].sort();
+  let conversation = db.conversations.find((c) =>
+    c.participantIds.slice().sort().join('|') === ids.join('|')
+    && (c.tripId || null) === (tripId || null)
+    && (c.operationId || null) === (operationId || null)
+  );
+  if (!conversation) {
+    conversation = { id: newId('conv'), participantIds: ids, tripId, operationId, lastMessageAt: Date.now(), createdAt: Date.now() };
+    db.conversations.push(conversation);
+  }
+  return conversation;
+}
+
+function operationView(tx, user) {
+  const listing = db.listings.find((l) => l.id === tx.listingId) || null;
+  const trip = db.trips.find((t) => t.id === tx.tripId) || null;
+  const statusMap = {
+    accepted: 'paiement_requis',
+    sealed: 'collecte_prevue',
+    in_transit: 'en_transport',
+    disputed: 'litige',
+    released: 'termine',
+    refunded: 'termine',
+    cancelled: 'termine',
+  };
+  return {
+    ...txView(user)(tx),
+    operationStatus: tx.operationStatus || statusMap[tx.status] || 'attente_confirmation',
+    title: trip ? `${trip.from} -> ${trip.to}` : listing?.title || tx.id,
+    trip: trip ? tripPostView(trip, user) : null,
+    price: tx.price || tx.escrow?.travelerPay || listing?.travelerPay || trip?.price || 0,
+  };
+}
+
+// ---------- Nouvelle experience simple : trajets voyageurs ----------
+app.get('/api/trips', auth, (req, res) => {
+  const trips = availableTripPosts(req.user, req.query);
+  res.json({ trips });
+});
+
+app.get('/api/trips/:id', auth, (req, res, next) => {
+  if (['mine', 'mission'].includes(req.params.id)) return next();
+  const trip = db.trips.find((t) => t.id === req.params.id);
+  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+  const view = tripPostView(trip, req.user);
+  if (view.status !== 'published' || view.departureDate < TODAY_ISO())
+    return res.status(404).json({ error: 'Trajet expiré ou indisponible' });
+  res.json({ trip: view });
+});
+
+app.post('/api/trips/:id/accept', auth, async (req, res) => {
+  const trip = db.trips.find((t) => t.id === req.params.id);
+  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+  const view = tripPostView(trip, req.user);
+  if (view.status !== 'published' || view.departureDate < TODAY_ISO())
+    return res.status(400).json({ error: 'Trajet expiré ou indisponible' });
+  if (trip.travelerId === req.user.id)
+    return res.status(400).json({ error: 'Vous ne pouvez pas accepter votre propre trajet' });
+  if (req.user.kycStatus !== 'verified')
+    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
+
+  const price = positiveNumber(req.body?.price ?? view.price);
+  if (price === null) return res.status(400).json({ error: 'Prix invalide' });
+  const descriptionParcel = String(req.body?.descriptionParcel || '').trim().slice(0, 500);
+  const commission = Math.round(price * 0.18 * 100) / 100;
+  const tx = {
+    id: newId('tx'),
+    tripId: trip.id,
+    listingId: null,
+    senderId: req.user.id,
+    travelerId: trip.travelerId,
+    recipientId: req.user.id,
+    status: 'accepted',
+    operationStatus: 'paiement_requis',
+    price,
+    currency: view.currency,
+    descriptionParcel,
+    escrow: createEscrow({ travelerPay: price, commission }),
+    pickupCode: code6(),
+    deliveryCode: code6(),
+    sealingVideo: null,
+    events: [],
+    createdAt: Date.now(),
+  };
+  addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price });
+  db.transactions.push(tx);
+  const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
+  await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'messages', 'messages');
+  save();
+  res.json({ operation: operationView(tx, req.user), conversation: conversationView(conversation, req.user.id) });
+});
+
+app.get('/api/saved-trips', auth, (req, res) => {
+  const changed = cleanupSavedTrips();
+  if (changed) save();
+  const trips = db.savedTrips
+    .filter((s) => s.userId === req.user.id)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((s) => db.trips.find((t) => t.id === s.tripId))
+    .filter(Boolean)
+    .map((t) => tripPostView(t, req.user));
+  res.json({ trips });
+});
+
+app.post('/api/saved-trips/:tripId', auth, (req, res) => {
+  cleanupSavedTrips();
+  const trip = db.trips.find((t) => t.id === req.params.tripId);
+  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+  const view = tripPostView(trip, req.user);
+  if (view.status !== 'published' || view.departureDate < TODAY_ISO())
+    return res.status(400).json({ error: 'Trajet expiré ou indisponible' });
+  let saved = db.savedTrips.find((s) => s.userId === req.user.id && s.tripId === trip.id);
+  if (!saved) {
+    saved = { id: newId('saved'), userId: req.user.id, tripId: trip.id, createdAt: Date.now() };
+    db.savedTrips.push(saved);
+  }
+  save();
+  res.json({ trip: tripPostView(trip, req.user) });
+});
+
+app.delete('/api/saved-trips/:tripId', auth, (req, res) => {
+  const before = db.savedTrips.length;
+  db.savedTrips = db.savedTrips.filter((s) => !(s.userId === req.user.id && s.tripId === req.params.tripId));
+  if (before !== db.savedTrips.length) save();
+  res.json({ ok: true });
+});
+
+app.get('/api/operations', auth, (req, res) => {
+  const history = req.query.history === '1';
+  const operations = db.transactions
+    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
+    .filter((t) => history ? CLOSED_STATUSES.includes(t.status) : !CLOSED_STATUSES.includes(t.status))
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((t) => operationView(t, req.user));
+  res.json({ operations });
+});
+
+app.get('/api/operations/:id', auth, (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx) return res.status(404).json({ error: 'Operation introuvable' });
+  if (!isPartyToTx(tx, req.user.id) && !req.user.isAdmin)
+    return res.status(403).json({ error: 'Non autorisé' });
+  res.json({ operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/pay', auth, (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'Paiement réservé à l expéditeur' });
+  tx.operationStatus = 'paye';
+  tx.paymentStatus = 'paid';
+  addEvent(tx, 'operation_paid', req.user.id);
+  save();
+  res.json({ operation: operationView(tx, req.user) });
+});
+
+app.post('/api/conversations', auth, (req, res) => {
+  const { tripId = null, operationId = null, userId = null } = req.body || {};
+  let otherId = userId;
+  if (tripId) {
+    const trip = db.trips.find((t) => t.id === tripId);
+    if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+    otherId = trip.travelerId;
+  }
+  if (operationId) {
+    const tx = db.transactions.find((t) => t.id === operationId);
+    if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+    otherId = tx.senderId === req.user.id ? tx.travelerId : tx.senderId;
+  }
+  if (!otherId || !findUser(otherId)) return res.status(400).json({ error: 'Destinataire invalide' });
+  if (otherId === req.user.id) return res.status(400).json({ error: 'Conversation invalide' });
+  const conversation = findOrCreateConversation({ participantIds: [req.user.id, otherId], tripId, operationId });
+  save();
+  res.json({ conversation: conversationView(conversation, req.user.id) });
+});
+
+app.get('/api/conversations', auth, (req, res) => {
+  const conversations = db.conversations
+    .filter((c) => c.participantIds.includes(req.user.id))
+    .sort((a, b) => (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt))
+    .map((c) => conversationView(c, req.user.id));
+  res.json({ conversations });
+});
+
+app.get('/api/conversations/:id/messages', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const messages = db.messages
+    .filter((m) => m.conversationId === conversation.id)
+    .sort((a, b) => a.at - b.at);
+  for (const message of messages) {
+    if (message.from !== req.user.id) message.readBy = [...new Set([...(message.readBy || []), req.user.id])];
+  }
+  save();
+  res.json({ conversation: conversationView(conversation, req.user.id), messages });
+});
+
+app.post('/api/conversations/:id/messages', auth, async (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const text = String(req.body?.text || '').trim().slice(0, 1000);
+  if (!text) return res.status(400).json({ error: 'Message vide' });
+  const flagged = detectLeak(text);
+  const msg = { id: newId('m'), conversationId: conversation.id, txId: conversation.operationId || null, from: req.user.id, text, flagged, readBy: [req.user.id], at: Date.now() };
+  db.messages.push(msg);
+  conversation.lastMessageAt = msg.at;
+  await notify(conversation.participantIds.filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, conversation.operationId || null, 'messages', 'messages');
+  save();
+  res.json({ message: msg, conversation: conversationView(conversation, req.user.id) });
+});
 
 // ---------- Annonces ----------
 // Feed filtré par trajet déclaré (PRD §2.1). ?all=1 pour tout voir.
