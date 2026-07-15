@@ -34,7 +34,8 @@ export default function ConversationDetail() {
     if (!text.trim()) return;
     setSending(true);
     try {
-      await api(`/conversations/${id}/messages`, { method: 'POST', body: { text } });
+      const data = await api(`/conversations/${id}/messages`, { method: 'POST', body: { text } });
+      if (data.warning) toast.info(data.warning);
       setText('');
       load();
     } catch (err) {

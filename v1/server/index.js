@@ -1254,7 +1254,11 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   conversation.lastMessageAt = msg.at;
   await notify(conversation.participantIds.filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, conversation.operationId || null, 'messages', 'messages');
   save();
-  res.json({ message: msg, conversation: conversationView(conversation, req.user.id) });
+  res.json({
+    message: msg,
+    conversation: conversationView(conversation, req.user.id),
+    warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
+  });
 });
 
 // ---------- Annonces ----------

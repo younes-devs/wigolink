@@ -1563,6 +1563,15 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(sent.status, 200, JSON.stringify(sent.body));
   assert.equal(sent.body.message.flagged, false);
 
+  const flaggedConversationMessage = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: { text: 'Mon telephone est 0612345678 mais je reste sur Wigofly.' },
+  });
+  assert.equal(flaggedConversationMessage.status, 200, JSON.stringify(flaggedConversationMessage.body));
+  assert.equal(flaggedConversationMessage.body.message.flagged, true);
+  assert.match(flaggedConversationMessage.body.warning, /Wigofly/);
+
   const navKarimUnread = await api('/navigation-summary', { token: karim });
   assert.equal(navKarimUnread.status, 200);
   assert.equal(navKarimUnread.body.messagesUnread >= 1, true, 'le badge messagerie doit compter les messages non lus');
@@ -1576,7 +1585,7 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
 
   const messages = await api(`/conversations/${conversation.body.conversation.id}/messages`, { token: fatima });
   assert.equal(messages.status, 200);
-  assert.equal(messages.body.messages.length, 1);
+  assert.equal(messages.body.messages.length, 2);
 
   const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
