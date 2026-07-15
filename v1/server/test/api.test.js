@@ -1506,6 +1506,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(sent.status, 200, JSON.stringify(sent.body));
   assert.equal(sent.body.message.flagged, false);
 
+  const navKarimUnread = await api('/navigation-summary', { token: karim });
+  assert.equal(navKarimUnread.status, 200);
+  assert.equal(navKarimUnread.body.messagesUnread >= 1, true, 'le badge messagerie doit compter les messages non lus');
+
   const messages = await api(`/conversations/${conversation.body.conversation.id}/messages`, { token: fatima });
   assert.equal(messages.status, 200);
   assert.equal(messages.body.messages.length, 1);
@@ -1518,6 +1522,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   assert.equal(accepted.body.operation.trip.id, trip.id);
   assert.equal(accepted.body.operation.operationStatus, 'paiement_requis');
+
+  const navFatimaAction = await api('/navigation-summary', { token: fatima });
+  assert.equal(navFatimaAction.status, 200);
+  assert.equal(navFatimaAction.body.operationsActionRequired >= 1, true, 'le badge en cours doit compter les actions requises');
 
   const operations = await api('/operations', { token: fatima });
   assert.equal(operations.status, 200);

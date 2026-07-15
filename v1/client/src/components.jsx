@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
+import { api } from './api';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
 import { t, useLang } from './i18n.js';
@@ -72,18 +73,32 @@ export function Header({ user }) {
 
 export function BottomNav({ user }) {
   useLang();
+  const [summary, setSummary] = useState({ messagesUnread: 0, operationsActionRequired: 0 });
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const load = () => api('/navigation-summary')
+      .then((data) => { if (alive) setSummary(data); })
+      .catch(() => {});
+    load();
+    const timer = setInterval(load, 15000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [user]);
   const tabs = [
     { to: '/trajets', icon: 'plane', label: 'Trajet' },
-    { to: '/en-cours', icon: 'repeat', label: 'En cours' },
+    { to: '/en-cours', icon: 'repeat', label: 'En cours', badge: summary.operationsActionRequired },
     { to: '/enregistres', icon: 'star', label: 'Enregistrés' },
-    { to: '/messages', icon: 'chat', label: 'Messagerie' },
+    { to: '/messages', icon: 'chat', label: 'Messagerie', badge: summary.messagesUnread },
     { to: '/profil', icon: 'user', label: 'Profil' },
   ];
   return (
     <nav className="bottom-nav">
       {tabs.map((tab) => (
         <NavLink key={tab.to} to={tab.to} end={tab.to === '/trajets'} className={({ isActive }) => (isActive ? 'active' : '')}>
-          <Icon name={tab.icon} size={21} />
+          <span className="nav-icon-wrap">
+            <Icon name={tab.icon} size={21} />
+            {tab.badge > 0 && <span className="nav-badge">{tab.badge > 9 ? '9+' : tab.badge}</span>}
+          </span>
           {tab.label}
         </NavLink>
       ))}

@@ -888,7 +888,39 @@ function operationView(tx, user) {
   };
 }
 
+function operationNeedsAction(tx, userId) {
+  const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
+  if (status === 'paiement_requis') return tx.senderId === userId;
+  if (['paye', 'collecte_prevue', 'en_transport', 'litige'].includes(status)) return isPartyToTx(tx, userId);
+  return false;
+}
+
+function unreadConversationCount(userId) {
+  return db.conversations
+    .filter((conversation) => conversation.participantIds.includes(userId))
+    .reduce((sum, conversation) => {
+      const unread = db.messages.filter((m) =>
+        m.conversationId === conversation.id
+        && m.from !== userId
+        && !(m.readBy || []).includes(userId)
+      ).length;
+      return sum + unread;
+    }, 0);
+}
+
 // ---------- Nouvelle experience simple : trajets voyageurs ----------
+app.get('/api/navigation-summary', auth, (req, res) => {
+  const operationsActionRequired = db.transactions
+    .filter((tx) => isPartyToTx(tx, req.user.id))
+    .filter((tx) => !CLOSED_STATUSES.includes(tx.status))
+    .filter((tx) => operationNeedsAction(tx, req.user.id))
+    .length;
+  res.json({
+    messagesUnread: unreadConversationCount(req.user.id),
+    operationsActionRequired,
+  });
+});
+
 app.get('/api/trips', auth, (req, res) => {
   const trips = availableTripPosts(req.user, req.query);
   res.json({ trips });
