@@ -463,6 +463,13 @@ body {
   border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px;
 }
 .operation-issue .btn { justify-self: end; }
+.operation-rating {
+  border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px;
+}
+.operation-rating h2 {
+  display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px;
+}
+.operation-rating textarea { width: 100%; }
 .operation-timeline { display: grid; gap: 10px; }
 .operation-event { display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: start; }
 .operation-event > span { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); margin-top: 4px; }

@@ -1669,6 +1669,16 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(detailAfterDelivery.status, 200);
   assert.equal(detailAfterDelivery.body.operation.operationStatus, 'termine');
 
+  const ratedTraveler = await api(`/transactions/${accepted.body.operation.id}/rate`, {
+    method: 'POST',
+    token: fatima,
+    body: { targetId: detailAfterDelivery.body.operation.travelerId, stars: 5, comment: 'Voyageur fiable sur ce trajet.' },
+  });
+  assert.equal(ratedTraveler.status, 200, JSON.stringify(ratedTraveler.body));
+  const travelerReviews = await api(`/users/${detailAfterDelivery.body.operation.travelerId}/reviews`, { token: fatima });
+  assert.equal(travelerReviews.status, 200);
+  assert.ok(travelerReviews.body.reviews.some((r) => r.comment === 'Voyageur fiable sur ce trajet.'), 'la notation simple apparait sur le profil');
+
   const acceptedForDispute = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
     token: fatima,

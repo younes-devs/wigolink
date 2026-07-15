@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../App.jsx';
+import { Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
@@ -9,10 +11,13 @@ import { STATUS_LABELS } from './OperationsSimple.jsx';
 export default function OperationDetailSimple() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
   const toast = useToast();
   const [operation, setOperation] = useState(null);
   const [busy, setBusy] = useState('');
   const [issue, setIssue] = useState('');
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState('');
 
   const load = () => api(`/operations/${id}`).then((data) => setOperation(data.operation)).catch(() => setOperation(false));
   useEffect(() => { load(); }, [id]);
@@ -81,6 +86,25 @@ export default function OperationDetailSimple() {
       setOperation(data.operation);
       setIssue('');
       toast.info('Problème signalé');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const submitRating = async () => {
+    if (!other?.id || rating < 1) return;
+    setBusy('rating');
+    try {
+      await api(`/transactions/${operation.id}/rate`, {
+        method: 'POST',
+        body: { targetId: other.id, stars: rating, comment: review },
+      });
+      toast.success('Avis enregistré');
+      setRating(0);
+      setReview('');
+      load();
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -186,9 +210,35 @@ export default function OperationDetailSimple() {
             </button>
           </div>
         )}
+
+        {operation.status === 'released' && (
+          <div className="operation-rating">
+            <h2><Icon name="star" size={17} />Noter {other?.name || 'ce membre'}</h2>
+            {alreadyRated(operation, user?.id, other?.id) ? (
+              <span className="pill pill-teal"><Icon name="check" size={13} />Avis envoyé</span>
+            ) : (
+              <>
+                <Stars value={rating} onChange={setRating} />
+                {rating > 0 && (
+                  <>
+                    <textarea rows={2} value={review} onChange={(e) => setReview(e.target.value)} maxLength={400} placeholder="Commentaire public optionnel" />
+                    <button className="btn btn-primary btn-sm" onClick={submitRating} disabled={busy === 'rating'}>
+                      {busy === 'rating' ? <span className="spinner" /> : <Icon name="star" size={15} />}
+                      Envoyer l’avis
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );
+}
+
+function alreadyRated(operation, userId, targetId) {
+  return !!userId && !!targetId && (operation.ratings || []).some((r) => r.by === userId && r.target === targetId);
 }
 
 function nextAction(operation) {
