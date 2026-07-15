@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 
@@ -17,13 +16,10 @@ const FILTERS = [
 
 export default function MessagesSimple() {
   useLang();
-  const { user } = useAuth();
   const [conversations, setConversations] = useState(null);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
-  const [selectedId, setSelectedId] = useState('');
-  const [preview, setPreview] = useState(null);
 
   const load = () => {
     setError('');
@@ -73,33 +69,6 @@ export default function MessagesSimple() {
   }, [conversations, filter, q]);
 
   const unreadTotal = (conversations || []).reduce((sum, conversation) => sum + unreadCount(conversation), 0);
-
-  useEffect(() => {
-    if (!filtered.length) {
-      setSelectedId('');
-      return;
-    }
-    if (!selectedId || !filtered.some((conversation) => conversation.id === selectedId)) {
-      setSelectedId(filtered[0].id);
-    }
-  }, [filtered, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setPreview(null);
-      return;
-    }
-    let ignore = false;
-    setPreview({ loading: true });
-    api(`/conversations/${selectedId}/messages?limit=8`)
-      .then((data) => {
-        if (!ignore) setPreview({ loading: false, ...data });
-      })
-      .catch((err) => {
-        if (!ignore) setPreview({ loading: false, error: err.message || t('messages.error.load') });
-      });
-    return () => { ignore = true; };
-  }, [selectedId]);
 
   const archive = async (conversationId) => {
     await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: true } });
@@ -190,8 +159,6 @@ export default function MessagesSimple() {
             <ConversationRow
               key={conversation.id}
               conversation={conversation}
-              selected={conversation.id === selectedId}
-              onSelect={() => setSelectedId(conversation.id)}
               onArchive={archive}
               onRestore={restore}
               onUnread={markUnread}
@@ -202,35 +169,26 @@ export default function MessagesSimple() {
       </section>
 
       <aside className="messages-welcome" aria-label={t('messages.welcome.aria')}>
-        {selectedId && preview
-          ? <InboxPreview preview={preview} selectedId={selectedId} userId={user?.id} />
-          : <WelcomePanel />}
+        <WelcomePanel />
       </aside>
     </div>
   );
 }
 
-function ConversationRow({ conversation, selected, onSelect, onArchive, onRestore, onUnread, onTogglePin }) {
+function ConversationRow({ conversation, onArchive, onRestore, onUnread, onTogglePin }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const unread = unreadCount(conversation);
   const status = statusLabel(conversation);
   const context = conversation.context?.label || conversationContext(conversation);
   const preview = conversation.lastMessagePreview || conversation.lastMessage?.text || conversationLabel(conversation);
   const closeMenu = () => setMenuOpen(false);
-  const openConversation = (event) => {
-    closeMenu();
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      event.preventDefault();
-      onSelect();
-    }
-  };
   const runAction = async (action) => {
     closeMenu();
     await action();
   };
   return (
-    <article className={`conversation-row ${selected ? 'is-selected' : ''} ${menuOpen ? 'menu-open' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`}>
-      <Link to={`/messages/${conversation.id}`} className="conversation-row-main" onClick={openConversation}>
+    <article className={`conversation-row ${menuOpen ? 'menu-open' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`}>
+      <Link to={`/messages/${conversation.id}`} className="conversation-row-main" onClick={closeMenu}>
         <div className="conversation-avatar">
           <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={50} />
           {conversation.other?.kycStatus === 'verified' && <span className="conversation-verified"><Icon name="check" size={10} /></span>}
@@ -296,75 +254,6 @@ function WelcomePanel() {
         <li><Icon name="shieldCheck" size={15} /> {t('messages.welcome.safe')}</li>
       </ul>
       <Link to="/trajets" className="btn btn-primary btn-sm">{t('messages.action.viewTrips')}</Link>
-    </div>
-  );
-}
-
-function InboxPreview({ preview, selectedId, userId }) {
-  if (preview.loading) {
-    return (
-      <div className="inbox-preview">
-        <div className="conversation-header">
-          <span className="skeleton avatar-skeleton" />
-          <div className="grow">
-            <span className="skeleton line-skeleton wide" />
-            <span className="skeleton line-skeleton" />
-          </div>
-        </div>
-        <div className="preview-thread">
-          <span className="skeleton bubble-skeleton" />
-          <span className="skeleton bubble-skeleton mine" />
-          <span className="skeleton bubble-skeleton" />
-        </div>
-      </div>
-    );
-  }
-  if (preview.error) {
-    return (
-      <div className="message-state">
-        <Icon name="alert" size={24} />
-        <b>{t('messages.error.title')}</b>
-        <p>{preview.error}</p>
-        <Link to={`/messages/${selectedId}`} className="btn btn-sm">{t('messages.action.view')}</Link>
-      </div>
-    );
-  }
-  const conversation = preview.conversation;
-  const messages = preview.messages || [];
-  return (
-    <div className="inbox-preview">
-      <div className="preview-head">
-        <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={50} />
-        <div className="grow">
-          <b>{conversation.other?.name || t('messages.contact')}</b>
-          <span>{conversation.context?.label || conversationContext(conversation)}</span>
-        </div>
-        <Link to={`/messages/${conversation.id}`} className="btn btn-primary btn-sm">{t('messages.preview.open')}</Link>
-      </div>
-      <div className={`preview-context ${conversation.actionRequired ? 'needs-action' : ''}`}>
-        <Icon name={conversation.contextType === 'operation' ? 'repeat' : conversation.contextType === 'trip' ? 'plane' : 'chat'} size={17} />
-        <div className="grow">
-          <b>{conversation.actionLabel || statusLabel(conversation)}</b>
-          <span>{conversation.context?.detail || t('messages.context.default')}</span>
-        </div>
-        {conversation.actionHref && <Link to={conversation.actionHref}>{t('messages.action.view')}</Link>}
-      </div>
-      <div className="preview-thread" aria-label={t('messages.preview.latest')}>
-        {messages.length === 0 && (
-          <div className="message-empty compact">
-            <Icon name="chat" size={22} />
-            <b>{t('messages.conversation.empty.title')}</b>
-            <p>{t('messages.conversation.empty.body')}</p>
-          </div>
-        )}
-        {messages.slice(-6).map((message) => (
-          <div className={`preview-message ${message.from === userId ? 'mine' : ''} ${message.flagged ? 'flagged' : ''}`} key={message.id}>
-            {message.attachments?.length > 0 && <Icon name="image" size={14} />}
-            <p>{message.text || t('messages.attachment.preview')}</p>
-            <span>{shortDate(message.at)}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
