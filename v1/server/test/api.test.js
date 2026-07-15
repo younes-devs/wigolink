@@ -1604,6 +1604,14 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(accepted.body.operation.operationStatus, 'attente_confirmation');
   assert.equal(accepted.body.operation.paymentStatus, 'pending');
 
+  const operationConversation = await api('/conversations', {
+    method: 'POST',
+    token: fatima,
+    body: { operationId: accepted.body.operation.id },
+  });
+  assert.equal(operationConversation.status, 200, JSON.stringify(operationConversation.body));
+  assert.equal(operationConversation.body.conversation.operation.id, accepted.body.operation.id);
+
   const payTooSoon = await api(`/operations/${accepted.body.operation.id}/pay`, { method: 'POST', token: fatima });
   assert.equal(payTooSoon.status, 400, 'le paiement doit attendre la confirmation du voyageur');
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
@@ -7,7 +7,9 @@ import { formatDate } from './TripFeedSimple.jsx';
 
 export default function SavedTrips() {
   const [trips, setTrips] = useState(null);
+  const [busy, setBusy] = useState('');
   const toast = useToast();
+  const nav = useNavigate();
   const load = () => api('/saved-trips').then((data) => setTrips(data.trips)).catch(() => setTrips([]));
   useEffect(() => { load(); }, []);
 
@@ -15,6 +17,17 @@ export default function SavedTrips() {
     await api(`/saved-trips/${tripId}`, { method: 'DELETE' });
     toast.info('Trajet retiré');
     load();
+  };
+
+  const message = async (tripId) => {
+    setBusy(tripId);
+    try {
+      const data = await api('/conversations', { method: 'POST', body: { tripId } });
+      nav(`/messages/${data.conversation.id}`);
+    } catch (e) {
+      toast.error(e.message);
+      setBusy('');
+    }
   };
 
   return (
@@ -41,6 +54,10 @@ export default function SavedTrips() {
             </div>
             <div className="saved-actions">
               <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">Voir</Link>
+              <button className="btn btn-ghost btn-sm" onClick={() => message(trip.id)} disabled={busy === trip.id}>
+                {busy === trip.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}
+                Message
+              </button>
               <button className="icon-btn" onClick={() => remove(trip.id)} title="Retirer"><Icon name="trash" size={16} /></button>
             </div>
           </article>

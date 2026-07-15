@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
+import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
 
 const STATUS_LABELS = {
@@ -17,9 +18,23 @@ const STATUS_LABELS = {
 
 export default function OperationsSimple() {
   const [operations, setOperations] = useState(null);
+  const [busy, setBusy] = useState('');
+  const nav = useNavigate();
+  const toast = useToast();
   useEffect(() => {
     api('/operations').then((data) => setOperations(data.operations)).catch(() => setOperations([]));
   }, []);
+
+  const message = async (operationId) => {
+    setBusy(operationId);
+    try {
+      const data = await api('/conversations', { method: 'POST', body: { operationId } });
+      nav(`/messages/${data.conversation.id}`);
+    } catch (e) {
+      toast.error(e.message);
+      setBusy('');
+    }
+  };
 
   return (
     <div className="simple-page">
@@ -43,17 +58,34 @@ export default function OperationsSimple() {
                 <b>{operation.title}</b>
                 <span>{operation.trip ? formatDate(operation.trip.departureDate) : new Date(operation.createdAt).toLocaleDateString('fr-FR')}</span>
                 <small>{operation.price} {operation.currency || 'EUR'} · {operation.myRole === 'traveler' ? 'Voyageur' : 'Expéditeur'}</small>
+                <small>{operationNextAction(operation)}</small>
               </div>
             </div>
             <div className="operation-side">
               <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] || operation.operationStatus}</span>
               <Link to={`/operations/${operation.id}`} className="btn btn-primary btn-sm">Ouvrir</Link>
+              <button className="btn btn-ghost btn-sm" onClick={() => message(operation.id)} disabled={busy === operation.id}>
+                {busy === operation.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}
+                Message
+              </button>
             </div>
           </article>
         ))}
       </div>
     </div>
   );
+}
+
+function operationNextAction(operation) {
+  if (operation.operationStatus === 'attente_confirmation')
+    return operation.myRole === 'traveler' ? 'Action : accepter ou refuser la demande' : 'En attente de la confirmation voyageur';
+  if (operation.operationStatus === 'paiement_requis')
+    return operation.myRole === 'sender' ? 'Action : payer' : 'En attente du paiement';
+  if (operation.operationStatus === 'paye') return 'Action : confirmer le rendez-vous';
+  if (operation.operationStatus === 'collecte_prevue') return 'Action : confirmer la prise en charge';
+  if (operation.operationStatus === 'en_transport') return 'Action : confirmer la livraison';
+  if (operation.operationStatus === 'litige') return 'Action : suivre le litige';
+  return 'Aucune action requise';
 }
 
 export { STATUS_LABELS };
