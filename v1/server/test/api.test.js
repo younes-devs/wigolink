@@ -1451,11 +1451,31 @@ test('i18n des notifications : traduites à la lecture, la même notification su
 
 test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {
   const fatima = tokens.fatima;
+  const karim = tokens.karim;
+
+  const published = await api('/trips', {
+    method: 'POST',
+    token: karim,
+    body: {
+      from: 'Oujda',
+      to: 'Bruxelles',
+      date: '2026-09-10',
+      capacityKg: 7,
+      price: 31,
+      description: 'Je peux transporter un petit colis propre pendant mon vol.',
+      conditions: 'Pas de liquide ouvert ni produit interdit.',
+    },
+  });
+  assert.equal(published.status, 200, JSON.stringify(published.body));
+  assert.equal(published.body.trip.price, 31);
+  assert.match(published.body.trip.description, /petit colis propre/);
 
   const feed = await api('/trips', { token: fatima });
   assert.equal(feed.status, 200);
   assert.ok(feed.body.trips.length >= 1, 'le feed doit exposer des posts voyageurs');
-  const trip = feed.body.trips.find((t) => t.from === 'Casablanca' && t.to === 'Bruxelles') || feed.body.trips[0];
+  const trip = feed.body.trips.find((t) => t.id === published.body.trip.id)
+    || feed.body.trips.find((t) => t.from === 'Casablanca' && t.to === 'Bruxelles')
+    || feed.body.trips[0];
   assert.equal(trip.status, 'published');
   assert.ok(trip.traveler);
   assert.equal(trip.saved, false);

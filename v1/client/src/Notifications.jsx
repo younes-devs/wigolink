@@ -64,8 +64,9 @@ export default function Notifications() {
   const visibleItems = filter === 'unread' ? items.filter((n) => !n.read) : items;
 
   const targetFor = (n) => {
-    if (n.txId) return `/transactions/${n.txId}${n.section ? `#${n.section}` : ''}`;
-    if (n.section === 'matching') return '/offres';
+    if (n.section === 'messages') return '/messages';
+    if (n.txId) return `/operations/${n.txId}`;
+    if (n.section === 'matching') return '/messages';
     return '/parametres';
   };
 

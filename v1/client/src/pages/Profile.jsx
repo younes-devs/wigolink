@@ -139,46 +139,40 @@ export default function Profile() {
       <KycBanner status={me?.kyc?.status || user.kycStatus} />
       <ProfileSummary user={user} me={me} memberSince={memberSince} />
 
-      <Link to="/confiance" className="profile-trust-link">
-        <span className="settings-row-icon"><Icon name="shieldCheck" size={18} /></span>
-        <span className="grow">
-          <b>{t('trust.title')}</b>
-          <small>{t('trust.profile.link')}</small>
-        </span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
-      <Link to="/documents" className="profile-trust-link">
-        <span className="settings-row-icon"><Icon name="fileText" size={18} /></span>
-        <span className="grow">
-          <b>{t('docs.title')}</b>
-          <small>{t('docs.profile.link')}</small>
-        </span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
-      <Link to="/offres" className="profile-trust-link">
-        <span className="settings-row-icon"><Icon name="send" size={18} /></span>
-        <span className="grow">
-          <b>{t('offers.title')}</b>
-          <small>{t('offers.profile.link')}</small>
-        </span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
-      <Link to="/assistance" className="profile-trust-link">
-        <span className="settings-row-icon"><Icon name="alert" size={18} /></span>
-        <span className="grow">
-          <b>{t('support.title')}</b>
-          <small>{t('support.profile.link')}</small>
-        </span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
-      <Link to="/conformite" className="profile-trust-link">
-        <span className="settings-row-icon"><Icon name="fileText" size={18} /></span>
-        <span className="grow">
-          <b>{t('compliance.title')}</b>
-          <small>{t('compliance.profile.link')}</small>
-        </span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
+      <div className="profile-simple-links">
+        <Link to="/trajets" className="profile-trust-link">
+          <span className="settings-row-icon"><Icon name="plane" size={18} /></span>
+          <span className="grow">
+            <b>Trajets</b>
+            <small>Voir les voyageurs disponibles ou publier votre propre trajet</small>
+          </span>
+          <Icon name="arrowRight" size={16} />
+        </Link>
+        <Link to="/en-cours" className="profile-trust-link">
+          <span className="settings-row-icon"><Icon name="repeat" size={18} /></span>
+          <span className="grow">
+            <b>En cours</b>
+            <small>Suivre les opérations acceptées, payées ou en transport</small>
+          </span>
+          <Icon name="arrowRight" size={16} />
+        </Link>
+        <Link to="/enregistres" className="profile-trust-link">
+          <span className="settings-row-icon"><Icon name="star" size={18} /></span>
+          <span className="grow">
+            <b>Enregistrés</b>
+            <small>Retrouver les trajets sauvegardés avant expiration</small>
+          </span>
+          <Icon name="arrowRight" size={16} />
+        </Link>
+        <Link to="/messages" className="profile-trust-link">
+          <span className="settings-row-icon"><Icon name="chat" size={18} /></span>
+          <span className="grow">
+            <b>Messagerie</b>
+            <small>Discuter avec les voyageurs et expéditeurs</small>
+          </span>
+          <Icon name="arrowRight" size={16} />
+        </Link>
+      </div>
 
       <div className="stat-grid mb">
         <div className="stat"><div className="num">{user.completed}</div><div className="lbl">{t('profile.stat.completed')}</div></div>

@@ -8,6 +8,7 @@ import { useToast } from '../Toast.jsx';
 export default function TripFeedSimple() {
   const [trips, setTrips] = useState(null);
   const [filters, setFilters] = useState({ q: '', from: '', to: '', maxPrice: '', capacityKg: '' });
+  const [publishing, setPublishing] = useState(false);
   const toast = useToast();
 
   const query = useMemo(() => {
@@ -42,8 +43,14 @@ export default function TripFeedSimple() {
           <h1 className="page-title">Trajets</h1>
           <p className="page-sub">Trouvez un voyageur, discutez, puis acceptez le trajet qui vous convient.</p>
         </div>
-        <Link to="/profil" className="btn btn-ghost btn-sm"><Icon name="user" size={15} />Profil</Link>
+        <button className="btn btn-primary btn-sm" onClick={() => setPublishing(!publishing)}>
+          <Icon name={publishing ? 'x' : 'plus'} size={15} />{publishing ? 'Fermer' : 'Publier mon trajet'}
+        </button>
       </div>
+
+      {publishing && (
+        <TripPublishForm onCreated={() => { setPublishing(false); toast.success('Trajet publié'); load(); }} />
+      )}
 
       <section className="simple-filters">
         <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Rechercher ville, voyageur, description" />
@@ -101,6 +108,75 @@ export default function TripFeedSimple() {
         ))}
       </div>
     </div>
+  );
+}
+
+function TripPublishForm({ onCreated }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const toast = useToast();
+  const [form, setForm] = useState({
+    from: 'Oujda',
+    to: 'Bruxelles',
+    date: '',
+    capacityKg: 6,
+    price: 25,
+    description: 'Je pars avec une valise soute, je peux prendre un petit colis propre.',
+    conditions: 'Colis propre, fermé, conforme et pas trop fragile.',
+  });
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api('/trips', { method: 'POST', body: form });
+      onCreated();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="card trip-publish-form" onSubmit={submit}>
+      <div className="row">
+        <div className="field">
+          <label>Départ</label>
+          <input value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
+        </div>
+        <div className="field">
+          <label>Arrivée</label>
+          <input value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
+        </div>
+      </div>
+      <div className="row">
+        <div className="field">
+          <label>Date du billet</label>
+          <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        </div>
+        <div className="field">
+          <label>Capacité kg</label>
+          <input type="number" min="1" max="30" value={form.capacityKg} onChange={(e) => setForm({ ...form, capacityKg: e.target.value })} />
+        </div>
+        <div className="field">
+          <label>Prix proposé</label>
+          <input type="number" min="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+        </div>
+      </div>
+      <div className="field">
+        <label>Description</label>
+        <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+      </div>
+      <div className="field">
+        <label>Conditions</label>
+        <textarea rows={2} value={form.conditions} onChange={(e) => setForm({ ...form, conditions: e.target.value })} />
+      </div>
+      <button className="btn btn-primary" disabled={busy || !form.from || !form.to || !form.date}>
+        {busy ? <span className="spinner" /> : <Icon name="plane" size={17} />}
+        Publier le trajet
+      </button>
+    </form>
   );
 }
 

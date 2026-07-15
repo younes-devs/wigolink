@@ -744,18 +744,30 @@ app.get('/api/trips/mission', auth, (req, res) => {
 app.post('/api/trips', auth, (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
-  const { from, to, date, capacityKg } = req.body;
-  if (!from || !to || !date) return res.status(400).json({ error: 'Trajet, sens et date requis' });
+  const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body;
+  const travelDate = date || departureDate;
+  if (!from || !to || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
   if (from === to) return res.status(400).json({ error: 'Départ et arrivée identiques' });
-  if (new Date(date) < new Date(new Date().toDateString()))
+  if (new Date(travelDate) < new Date(new Date().toDateString()))
     return res.status(400).json({ error: 'La date est déjà passée' });
+  const proposedPrice = positiveNumber(price === undefined ? 25 : price);
+  if (proposedPrice === null) return res.status(400).json({ error: 'Prix invalide' });
   const trip = {
-    id: newId('t'), travelerId: req.user.id, from, to, date,
+    id: newId('t'), travelerId: req.user.id,
+    from: String(from).trim().slice(0, 60),
+    to: String(to).trim().slice(0, 60),
+    date: travelDate,
+    departureDate: travelDate,
+    price: proposedPrice,
+    currency: 'EUR',
+    description: String(description || 'Voyageur disponible pour transporter un colis propre et conforme.').trim().slice(0, 700),
+    conditions: String(conditions || 'Petit colis propre, ferme et conforme aux regles douanieres.').trim().slice(0, 500),
+    status: 'published',
     capacityKg: Math.max(1, Math.min(30, Number(capacityKg) || 5)), createdAt: Date.now(),
   };
   db.trips.push(trip);
   save();
-  res.json({ trip });
+  res.json({ trip: tripPostView(trip, req.user) });
 });
 
 app.delete('/api/trips/:id', auth, (req, res) => {
