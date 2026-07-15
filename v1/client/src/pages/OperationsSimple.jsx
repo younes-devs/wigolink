@@ -8,22 +8,26 @@ import { formatDate } from './TripFeedSimple.jsx';
 const STATUS_LABELS = {
   attente_confirmation: 'Attente confirmation',
   paiement_requis: 'Paiement requis',
-  paye: 'Payé',
-  collecte_prevue: 'Collecte prévue',
+  paye: 'Paye',
+  collecte_prevue: 'Collecte prevue',
   en_transport: 'En transport',
-  livraison_prevue: 'Livraison prévue',
+  livraison_prevue: 'Livraison prevue',
   litige: 'Litige',
-  termine: 'Terminé',
+  termine: 'Termine',
 };
 
 export default function OperationsSimple() {
   const [operations, setOperations] = useState(null);
+  const [view, setView] = useState('active');
   const [busy, setBusy] = useState('');
   const nav = useNavigate();
   const toast = useToast();
+
   useEffect(() => {
-    api('/operations').then((data) => setOperations(data.operations)).catch(() => setOperations([]));
-  }, []);
+    setOperations(null);
+    const suffix = view === 'history' ? '?history=1' : '';
+    api(`/operations${suffix}`).then((data) => setOperations(data.operations)).catch(() => setOperations([]));
+  }, [view]);
 
   const message = async (operationId) => {
     setBusy(operationId);
@@ -39,26 +43,35 @@ export default function OperationsSimple() {
   return (
     <div className="simple-page">
       <h1 className="page-title">En cours</h1>
-      <p className="page-sub">Toutes les opérations actives après acceptation ou paiement.</p>
+      <p className="page-sub">Toutes les operations actives, puis l'historique des demandes terminees ou annulees.</p>
+
+      <div className="tabs operations-tabs" role="tablist" aria-label="Filtrer les operations">
+        <button type="button" className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>Actives</button>
+        <button type="button" className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>Historique</button>
+      </div>
 
       {operations === null && <div className="card"><span className="spinner" /> Chargement...</div>}
       {operations?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="repeat" size={34} />
-          <p className="muted">Aucune opération en cours.</p>
-          <Link to="/trajets" className="btn btn-primary btn-sm">Trouver un trajet</Link>
+          <p className="muted">{view === 'history' ? 'Aucune operation archivee.' : 'Aucune operation en cours.'}</p>
+          {view === 'active' && <Link to="/trajets" className="btn btn-primary btn-sm">Trouver un trajet</Link>}
         </div>
       )}
       <div className="operation-list">
         {operations?.map((operation) => (
-          <article className="card operation-card" key={operation.id}>
+          <article className={`card operation-card ${view === 'history' ? 'operation-card-archived' : ''}`} key={operation.id}>
             <div className="operation-main">
-              <Avatar name={operation.myRole === 'traveler' ? operation.sender?.name : operation.traveler?.name} photo={operation.myRole === 'traveler' ? operation.sender?.photoUrl : operation.traveler?.photoUrl} size={44} />
+              <Avatar
+                name={operation.myRole === 'traveler' ? operation.sender?.name : operation.traveler?.name}
+                photo={operation.myRole === 'traveler' ? operation.sender?.photoUrl : operation.traveler?.photoUrl}
+                size={44}
+              />
               <div className="grow">
                 <b>{operation.title}</b>
                 <span>{operation.trip ? formatDate(operation.trip.departureDate) : new Date(operation.createdAt).toLocaleDateString('fr-FR')}</span>
-                <small>{operation.price} {operation.currency || 'EUR'} · {operation.myRole === 'traveler' ? 'Voyageur' : 'Expéditeur'}</small>
-                <small>{operationNextAction(operation)}</small>
+                <small>{operation.price} {operation.currency || 'EUR'} - {operation.myRole === 'traveler' ? 'Voyageur' : 'Expediteur'}</small>
+                <small>{view === 'history' ? operationHistoryLabel(operation) : operationNextAction(operation)}</small>
               </div>
             </div>
             <div className="operation-side">
@@ -86,6 +99,13 @@ function operationNextAction(operation) {
   if (operation.operationStatus === 'en_transport') return 'Action : confirmer la livraison';
   if (operation.operationStatus === 'litige') return 'Action : suivre le litige';
   return 'Aucune action requise';
+}
+
+function operationHistoryLabel(operation) {
+  if (operation.status === 'released') return 'Operation livree et cloturee';
+  if (operation.status === 'cancelled') return 'Operation annulee';
+  if (operation.status === 'refunded') return 'Operation remboursee';
+  return 'Operation archivee';
 }
 
 export { STATUS_LABELS };

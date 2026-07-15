@@ -1621,6 +1621,9 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const activeAfterCancel = await api('/operations', { token: fatima });
   assert.equal(activeAfterCancel.status, 200);
   assert.ok(!activeAfterCancel.body.operations.some((op) => op.id === acceptedThenCancelled.body.operation.id));
+  const historyAfterCancel = await api('/operations?history=1', { token: fatima });
+  assert.equal(historyAfterCancel.status, 200);
+  assert.ok(historyAfterCancel.body.operations.some((op) => op.id === acceptedThenCancelled.body.operation.id));
 
   const accepted = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
@@ -1692,6 +1695,9 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
 
   const activeAfterDelivery = await api('/operations', { token: fatima });
   assert.ok(!activeAfterDelivery.body.operations.some((op) => op.id === accepted.body.operation.id));
+  const historyAfterDelivery = await api('/operations?history=1', { token: fatima });
+  assert.equal(historyAfterDelivery.status, 200);
+  assert.ok(historyAfterDelivery.body.operations.some((op) => op.id === accepted.body.operation.id));
 
   const detailAfterDelivery = await api(`/operations/${accepted.body.operation.id}`, { token: fatima });
   assert.equal(detailAfterDelivery.status, 200);
