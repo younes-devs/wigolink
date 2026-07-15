@@ -1603,6 +1603,25 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(rejected.body.operation.operationStatus, 'termine');
   assert.equal(rejected.body.operation.status, 'cancelled');
 
+  const acceptedThenCancelled = await api(`/trips/${trip.id}/accept`, {
+    method: 'POST',
+    token: fatima,
+    body: { descriptionParcel: 'Demande test annulation expediteur', price: trip.price },
+  });
+  assert.equal(acceptedThenCancelled.status, 200, JSON.stringify(acceptedThenCancelled.body));
+  assert.equal(acceptedThenCancelled.body.operation.operationStatus, 'attente_confirmation');
+  const cancelledBySender = await api(`/operations/${acceptedThenCancelled.body.operation.id}/cancel`, {
+    method: 'POST',
+    token: fatima,
+    body: { reason: 'Changement de plan' },
+  });
+  assert.equal(cancelledBySender.status, 200, JSON.stringify(cancelledBySender.body));
+  assert.equal(cancelledBySender.body.operation.operationStatus, 'termine');
+  assert.equal(cancelledBySender.body.operation.status, 'cancelled');
+  const activeAfterCancel = await api('/operations', { token: fatima });
+  assert.equal(activeAfterCancel.status, 200);
+  assert.ok(!activeAfterCancel.body.operations.some((op) => op.id === acceptedThenCancelled.body.operation.id));
+
   const accepted = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
     token: fatima,

@@ -76,6 +76,23 @@ export default function OperationDetailSimple() {
     }
   };
 
+  const cancel = async () => {
+    setBusy('cancel');
+    try {
+      const data = await api(`/operations/${id}/cancel`, {
+        method: 'POST',
+        body: { reason: issue || 'Demande annulee par l expediteur' },
+      });
+      setOperation(data.operation);
+      setIssue('');
+      toast.info('Demande annulee');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   const openDispute = async () => {
     setBusy('dispute');
     try {
@@ -190,6 +207,12 @@ export default function OperationDetailSimple() {
             <button className="btn btn-ghost" onClick={reject} disabled={!!busy}>
               {busy === 'reject' ? <span className="spinner" /> : <Icon name="x" size={17} />}
               Refuser
+            </button>
+          )}
+          {operation.myRole === 'sender' && ['attente_confirmation', 'paiement_requis'].includes(operation.operationStatus) && (
+            <button className="btn btn-ghost" onClick={cancel} disabled={!!busy}>
+              {busy === 'cancel' ? <span className="spinner" /> : <Icon name="x" size={17} />}
+              Annuler
             </button>
           )}
           <button className="btn btn-ghost" onClick={message} disabled={!!busy}>
