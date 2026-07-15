@@ -700,7 +700,15 @@ app.get('/api/compliance-center', auth, (req, res) => {
 });
 
 app.get('/api/trips/mine', auth, (req, res) => {
-  res.json({ trips: db.trips.filter((t) => t.travelerId === req.user.id) });
+  const trips = db.trips
+    .filter((t) => t.travelerId === req.user.id)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .map((t) => {
+      const view = tripPostView(t, req.user);
+      const operations = db.transactions.filter((tx) => tx.tripId === t.id && !CLOSED_STATUSES.includes(tx.status));
+      return { ...view, activeOperations: operations.length };
+    });
+  res.json({ trips });
 });
 
 app.get('/api/trips/mission', auth, (req, res) => {
@@ -771,9 +779,14 @@ app.post('/api/trips', auth, (req, res) => {
 });
 
 app.delete('/api/trips/:id', auth, (req, res) => {
-  const i = db.trips.findIndex((t) => t.id === req.params.id && t.travelerId === req.user.id);
-  if (i === -1) return res.status(404).json({ error: 'Trajet introuvable' });
-  db.trips.splice(i, 1);
+  const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
+  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
+  const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
+  if (activeOperations.length > 0)
+    return res.status(400).json({ error: 'Impossible de retirer un trajet avec operation en cours' });
+  trip.status = 'removed';
+  trip.removedAt = Date.now();
+  db.savedTrips = db.savedTrips.filter((saved) => saved.tripId !== trip.id);
   save();
   res.json({ ok: true });
 });
@@ -1174,7 +1187,10 @@ app.get('/api/listings', auth, (req, res) => {
       `${l.title} ${l.description || ''} ${l.categoryLabel || ''}`.toLowerCase().includes(needle));
   }
 
-  const myTrips = db.trips.filter((t) => t.travelerId === req.user.id && t.date >= new Date().toISOString().slice(0, 10));
+  const myTrips = db.trips.filter((t) =>
+    t.travelerId === req.user.id
+    && (t.status || 'published') === 'published'
+    && t.date >= new Date().toISOString().slice(0, 10));
   const showAll = req.query.all === '1' || myTrips.length === 0;
   const listings = (showAll ? open : open.filter((l) => myTrips.some((t) => matchesTrip(l, t))))
     .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)), matched: myTrips.some((t) => matchesTrip(l, t)) }));

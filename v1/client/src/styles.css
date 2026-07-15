@@ -2511,3 +2511,64 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   background: rgba(22, 24, 29, 0.04); border-radius: 10px;
   padding: 8px 11px; margin-bottom: 12px;
 }
+
+.my-trips-card {
+  display: grid;
+  gap: 12px;
+}
+.my-trip-list {
+  display: grid;
+  gap: 8px;
+}
+.my-trip-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface-soft);
+}
+.my-trip-row b,
+.my-trip-row span,
+.my-trip-row small {
+  display: block;
+  min-width: 0;
+}
+.my-trip-row b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.my-trip-row span,
+.my-trip-row small {
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.profile-empty-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 520px) {
+  .my-trip-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .my-trip-row .pill,
+  .my-trip-row .icon-btn {
+    width: fit-content;
+  }
+  .profile-empty-inline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -1470,6 +1470,31 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(published.body.trip.price, 31);
   assert.match(published.body.trip.description, /petit colis propre/);
 
+  const mineBeforeOperation = await api('/trips/mine', { token: karim });
+  assert.equal(mineBeforeOperation.status, 200);
+  const minePublished = mineBeforeOperation.body.trips.find((t) => t.id === published.body.trip.id);
+  assert.ok(minePublished, 'le profil voyageur doit lister le trajet publie');
+  assert.equal(minePublished.activeOperations, 0);
+
+  const removable = await api('/trips', {
+    method: 'POST',
+    token: karim,
+    body: {
+      from: 'Fes',
+      to: 'Paris',
+      date: '2026-10-01',
+      capacityKg: 4,
+      price: 19,
+      description: 'Trajet test qui peut etre retire.',
+    },
+  });
+  assert.equal(removable.status, 200, JSON.stringify(removable.body));
+  const removed = await api(`/trips/${removable.body.trip.id}`, { method: 'DELETE', token: karim });
+  assert.equal(removed.status, 200, JSON.stringify(removed.body));
+  const feedAfterRemove = await api('/trips', { token: fatima });
+  assert.equal(feedAfterRemove.status, 200);
+  assert.ok(!feedAfterRemove.body.trips.some((t) => t.id === removable.body.trip.id), 'un trajet retire disparait du feed');
+
   const feed = await api('/trips', { token: fatima });
   assert.equal(feed.status, 200);
   assert.ok(feed.body.trips.length >= 1, 'le feed doit exposer des posts voyageurs');
@@ -1522,6 +1547,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
   assert.equal(accepted.body.operation.trip.id, trip.id);
   assert.equal(accepted.body.operation.operationStatus, 'paiement_requis');
+
+  const mineWithOperation = await api('/trips/mine', { token: karim });
+  assert.equal(mineWithOperation.status, 200);
+  const mineActive = mineWithOperation.body.trips.find((t) => t.id === trip.id);
+  assert.ok(mineActive.activeOperations >= 1, 'le profil doit signaler les operations actives sur un trajet');
+  const removeBlocked = await api(`/trips/${trip.id}`, { method: 'DELETE', token: karim });
+  assert.equal(removeBlocked.status, 400, 'un trajet avec operation active ne peut pas etre retire');
 
   const navFatimaAction = await api('/navigation-summary', { token: fatima });
   assert.equal(navFatimaAction.status, 200);

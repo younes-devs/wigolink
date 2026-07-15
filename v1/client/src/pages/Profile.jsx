@@ -181,6 +181,8 @@ export default function Profile() {
         <div className="stat"><div className="num">{me ? `${me.maxValue} €` : '…'}</div><div className="lbl">{t('profile.stat.cap')}</div></div>
       </div>
 
+      <MyPublishedTrips />
+
       <div className="card">
         <h2 style={{ marginBottom: 8 }}><Icon name="lock" size={17} />{t('profile.caps.title')}</h2>
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
@@ -201,6 +203,70 @@ export default function Profile() {
       <ReviewsSection userId={user.id} />
     </div>
   );
+}
+
+function MyPublishedTrips() {
+  const [trips, setTrips] = useState(null);
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
+
+  const load = () => api('/trips/mine').then((data) => setTrips(data.trips)).catch(() => setTrips([]));
+  useEffect(() => { load(); }, []);
+
+  const remove = async (tripId) => {
+    setBusy(tripId);
+    setErr('');
+    try {
+      await api(`/trips/${tripId}`, { method: 'DELETE' });
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const visibleTrips = (trips || []).filter((trip) => trip.status !== 'removed');
+
+  return (
+    <div className="card my-trips-card">
+      <div className="list-row" style={{ alignItems: 'center' }}>
+        <Icon name="plane" size={17} />
+        <h2 className="grow" style={{ margin: 0 }}>Mes trajets publiés</h2>
+        <Link to="/trajets" className="btn btn-ghost btn-sm"><Icon name="plus" size={15} />Publier</Link>
+      </div>
+      {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
+      {trips === null && <p className="muted">Chargement...</p>}
+      {trips !== null && visibleTrips.length === 0 && (
+        <div className="profile-empty-inline">
+          <span>Aucun trajet publié.</span>
+          <Link to="/trajets">Publier mon trajet</Link>
+        </div>
+      )}
+      <div className="my-trip-list">
+        {visibleTrips.slice(0, 5).map((trip) => (
+          <article className="my-trip-row" key={trip.id}>
+            <div className="grow">
+              <b>{trip.from} {'->'} {trip.to}</b>
+              <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
+              {trip.activeOperations > 0 && <small>{trip.activeOperations} opération(s) en cours</small>}
+            </div>
+            <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
+              {trip.status === 'published' ? 'Publié' : trip.status}
+            </span>
+            <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title="Retirer">
+              {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
+            </button>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function profileTripDate(value) {
+  if (!value) return 'Date à confirmer';
+  return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
 }
 
 function ProfileSummary({ user, me, memberSince }) {
