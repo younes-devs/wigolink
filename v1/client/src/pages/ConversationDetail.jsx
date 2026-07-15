@@ -65,9 +65,12 @@ export default function ConversationDetail() {
 
       {(conversation.trip || conversation.operation) && (
         <div className="conversation-context">
-          <Icon name={conversation.trip ? 'plane' : 'repeat'} size={16} />
-          <span>{contextLabel(conversation)}</span>
-          {conversation.trip && <b>{conversation.trip.price} {conversation.trip.currency}</b>}
+          <span className="conversation-context-icon"><Icon name={conversation.trip ? 'plane' : 'repeat'} size={17} /></span>
+          <div className="grow">
+            <b>{contextLabel(conversation)}</b>
+            <span>{conversation.trip ? 'Trajet lie a cette discussion' : 'Operation liee a cette discussion'}</span>
+          </div>
+          {conversation.trip && <strong>{conversation.trip.price} {conversation.trip.currency}</strong>}
         </div>
       )}
 
@@ -75,16 +78,27 @@ export default function ConversationDetail() {
         {messages.length === 0 && (
           <div className="message-empty">
             <Icon name="chat" size={26} />
-            <p>Aucun message pour l'instant.</p>
+            <b>Aucun message pour l'instant</b>
+            <p>Commencez simplement. Les questions sur le colis, le rendez-vous ou le prix restent ici.</p>
+            <div className="message-suggestions">
+              {suggestions(conversation).map((suggestion) => (
+                <button type="button" key={suggestion} onClick={() => setText(suggestion)}>{suggestion}</button>
+              ))}
+            </div>
           </div>
         )}
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const mine = message.from === user.id;
+          const showDate = index === 0 || !sameDay(messages[index - 1]?.at, message.at);
           return (
-            <div className={`message-line ${mine ? 'mine' : 'theirs'}`} key={message.id}>
-              <div className={`message-bubble ${mine ? 'mine' : ''} ${message.flagged ? 'flagged' : ''}`}>
-                <p>{message.text}</p>
-                <span>{shortDate(message.at)}{message.flagged ? ' - signale' : ''}</span>
+            <div className="message-group" key={message.id}>
+              {showDate && <div className="message-day">{fullDate(message.at)}</div>}
+              <div className={`message-line ${mine ? 'mine' : 'theirs'}`}>
+                {!mine && <Avatar name={conversation.other?.name || 'Contact'} photo={conversation.other?.photoUrl} size={28} />}
+                <div className={`message-bubble ${mine ? 'mine' : ''} ${message.flagged ? 'flagged' : ''}`}>
+                  <p>{message.text}</p>
+                  <span>{shortDate(message.at)}{message.flagged ? ' - signale' : ''}</span>
+                </div>
               </div>
             </div>
           );
@@ -106,4 +120,20 @@ function contextLabel(conversation) {
   if (conversation.trip) return `${conversation.trip.from} -> ${conversation.trip.to}`;
   if (conversation.operation) return conversation.operation.title || 'Operation en cours';
   return '';
+}
+
+function suggestions(conversation) {
+  if (conversation.operation) return ['Ou en est-on ?', 'On confirme le rendez-vous ?', 'Je vous envoie les details.'];
+  if (conversation.trip) return ['Bonjour, le trajet est toujours disponible ?', 'Quel type de colis acceptez-vous ?', 'On peut confirmer les details ?'];
+  return ['Bonjour', 'Je vous ecris pour une question', 'Merci pour votre retour'];
+}
+
+function sameDay(a, b) {
+  if (!a || !b) return false;
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
+function fullDate(value) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(value));
 }
