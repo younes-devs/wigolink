@@ -1010,6 +1010,65 @@ app.post('/api/operations/:id/pay', auth, (req, res) => {
   res.json({ operation: operationView(tx, req.user) });
 });
 
+app.post('/api/operations/:id/confirm', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  const current = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : null);
+  const transitions = {
+    paye: { next: 'collecte_prevue', event: 'rendezvous_confirmed' },
+    collecte_prevue: { next: 'en_transport', event: 'pickup_confirmed', txStatus: 'in_transit' },
+    en_transport: { next: 'termine', event: 'delivery_confirmed', txStatus: 'released', escrow: 'released' },
+  };
+  const transition = transitions[current];
+  if (!transition) return res.status(400).json({ error: 'Aucune confirmation disponible a cette etape' });
+
+  tx.operationStatus = transition.next;
+  if (transition.txStatus) tx.status = transition.txStatus;
+  if (transition.escrow) transitionEscrow(tx.escrow, transition.escrow);
+  addEvent(tx, transition.event, req.user.id);
+
+  if (transition.next === 'termine') {
+    for (const uid of new Set([tx.senderId, tx.travelerId])) {
+      const user = findUser(uid);
+      if (!user) continue;
+      user.completed = (user.completed || 0) + 1;
+      user.badges = user.badges || [];
+      if (user.completed >= 5 && !user.badges.includes('voyageur-confirme')) user.badges.push('voyageur-confirme');
+    }
+    await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
+  }
+
+  save();
+  res.json({ operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/dispute', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.operationStatus === 'termine') return res.status(400).json({ error: 'Operation deja terminee' });
+  const existing = db.disputes.find((d) => d.txId === tx.id && d.status === 'open');
+  if (existing) return res.json({ operation: operationView(tx, req.user), dispute: disputeView(existing, tx) });
+
+  tx.status = 'disputed';
+  tx.operationStatus = 'litige';
+  transitionEscrow(tx.escrow, 'frozen');
+  const dispute = {
+    id: newId('d'),
+    txId: tx.id,
+    openedBy: req.user.id,
+    reason: String(req.body?.reason || 'Probleme signale depuis En cours').trim().slice(0, 500),
+    evidence: [],
+    status: 'open',
+    createdAt: Date.now(),
+  };
+  db.disputes.push(dispute);
+  repositories.reviewQueue.append({ type: 'dispute', refId: dispute.id });
+  addEvent(tx, 'dispute_opened', req.user.id, { reason: dispute.reason });
+  await notify([tx.senderId, tx.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, tx.id, 'security', 'litige');
+  save();
+  res.json({ operation: operationView(tx, req.user), dispute: disputeView(dispute, tx) });
+});
+
 app.post('/api/conversations', auth, (req, res) => {
   const { tripId = null, operationId = null, userId = null } = req.body || {};
   let otherId = userId;

@@ -12,6 +12,7 @@ export default function OperationDetailSimple() {
   const toast = useToast();
   const [operation, setOperation] = useState(null);
   const [busy, setBusy] = useState('');
+  const [issue, setIssue] = useState('');
 
   const load = () => api(`/operations/${id}`).then((data) => setOperation(data.operation)).catch(() => setOperation(false));
   useEffect(() => { load(); }, [id]);
@@ -36,6 +37,36 @@ export default function OperationDetailSimple() {
       nav(`/messages/${data.conversation.id}`);
     } catch (e) {
       toast.error(e.message);
+      setBusy('');
+    }
+  };
+
+  const confirmNext = async () => {
+    setBusy('confirm');
+    try {
+      const data = await api(`/operations/${id}/confirm`, { method: 'POST' });
+      setOperation(data.operation);
+      toast.success(confirmToast(data.operation.operationStatus));
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const openDispute = async () => {
+    setBusy('dispute');
+    try {
+      const data = await api(`/operations/${id}/dispute`, {
+        method: 'POST',
+        body: { reason: issue || 'Problème signalé depuis En cours' },
+      });
+      setOperation(data.operation);
+      setIssue('');
+      toast.info('Problème signalé');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
       setBusy('');
     }
   };
@@ -97,15 +128,45 @@ export default function OperationDetailSimple() {
               Payer
             </button>
           )}
+          {nextAction(operation) && (
+            <button className="btn btn-primary" onClick={confirmNext} disabled={!!busy}>
+              {busy === 'confirm' ? <span className="spinner" /> : <Icon name="check" size={17} />}
+              {nextAction(operation)}
+            </button>
+          )}
           <button className="btn btn-ghost" onClick={message} disabled={!!busy}>
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             Message
           </button>
-          <Link to={`/transactions/${operation.id}`} className="btn btn-ghost">
-            Options avancées
-          </Link>
         </div>
+
+        {!['litige', 'termine'].includes(operation.operationStatus) && (
+          <div className="operation-issue">
+            <label className="field">
+              <span>Problème</span>
+              <textarea rows={2} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Expliquez rapidement le problème si vous devez ouvrir un litige." />
+            </label>
+            <button className="btn btn-ghost" onClick={openDispute} disabled={!!busy}>
+              {busy === 'dispute' ? <span className="spinner" /> : <Icon name="alert" size={17} />}
+              Signaler un problème
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
+}
+
+function nextAction(operation) {
+  if (operation.operationStatus === 'paye') return 'Confirmer le rendez-vous';
+  if (operation.operationStatus === 'collecte_prevue') return 'Confirmer la prise en charge';
+  if (operation.operationStatus === 'en_transport') return 'Confirmer la livraison';
+  return null;
+}
+
+function confirmToast(status) {
+  if (status === 'collecte_prevue') return 'Rendez-vous confirmé';
+  if (status === 'en_transport') return 'Colis en transport';
+  if (status === 'termine') return 'Opération terminée';
+  return 'Opération mise à jour';
 }

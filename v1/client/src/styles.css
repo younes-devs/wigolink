@@ -444,6 +444,10 @@ body {
 .operation-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .operation-detail { display: grid; gap: 16px; }
 .operation-detail-head p { margin: 4px 0 0; color: var(--ink-soft); }
+.operation-issue {
+  border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px;
+}
+.operation-issue .btn { justify-self: end; }
 .operation-timeline { display: grid; gap: 10px; }
 .operation-event { display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: start; }
 .operation-event > span { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); margin-top: 4px; }

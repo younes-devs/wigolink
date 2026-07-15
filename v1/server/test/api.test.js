@@ -1526,4 +1526,42 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const paid = await api(`/operations/${accepted.body.operation.id}/pay`, { method: 'POST', token: fatima });
   assert.equal(paid.status, 200);
   assert.equal(paid.body.operation.operationStatus, 'paye');
+
+  const rendezvous = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: fatima });
+  assert.equal(rendezvous.status, 200);
+  assert.equal(rendezvous.body.operation.operationStatus, 'collecte_prevue');
+
+  const pickup = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: karim });
+  assert.equal(pickup.status, 200);
+  assert.equal(pickup.body.operation.operationStatus, 'en_transport');
+  assert.equal(pickup.body.operation.status, 'in_transit');
+
+  const delivered = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: fatima });
+  assert.equal(delivered.status, 200);
+  assert.equal(delivered.body.operation.operationStatus, 'termine');
+  assert.equal(delivered.body.operation.status, 'released');
+
+  const activeAfterDelivery = await api('/operations', { token: fatima });
+  assert.ok(!activeAfterDelivery.body.operations.some((op) => op.id === accepted.body.operation.id));
+
+  const detailAfterDelivery = await api(`/operations/${accepted.body.operation.id}`, { token: fatima });
+  assert.equal(detailAfterDelivery.status, 200);
+  assert.equal(detailAfterDelivery.body.operation.operationStatus, 'termine');
+
+  const acceptedForDispute = await api(`/trips/${trip.id}/accept`, {
+    method: 'POST',
+    token: fatima,
+    body: { descriptionParcel: 'Deuxieme colis test litige', price: trip.price },
+  });
+  assert.equal(acceptedForDispute.status, 200);
+  await api(`/operations/${acceptedForDispute.body.operation.id}/pay`, { method: 'POST', token: fatima });
+  const disputed = await api(`/operations/${acceptedForDispute.body.operation.id}/dispute`, {
+    method: 'POST',
+    token: fatima,
+    body: { reason: 'Le rendez-vous pose probleme' },
+  });
+  assert.equal(disputed.status, 200);
+  assert.equal(disputed.body.operation.operationStatus, 'litige');
+  assert.equal(disputed.body.operation.status, 'disputed');
+  assert.match(disputed.body.dispute.reason, /rendez-vous/);
 });
