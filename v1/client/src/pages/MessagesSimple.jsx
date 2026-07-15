@@ -229,7 +229,7 @@ function ConversationRow({ conversation, selected, onSelect, onArchive, onRestor
     await action();
   };
   return (
-    <article className={`conversation-row ${selected ? 'is-selected' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`}>
+    <article className={`conversation-row ${selected ? 'is-selected' : ''} ${menuOpen ? 'menu-open' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`}>
       <Link to={`/messages/${conversation.id}`} className="conversation-row-main" onClick={openConversation}>
         <div className="conversation-avatar">
           <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={50} />
