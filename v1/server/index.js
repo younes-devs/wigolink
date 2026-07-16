@@ -83,6 +83,7 @@ const publicUser = (u) =>
     ratingCount: u.ratingCount, completed: u.completed, cancelRate: u.cancelRate,
     badges: u.badges, photoUrl: u.photoUrl || null, isAdmin: !!u.isAdmin,
     createdAt: u.createdAt, onboardingDone: !!u.settings?.onboardingDone,
+    emailVerified: !!u.emailVerified,
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
@@ -101,6 +102,21 @@ function userSettings(user) {
   return repositories.settings.ensure(user);
 }
 
+// Les comptes email restent bloques jusqu'a la verification de leur boite.
+// Google ne pourra etre exempte que lorsqu'un vrai flux OAuth est active.
+const canAccessApp = (user) => !!user && (user.emailVerified === true || user.provider === 'google');
+
+function denyUnverifiedSession(req, res) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (token) delete db.sessions[token];
+  save();
+  return res.status(403).json({
+    needsVerification: true,
+    pendingEmail: req.user.email,
+    error: 'Verifiez votre adresse email avant d acceder a l application.',
+  });
+}
+
 // Seules les parties d'une transaction (ou un admin) peuvent en consulter le détail,
 // les messages, le récap douane, ou agir sur un litige qui s'y rattache.
 const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
@@ -111,6 +127,7 @@ function auth(req, res, next) {
   if (!userId) return res.status(401).json({ error: 'Non authentifié' });
   req.user = findUser(userId);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
+  if (!canAccessApp(req.user)) return denyUnverifiedSession(req, res);
   next();
 }
 
@@ -119,6 +136,7 @@ function authRealtime(req, res, next) {
   const userId = db.sessions[token];
   if (!userId) return res.status(401).json({ error: 'Non authentifie' });
   req.user = findUser(userId);
+  if (req.user && !canAccessApp(req.user)) return denyUnverifiedSession(req, res);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   next();
 }
@@ -268,6 +286,13 @@ function makeUser({ name, email, phone, provider, emailVerified, passwordHash, c
 const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 
 function openSession(res, user, req) {
+  if (!canAccessApp(user)) {
+    return res.status(403).json({
+      needsVerification: true,
+      pendingEmail: user.email,
+      error: 'Verifiez votre adresse email avant d acceder a l application.',
+    });
+  }
   const token = newToken();
   db.sessions[token] = user.id;
   if (req) {
@@ -415,10 +440,17 @@ app.post('/api/auth/reset', (req, res) => {
   const user = findByEmail(email);
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   user.passwordHash = hashPassword(req.body.password);
-  user.emailVerified = true;
   delete db.resets[email];
   // Sécurité : invalide toutes les sessions existantes du compte
   for (const [tok, uid] of Object.entries(db.sessions)) if (uid === user.id) delete db.sessions[tok];
+  if (!canAccessApp(user)) {
+    save();
+    return res.json({
+      needsVerification: true,
+      pendingEmail: email,
+      message: 'Mot de passe mis a jour. Verifiez maintenant votre adresse email pour acceder a l application.',
+    });
+  }
   openSession(res, user, req);
 });
 

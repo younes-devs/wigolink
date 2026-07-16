@@ -32,7 +32,7 @@ export default function Login() {
 
   const submitLogin = () => run(async () => {
     const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password } });
-    if (d.needsVerification) { setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); switchMode('verify'); return; }
+    if (d.needsVerification) { switchMode('verify'); setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); return; }
     finishAuth(d);
   });
 
@@ -40,8 +40,8 @@ export default function Login() {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     if (!cguAccepted) throw new Error(t('err.cgu.required'));
     const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted } });
-    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
     switchMode('verify');
+    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
   });
 
   const submitVerify = () => run(async () => {
@@ -56,13 +56,18 @@ export default function Login() {
 
   const submitForgot = () => run(async () => {
     const d = await api('/auth/forgot', { method: 'POST', body: { email: form.email } });
-    setHint(d.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
     switchMode('reset');
+    setHint(d.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
   });
 
   const submitReset = () => run(async () => {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     const d = await api('/auth/reset', { method: 'POST', body: { email: form.email, code: form.code, password: form.password } });
+    if (d.needsVerification) {
+      switchMode('verify');
+      setHint(d.message || 'Verifiez votre adresse email pour acceder a l application.');
+      return;
+    }
     finishAuth(d);
   });
 

@@ -38,6 +38,34 @@ test('connexion : identifiants valides vs invalides', async () => {
   assert.equal(badEmail.status, 401);
 });
 
+test('auth : un compte email reste bloque jusqu a sa verification', async () => {
+  const email = `unverified-${Date.now()}@exemple.com`;
+  const password = 'motdepasse123';
+  const registration = await api('/auth/register', {
+    method: 'POST',
+    body: { name: 'Compte non verifie', email, password, cguAccepted: true },
+  });
+  assert.equal(registration.status, 200);
+  assert.equal(registration.body.token, undefined);
+
+  const loginBeforeVerification = await api('/auth/login', {
+    method: 'POST', body: { email, password },
+  });
+  assert.equal(loginBeforeVerification.status, 200);
+  assert.equal(loginBeforeVerification.body.needsVerification, true);
+  assert.equal(loginBeforeVerification.body.token, undefined);
+
+  const code = loginBeforeVerification.body.demoHint.match(/\d{6}/)[0];
+  const verification = await api('/auth/verify-email', {
+    method: 'POST', body: { email, code },
+  });
+  assert.equal(verification.status, 200);
+  assert.ok(verification.body.token);
+
+  const me = await api('/me', { token: verification.body.token });
+  assert.equal(me.status, 200);
+});
+
 test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;
