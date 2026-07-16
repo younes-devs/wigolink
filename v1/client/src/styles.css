@@ -672,7 +672,7 @@ body {
 .message-state p { margin: 0; max-width: 360px; line-height: 1.45; }
 .conversation-detail {
   height: calc(100dvh - 96px); min-height: 560px;
-  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  display: flex; flex-direction: column;
   gap: 8px; width: min(780px, 100%); margin: 0 auto;
 }
 .conversation-header {
@@ -759,6 +759,7 @@ body {
 }
 .report-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .message-thread {
+  flex: 1 1 auto;
   position: relative; display: flex; flex-direction: column; gap: 5px;
   min-height: 0; padding: 18px 18px 20px; border-radius: 10px;
   background:

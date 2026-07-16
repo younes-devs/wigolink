@@ -299,6 +299,12 @@ export default function ConversationDetail() {
     );
   }
 
+  const contextText = conversation.context?.label || contextLabel(conversation);
+  const price = conversation.operation?.price ?? conversation.trip?.price;
+  const currency = conversation.operation?.currency || conversation.trip?.currency || 'EUR';
+  const profileLabel = conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic');
+  const headerMeta = [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
+
   return (
     <div className="conversation-detail">
       <header className="conversation-header">
@@ -306,7 +312,7 @@ export default function ConversationDetail() {
         <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
         <div className="grow conversation-title">
           <b>{conversation.other?.name || t('messages.contact')}</b>
-          <span>{conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic')} - {conversation.context?.label || contextLabel(conversation)}</span>
+          <span>{headerMeta}</span>
         </div>
         <div className="conversation-actions" ref={menuRef}>
           {conversation.actionHref && <Link to={conversation.actionHref} className="btn btn-sm">{conversation.actionLabel || t('messages.action.view')}</Link>}
@@ -353,8 +359,6 @@ export default function ConversationDetail() {
           )}
         </div>
       </header>
-
-      <ConversationContext conversation={conversation} />
 
       {!conversationOpen && (
         <div className="conversation-closed-banner">
