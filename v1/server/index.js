@@ -167,7 +167,9 @@ function userSettings(user) {
 
 // Les comptes email restent bloques jusqu'a la verification de leur boite.
 // Google ne pourra etre exempte que lorsqu'un vrai flux OAuth est active.
-const canAccessApp = (user) => !!user && (user.emailVerified === true || user.provider === 'google');
+const canAccessApp = (user) => !!user && (
+  user.emailVerified === true || user.provider === 'google' || isPrivateTestEmail(user.email)
+);
 
 function denyUnverifiedSession(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -330,6 +332,10 @@ function positiveNumber(v, { allowZero = false } = {}) {
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
+const isPrivateTestEmail = (email) => {
+  const allowed = normEmail(process.env.TEST_EMAIL_BYPASS || '');
+  return !!allowed && normEmail(email) === allowed;
+};
 
 function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {
   return {
@@ -373,7 +379,7 @@ function openSession(res, user, req) {
 const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` : undefined);
 
 async function deliverAuthCode(email, code, purpose) {
-  if (DEMO) return;
+  if (DEMO || isPrivateTestEmail(email)) return;
   await sendVerificationEmail({ to: email, code, purpose });
 }
 
@@ -384,6 +390,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
   if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
   const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
+  const privateTestAccount = isPrivateTestEmail(user.email);
   const code = sixDigitCode();
   try {
     await deliverAuthCode(user.email, code, 'verify');
@@ -391,6 +398,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(503).json({ error: error.message });
   }
   db.users.push(user);
+  if (privateTestAccount) return openSession(res, user, req);
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
   res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });

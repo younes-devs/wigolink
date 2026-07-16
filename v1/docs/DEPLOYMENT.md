@@ -27,6 +27,8 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 
 En production, l'API refuse de demarrer sans `RESEND_API_KEY` et `EMAIL_FROM`; `DEMO=true` est egalement refuse. Les CORS sont limites a `APP_ORIGIN` et des en-tetes de securite sont poses par l'API.
 
+Pour tester avant la verification du domaine Resend, `TEST_EMAIL_BYPASS` peut contenir une seule adresse e-mail. Seule cette adresse peut creer puis utiliser un compte sans recevoir de code. Retirer cette variable avant l'ouverture au public.
+
 ## Base de donnees
 
 La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour l'ensemble des collections : utilisateurs, sessions, trajets, annonces, conversations, messages, operations, KYC, litiges et notifications. Les requetes d'ecriture verrouillent l'etat, le mettent a jour et valident la transaction avant la reponse HTTP. Le fichier `server/data.json` reste reserve au developpement local.
