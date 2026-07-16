@@ -106,6 +106,12 @@ body {
 /* Content */
 /* Padding bas réduit : le contenu glisse sous la barre de verre (liquid glass) */
 .content { flex: 1; padding: 20px 16px 46px; overflow-y: auto; }
+.phone:has(.conversation-detail) .app-header { display: none; }
+.phone:has(.conversation-detail) .content { padding-top: 8px; }
+.phone:has(.conversation-detail) .conversation-detail {
+  height: calc(100dvh - 86px);
+  min-height: 0;
+}
 .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
 .page-sub { color: var(--ink-soft); font-size: 13.5px; margin-bottom: 18px; line-height: 1.45; }
 
@@ -2741,6 +2747,7 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
     padding: 88px 14px 14px;
     box-shadow: none;
   }
+  .phone:has(.conversation-detail) .bottom-nav { padding-top: 14px; }
   .bottom-nav a {
     flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 12px;
     padding: 11px 14px; font-size: 14px; border-radius: 12px;
@@ -2765,6 +2772,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
     max-width: 720px; flex: 1 1 720px; min-width: 0;
     padding: 36px 32px 60px;
   }
+  .phone:has(.conversation-detail) .content { padding-top: 16px; }
+  .phone:has(.conversation-detail) .conversation-detail { height: calc(100dvh - 76px); }
   .page-title { font-size: 26px; }
 
   /* Grille adaptative pour les listes de cartes cliquables */
@@ -2834,6 +2843,11 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
     height: calc(100dvh - 122px);
     min-height: 480px;
     gap: 7px;
+  }
+  .phone:has(.conversation-detail) .content { padding: 8px 8px 84px; }
+  .phone:has(.conversation-detail) .conversation-detail {
+    height: calc(100dvh - 96px);
+    min-height: 0;
   }
   .conversation-header {
     position: sticky;
