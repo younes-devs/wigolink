@@ -640,11 +640,13 @@ body {
 }
 .conversation-more:hover { color: var(--accent); border-color: rgba(10, 108, 245, 0.25); }
 .conversation-menu, .conversation-header-menu {
-  position: absolute; right: 8px; top: calc(100% - 8px); z-index: 80;
+  position: absolute; right: 8px; z-index: 80;
   min-width: 190px; display: grid; gap: 4px; padding: 6px;
   border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface);
   box-shadow: var(--shadow);
 }
+.conversation-menu { top: auto; bottom: calc(100% - 8px); }
+.conversation-header-menu { top: calc(100% + 6px); bottom: auto; }
 [dir="rtl"] .conversation-menu, [dir="rtl"] .conversation-header-menu { right: auto; left: 8px; }
 .conversation-menu button, .conversation-header-menu button, .conversation-header-menu a {
   min-height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 9px;
@@ -683,7 +685,7 @@ body {
 .conversation-back { flex: 0 0 auto; }
 .conversation-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .conversation-actions { position: relative; }
-.conversation-header-menu { top: calc(100% + 6px); right: 0; }
+.conversation-header-menu { right: 0; }
 .conversation-context {
   display: flex; align-items: center; gap: 10px; border: 1px solid rgba(10, 108, 245, 0.16);
   border-radius: 12px; padding: 10px 12px; color: var(--ink-soft);
