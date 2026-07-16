@@ -67,6 +67,7 @@ export default function ConversationDetail() {
       }
       latestMessageAtRef.current = Math.max(previousLatestAt, latestAt);
       setConversation(data.conversation);
+      setOtherOnline(!!data.conversation?.otherOnline);
       setMessages(incoming);
       setMessagePage(data.page || null);
       setError('');
@@ -370,7 +371,8 @@ export default function ConversationDetail() {
   const price = conversation.operation?.price ?? conversation.trip?.price;
   const currency = conversation.operation?.currency || conversation.trip?.currency || 'EUR';
   const profileLabel = conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic');
-  const headerMeta = otherTyping ? 'ecrit...' : otherOnline ? 'En ligne' : [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
+  const seenRecently = conversation.otherLastSeenAt && Date.now() - conversation.otherLastSeenAt < 24 * 60 * 60 * 1000;
+  const headerMeta = otherTyping ? 'ecrit...' : otherOnline ? 'En ligne' : seenRecently ? 'Vu recemment' : [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
   const hasSafetyWarning = messages.some((message) => message.flagged || message.type === 'warning');
 
   return (

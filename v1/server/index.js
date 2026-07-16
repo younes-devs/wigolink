@@ -18,6 +18,7 @@ const db = getDb();
 // Flux temps reel leger (SSE). Il reste dans le processus Express afin de fonctionner
 // aussi bien en local qu'avec un serveur Node classique, sans dependance WebSocket.
 const realtimeClients = new Map();
+const lastSeenByUser = new Map();
 
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
@@ -38,6 +39,7 @@ app.get('/api/realtime', authRealtime, (req, res) => {
   const clients = realtimeClients.get(req.user.id) || new Set();
   clients.add(res);
   realtimeClients.set(req.user.id, clients);
+  lastSeenByUser.set(req.user.id, Date.now());
   sendRealtime(req.user.id, { type: 'ready', userId: req.user.id });
   broadcastPresence(req.user.id, true);
   const heartbeat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
@@ -48,6 +50,7 @@ app.get('/api/realtime', authRealtime, (req, res) => {
     current.delete(res);
     if (current.size === 0) {
       realtimeClients.delete(req.user.id);
+      lastSeenByUser.set(req.user.id, Date.now());
       broadcastPresence(req.user.id, false);
     }
   });
@@ -1016,10 +1019,14 @@ function conversationView(conversation, viewerId) {
   const lastMessagePreview = lastMessage?.flagged
     ? 'Message signale par securite'
     : (lastMessage?.text || (lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
+  const participants = conversationParticipants(conversation, viewerId);
+  const other = participants.find((user) => user.id !== viewerId) || null;
   return {
     ...conversation,
-    participants: conversationParticipants(conversation, viewerId),
-    other: conversationParticipants(conversation, viewerId).find((u) => u.id !== viewerId) || null,
+    participants,
+    other,
+    otherOnline: !!other && realtimeClients.has(other.id),
+    otherLastSeenAt: other ? (lastSeenByUser.get(other.id) || null) : null,
     lastMessage,
     lastMessageAt,
     lastMessagePreview,
