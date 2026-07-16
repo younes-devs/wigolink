@@ -99,7 +99,11 @@ let pool = null;
 let databaseEnabled = false;
 
 if (process.env.DATABASE_URL) {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 1,
+    idleTimeoutMillis: 5000,
+  });
   const result = await pool.query('select state from wigofly_app_state where id = 1');
   if (result.rows[0]?.state) {
     db = result.rows[0].state;
