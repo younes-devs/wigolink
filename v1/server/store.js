@@ -2,10 +2,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 
 // Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
 // data.json du dev/démo en cours) — voir server/test/.
 const DATA_FILE = process.env.DATA_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data.json');
+const { Pool } = pg;
+
+export function emptyState() {
+  return {
+    users: [], trips: [], listings: [], transactions: [], matchingOffers: [],
+    savedTrips: [], conversations: [], messages: [], notifications: [], disputes: [],
+    reviewQueue: [], otps: {}, sessions: {}, resets: {}, pendingVerifications: {},
+    customWhitelist: [], kycSubmissions: [], kycDecisions: [], auditLogs: [], nextId: 100,
+  };
+}
 
 function seed() {
   const now = Date.now();
@@ -84,6 +95,19 @@ function seed() {
 }
 
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : seed();
+let pool = null;
+let databaseEnabled = false;
+
+if (process.env.DATABASE_URL) {
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const result = await pool.query('select state from wigofly_app_state where id = 1');
+  if (result.rows[0]?.state) {
+    db = result.rows[0].state;
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
+  }
+  databaseEnabled = true;
+}
 
 // Migration : comptes existants sans email/mot de passe (démo : demo1234).
 import { hashPassword } from './auth.js';
@@ -114,6 +138,7 @@ if (!db.conversations) { db.conversations = []; migrated = true; }
 if (!db.auditLogs) { db.auditLogs = []; migrated = true; }
 
 export function save() {
+  if (databaseEnabled) return;
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 }
 
@@ -124,6 +149,51 @@ export function getDb() {
 export function newId(prefix) {
   db.nextId += 1;
   return `${prefix}-${db.nextId}`;
+}
+
+export function usesDatabase() {
+  return databaseEnabled;
+}
+
+function replaceState(next) {
+  for (const key of Object.keys(db)) delete db[key];
+  Object.assign(db, next || emptyState());
+}
+
+export async function acquireDatabaseState({ write = false } = {}) {
+  if (!databaseEnabled) return null;
+  const client = await pool.connect();
+  try {
+    if (write) await client.query('begin');
+    const result = await client.query(
+      `select state from wigofly_app_state where id = 1${write ? ' for update' : ''}`
+    );
+    if (!result.rows[0]?.state) throw new Error('Etat applicatif Supabase introuvable.');
+    replaceState(result.rows[0].state);
+    return { client, write };
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+}
+
+export async function releaseDatabaseState(lock, { commit = false } = {}) {
+  if (!lock) return;
+  try {
+    if (lock.write) {
+      if (commit) {
+        await lock.client.query(
+          'update wigofly_app_state set state = $1::jsonb, updated_at = now(), revision = revision + 1 where id = 1',
+          [JSON.stringify(db)]
+        );
+        await lock.client.query('commit');
+      } else {
+        await lock.client.query('rollback');
+      }
+    }
+  } finally {
+    lock.client.release();
+  }
 }
 
 if (migrated || !fs.existsSync(DATA_FILE)) save();

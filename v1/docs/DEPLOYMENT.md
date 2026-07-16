@@ -15,11 +15,13 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 
 ## Etapes de publication
 
-1. Creer la base Supabase Postgres et renseigner `DATABASE_URL` dans les variables Vercel.
-2. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
-3. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
-4. Definir `NODE_ENV=production`, `APP_ORIGIN` et `APP_URL` avec le domaine final dans Vercel.
-5. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
+1. Dans Supabase SQL Editor, executer le contenu de `supabase/schema.sql`.
+2. Recuperer la chaine "Connect > Session pooler" de Supabase. En local, importer un etat vide avec `DATABASE_URL="..." npm run migrate:supabase -- --empty`; ne jamais coller cette URL dans un chat ni la commiter.
+3. Renseigner `DATABASE_URL` dans les variables Vercel, puis redeployer.
+4. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
+5. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
+6. Definir `NODE_ENV=production`, `APP_ORIGIN` et `APP_URL` avec le domaine final dans Vercel.
+7. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
 
@@ -27,4 +29,4 @@ En production, l'API refuse de demarrer sans `RESEND_API_KEY` et `EMAIL_FROM`; `
 
 ## Base de donnees
 
-Le projet contient actuellement une couche Postgres partielle pour les messages, notifications et journaux. Avant ouverture publique, terminer la migration des autres collections JSON (utilisateurs, trajets, transactions, conversations et KYC) dans Supabase. Cette etape est volontairement bloquante: ne publiez pas une application transactionnelle avec le fichier `server/data.json`.
+La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour l'ensemble des collections : utilisateurs, sessions, trajets, annonces, conversations, messages, operations, KYC, litiges et notifications. Les requetes d'ecriture verrouillent l'etat, le mettent a jour et valident la transaction avant la reponse HTTP. Le fichier `server/data.json` reste reserve au developpement local.

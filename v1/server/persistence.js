@@ -11,7 +11,7 @@ const PARTIAL_POSTGRES_COLLECTIONS = new Set(['auditLogs', 'messages', 'notifica
 
 export function persistenceConfig(env = process.env) {
   const requested = String(env.PERSISTENCE_DRIVER || '').trim().toLowerCase();
-  const driver = requested || (env.DATABASE_URL ? 'postgres' : 'json');
+  const driver = requested || 'json';
   if (!VALID_DRIVERS.has(driver)) {
     throw new Error(`PERSISTENCE_DRIVER invalide: ${driver}. Valeurs supportees: json, postgres.`);
   }
@@ -37,11 +37,7 @@ export function createPersistence({ db, save, newId, findUser, publicUser, env =
       throw new Error(`Collections Postgres non supportees pour l'instant: ${unsupported.join(', ')}.`);
     }
     if (!config.allowPartialPostgres || !config.partialPostgresCollections.length) {
-      throw new Error(
-        'PERSISTENCE_DRIVER=postgres demande un adaptateur Postgres complet. ' +
-        'Pour tester une migration partielle explicite, definir PERSISTENCE_ALLOW_PARTIAL=true ' +
-        'et PERSISTENCE_POSTGRES_COLLECTIONS=auditLogs,notifications,messages.'
-      );
+      throw new Error('Le stockage Supabase complet est assure par server/store.js. Utilisez PERSISTENCE_DRIVER=json.');
     }
 
     const postgresPool = pool || createPostgresPool({ connectionString: env.DATABASE_URL });

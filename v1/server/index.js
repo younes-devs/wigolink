@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { getDb, save, newId } from './store.js';
+import { acquireDatabaseState, getDb, releaseDatabaseState, save, newId, usesDatabase } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
@@ -35,6 +35,69 @@ app.use(express.json({ limit: '25mb' }));
 app.use(langMiddleware);
 
 const db = getDb();
+let stateQueue = Promise.resolve();
+
+// Le serveur historique manipule un objet en memoire. En production, chaque requete
+// le charge depuis Supabase et les ecritures sont verrouillees puis validees avant
+// l'envoi de la reponse. Cela conserve les invariants metier pendant la migration.
+app.use((req, res, next) => {
+  if (!usesDatabase()) return next();
+
+  let releaseTurn;
+  const previousTurn = stateQueue;
+  stateQueue = new Promise((resolve) => { releaseTurn = resolve; });
+  const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+
+  void (async () => {
+    let lock = null;
+    let settled = false;
+    const settle = async ({ commit = false, deliver = null } = {}) => {
+      if (settled) return;
+      settled = true;
+      try {
+        await releaseDatabaseState(lock, { commit });
+        if (deliver) deliver();
+      } catch (error) {
+        console.error('Echec de persistance Supabase', error);
+        if (!res.headersSent) {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Sauvegarde temporairement indisponible. Reessayez.' }));
+        }
+      } finally {
+        releaseTurn();
+      }
+    };
+
+    try {
+      await previousTurn;
+      lock = await acquireDatabaseState({ write });
+
+      const nativeJson = res.json.bind(res);
+      const nativeSend = res.send.bind(res);
+      res.json = (body) => {
+        void settle({
+          commit: write,
+          deliver: () => {
+            res.send = nativeSend;
+            nativeJson(body);
+          },
+        });
+        return res;
+      };
+      res.send = (body) => {
+        void settle({ commit: write, deliver: () => nativeSend(body) });
+        return res;
+      };
+      res.once('close', () => { void settle(); });
+      next();
+    } catch (error) {
+      console.error('Echec de lecture Supabase', error);
+      await settle();
+      if (!res.headersSent) res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
+    }
+  })();
+});
 // Flux temps reel leger (SSE). Il reste dans le processus Express afin de fonctionner
 // aussi bien en local qu'avec un serveur Node classique, sans dependance WebSocket.
 const realtimeClients = new Map();

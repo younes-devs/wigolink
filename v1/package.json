@@ -10,7 +10,8 @@
     "start": "node server/index.js",
     "api": "node server/index.js",
     "migrate:plan": "node server/migrate-json-postgres-cli.js",
-    "migrate:postgres": "node server/migrate-json-postgres-cli.js --write"
+    "migrate:postgres": "node server/migrate-json-postgres-cli.js --write",
+    "migrate:supabase": "node server/migrate-supabase-state-cli.js"
   },
   "keywords": [],
   "author": "",
