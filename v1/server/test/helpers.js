@@ -13,13 +13,13 @@ export const BASE_URL = `http://localhost:${PORT}`;
 let child = null;
 let dataFile = null;
 
-export async function startServer() {
+export async function startServer({ env = {} } = {}) {
   dataFile = path.join(serverDir, `data.test-${process.pid}.json`);
   if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
 
   child = spawn('node', ['index.js'], {
     cwd: serverDir,
-    env: { ...process.env, PORT: String(PORT), DATA_FILE: dataFile, DEMO: 'true' },
+    env: { ...process.env, PORT: String(PORT), DATA_FILE: dataFile, DEMO: 'true', ...env },
     stdio: 'pipe',
   });
 

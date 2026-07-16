@@ -11,8 +11,9 @@ import { startServer, stopServer, api, loginAs, completeTraining, registerKycVer
 // reconnecte à la volée grignote le même quota partagé — au-delà d'une dizaine de tests,
 // ça déclenchait un vrai 429 sur des identifiants pourtant corrects.
 const tokens = {};
+const PRIVATE_TEST_EMAIL = 'test-prive@wigofly.test';
 before(async () => {
-  await startServer();
+  await startServer({ env: { TEST_EMAIL_BYPASS: PRIVATE_TEST_EMAIL } });
   tokens.fatima = await loginAs('fatima@demo.wigofly.app');
   tokens.karim = await loginAs('karim@demo.wigofly.app');
   tokens.mehdi = await loginAs('mehdi@demo.wigofly.app');
@@ -64,6 +65,19 @@ test('auth : un compte email reste bloque jusqu a sa verification', async () => 
 
   const me = await api('/me', { token: verification.body.token });
   assert.equal(me.status, 200);
+});
+
+test('auth : le bypass prive n ouvre que l adresse configuree', async () => {
+  const registration = await api('/auth/register', {
+    method: 'POST',
+    body: { name: 'Compte de test prive', email: PRIVATE_TEST_EMAIL, password: 'motdepasse123', cguAccepted: true },
+  });
+  assert.equal(registration.status, 200);
+  assert.ok(registration.body.token, 'le compte prive est connecte sans envoi de code');
+
+  const me = await api('/me', { token: registration.body.token });
+  assert.equal(me.status, 200);
+  assert.equal(me.body.user.emailVerified, false, 'retirer la variable rebloque bien ce compte');
 });
 
 test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {
