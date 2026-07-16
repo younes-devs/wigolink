@@ -2,24 +2,23 @@
 
 ## Architecture recommandee
 
-- Frontend React/Vite sur Vercel.
-- API Express sur Render ou Railway, derriere `https://api.votredomaine.com`.
+- Frontend React/Vite et API Express sur Vercel, sous le meme domaine.
 - Base Postgres Supabase et email Resend.
 
-Le frontend utilise `VITE_API_BASE_URL` pour joindre l'API. Cette separation est volontaire: les fonctions Vercel ont un disque en lecture seule et ne conviennent pas au fichier JSON local ni a une connexion SSE longue duree.
+Les routes `/api/*` sont executees par la fonction Vercel `api/[...path].js`; le frontend les appelle donc sur le meme domaine. Les fonctions Vercel ont un disque en lecture seule: `server/data.json` reste strictement local et Supabase devient obligatoire avant ouverture publique.
 
 ## Variables a renseigner
 
-Copier `.env.example`, puis definir les secrets dans les tableaux de bord Vercel et de l'hebergeur API. Ne jamais commiter `.env`.
+Copier `.env.example`, puis definir les secrets dans le tableau de bord Vercel. Ne jamais commiter `.env`.
 
 Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`; Resend exige un expediteur provenant d'un domaine verifie. Voir la [documentation Resend](https://resend.com/docs/send-with-express/).
 
 ## Etapes de publication
 
-1. Creer la base Supabase Postgres et renseigner `DATABASE_URL` sur l'API.
+1. Creer la base Supabase Postgres et renseigner `DATABASE_URL` dans les variables Vercel.
 2. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
-3. Deployer l'API Node avec `NODE_ENV=production`, `APP_ORIGIN` et `APP_URL` definis sur le domaine final.
-4. Deployer le dossier `v1` sur Vercel avec `npm run build`, sortie `client/dist`, et `VITE_API_BASE_URL=https://api.votredomaine.com/api`.
+3. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
+4. Definir `NODE_ENV=production`, `APP_ORIGIN` et `APP_URL` avec le domaine final dans Vercel.
 5. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
