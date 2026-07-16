@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { api } from './api';
+import { api, realtimeUrl } from './api';
 import { Icon } from './Icons.jsx';
 import Notifications from './Notifications.jsx';
 import { t, useLang } from './i18n.js';
@@ -81,8 +81,13 @@ export function BottomNav({ user }) {
       .then((data) => { if (alive) setSummary(data); })
       .catch(() => {});
     load();
-    const timer = setInterval(load, 15000);
-    return () => { alive = false; clearInterval(timer); };
+    const source = new EventSource(realtimeUrl());
+    const onUpdate = (event) => {
+      const update = JSON.parse(event.data || '{}');
+      if (['message', 'read', 'message_deleted'].includes(update.type)) load();
+    };
+    source.addEventListener('update', onUpdate);
+    return () => { alive = false; source.removeEventListener('update', onUpdate); source.close(); };
   }, [user]);
   const tabs = [
     { to: '/trajets', icon: 'plane', label: 'Trajet' },

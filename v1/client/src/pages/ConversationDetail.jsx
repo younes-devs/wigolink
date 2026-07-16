@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, realtimeUrl } from '../api';
 import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
@@ -28,6 +28,12 @@ export default function ConversationDetail() {
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
   const [attachment, setAttachment] = useState(null);
+  const [attachmentState, setAttachmentState] = useState('');
+  const [otherTyping, setOtherTyping] = useState(false);
+  const [otherOnline, setOtherOnline] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [searchIndex, setSearchIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportCode, setReportCode] = useState('external_payment');
@@ -35,9 +41,13 @@ export default function ConversationDetail() {
   const threadRef = useRef(null);
   const endRef = useRef(null);
   const fileRef = useRef(null);
+  const cameraRef = useRef(null);
   const menuRef = useRef(null);
   const latestMessageAtRef = useRef(0);
   const nearBottomRef = useRef(true);
+  const typingTimerRef = useRef(null);
+  const lastTypingRef = useRef(0);
+  const messageNodesRef = useRef(new Map());
 
   const load = (silent = false, q = messageQuery) => {
     const params = new URLSearchParams({ limit: '50' });
@@ -76,6 +86,11 @@ export default function ConversationDetail() {
     nearBottomRef.current = true;
     setFailed(null);
     setAttachment(null);
+    setAttachmentState('');
+    setOtherTyping(false);
+    setOtherOnline(false);
+    setPreviewImage(null);
+    setSelectedMessage(null);
     setMenuOpen(false);
     setReportOpen(false);
     setReportCode('external_payment');
@@ -86,17 +101,24 @@ export default function ConversationDetail() {
   }, [id]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') load(true);
-    }, 12000);
-    return () => clearInterval(timer);
-  }, [id]);
+    const source = new EventSource(realtimeUrl());
+    const onUpdate = (event) => {
+      const update = JSON.parse(event.data || '{}');
+      if (update.conversationId !== id) return;
+      if (update.type === 'typing') setOtherTyping(update.userId !== user.id && !!update.active);
+      if (update.type === 'presence') setOtherOnline(update.userId !== user.id && !!update.online);
+      if (['message', 'message_deleted', 'read'].includes(update.type)) load(true);
+    };
+    source.addEventListener('update', onUpdate);
+    return () => {
+      source.removeEventListener('update', onUpdate);
+      source.close();
+      clearTimeout(typingTimerRef.current);
+      api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
+    };
+  }, [id, user.id]);
 
-  useEffect(() => {
-    if (!searchOpen) return;
-    const timer = setTimeout(() => load(true, messageQuery), 250);
-    return () => clearTimeout(timer);
-  }, [messageQuery, searchOpen, id]);
+  useEffect(() => { setSearchIndex(0); }, [messageQuery]);
 
   useEffect(() => {
     sessionStorage.setItem(`draft:${id}`, text);
@@ -125,6 +147,25 @@ export default function ConversationDetail() {
     return messages;
   }, [messages]);
   const grouped = useMemo(() => groupMessages(visibleMessages, user.id), [visibleMessages, user.id]);
+  const searchMatches = useMemo(() => messageQuery.trim() ? messages.filter((message) => message.text?.toLowerCase().includes(messageQuery.trim().toLowerCase())) : [], [messages, messageQuery]);
+
+  const announceTyping = () => {
+    if (!conversationOpen || !isOnline) return;
+    const now = Date.now();
+    if (now - lastTypingRef.current > 1200) {
+      lastTypingRef.current = now;
+      api(`/conversations/${id}/typing`, { method: 'POST', body: { active: true } }).catch(() => {});
+    }
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {}), 1800);
+  };
+
+  const goToSearchMatch = (direction) => {
+    if (!searchMatches.length) return;
+    const next = (searchIndex + direction + searchMatches.length) % searchMatches.length;
+    setSearchIndex(next);
+    messageNodesRef.current.get(searchMatches[next].id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   const loadOlder = async () => {
     if (!messagePage?.hasMore || loadingOlder) return;
@@ -181,6 +222,7 @@ export default function ConversationDetail() {
         },
       });
       if (data.warning) toast.info(data.warning);
+      api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
       await load(true);
     } catch (err) {
       setFailed({ text: bodyText, clientId, attachment: outgoingAttachment, message: err.message || t('messages.composer.failed') });
@@ -277,12 +319,37 @@ export default function ConversationDetail() {
       toast.error(t('messages.attachment.type'));
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('La photo doit faire moins de 10 Mo.');
+      return;
+    }
     try {
+      setAttachmentState('Compression de la photo...');
       const dataUrl = await resizeImage(file);
       setAttachment({ dataUrl, name: file.name, type: 'image' });
+      setAttachmentState('Photo optimisee et prete a envoyer');
     } catch {
       toast.error(t('messages.attachment.failed'));
+    } finally {
+      setTimeout(() => setAttachmentState(''), 1800);
     }
+  };
+
+  const copyMessage = async (message) => {
+    try {
+      await navigator.clipboard.writeText(message.text || '');
+      toast.success('Message copie');
+    } catch { toast.error('Copie impossible'); }
+    setSelectedMessage(null);
+  };
+
+  const deleteMessage = async (message) => {
+    try {
+      await api(`/conversations/${id}/messages/${message.id}`, { method: 'DELETE' });
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      toast.success('Message supprime');
+    } catch (err) { toast.error(err.message || 'Suppression impossible'); }
+    setSelectedMessage(null);
   };
 
   if (conversation === null) return <ConversationSkeleton />;
@@ -303,7 +370,8 @@ export default function ConversationDetail() {
   const price = conversation.operation?.price ?? conversation.trip?.price;
   const currency = conversation.operation?.currency || conversation.trip?.currency || 'EUR';
   const profileLabel = conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic');
-  const headerMeta = [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
+  const headerMeta = otherTyping ? 'ecrit...' : otherOnline ? 'En ligne' : [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
+  const hasSafetyWarning = messages.some((message) => message.flagged || message.type === 'warning');
 
   return (
     <div className="conversation-detail">
@@ -377,6 +445,14 @@ export default function ConversationDetail() {
         </div>
       )}
 
+      {hasSafetyWarning && (
+        <div className="conversation-safety-banner">
+          <Icon name="shieldCheck" size={16} />
+          <span>Pour votre securite, gardez paiement et echanges sur Wigofly.</span>
+          <button type="button" onClick={() => setReportOpen(true)}>Signaler</button>
+        </div>
+      )}
+
       {reportOpen && (
         <form className="conversation-report-panel" onSubmit={reportConversation}>
           <div>
@@ -412,11 +488,14 @@ export default function ConversationDetail() {
       )}
 
       {searchOpen && (
-        <label className="conversation-search">
+        <div className="conversation-search">
           <Icon name="search" size={16} />
           <input value={messageQuery} onChange={(e) => setMessageQuery(e.target.value)} placeholder={t('messages.search.inConversation')} />
-          {messageQuery && <button type="button" onClick={() => { setMessageQuery(''); load(true, ''); }} aria-label={t('messages.search.clear')}><Icon name="x" size={14} /></button>}
-        </label>
+          {messageQuery && <span className="search-results-count">{searchMatches.length ? `${searchIndex + 1}/${searchMatches.length}` : '0'}</span>}
+          {messageQuery && <button type="button" onClick={() => goToSearchMatch(-1)} aria-label="Resultat precedent"><Icon name="chevronUp" size={14} /></button>}
+          {messageQuery && <button type="button" onClick={() => goToSearchMatch(1)} aria-label="Resultat suivant"><Icon name="chevronDown" size={14} /></button>}
+          {messageQuery && <button type="button" onClick={() => setMessageQuery('')} aria-label={t('messages.search.clear')}><Icon name="x" size={14} /></button>}
+        </div>
       )}
 
       <main className="message-thread" ref={threadRef} onScroll={onThreadScroll}>
@@ -448,7 +527,7 @@ export default function ConversationDetail() {
         {grouped.map((item) => (
           item.kind === 'date'
             ? <div className="message-day" key={item.id}>{item.label}</div>
-            : <MessageGroup key={item.id} group={item} userId={user.id} conversation={conversation} />
+            : <MessageGroup key={item.id} group={item} userId={user.id} conversation={conversation} query={messageQuery} onPreview={setPreviewImage} onSelect={setSelectedMessage} setMessageNode={(messageId, node) => { if (node) messageNodesRef.current.set(messageId, node); }} />
         ))}
 
         {newMessageCount > 0 && (
@@ -474,15 +553,18 @@ export default function ConversationDetail() {
           <button type="button" onClick={() => setAttachment(null)} aria-label={t('messages.attachment.remove')}><Icon name="x" size={14} /></button>
         </div>
       )}
+      {attachmentState && <div className="attachment-progress"><span className="spinner" />{attachmentState}</div>}
 
       <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
+        <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
         <button type="button" className="compose-attach" disabled={!canWrite || sending} onClick={() => fileRef.current?.click()} aria-label={t('messages.attachment.add')} title={t('messages.attachment.add')}>
           <Icon name="image" size={18} />
         </button>
+        <button type="button" className="compose-attach camera" disabled={!canWrite || sending} onClick={() => cameraRef.current?.click()} aria-label="Prendre une photo" title="Prendre une photo"><Icon name="camera" size={18} /></button>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 1000))}
+          onChange={(e) => { setText(e.target.value.slice(0, 1000)); announceTyping(); }}
           placeholder={conversationOpen ? (isOnline ? t('messages.composer.placeholder') : t('messages.offline.placeholder')) : t('messages.composer.closed')}
           rows={1}
           disabled={!canWrite || sending}
@@ -495,6 +577,8 @@ export default function ConversationDetail() {
           {sending ? <span className="spinner" /> : <Icon name="send" size={18} />}
         </button>
       </form>
+      {previewImage && <ImagePreview image={previewImage} onClose={() => setPreviewImage(null)} />}
+      {selectedMessage && <MessageActions message={selectedMessage} mine={selectedMessage.from === user.id} onCopy={copyMessage} onDelete={deleteMessage} onReport={() => { setSelectedMessage(null); setReportOpen(true); }} onClose={() => setSelectedMessage(null)} />}
     </div>
   );
 }
@@ -521,7 +605,7 @@ function ConversationContext({ conversation }) {
   );
 }
 
-function MessageGroup({ group, userId, conversation }) {
+function MessageGroup({ group, userId, conversation, query, onPreview, onSelect, setMessageNode }) {
   const mine = group.from === userId;
   if (group.type === 'system') {
     return (
@@ -536,23 +620,69 @@ function MessageGroup({ group, userId, conversation }) {
       {!mine && <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={28} />}
       <div className="message-stack">
         {group.messages.map((message) => (
-          <div className={`message-bubble ${mine ? 'mine' : ''} ${message.flagged || message.type === 'warning' ? 'flagged' : ''} ${message.deliveryStatus === 'failed' ? 'failed' : ''}`} key={message.id}>
+          <div
+            className={`message-bubble ${mine ? 'mine' : ''} ${message.flagged || message.type === 'warning' ? 'flagged' : ''} ${message.deliveryStatus === 'failed' ? 'failed' : ''}`}
+            key={message.id}
+            ref={(node) => setMessageNode(message.id, node)}
+            onContextMenu={(event) => { event.preventDefault(); onSelect(message); }}
+            onTouchStart={(event) => {
+              const timer = setTimeout(() => onSelect(message), 560);
+              event.currentTarget.dataset.longPress = timer;
+            }}
+            onTouchEnd={(event) => clearTimeout(Number(event.currentTarget.dataset.longPress))}
+          >
             {message.attachments?.length > 0 && (
               <div className="message-attachments">
                 {message.attachments.map((attachment) => (
-                  <a href={attachment.dataUrl} target="_blank" rel="noreferrer" key={attachment.id || attachment.dataUrl}>
+                  <button type="button" key={attachment.id || attachment.dataUrl} onClick={() => onPreview(attachment)} aria-label="Agrandir la photo">
                     <img src={attachment.dataUrl} alt={attachment.name || t('messages.attachment.preview')} />
-                  </a>
+                  </button>
                 ))}
               </div>
             )}
-            {message.text && <p>{message.text}</p>}
-            <span>{shortDate(message.at)}{statusSuffix(message, mine)}</span>
+            {message.text && <p><HighlightedText text={message.text} query={query} /></p>}
+            <span className="message-status"><time>{shortDate(message.at)}</time>{mine && <DeliveryState message={message} />}</span>
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+function HighlightedText({ text, query }) {
+  if (!query?.trim()) return text;
+  const parts = text.split(new RegExp(`(${escapeRegExp(query.trim())})`, 'ig'));
+  return parts.map((part, index) => part.toLowerCase() === query.trim().toLowerCase() ? <mark key={index}>{part}</mark> : part);
+}
+
+function DeliveryState({ message }) {
+  if (message.deliveryStatus === 'sending') return <Icon name="clock" size={12} />;
+  if (message.deliveryStatus === 'failed') return <Icon name="alert" size={12} />;
+  const read = (message.readBy || []).length > 1;
+  return <Icon name="checkCheck" className={read ? 'is-read' : ''} size={14} />;
+}
+
+function ImagePreview({ image, onClose }) {
+  useEffect(() => {
+    const close = (event) => { if (event.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [onClose]);
+  return <div className="image-lightbox" role="dialog" aria-modal="true" onClick={onClose}>
+    <button type="button" className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="x" size={20} /></button>
+    <img src={image.dataUrl} alt={image.name || 'Photo jointe'} onClick={(event) => event.stopPropagation()} />
+  </div>;
+}
+
+function MessageActions({ message, mine, onCopy, onDelete, onReport, onClose }) {
+  return <div className="message-actions-sheet" role="dialog" aria-modal="true" onClick={onClose}>
+    <div className="message-actions" onClick={(event) => event.stopPropagation()}>
+      <button type="button" onClick={() => onCopy(message)}><Icon name="copy" size={17} />Copier</button>
+      <button type="button" onClick={onReport}><Icon name="alert" size={17} />Signaler</button>
+      {mine && <button type="button" className="danger" onClick={() => onDelete(message)}><Icon name="trash" size={17} />Supprimer</button>}
+      <button type="button" className="cancel" onClick={onClose}>Annuler</button>
+    </div>
+  </div>;
 }
 
 function groupMessages(messages, userId) {
@@ -586,14 +716,7 @@ function latestMessageAt(messages) {
   return messages.reduce((latest, message) => Math.max(latest, Number(message.at || 0)), 0);
 }
 
-function statusSuffix(message, mine) {
-  if (message.flagged || message.type === 'warning') return ` - ${t('messages.delivery.security')}`;
-  if (!mine) return '';
-  if (message.deliveryStatus === 'sending') return ` - ${t('messages.delivery.sending')}`;
-  if (message.deliveryStatus === 'failed') return ` - ${t('messages.delivery.failed')}`;
-  const readBy = message.readBy || [];
-  return readBy.length > 1 ? ` - ${t('messages.delivery.read')}` : ` - ${t('messages.delivery.sent')}`;
-}
+function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 function contextLabel(conversation) {
   if (conversation.trip) return `${conversation.trip.from} -> ${conversation.trip.to}`;

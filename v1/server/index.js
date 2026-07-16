@@ -15,6 +15,9 @@ app.use(express.json({ limit: '25mb' }));
 app.use(langMiddleware);
 
 const db = getDb();
+// Flux temps reel leger (SSE). Il reste dans le processus Express afin de fonctionner
+// aussi bien en local qu'avec un serveur Node classique, sans dependance WebSocket.
+const realtimeClients = new Map();
 
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
@@ -25,6 +28,30 @@ const DEMO = process.env.DEMO === 'true';
 // Endpoint public : le client s'en sert pour savoir s'il doit afficher les outils de
 // démo (bascule de compte, remplissage auto). Ne révèle rien de sensible en lui-même.
 app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
+
+app.get('/api/realtime', authRealtime, (req, res) => {
+  res.status(200);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  const clients = realtimeClients.get(req.user.id) || new Set();
+  clients.add(res);
+  realtimeClients.set(req.user.id, clients);
+  sendRealtime(req.user.id, { type: 'ready', userId: req.user.id });
+  broadcastPresence(req.user.id, true);
+  const heartbeat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    const current = realtimeClients.get(req.user.id);
+    if (!current) return;
+    current.delete(res);
+    if (current.size === 0) {
+      realtimeClients.delete(req.user.id);
+      broadcastPresence(req.user.id, false);
+    }
+  });
+});
 
 // ---------- Helpers ----------
 const publicUser = (u) =>
@@ -62,6 +89,33 @@ function auth(req, res, next) {
   req.user = findUser(userId);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   next();
+}
+
+function authRealtime(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '') || String(req.query?.token || '');
+  const userId = db.sessions[token];
+  if (!userId) return res.status(401).json({ error: 'Non authentifie' });
+  req.user = findUser(userId);
+  if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
+  next();
+}
+
+function sendRealtime(userId, payload) {
+  for (const client of realtimeClients.get(userId) || []) {
+    client.write(`event: update\ndata: ${JSON.stringify(payload)}\n\n`);
+  }
+}
+
+function broadcastConversation(conversation, payload, exceptUserId = null) {
+  for (const userId of conversation.participantIds || []) {
+    if (userId !== exceptUserId) sendRealtime(userId, { conversationId: conversation.id, ...payload });
+  }
+}
+
+function broadcastPresence(userId, online) {
+  for (const conversation of db.conversations.filter((item) => item.participantIds.includes(userId))) {
+    broadcastConversation(conversation, { type: 'presence', userId, online }, userId);
+  }
 }
 
 function addEvent(tx, type, actorId, meta = {}) {
@@ -1473,12 +1527,22 @@ app.post('/api/conversations/:id/read', auth, (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
   const changed = markConversationRead(conversation.id, req.user.id);
-  if (changed) save();
+  if (changed) {
+    save();
+    broadcastConversation(conversation, { type: 'read', userId: req.user.id });
+  }
   res.json({
     ok: true,
     conversation: conversationView(conversation, req.user.id),
     messagesUnread: unreadConversationCount(req.user.id),
   });
+});
+
+app.post('/api/conversations/:id/typing', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  broadcastConversation(conversation, { type: 'typing', userId: req.user.id, active: req.body?.active === true }, req.user.id);
+  res.json({ ok: true });
 });
 
 app.post('/api/conversations/:id/unread', auth, (req, res) => {
@@ -1608,11 +1672,26 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   conversation.archivedBy = (conversation.archivedBy || []).filter((id) => id !== req.user.id);
   await notify(conversation.participantIds.filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, conversation.operationId || null, 'messages', 'messages');
   save();
+  broadcastConversation(conversation, { type: 'message', messageId: msg.id, from: req.user.id });
   res.json({
     message: msg,
     conversation: conversationView(conversation, req.user.id),
     warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
   });
+});
+
+app.delete('/api/conversations/:id/messages/:messageId', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const index = db.messages.findIndex((message) => message.id === req.params.messageId && message.conversationId === conversation.id);
+  if (index < 0) return res.status(404).json({ error: 'Message introuvable' });
+  if (db.messages[index].from !== req.user.id) return res.status(403).json({ error: 'Vous pouvez supprimer uniquement vos messages' });
+  db.messages.splice(index, 1);
+  const last = conversationMessages(conversation).at(-1);
+  conversation.lastMessageAt = last?.at || conversation.createdAt;
+  save();
+  broadcastConversation(conversation, { type: 'message_deleted', messageId: req.params.messageId, from: req.user.id });
+  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
 });
 
 // ---------- Annonces ----------

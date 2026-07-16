@@ -10,6 +10,11 @@ export function getToken() {
   return token;
 }
 
+export function realtimeUrl() {
+  const base = `${window.location.origin}/api/realtime`;
+  return `${base}?token=${encodeURIComponent(token || '')}`;
+}
+
 export async function api(path, opts = {}) {
   const res = await fetch(`/api${path}`, {
     ...opts,

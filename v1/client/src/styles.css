@@ -903,6 +903,29 @@ body {
   box-shadow: 0 2px 8px rgba(10, 108, 245, 0.32);
 }
 .chat-send:hover { filter: brightness(1.08); }
+.search-results-count { font-size: 11px; font-weight: 750; color: var(--ink-soft); white-space: nowrap; }
+.conversation-safety-banner { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 10px; border: 1px solid rgba(154, 98, 0, 0.26); background: color-mix(in srgb, var(--amber-tint) 55%, var(--surface)); color: var(--amber); font-size: 12px; line-height: 1.35; }
+.conversation-safety-banner span { flex: 1; min-width: 0; }.conversation-safety-banner button { border: 0; padding: 3px 0; background: transparent; color: inherit; font: inherit; font-weight: 800; cursor: pointer; }
+.message-attachments button { display: block; padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.18); background: transparent; cursor: zoom-in; }
+.message-bubble mark { padding: 0 1px; background: #ffe08a; color: #172033; border-radius: 2px; }
+.message-status { display: flex !important; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 3px; font-size: 10px; opacity: 0.72; line-height: 1.15; }.message-status time { font: inherit; }.message-status .icon { flex: 0 0 auto; }.message-status .is-read { color: #c8ecff; opacity: 1; }
+.attachment-progress { display: flex; align-items: center; gap: 7px; padding: 7px 11px; color: var(--ink-soft); font-size: 12px; }
+.message-compose { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }.compose-attach.camera { display: none; }
+.image-lightbox { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: rgba(4, 10, 18, 0.9); }.image-lightbox img { max-width: min(960px, 100%); max-height: calc(100dvh - 48px); object-fit: contain; border-radius: 8px; box-shadow: 0 24px 80px rgba(0,0,0,.48); }.image-lightbox > .icon-btn { position: fixed; top: 18px; right: 18px; background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.22); }
+.message-actions-sheet { position: fixed; inset: 0; z-index: 180; display: flex; align-items: end; justify-content: center; padding: 16px; background: rgba(4, 10, 18, 0.32); }.message-actions { width: min(430px, 100%); display: grid; gap: 3px; padding: 7px; border: 1px solid var(--hairline); border-radius: 14px; background: var(--surface); box-shadow: 0 20px 50px rgba(4,10,18,.32); }.message-actions button { min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; text-align: left; }.message-actions button:hover { background: rgba(10,108,245,.08); color: var(--accent); }.message-actions .danger { color: var(--danger); }.message-actions .cancel { justify-content: center; color: var(--ink-soft); }
+.conversation-swipe-actions { display: none; }
+@media (max-width: 520px) {
+  .compose-attach.camera { display: grid; }
+  .message-compose { gap: 5px; padding: 6px; }
+  .compose-attach, .chat-send { width: 36px; height: 36px; }
+  .compose-count { display: none; }
+  .conversation-row { overflow: hidden; }
+  .conversation-row.is-swiped .conversation-row-main, .conversation-row.is-swiped .conversation-side { transform: translateX(-154px); }
+  .conversation-row-main, .conversation-side { transition: transform .18s ease; }
+  .conversation-swipe-actions { position: absolute; inset: 0 0 0 auto; width: 154px; display: flex; align-items: stretch; background: var(--surface-soft); }
+  .conversation-swipe-actions button { flex: 1; border: 0; color: #fff; background: var(--accent); display: grid; place-items: center; }
+  .conversation-swipe-actions button:nth-child(2) { background: #a76200; }.conversation-swipe-actions button:nth-child(3) { background: #406a84; }
+}
 .chat-send:active { transform: scale(0.92); }
 .chat-send:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 .skeleton {
@@ -3129,4 +3152,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     align-items: flex-start;
     flex-direction: column;
   }
+  .phone:has(.conversation-detail) .message-compose {
+    grid-template-columns: 36px 36px minmax(0, 1fr) 36px;
+    gap: 5px;
+  }
+  .phone:has(.conversation-detail) .compose-attach.camera { display: grid; }
+  .phone:has(.conversation-detail) .compose-attach,
+  .phone:has(.conversation-detail) .chat-send { width: 36px; height: 36px; }
+  .phone:has(.conversation-detail) .conversation-detail { animation: conversation-enter .2s ease-out; }
 }
+
+@keyframes conversation-enter { from { opacity: .45; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }

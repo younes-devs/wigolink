@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api';
+import { api, realtimeUrl } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 import { useToast } from '../Toast.jsx';
@@ -42,6 +42,16 @@ export default function MessagesSimple() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const source = new EventSource(realtimeUrl());
+    const onUpdate = (event) => {
+      const update = JSON.parse(event.data || '{}');
+      if (['message', 'read', 'message_deleted'].includes(update.type)) load();
+    };
+    source.addEventListener('update', onUpdate);
+    return () => { source.removeEventListener('update', onUpdate); source.close(); };
+  }, []);
 
   const counts = useMemo(() => {
     const list = conversations || [];
@@ -200,6 +210,8 @@ export default function MessagesSimple() {
 
 function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, onRestore, onUnread, onTogglePin }) {
   const menuRef = useRef(null);
+  const touchStart = useRef(null);
+  const [swiped, setSwiped] = useState(false);
   const unread = unreadCount(conversation);
   const status = statusLabel(conversation);
   const context = conversation.context?.label || conversationContext(conversation);
@@ -210,8 +222,16 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
     closeMenu();
     await action();
   };
+  const onTouchStart = (event) => { touchStart.current = event.touches[0]?.clientX ?? null; };
+  const onTouchEnd = (event) => {
+    const start = touchStart.current;
+    const end = event.changedTouches[0]?.clientX;
+    touchStart.current = null;
+    if (start !== null && end !== undefined && Math.abs(end - start) > 54) setSwiped(end < start);
+  };
   return (
-    <article className={`conversation-row ${menuOpen ? 'menu-open' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`}>
+    <article className={`conversation-row ${menuOpen ? 'menu-open' : ''} ${swiped ? 'is-swiped' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {swiped && <div className="conversation-swipe-actions"><button type="button" onClick={() => runAction(() => onTogglePin(conversation))}><Icon name="pin" size={16} /></button><button type="button" onClick={() => runAction(() => onArchive(conversation.id))}><Icon name="eyeOff" size={16} /></button><button type="button" onClick={() => runAction(() => onUnread(conversation.id))}><Icon name="mail" size={16} /></button></div>}
       <Link to={`/messages/${conversation.id}`} className="conversation-row-main" onClick={closeMenu}>
         <div className="conversation-avatar">
           <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={50} />
