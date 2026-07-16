@@ -332,9 +332,13 @@ function positiveNumber(v, { allowZero = false } = {}) {
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
+// Acces de recette temporaire pour le proprietaire du projet en attendant le
+// domaine Resend. A retirer des que l'expedition email est configuree.
+const DEPLOYMENT_TEST_EMAIL = 'udiiudidi@gmail.com';
 const isPrivateTestEmail = (email) => {
   const allowed = normEmail(process.env.TEST_EMAIL_BYPASS || '');
-  return !!allowed && normEmail(email) === allowed;
+  const candidate = normEmail(email);
+  return candidate === DEPLOYMENT_TEST_EMAIL || (!!allowed && candidate === allowed);
 };
 
 function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {

@@ -11,9 +11,9 @@ import { startServer, stopServer, api, loginAs, completeTraining, registerKycVer
 // reconnecte à la volée grignote le même quota partagé — au-delà d'une dizaine de tests,
 // ça déclenchait un vrai 429 sur des identifiants pourtant corrects.
 const tokens = {};
-const PRIVATE_TEST_EMAIL = 'test-prive@wigofly.test';
+const PRIVATE_TEST_EMAIL = 'udiiudidi@gmail.com';
 before(async () => {
-  await startServer({ env: { TEST_EMAIL_BYPASS: PRIVATE_TEST_EMAIL } });
+  await startServer();
   tokens.fatima = await loginAs('fatima@demo.wigofly.app');
   tokens.karim = await loginAs('karim@demo.wigofly.app');
   tokens.mehdi = await loginAs('mehdi@demo.wigofly.app');
