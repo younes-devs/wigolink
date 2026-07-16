@@ -543,8 +543,10 @@ body {
 .conversation-search button:hover { background: rgba(22, 24, 29, 0.06); color: var(--ink); }
 .message-filters {
   display: flex; gap: 7px;
-  margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
+  margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.message-filters::-webkit-scrollbar { display: none; }
 .message-filters button {
   flex: 0 0 auto; min-width: 92px; min-height: 40px; border: 1px solid var(--hairline); border-radius: 10px;
   background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 12.5px;
