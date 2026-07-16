@@ -507,8 +507,12 @@ function ConversationContext({ conversation }) {
         <b>{conversation.context?.label || contextLabel(conversation)}</b>
         <span>{conversation.actionLabel || conversation.context?.detail || t('messages.context.default')}</span>
       </div>
-      {price ? <strong>{price} {currency}</strong> : null}
-      {href && <Link to={href} className="btn btn-sm">{conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}</Link>}
+      {(price || href) && (
+        <div className="conversation-context-actions">
+          {price ? <strong>{price} {currency}</strong> : null}
+          {href && <Link to={href} className="btn btn-sm">{conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}</Link>}
+        </div>
+      )}
     </div>
   );
 }
