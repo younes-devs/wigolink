@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
-import { Icon, GoogleLogo } from '../Icons.jsx';
+import { Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 
 // Auth complète : connexion / inscription / vérification email / mot de passe oublié.
@@ -16,9 +16,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
-  const [googleOpen, setGoogleOpen] = useState(false);
-  const [googleRequireCgu, setGoogleRequireCgu] = useState(false);
-  const [googleCguChecked, setGoogleCguChecked] = useState(false);
   const [cguAccepted, setCguAccepted] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -35,7 +32,7 @@ export default function Login() {
 
   const submitLogin = () => run(async () => {
     const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password } });
-    if (d.needsVerification) { setHint(d.demoHint); switchMode('verify'); return; }
+    if (d.needsVerification) { setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); switchMode('verify'); return; }
     finishAuth(d);
   });
 
@@ -43,7 +40,7 @@ export default function Login() {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     if (!cguAccepted) throw new Error(t('err.cgu.required'));
     const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted } });
-    setHint(d.demoHint);
+    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
     switchMode('verify');
   });
 
@@ -54,12 +51,12 @@ export default function Login() {
 
   const resendCode = () => run(async () => {
     const d = await api('/auth/resend-code', { method: 'POST', body: { email: form.email } });
-    setHint(d.demoHint);
+    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
   });
 
   const submitForgot = () => run(async () => {
     const d = await api('/auth/forgot', { method: 'POST', body: { email: form.email } });
-    setHint(d.demoHint);
+    setHint(d.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
     switchMode('reset');
   });
 
@@ -69,18 +66,6 @@ export default function Login() {
     finishAuth(d);
   });
 
-  const googleSignIn = (email, name) => run(async () => {
-    if (googleRequireCgu && !googleCguChecked) throw new Error(t('err.cgu.required'));
-    setGoogleOpen(false);
-    const d = await api('/auth/google', { method: 'POST', body: { email, name, cguAccepted: googleCguChecked || !googleRequireCgu } });
-    finishAuth(d);
-  });
-
-  const openGoogle = (requireCgu) => {
-    setGoogleRequireCgu(requireCgu);
-    setGoogleCguChecked(false);
-    setGoogleOpen(true);
-  };
 
   return (
     <div className="auth-page">
@@ -128,17 +113,10 @@ export default function Login() {
             <button className="btn btn-primary" onClick={submitLogin} disabled={busy || !form.email || !form.password}>
               {busy ? <span className="spinner" /> : t('auth.login.submit')}
             </button>
-            <div className="auth-sep"><span>{t('common.or')}</span></div>
-            <button className="btn btn-google" onClick={() => openGoogle(false)} disabled={busy}>
-              <GoogleLogo size={18} />{t('auth.google.login')}
-            </button>
           </div>
           <p className="auth-switch">
             {t('auth.no.account')}{' '}
             <button className="link-btn" onClick={() => switchMode('register')}>{t('auth.create.account')}</button>
-          </p>
-          <p className="muted center" style={{ fontSize: 11.5 }}>
-            Comptes de démo : fatima@ / karim@ / mehdi@ / admin@demo.wigofly.app — mot de passe <b>demo1234</b>
           </p>
         </>
       )}
@@ -146,16 +124,6 @@ export default function Login() {
       {mode === 'register' && (
         <>
           <div className="card">
-            <button className="btn btn-google mb" onClick={() => openGoogle(true)} disabled={busy}>
-              <GoogleLogo size={18} />{t('auth.google.register')}
-            </button>
-            <div className="auth-sep"><span>{t('auth.or.email')}</span></div>
-            <button type="button" className="autofill-btn mb" onClick={() => {
-              const n = Math.floor(Math.random() * 9000) + 1000;
-              setForm((f) => ({ ...f, name: `Testeur ${n}`, email: `testeur${n}@exemple.com`, phone: `+3247${n}111`, password: 'demo1234', confirm: 'demo1234' }));
-            }}>
-              <Icon name="sparkles" size={13} />Remplir (test)
-            </button>
             <div className="field">
               <label>{t('auth.name')}</label>
               <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder={t('auth.name.ph')} autoComplete="name" />
@@ -273,47 +241,6 @@ export default function Login() {
         </div>
       )}
 
-      {googleOpen && (
-        <div className="modal-backdrop" onClick={() => setGoogleOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <GoogleLogo size={20} />
-              <b>Choisir un compte</b>
-              <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={() => setGoogleOpen(false)}>
-                <Icon name="x" size={18} />
-              </button>
-            </div>
-            <p className="muted" style={{ fontSize: 12, padding: '0 16px 10px' }}>
-              Simulation du sélecteur Google (démo — OAuth réel en production).
-            </p>
-            {googleRequireCgu && (
-              <label className="cgu-check" style={{ margin: '0 16px 10px' }}>
-                <input type="checkbox" checked={googleCguChecked} onChange={(e) => setGoogleCguChecked(e.target.checked)} />
-                <span>
-                  J'accepte les <Link to="/cgu" target="_blank">CGU</Link> et la{' '}
-                  <Link to="/confidentialite" target="_blank">politique de confidentialité</Link>.
-                </span>
-              </label>
-            )}
-            {[
-              { email: 'yasmine.demo@gmail.com', name: 'Yasmine D.' },
-              { email: 'omar.demo@gmail.com', name: 'Omar T.' },
-            ].map((a) => (
-              <button key={a.email} className="google-account" onClick={() => googleSignIn(a.email, a.name)}
-                disabled={googleRequireCgu && !googleCguChecked}>
-                <span className="avatar" style={{ width: 34, height: 34, fontSize: 13, background: '#e8f0fe', color: '#1a73e8' }}>
-                  {a.name[0]}
-                </span>
-                <span className="grow" style={{ textAlign: 'left' }}>
-                  <b style={{ display: 'block', fontSize: 13.5 }}>{a.name}</b>
-                  <span className="muted" style={{ fontSize: 12 }}>{a.email}</span>
-                </span>
-              </button>
-            ))}
-            <GoogleCustom onPick={googleSignIn} disabled={googleRequireCgu && !googleCguChecked} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -333,17 +260,3 @@ function CguText() {
   );
 }
 
-function GoogleCustom({ onPick, disabled }) {
-  const [email, setEmail] = useState('');
-  return (
-    <div style={{ display: 'flex', gap: 8, padding: '10px 16px 16px' }}>
-      <input className="chat-input" value={email} onChange={(e) => setEmail(e.target.value)}
-        placeholder="Autre adresse Gmail…" type="email" />
-      <button className="btn btn-primary btn-sm" style={{ flex: '0 0 auto' }}
-        disabled={disabled || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)}
-        onClick={() => onPick(email, email.split('@')[0])}>
-        OK
-      </button>
-    </div>
-  );
-}

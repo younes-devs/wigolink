@@ -190,11 +190,6 @@ function StepAction({ tx, user, reload }) {
   };
 
   // Mode test : récupère le code que l'autre partie devrait présenter.
-  const autofillCode = async (which) => {
-    const d = await api(`/dev/tx-codes/${tx.id}`);
-    setCode(which === 'pickup' ? d.pickupCode : d.deliveryCode);
-  };
-
   if (tx.status === 'cancelled')
     return <div className="alert alert-warn"><Icon name="alert" size={17} />{t('tx.cancelled')}</div>;
   if (tx.status === 'refunded')
@@ -246,9 +241,6 @@ function StepAction({ tx, user, reload }) {
           <div className="field">
             <label>{t('tx.code.manual')}</label>
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
-            <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('pickup')}>
-              <Icon name="sparkles" size={13} />Code auto (test)
-            </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-pickup', { code })} disabled={code.length !== 6}>
             <Icon name="check" size={18} />{t('tx.pickup.confirm')}
@@ -289,9 +281,6 @@ function StepAction({ tx, user, reload }) {
           <div className="field">
             <label>{t('tx.code.manual')}</label>
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABC123" maxLength={6} />
-            <button type="button" className="autofill-btn" style={{ marginTop: 7 }} onClick={() => autofillCode('delivery')}>
-              <Icon name="sparkles" size={13} />Code auto (test)
-            </button>
           </div>
           <button className="btn btn-teal mb" onClick={() => act('confirm-delivery', { code })} disabled={code.length !== 6}>
             <Icon name="check" size={18} />{t('tx.delivery.confirm')}
@@ -408,12 +397,6 @@ function SealingVideo({ tx, reload }) {
     setRecording(false);
   };
 
-  const simulate = async () => {
-    const geo = await captureGeo();
-    await api(`/transactions/${tx.id}/sealing-video`, { method: 'POST', body: { simulated: true, geo } });
-    reload();
-  };
-
   return (
     <div className="card">
       <h2 style={{ marginBottom: 8 }}><Icon name="camera" size={17} />{t('seal.title')}</h2>
@@ -431,7 +414,6 @@ function SealingVideo({ tx, reload }) {
       {!recording
         ? <button className="btn btn-primary mb" onClick={start}><Icon name="camera" size={18} />{t('seal.start')}</button>
         : <button className="btn btn-danger-ghost mb" onClick={stop}>{t('seal.stop')}</button>}
-      <button className="btn btn-ghost" onClick={simulate}>{t('seal.simulate')}</button>
     </div>
   );
 }

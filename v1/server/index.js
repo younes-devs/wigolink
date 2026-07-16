@@ -7,9 +7,29 @@ import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
+import { emailConfig, sendVerificationEmail } from './email.js';
 
 const app = express();
-app.use(cors());
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const APP_ORIGINS = String(process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
+if (IS_PRODUCTION && (!emailConfig().apiKey || !emailConfig().from)) throw new Error('RESEND_API_KEY et EMAIL_FROM sont requis en production.');
+app.set('trust proxy', 1);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || !IS_PRODUCTION || APP_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error('Origine non autorisee'));
+  },
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
+}));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  next();
+});
 app.use(express.json({ limit: '25mb' }));
 // i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
 app.use(langMiddleware);
@@ -264,18 +284,28 @@ function openSession(res, user, req) {
 // qui n'est pas le sien, sans jamais avoir accès à sa boîte mail.
 const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` : undefined);
 
-app.post('/api/auth/register', (req, res) => {
+async function deliverAuthCode(email, code, purpose) {
+  if (DEMO) return;
+  await sendVerificationEmail({ to: email, code, purpose });
+}
+
+app.post('/api/auth/register', async (req, res) => {
   const { name, email, phone, password, cguAccepted } = req.body;
   const invalid = validRegistration({ name, email, password });
   if (invalid) return res.status(400).json({ error: invalid });
   if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
   if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
   const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
-  db.users.push(user);
   const code = sixDigitCode();
+  try {
+    await deliverAuthCode(user.email, code, 'verify');
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+  db.users.push(user);
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
-  res.json({ pendingEmail: user.email, demoHint: demoHintFor(code) });
+  res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
 });
 
 app.post('/api/auth/verify-email', (req, res) => {
@@ -294,19 +324,24 @@ app.post('/api/auth/verify-email', (req, res) => {
   openSession(res, user, req);
 });
 
-app.post('/api/auth/resend-code', (req, res) => {
+app.post('/api/auth/resend-code', async (req, res) => {
   const email = normEmail(req.body.email);
   if (rateLimit(`resend:${email}`))
     return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
   const user = findByEmail(email);
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   const code = sixDigitCode();
+  try {
+    await deliverAuthCode(email, code, 'verify');
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
   db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
-  res.json({ ok: true, demoHint: demoHintFor(code) });
+  res.json({ ok: true, message: 'Un nouveau code vient d etre envoye.', demoHint: demoHintFor(code) });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const email = normEmail(req.body.email);
   if (rateLimit(`login:${email}`))
     return res.status(429).json({ error: 'Trop de tentatives — réessayez dans 10 minutes' });
@@ -315,9 +350,14 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   if (!user.emailVerified) {
     const code = sixDigitCode();
+    try {
+      await deliverAuthCode(email, code, 'verify');
+    } catch (error) {
+      return res.status(503).json({ error: error.message });
+    }
     db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
     save();
-    return res.json({ needsVerification: true, pendingEmail: email, demoHint: demoHintFor(code) });
+    return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
   }
   openSession(res, user, req);
 });
@@ -325,6 +365,8 @@ app.post('/api/auth/login', (req, res) => {
 // OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
 // (échange du "credential" Google Identity Services contre l'identité vérifiée).
 app.post('/api/auth/google', (req, res) => {
+  return res.status(410).json({ error: 'Connexion Google indisponible' });
+  /*
   const { email, name, cguAccepted } = req.body;
   if (!EMAIL_RE.test(email || '')) return res.status(400).json({ error: 'Email Google invalide' });
   let user = findByEmail(email);
@@ -333,24 +375,29 @@ app.post('/api/auth/google', (req, res) => {
     user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true, cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
     db.users.push(user);
   }
-  openSession(res, user, req);
+  openSession(res, user, req); */
 });
 
-app.post('/api/auth/forgot', (req, res) => {
+app.post('/api/auth/forgot', async (req, res) => {
   const email = normEmail(req.body.email);
   if (rateLimit(`forgot:${email}`))
     return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
   const user = findByEmail(email);
   let code = null;
   // Réponse identique que le compte existe ou non (pas d'énumération d'emails)
-  if (user && user.provider !== 'google') {
+  if (user) {
     code = sixDigitCode();
+    try {
+      await deliverAuthCode(email, code, 'reset');
+    } catch (error) {
+      return res.status(503).json({ error: error.message });
+    }
     db.resets[email] = { code, expires: Date.now() + 15 * 60e3 };
     save();
   }
   res.json({
     ok: true,
-    demoHint: user?.provider === 'google' ? 'Ce compte utilise Google — connectez-vous avec Google.' : demoHintFor(code || '—'),
+    demoHint: demoHintFor(code || '—'),
   });
 });
 
@@ -1540,6 +1587,7 @@ app.post('/api/conversations/:id/read', auth, (req, res) => {
   }
   res.json({
     ok: true,
+    message: 'Si un compte correspond a cette adresse, un email vient d etre envoye.',
     conversation: conversationView(conversation, req.user.id),
     messagesUnread: unreadConversationCount(req.user.id),
   });
@@ -2546,12 +2594,13 @@ app.post('/api/transactions/:id/sealing-video', auth, async (req, res) => {
   const t = db.transactions.find((x) => x.id === req.params.id);
   if (!t || t.status !== 'accepted') return res.status(400).json({ error: 'Étape invalide' });
   if (t.senderId !== req.user.id) return res.status(403).json({ error: "Seul l'expéditeur filme le scellage" });
+  if (!req.body?.dataUrl && !(DEMO && req.body?.simulated)) return res.status(400).json({ error: 'Video de scellage requise' });
   t.sealingVideo = {
-    dataUrl: req.body.dataUrl || null, simulated: !!req.body.simulated,
+    dataUrl: req.body.dataUrl || null, simulated: DEMO && !!req.body.simulated,
     recordedAt: Date.now(), geo: req.body.geo || null, txCode: t.id,
   };
   t.status = 'sealed';
-  addEvent(t, 'sealed', req.user.id, { simulated: !!req.body.simulated });
+  addEvent(t, 'sealed', req.user.id, { simulated: DEMO && !!req.body.simulated });
   await notify([t.travelerId], { key: 'tx.sealed', params: { title: db.listings.find((l) => l.id === t.listingId)?.title } }, t.id, 'shipments', 'actions');
   save();
   res.json({ transaction: txView(req.user)(t) });
@@ -3567,4 +3616,5 @@ if (DEMO) {
 }
 
 const PORT = process.env.PORT || 4517;
-app.listen(PORT, () => console.log(`API Wigofly sur http://localhost:${PORT}`));
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`API Wigofly sur http://localhost:${PORT}`));
+export default app;

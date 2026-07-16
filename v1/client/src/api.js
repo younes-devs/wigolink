@@ -1,4 +1,5 @@
 let token = localStorage.getItem('wigofly_token') || null;
+const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 
 export function setToken(t) {
   token = t;
@@ -11,12 +12,12 @@ export function getToken() {
 }
 
 export function realtimeUrl() {
-  const base = `${window.location.origin}/api/realtime`;
+  const base = apiBase.startsWith('http') ? `${apiBase}/realtime` : `${window.location.origin}${apiBase}/realtime`;
   return `${base}?token=${encodeURIComponent(token || '')}`;
 }
 
 export async function api(path, opts = {}) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',

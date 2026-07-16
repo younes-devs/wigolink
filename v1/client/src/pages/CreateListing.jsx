@@ -129,12 +129,7 @@ export default function CreateListing() {
 
   return (
     <div>
-      <div className="list-row">
-        <h1 className="page-title grow">{t('create.title')}</h1>
-        <button className="autofill-btn" onClick={autofill} title="Remplir avec des données de test">
-          <Icon name="sparkles" size={14} />Remplir (test)
-        </button>
-      </div>
+      <div className="list-row"><h1 className="page-title grow">{t('create.title')}</h1></div>
       <Stepper labels={[t('create.step.package'), t('create.step.route'), t('create.step.customs')]} current={step} onGo={setStep} />
 
       {error && <div className="alert alert-danger">{error}</div>}

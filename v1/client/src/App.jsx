@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
-import DevBar from './DevBar.jsx';
 import SideRail from './SideRail.jsx';
 import Login from './pages/Login.jsx';
 import TripFeedSimple from './pages/TripFeedSimple.jsx';
@@ -139,7 +138,6 @@ export default function App() {
           </div>
           {user && <BottomNav user={user} />}
           {user && onboarding && <Onboarding user={user} onClose={() => setOnboarding(false)} />}
-          <DevBar />
         </div>
       </BrowserRouter>
       </ToastProvider>
