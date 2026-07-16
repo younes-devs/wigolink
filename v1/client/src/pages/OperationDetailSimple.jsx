@@ -179,6 +179,18 @@ export default function OperationDetailSimple() {
           <div><span>Escrow</span><b>{escrowLabel(operation.escrow?.state)}</b></div>
         </div>
 
+        <section className="operation-journey" aria-label="Avancement de l operation">
+          <div className="operation-journey-head"><h2>Avancement</h2><span>{journeyStatus(operation)}</span></div>
+          <div className="operation-journey-steps">
+            {journeySteps(operation).map((step, index) => (
+              <div className={`operation-journey-step ${step.state}`} key={step.id}>
+                <span>{step.state === 'done' ? <Icon name="check" size={13} /> : index + 1}</span>
+                <div><b>{step.label}</b><small>{step.detail}</small></div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {operation.operationStatus === 'attente_confirmation' && (
           <div className="alert alert-warn">
             <Icon name="clock" size={17} />
@@ -369,4 +381,23 @@ function escrowLabel(state) {
     refunded: 'Remboursé',
   };
   return labels[state] || 'Prévu';
+}
+
+function journeySteps(operation) {
+  const status = operation.operationStatus;
+  const rank = { attente_confirmation: 0, paiement_requis: 1, paye: 2, collecte_prevue: 3, en_transport: 4, termine: 5, litige: 4 }[status] ?? 0;
+  const steps = [
+    { id: 'request', label: 'Demande envoyee', detail: 'Le voyageur examine votre colis.' },
+    { id: 'payment', label: 'Paiement securise', detail: 'Le montant reste protege par Wigofly.' },
+    { id: 'meeting', label: 'Rendez-vous', detail: 'Confirmez le lieu et le moment de remise.' },
+    { id: 'pickup', label: 'Prise en charge', detail: 'Le colis est remis au voyageur.' },
+    { id: 'delivery', label: 'Livraison', detail: 'La livraison libere le paiement.' },
+  ];
+  return steps.map((step, index) => ({ ...step, state: index < rank ? 'done' : index === rank && status !== 'termine' ? 'current' : status === 'termine' ? 'done' : 'next' }));
+}
+
+function journeyStatus(operation) {
+  if (operation.operationStatus === 'litige') return 'Litige en cours';
+  if (operation.operationStatus === 'termine') return 'Operation terminee';
+  return nextAction(operation) || 'En attente de votre contact';
 }

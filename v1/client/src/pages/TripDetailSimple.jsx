@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
@@ -11,10 +11,16 @@ export default function TripDetailSimple() {
   const toast = useToast();
   const [trip, setTrip] = useState(null);
   const [parcel, setParcel] = useState('');
+  const [proposedPrice, setProposedPrice] = useState('');
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const reviewRef = useRef(null);
   const [busy, setBusy] = useState('');
 
   const load = () => api(`/trips/${id}`).then((data) => setTrip(data.trip)).catch(() => setTrip(false));
   useEffect(() => { load(); }, [id]);
+  useEffect(() => { if (trip?.price) setProposedPrice(String(trip.price)); }, [trip?.price]);
+  useEffect(() => { if (reviewOpen) requestAnimationFrame(() => reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }, [reviewOpen]);
 
   const saveTrip = async () => {
     setBusy('save');
@@ -46,7 +52,7 @@ export default function TripDetailSimple() {
     try {
       const data = await api(`/trips/${trip.id}/accept`, {
         method: 'POST',
-        body: { descriptionParcel: parcel, price: trip.price },
+        body: { descriptionParcel: parcel, price: proposedPrice || trip.price },
       });
       toast.success('Opération créée');
       nav(`/operations/${data.operation.id}`);
@@ -88,6 +94,12 @@ export default function TripDetailSimple() {
           <div><span>Capacité</span><b>{trip.capacityKg} kg</b></div>
         </div>
 
+        <div className="trip-trust-strip">
+          <span><Icon name="shieldCheck" size={16} />Paiement protege</span>
+          <span><Icon name="check" size={16} />Voyageur verifie</span>
+          <span><Icon name="chat" size={16} />Echanges dans Wigofly</span>
+        </div>
+
         <div className="trip-detail-copy">
           <h2>Description</h2>
           <p>{trip.description}</p>
@@ -100,6 +112,15 @@ export default function TripDetailSimple() {
           <textarea value={parcel} onChange={(e) => setParcel(e.target.value)} rows={3} placeholder="Ex: petit colis propre, 2 kg, contenu conforme..." />
         </label>
 
+        <label className="field">
+          <span>Votre proposition de prix</span>
+          <div className="price-input">
+            <input type="number" min="1" value={proposedPrice} onChange={(e) => setProposedPrice(e.target.value)} />
+            <b>{trip.currency || 'EUR'}</b>
+          </div>
+          <small>Le voyageur devra accepter la demande avant tout paiement.</small>
+        </label>
+
         <div className="trip-detail-actions">
           <button className="btn btn-ghost" onClick={saveTrip} disabled={!!busy}>
             {busy === 'save' ? <span className="spinner" /> : <Icon name={trip.saved ? 'check' : 'star'} size={17} />}
@@ -109,11 +130,30 @@ export default function TripDetailSimple() {
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             Message
           </button>
-          <button className="btn btn-primary" onClick={accept} disabled={!!busy}>
+          <button className="btn btn-primary" onClick={() => setReviewOpen(true)} disabled={!!busy || !parcel.trim() || !proposedPrice}>
             {busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}
-            Accepter
+            Faire une demande
           </button>
         </div>
+
+        {reviewOpen && (
+          <section className="trip-request-review" ref={reviewRef} aria-label="Verifier la demande">
+            <div className="trip-request-review-head">
+              <div><span>Avant de continuer</span><h2>Verifier votre demande</h2></div>
+              <button type="button" className="icon-btn" onClick={() => setReviewOpen(false)} aria-label="Fermer"><Icon name="x" size={17} /></button>
+            </div>
+            <div className="trip-request-summary">
+              <div><span>Trajet</span><b>{trip.from} <Icon name="arrowRight" size={14} /> {trip.to}</b></div>
+              <div><span>Prix propose</span><b>{proposedPrice} {trip.currency || 'EUR'}</b></div>
+              <div><span>Votre colis</span><b>{parcel}</b></div>
+            </div>
+            <label className="request-confirmation"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /><span>Mon colis est conforme et je reglerai uniquement via Wigofly.</span></label>
+            <div className="trip-detail-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setReviewOpen(false)}>Modifier</button>
+              <button type="button" className="btn btn-primary" onClick={accept} disabled={!confirmed || !!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}Envoyer la demande</button>
+            </div>
+          </section>
+        )}
       </section>
     </div>
   );
