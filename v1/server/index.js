@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { acquireDatabaseState, getDb, releaseDatabaseState, save, newId, usesDatabase } from './store.js';
+import { acquireDatabaseState, getDb, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
@@ -37,16 +37,25 @@ app.use(langMiddleware);
 const db = getDb();
 let stateQueue = Promise.resolve();
 
-// Le serveur historique manipule un objet en memoire. En production, chaque requete
-// le charge depuis Supabase et les ecritures sont verrouillees puis validees avant
-// l'envoi de la reponse. Cela conserve les invariants metier pendant la migration.
+// Les lectures reutilisent un cache tres court par fonction Vercel. Seules les
+// ecritures prennent le verrou Postgres et attendent la validation avant reponse.
 app.use((req, res, next) => {
   if (!usesDatabase()) return next();
+
+  const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  if (!write) {
+    void refreshDatabaseState()
+      .then(() => next())
+      .catch((error) => {
+        console.error('Echec de lecture Supabase', error);
+        res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
+      });
+    return;
+  }
 
   let releaseTurn;
   const previousTurn = stateQueue;
   stateQueue = new Promise((resolve) => { releaseTurn = resolve; });
-  const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
 
   void (async () => {
     let lock = null;
@@ -159,6 +168,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   security: true,
 };
 const OFFER_REMINDER_MS = 6 * 3600e3;
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10);
 
 function userSettings(user) {
@@ -170,6 +180,22 @@ function userSettings(user) {
 const canAccessApp = (user) => !!user && (
   user.emailVerified === true || user.provider === 'google' || isPrivateTestEmail(user.email)
 );
+
+function activeSession(token) {
+  const session = token ? db.sessions?.[token] : null;
+  if (!session || typeof session !== 'object' || !session.userId) return null;
+  if (!Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) {
+    delete db.sessions[token];
+    return null;
+  }
+  return session;
+}
+
+function clearUserSessions(userId) {
+  for (const [token, session] of Object.entries(db.sessions || {})) {
+    if (session?.userId === userId || session === userId) delete db.sessions[token];
+  }
+}
 
 function denyUnverifiedSession(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -188,7 +214,7 @@ const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].inc
 
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  const userId = db.sessions[token];
+  const userId = activeSession(token)?.userId;
   if (!userId) return res.status(401).json({ error: 'Non authentifié' });
   req.user = findUser(userId);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
@@ -198,9 +224,10 @@ function auth(req, res, next) {
 
 function authRealtime(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || String(req.query?.token || '');
-  const userId = db.sessions[token];
+  const session = activeSession(token);
+  const userId = session?.userId;
   if (!userId) return res.status(401).json({ error: 'Non authentifie' });
-  req.user = findUser(userId);
+  req.user = findUser(session?.userId);
   if (req.user && !canAccessApp(req.user)) return denyUnverifiedSession(req, res);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   next();
@@ -367,13 +394,14 @@ function openSession(res, user, req) {
     });
   }
   const token = newToken();
-  db.sessions[token] = user.id;
+  const sessionExpiresAt = Date.now() + SESSION_DURATION_MS;
+  db.sessions[token] = { userId: user.id, createdAt: Date.now(), expiresAt: sessionExpiresAt };
   if (req) {
     user.lastIp = clientIp(req);
     user.lastLoginAt = Date.now();
   }
   save();
-  res.json({ token, user: publicUser(user) });
+  res.json({ token, user: publicUser(user), sessionExpiresAt });
 }
 
 // Le code n'est renvoyé dans la réponse API qu'en mode démo (pas de prestataire email
@@ -448,7 +476,7 @@ app.post('/api/auth/login', async (req, res) => {
   const user = findByEmail(email);
   if (!user || !verifyPassword(req.body.password || '', user.passwordHash))
     return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-  if (!user.emailVerified) {
+  if (!canAccessApp(user)) {
     const code = sixDigitCode();
     try {
       await deliverAuthCode(email, code, 'verify');
@@ -517,7 +545,7 @@ app.post('/api/auth/reset', (req, res) => {
   user.passwordHash = hashPassword(req.body.password);
   delete db.resets[email];
   // Sécurité : invalide toutes les sessions existantes du compte
-  for (const [tok, uid] of Object.entries(db.sessions)) if (uid === user.id) delete db.sessions[tok];
+  clearUserSessions(user.id);
   if (!canAccessApp(user)) {
     save();
     return res.json({
@@ -793,7 +821,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
   // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
   // anonymisée pour l'audit de conformité, sans les photos.
   repositories.kyc.purgeSensitiveForUser(uid);
-  for (const [tok, id] of Object.entries(db.sessions)) if (id === uid) delete db.sessions[tok];
+  clearUserSessions(uid);
   save();
   res.json({ ok: true });
 });

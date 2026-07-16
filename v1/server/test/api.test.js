@@ -31,6 +31,8 @@ test('connexion : identifiants valides vs invalides', async () => {
   const ok = await api('/auth/login', { method: 'POST', body: { email: 'fatima@demo.wigofly.app', password: 'demo1234' } });
   assert.equal(ok.status, 200);
   assert.ok(ok.body.token);
+  assert.ok(ok.body.sessionExpiresAt >= Date.now() + 23 * 60 * 60 * 1000);
+  assert.ok(ok.body.sessionExpiresAt <= Date.now() + 24 * 60 * 60 * 1000 + 2_000);
 
   const badPassword = await api('/auth/login', { method: 'POST', body: { email: 'fatima@demo.wigofly.app', password: 'wrong' } });
   assert.equal(badPassword.status, 401);
@@ -78,6 +80,12 @@ test('auth : le bypass prive n ouvre que l adresse configuree', async () => {
   const me = await api('/me', { token: registration.body.token });
   assert.equal(me.status, 200);
   assert.equal(me.body.user.emailVerified, false, 'retirer la variable rebloque bien ce compte');
+
+  const login = await api('/auth/login', {
+    method: 'POST', body: { email: PRIVATE_TEST_EMAIL, password: 'motdepasse123' },
+  });
+  assert.equal(login.status, 200);
+  assert.ok(login.body.token, 'un compte test existant peut aussi se reconnecter');
 });
 
 test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {

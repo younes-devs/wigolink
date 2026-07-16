@@ -97,6 +97,8 @@ function seed() {
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : seed();
 let pool = null;
 let databaseEnabled = false;
+let stateLoadedAt = 0;
+const READ_CACHE_MS = Math.max(250, Math.min(10_000, Number(process.env.STATE_READ_CACHE_MS) || 1_500));
 
 if (process.env.DATABASE_URL) {
   pool = new Pool({
@@ -107,6 +109,7 @@ if (process.env.DATABASE_URL) {
   const result = await pool.query('select state from wigofly_app_state where id = 1');
   if (result.rows[0]?.state) {
     db = result.rows[0].state;
+    stateLoadedAt = Date.now();
   } else if (process.env.NODE_ENV === 'production') {
     throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
   }
@@ -162,6 +165,14 @@ export function usesDatabase() {
 function replaceState(next) {
   for (const key of Object.keys(db)) delete db[key];
   Object.assign(db, next || emptyState());
+  stateLoadedAt = Date.now();
+}
+
+export async function refreshDatabaseState() {
+  if (!databaseEnabled || Date.now() - stateLoadedAt < READ_CACHE_MS) return;
+  const result = await pool.query('select state from wigofly_app_state where id = 1');
+  if (!result.rows[0]?.state) throw new Error('Etat applicatif Supabase introuvable.');
+  replaceState(result.rows[0].state);
 }
 
 export async function acquireDatabaseState({ write = false } = {}) {
@@ -191,6 +202,7 @@ export async function releaseDatabaseState(lock, { commit = false } = {}) {
           [JSON.stringify(db)]
         );
         await lock.client.query('commit');
+        stateLoadedAt = Date.now();
       } else {
         await lock.client.query('rollback');
       }
