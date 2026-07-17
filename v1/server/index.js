@@ -1109,8 +1109,12 @@ function availableTripPosts(user, query = {}) {
   if (query.from) trips = trips.filter((t) => t.from.toLowerCase().includes(String(query.from).toLowerCase()));
   if (query.to) trips = trips.filter((t) => t.to.toLowerCase().includes(String(query.to).toLowerCase()));
   if (query.date) trips = trips.filter((t) => (t.departureDate || t.date) >= String(query.date));
-  if (query.capacityKg) trips = trips.filter((t) => Number(t.capacityKg || 0) >= Number(query.capacityKg));
-  if (query.maxPrice) trips = trips.filter((t) => Number(t.price ?? t.proposedPrice ?? 25) <= Number(query.maxPrice));
+  const minCapacity = Number(query.capacityKg);
+  if (Number.isFinite(minCapacity) && minCapacity >= 0 && String(query.capacityKg).trim() !== '')
+    trips = trips.filter((t) => Number(t.capacityKg || 0) >= minCapacity);
+  const maxPrice = Number(query.maxPrice);
+  if (Number.isFinite(maxPrice) && maxPrice >= 0 && String(query.maxPrice).trim() !== '')
+    trips = trips.filter((t) => Number(t.price ?? t.proposedPrice ?? 25) <= maxPrice);
   if (query.verified === '1') trips = trips.filter((t) => findUser(t.travelerId)?.kycStatus === 'verified');
   if (query.q) {
     const needle = String(query.q).toLowerCase();
