@@ -2863,12 +2863,10 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   }
   .trip-search-row input::placeholder { color: var(--ink-soft); }
   .trip-filter-trigger {
-    position: relative; flex: 0 0 auto; opacity: 0; pointer-events: none;
-    transform: translateX(4px); transition: opacity 0.15s, transform 0.15s;
+    position: relative; flex: 0 0 auto; min-width: 44px; min-height: 36px;
+    padding: 0 9px; gap: 5px; color: var(--accent);
   }
-  .trip-search-row:focus-within .trip-filter-trigger, .trip-filter-trigger.has-active {
-    opacity: 1; pointer-events: auto; transform: none;
-  }
+  .trip-filter-label { font-size: 12px; font-weight: 700; }
   .trip-filter-backdrop { align-items: flex-end; padding: 0; }
   .trip-filter-sheet {
     width: 100%; max-width: none; max-height: min(84dvh, 680px); display: flex; flex-direction: column;

@@ -77,8 +77,9 @@ export default function TripFeedSimple() {
         <div className="trip-search-row">
           <Icon name="search" size={19} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un trajet" aria-label="Rechercher ville, voyageur ou description" />
-          <button className={`icon-btn trip-filter-trigger ${advancedFilterCount(filters) ? 'has-active' : ''}`} type="button" onClick={() => { setDraftFilters(filters); setFiltersOpen(true); }} aria-label="Ouvrir les filtres" title="Filtres">
+          <button className={`icon-btn trip-filter-trigger ${advancedFilterCount(filters) ? 'has-active' : ''}`} type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label="Ouvrir les filtres" title="Filtres">
             <Icon name="filter" size={18} />
+            <span className="trip-filter-label">Filtres</span>
             {advancedFilterCount(filters) > 0 && <span className="filter-count">{advancedFilterCount(filters)}</span>}
           </button>
         </div>
