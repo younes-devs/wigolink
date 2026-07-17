@@ -91,6 +91,7 @@ create table if not exists public.wigofly_trips (
 );
 create index if not exists wigofly_trips_traveler_date_idx on public.wigofly_trips ((data->>'travelerId'), (data->>'date'));
 create index if not exists wigofly_trips_route_date_idx on public.wigofly_trips ((lower(data->>'from')), (lower(data->>'to')), (data->>'date'));
+create index if not exists wigofly_trips_feed_idx on public.wigofly_trips ((coalesce(data->>'status', 'published')), (coalesce(data->>'departureDate', data->>'date')));
 
 create table if not exists public.wigofly_listings (
   id text primary key,
@@ -137,6 +138,7 @@ create table if not exists public.wigofly_conversations (
 );
 create index if not exists wigofly_conversations_last_message_idx on public.wigofly_conversations ((data->>'lastMessageAt'));
 create index if not exists wigofly_conversations_operation_idx on public.wigofly_conversations ((data->>'operationId'));
+create index if not exists wigofly_conversations_participants_idx on public.wigofly_conversations using gin ((data->'participantIds'));
 
 create table if not exists public.wigofly_disputes (
   id text primary key,
