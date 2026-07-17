@@ -2849,9 +2849,10 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 }
 
 @media (max-width: 639px) {
-  .phone:has(.trip-filter-sheet) .app-header,
-  .phone:has(.trip-filter-sheet) .bottom-nav { display: none; }
-  .phone:has(.trip-filter-sheet) .content { padding-bottom: 0; }
+  body:has(.trip-filter-sheet) { overflow: hidden; }
+  body:has(.trip-filter-sheet) .app-header,
+  body:has(.trip-filter-sheet) .bottom-nav { display: none; }
+  body:has(.trip-filter-sheet) .content { padding-bottom: 0; }
   .trip-desktop-filters { display: none; }
   .trip-search-controls { margin-bottom: 14px; }
   .trip-search-row {
@@ -2863,12 +2864,16 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .trip-search-row:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
   .trip-search-row > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
   .trip-search-row .trip-search-value { color: var(--ink); }
-  .trip-filter-backdrop { align-items: flex-end; padding: 0; }
-  .trip-filter-sheet {
-    width: 100%; max-width: none; max-height: min(84dvh, 680px); display: flex; flex-direction: column;
-    border-radius: 18px 18px 0 0;
+  .trip-filter-backdrop {
+    align-items: flex-end; padding: max(12px, env(safe-area-inset-top)) 12px 12px;
   }
-  .trip-filter-sheet-body { overflow-y: auto; }
+  .trip-filter-sheet {
+    width: 100%; max-width: 560px;
+    height: min(720px, calc(100dvh - max(24px, env(safe-area-inset-top)))); max-height: none;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+    border-radius: 18px;
+  }
+  .trip-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .trip-filter-sheet-actions { flex: 0 0 auto; }
   .trip-filter-sheet-actions .btn { flex: 1 1 0; }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
@@ -86,9 +87,9 @@ export default function TripFeedSimple() {
         </label>
       </section>
 
-      {filtersOpen && (
-        <div className="modal-backdrop trip-filter-backdrop" role="presentation" onMouseDown={() => setFiltersOpen(false)}>
-          <section className="modal trip-filter-sheet" role="dialog" aria-modal="true" aria-labelledby="trip-filter-title" onMouseDown={(event) => event.stopPropagation()}>
+      {filtersOpen && createPortal(
+        <div className="modal-backdrop trip-filter-backdrop" role="presentation" onClick={() => setFiltersOpen(false)}>
+          <section className="modal trip-filter-sheet" role="dialog" aria-modal="true" aria-labelledby="trip-filter-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head trip-filter-head">
               <div>
                 <h2 id="trip-filter-title">Filtrer les trajets</h2>
@@ -115,7 +116,8 @@ export default function TripFeedSimple() {
               </button>
             </div>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
 
       {trips === null && <SkeletonList count={4} />}
