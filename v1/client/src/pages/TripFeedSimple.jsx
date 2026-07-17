@@ -10,7 +10,7 @@ export default function TripFeedSimple() {
   const [trips, setTrips] = useState(null);
   const [myTrips, setMyTrips] = useState(null);
   const today = new Date().toISOString().slice(0, 10);
-  const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '', verified: '' };
+  const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '' };
   const [filters, setFilters] = useState(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
@@ -92,10 +92,6 @@ export default function TripFeedSimple() {
         <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label="Date minimum" />
         <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder="Prix max" />
         <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder="Kg min" />
-        <label className="filter-toggle">
-          <input type="checkbox" checked={filters.verified === '1'} onChange={(e) => setFilters({ ...filters, verified: e.target.checked ? '1' : '' })} />
-          <span>Vérifiés</span>
-        </label>
       </section>
 
       {filtersOpen && createPortal(
@@ -115,10 +111,6 @@ export default function TripFeedSimple() {
               <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label="Date minimale" />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.maxPrice} onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })} placeholder="Prix maximum (EUR)" />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.capacityKg} onChange={(e) => setDraftFilters({ ...draftFilters, capacityKg: e.target.value })} placeholder="Capacite minimum (kg)" />
-              <label className="filter-toggle">
-                <input type="checkbox" checked={draftFilters.verified === '1'} onChange={(e) => setDraftFilters({ ...draftFilters, verified: e.target.checked ? '1' : '' })} />
-                <span>Voyageurs verifies uniquement</span>
-              </label>
             </div>
             <div className="trip-filter-sheet-actions">
               <button className="btn btn-ghost" type="button" onClick={() => { setFilters(emptyFilters); setDraftFilters(emptyFilters); setFiltersOpen(false); }}>Reinitialiser</button>
@@ -227,7 +219,7 @@ export default function TripFeedSimple() {
 }
 
 function advancedFilterCount(filters) {
-  return ['from', 'to', 'date', 'maxPrice', 'capacityKg', 'verified'].filter((key) => !!filters[key]).length;
+  return ['from', 'to', 'date', 'maxPrice', 'capacityKg'].filter((key) => !!filters[key]).length;
 }
 
 function TripPublishForm({ onCreated }) {

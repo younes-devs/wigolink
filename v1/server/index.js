@@ -1105,7 +1105,8 @@ function availableTripPosts(user, query = {}) {
   const today = TODAY_ISO();
   let trips = db.trips
     .map((trip) => ({ ...trip, status: trip.status || (trip.date < today ? 'expired' : 'published') }))
-    .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today);
+    .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today)
+    .filter((trip) => findUser(trip.travelerId)?.kycStatus === 'verified');
   if (query.excludeMine === '1') trips = trips.filter((trip) => trip.travelerId !== user.id);
   if (query.from) trips = trips.filter((t) => t.from.toLowerCase().includes(String(query.from).toLowerCase()));
   if (query.to) trips = trips.filter((t) => t.to.toLowerCase().includes(String(query.to).toLowerCase()));
@@ -1116,7 +1117,6 @@ function availableTripPosts(user, query = {}) {
   const maxPrice = Number(query.maxPrice);
   if (Number.isFinite(maxPrice) && maxPrice >= 0 && String(query.maxPrice).trim() !== '')
     trips = trips.filter((t) => Number(t.price ?? t.proposedPrice ?? 25) <= maxPrice);
-  if (query.verified === '1') trips = trips.filter((t) => findUser(t.travelerId)?.kycStatus === 'verified');
   if (query.q) {
     const needle = String(query.q).toLowerCase();
     trips = trips.filter((t) => `${t.from} ${t.to} ${t.description || ''} ${findUser(t.travelerId)?.name || ''}`.toLowerCase().includes(needle));
