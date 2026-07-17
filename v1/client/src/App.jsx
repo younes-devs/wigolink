@@ -1,39 +1,42 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from './api';
 import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
 import SideRail from './SideRail.jsx';
-import Login from './pages/Login.jsx';
-import TripFeedSimple from './pages/TripFeedSimple.jsx';
-import TripDetailSimple from './pages/TripDetailSimple.jsx';
-import SavedTrips from './pages/SavedTrips.jsx';
-import MessagesSimple from './pages/MessagesSimple.jsx';
-import ConversationDetail from './pages/ConversationDetail.jsx';
-import OperationsSimple from './pages/OperationsSimple.jsx';
-import OperationDetailSimple from './pages/OperationDetailSimple.jsx';
-import Feed from './pages/Feed.jsx';
-import ListingDetail from './pages/ListingDetail.jsx';
-import CreateListing from './pages/CreateListing.jsx';
-import MyShipments from './pages/MyShipments.jsx';
-import Transactions from './pages/Transactions.jsx';
-import TransactionDetail from './pages/TransactionDetail.jsx';
-import FinanceCenter from './pages/FinanceCenter.jsx';
-import DocumentsCenter from './pages/DocumentsCenter.jsx';
-import SupportCenter from './pages/SupportCenter.jsx';
-import ComplianceCenter from './pages/ComplianceCenter.jsx';
-import SenderMatching from './pages/SenderMatching.jsx';
-import OffersCenter from './pages/OffersCenter.jsx';
-import Profile from './pages/Profile.jsx';
-import PublicProfile from './pages/PublicProfile.jsx';
-import Settings from './pages/Settings.jsx';
-import TrustCenter from './pages/TrustCenter.jsx';
-import Admin from './pages/Admin.jsx';
-import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
-import Terms from './pages/Terms.jsx';
-import Kyc from './pages/Kyc.jsx';
 import Onboarding, { shouldOnboard } from './Onboarding.jsx';
-import NotFound from './pages/NotFound.jsx';
+
+// Les ecrans ne sont telecharges que lorsqu'ils sont ouverts. Cela garde la
+// connexion et le premier trajet rapides, meme avec les centres admin/PDF actifs.
+const Login = lazy(() => import('./pages/Login.jsx'));
+const TripFeedSimple = lazy(() => import('./pages/TripFeedSimple.jsx'));
+const TripDetailSimple = lazy(() => import('./pages/TripDetailSimple.jsx'));
+const SavedTrips = lazy(() => import('./pages/SavedTrips.jsx'));
+const MessagesSimple = lazy(() => import('./pages/MessagesSimple.jsx'));
+const ConversationDetail = lazy(() => import('./pages/ConversationDetail.jsx'));
+const OperationsSimple = lazy(() => import('./pages/OperationsSimple.jsx'));
+const OperationDetailSimple = lazy(() => import('./pages/OperationDetailSimple.jsx'));
+const Feed = lazy(() => import('./pages/Feed.jsx'));
+const ListingDetail = lazy(() => import('./pages/ListingDetail.jsx'));
+const CreateListing = lazy(() => import('./pages/CreateListing.jsx'));
+const MyShipments = lazy(() => import('./pages/MyShipments.jsx'));
+const Transactions = lazy(() => import('./pages/Transactions.jsx'));
+const TransactionDetail = lazy(() => import('./pages/TransactionDetail.jsx'));
+const FinanceCenter = lazy(() => import('./pages/FinanceCenter.jsx'));
+const DocumentsCenter = lazy(() => import('./pages/DocumentsCenter.jsx'));
+const SupportCenter = lazy(() => import('./pages/SupportCenter.jsx'));
+const ComplianceCenter = lazy(() => import('./pages/ComplianceCenter.jsx'));
+const SenderMatching = lazy(() => import('./pages/SenderMatching.jsx'));
+const OffersCenter = lazy(() => import('./pages/OffersCenter.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const PublicProfile = lazy(() => import('./pages/PublicProfile.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const TrustCenter = lazy(() => import('./pages/TrustCenter.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
+const Terms = lazy(() => import('./pages/Terms.jsx'));
+const Kyc = lazy(() => import('./pages/Kyc.jsx'));
+const NotFound = lazy(() => import('./pages/NotFound.jsx'));
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
@@ -124,6 +127,7 @@ export default function App() {
           {user && <Header user={user} />}
           <div className="main-wrap">
           <div className="content">
+            <Suspense fallback={<PageLoading />}>
             <Routes>
               {/* Pages légales publiques : accessibles avant connexion (lien depuis l'inscription) */}
               <Route path="/confidentialite" element={<PrivacyPolicy />} />
@@ -162,6 +166,7 @@ export default function App() {
                 </>
               )}
             </Routes>
+            </Suspense>
           </div>
           {user && <SideRail user={user} />}
           </div>
@@ -171,5 +176,13 @@ export default function App() {
       </BrowserRouter>
       </ToastProvider>
     </AuthCtx.Provider>
+  );
+}
+
+function PageLoading() {
+  return (
+    <div className="boot-splash" aria-label="Chargement">
+      <span className="spinner boot-spinner" />
+    </div>
   );
 }
