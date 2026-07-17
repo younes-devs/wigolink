@@ -21,7 +21,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 4. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
 5. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
 6. Definir `NODE_ENV=production`, `APP_ORIGIN`, `APP_URL` et `PERSISTENCE_DRIVER=postgres` avec le domaine final dans Vercel.
-7. Ouvrir `/api/health` depuis le domaine final : la reponse doit indiquer `database: "connected"`.
+7. Ouvrir `/api/health` depuis le domaine final : la reponse doit indiquer `ok: true`, `database: "connected"` et `email: "configured"`. Une reponse `503` precise quelle dependance doit etre configuree sans faire tomber toute la fonction.
 8. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite

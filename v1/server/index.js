@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import {
   acquireDatabaseState, createPersistentSession, databasePool, deletePersistentSession, deletePersistentSessionsForUser,
-  getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
+  databaseHealth, getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
 } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
@@ -41,6 +41,15 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '25mb' }));
 // i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
 app.use(langMiddleware);
+
+// Production never falls back to the packaged JSON data when Supabase is missing.
+// Health remains public so Vercel can show the configuration problem clearly.
+app.use((req, res, next) => {
+  if (IS_PRODUCTION && databaseHealth() === 'unavailable' && req.path !== '/api/health') {
+    return res.status(503).json({ error: 'Base de donnees indisponible. Reessayez plus tard.' });
+  }
+  return next();
+});
 
 const db = getDb();
 let stateQueue = Promise.resolve();
@@ -133,10 +142,11 @@ app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
 // Used by Vercel and manual launch checks. It deliberately exposes no secret,
 // user, or database implementation detail.
 app.get('/api/health', (req, res) => {
-  const ready = !IS_PRODUCTION || EMAIL_READY;
+  const database = databaseHealth();
+  const ready = (!IS_PRODUCTION || EMAIL_READY) && database !== 'unavailable';
   res.status(ready ? 200 : 503).json({
     ok: ready,
-    database: usesDatabase() ? 'connected' : 'local',
+    database,
     email: EMAIL_READY ? 'configured' : 'missing',
     at: new Date().toISOString(),
   });

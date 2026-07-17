@@ -99,10 +99,12 @@ let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'
 let pool = null;
 let databaseEnabled = false;
 let persistentSessionsEnabled = false;
+let databaseError = null;
 let stateLoadedAt = 0;
 const READ_CACHE_MS = Math.max(250, Math.min(10_000, Number(process.env.STATE_READ_CACHE_MS) || 1_500));
 
 if (process.env.DATABASE_URL) {
+  try {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     // Keep state writes and independent session operations from blocking each other.
@@ -119,6 +121,14 @@ if (process.env.DATABASE_URL) {
   databaseEnabled = true;
   const sessionTable = await pool.query("select to_regclass('public.wigofly_sessions') as name");
   persistentSessionsEnabled = !!sessionTable.rows[0]?.name;
+  } catch (error) {
+    databaseError = error;
+    console.error('Connexion Supabase indisponible', error.message);
+    if (pool) await pool.end().catch(() => {});
+    pool = null;
+  }
+} else if (process.env.NODE_ENV === 'production') {
+  databaseError = new Error('DATABASE_URL est requis en production.');
 }
 
 // Migration : comptes existants sans email/mot de passe (démo : demo1234).
@@ -165,6 +175,12 @@ export function newId(prefix) {
 
 export function usesDatabase() {
   return databaseEnabled;
+}
+
+export function databaseHealth() {
+  if (databaseEnabled) return 'connected';
+  if (databaseError) return 'unavailable';
+  return 'local';
 }
 
 // Shared by the relational repositories so production uses one bounded pool.
