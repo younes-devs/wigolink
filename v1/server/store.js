@@ -120,7 +120,19 @@ if (process.env.DATABASE_URL) {
   }
   databaseEnabled = true;
   const sessionTable = await pool.query("select to_regclass('public.wigofly_sessions') as name");
-  persistentSessionsEnabled = !!sessionTable.rows[0]?.name;
+  if (!sessionTable.rows[0]?.name) {
+    // Les fonctions Vercel ne conservent pas leur memoire entre deux requetes :
+    // une table de sessions est donc indispensable pour ne pas perdre la connexion au refresh.
+    await pool.query(`create table if not exists public.wigofly_sessions (
+      token_hash text primary key,
+      user_id text not null,
+      created_at timestamptz not null default now(),
+      expires_at timestamptz not null
+    )`);
+    await pool.query('create index if not exists wigofly_sessions_user_id_idx on public.wigofly_sessions (user_id)');
+    await pool.query('create index if not exists wigofly_sessions_expires_at_idx on public.wigofly_sessions (expires_at)');
+  }
+  persistentSessionsEnabled = true;
   } catch (error) {
     databaseError = error;
     console.error('Connexion Supabase indisponible', error.message);

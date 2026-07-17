@@ -54,11 +54,40 @@ export default function App() {
   const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
-    if (!getToken()) return;
-    api('/me')
-      .then((d) => setUser(d.user))
-      .catch(() => setToken(null))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    let retryTimer;
+
+    const restoreSession = async () => {
+      if (!getToken()) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await api('/me');
+        if (!cancelled) {
+          setUser(data.user);
+          setLoading(false);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        if (error.status === 401 || error.status === 403) {
+          setToken(null);
+          setLoading(false);
+          return;
+        }
+
+        // Une fonction Vercel ou Supabase peut etre momentanement indisponible.
+        // Garder la session locale et reessayer evite de deconnecter a tort l'utilisateur.
+        retryTimer = window.setTimeout(restoreSession, 1500);
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retryTimer);
+    };
   }, []);
 
   // Onboarding premier lancement (PRD UI/UX U1) — une seule fois par compte.
