@@ -22,7 +22,8 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 5. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
 6. Definir `NODE_ENV=production`, `APP_ORIGIN`, `APP_URL` et `PERSISTENCE_DRIVER=postgres` avec le domaine final dans Vercel.
 7. Ouvrir `/api/health` depuis le domaine final : la reponse doit indiquer `ok: true`, `database: "connected"` et `email: "configured"`. Une reponse `503` precise quelle dependance doit etre configuree sans faire tomber toute la fonction.
-8. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
+8. Avant de basculer les routes relationnelles, lancer `npm run migrate:relational:plan`, puis `npm run migrate:relational` depuis un environnement ayant `DATABASE_URL`. La migration est idempotente et peut etre relancee sans doublons.
+9. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
 
@@ -32,4 +33,4 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 
 ## Base de donnees
 
-La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de transaction, notifications et journal d'audit sont des tables PostgreSQL indexees, donc elles ne chargent plus le document JSON global a chaque consultation. Les requetes d'ecriture des donnees metier verrouillent encore l'etat puis valident avant reponse HTTP. Le fichier `server/data.json` reste reserve au developpement local.
+La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de transaction, notifications et journal d'audit sont des tables PostgreSQL indexees, donc elles ne chargent plus le document JSON global a chaque consultation. Le schema comprend aussi les tables relationnelles indexees pour utilisateurs, trajets, annonces, operations, favoris, conversations, litiges, KYC et offres de matching. La migration idempotente `npm run migrate:relational` recopie les donnees existantes vers ces tables avant le basculement progressif des routes. Le fichier `server/data.json` reste reserve au developpement local.

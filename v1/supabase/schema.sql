@@ -71,6 +71,134 @@ create table if not exists public.messages (
 create index if not exists messages_tx_at_idx on public.messages (tx_id, at);
 create index if not exists messages_flagged_idx on public.messages (flagged) where flagged = true;
 
+-- Normalized application records. Every entity keeps its full historical payload in
+-- data while the indexes below support the query patterns used by the API. This
+-- permits a gradual, verified migration away from the single app-state document.
+create table if not exists public.wigofly_users (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists wigofly_users_email_idx on public.wigofly_users ((lower(data->>'email'))) where data ? 'email';
+create index if not exists wigofly_users_kyc_idx on public.wigofly_users ((data->>'kycStatus'));
+
+create table if not exists public.wigofly_trips (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_trips_traveler_date_idx on public.wigofly_trips ((data->>'travelerId'), (data->>'date'));
+create index if not exists wigofly_trips_route_date_idx on public.wigofly_trips ((lower(data->>'from')), (lower(data->>'to')), (data->>'date'));
+
+create table if not exists public.wigofly_listings (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_listings_sender_status_idx on public.wigofly_listings ((data->>'senderId'), (data->>'status'));
+create index if not exists wigofly_listings_route_status_idx on public.wigofly_listings ((lower(data->>'from')), (lower(data->>'to')), (data->>'status'));
+
+create table if not exists public.wigofly_transactions (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_transactions_sender_status_idx on public.wigofly_transactions ((data->>'senderId'), (data->>'status'));
+create index if not exists wigofly_transactions_traveler_status_idx on public.wigofly_transactions ((data->>'travelerId'), (data->>'status'));
+create index if not exists wigofly_transactions_listing_idx on public.wigofly_transactions ((data->>'listingId'));
+create index if not exists wigofly_transactions_trip_idx on public.wigofly_transactions ((data->>'tripId'));
+
+create table if not exists public.wigofly_matching_offers (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_matching_offers_traveler_status_idx on public.wigofly_matching_offers ((data->>'travelerId'), (data->>'status'));
+create index if not exists wigofly_matching_offers_listing_idx on public.wigofly_matching_offers ((data->>'listingId'));
+
+create table if not exists public.wigofly_saved_trips (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists wigofly_saved_trips_user_trip_idx on public.wigofly_saved_trips ((data->>'userId'), (data->>'tripId'));
+
+create table if not exists public.wigofly_conversations (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_conversations_last_message_idx on public.wigofly_conversations ((data->>'lastMessageAt'));
+create index if not exists wigofly_conversations_operation_idx on public.wigofly_conversations ((data->>'operationId'));
+
+create table if not exists public.wigofly_disputes (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_disputes_tx_status_idx on public.wigofly_disputes ((data->>'txId'), (data->>'status'));
+
+create table if not exists public.wigofly_review_queue (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_review_queue_status_created_idx on public.wigofly_review_queue ((data->>'status'), created_at desc);
+
+create table if not exists public.wigofly_kyc_submissions (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_kyc_submissions_user_idx on public.wigofly_kyc_submissions ((data->>'userId'));
+
+create table if not exists public.wigofly_kyc_decisions (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists wigofly_kyc_decisions_submission_idx on public.wigofly_kyc_decisions ((data->>'submissionId'));
+
+create table if not exists public.wigofly_custom_whitelist (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.wigofly_runtime_records (
+  kind text not null,
+  id text not null,
+  data jsonb not null,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (kind, id)
+);
+create index if not exists wigofly_runtime_records_expiry_idx on public.wigofly_runtime_records (expires_at) where expires_at is not null;
+
+alter table public.messages add column if not exists conversation_id text;
+alter table public.messages add column if not exists data jsonb not null default '{}'::jsonb;
+alter table public.messages alter column tx_id drop not null;
+create index if not exists messages_conversation_at_idx on public.messages (conversation_id, at);
+
+revoke all on table public.wigofly_users, public.wigofly_trips, public.wigofly_listings,
+  public.wigofly_transactions, public.wigofly_matching_offers, public.wigofly_saved_trips,
+  public.wigofly_conversations, public.wigofly_disputes, public.wigofly_review_queue,
+  public.wigofly_kyc_submissions, public.wigofly_kyc_decisions, public.wigofly_custom_whitelist,
+  public.wigofly_runtime_records from anon, authenticated;
+
 -- Import idempotent des donnees deja presentes dans wigofly_app_state.
 insert into public.notifications (id, user_id, tx_id, type, section, key, params, text, read, at)
 select item->>'id', item->>'userId', nullif(item->>'txId', ''), coalesce(item->>'type', 'transactions'),

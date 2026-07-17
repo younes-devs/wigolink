@@ -11,7 +11,9 @@
     "api": "node server/index.js",
     "migrate:plan": "node server/migrate-json-postgres-cli.js",
     "migrate:postgres": "node server/migrate-json-postgres-cli.js --write",
-    "migrate:supabase": "node server/migrate-supabase-state-cli.js"
+    "migrate:supabase": "node server/migrate-supabase-state-cli.js",
+    "migrate:relational:plan": "node server/migrate-relational-state-cli.js",
+    "migrate:relational": "node server/migrate-relational-state-cli.js --write"
   },
   "keywords": [],
   "author": "",
