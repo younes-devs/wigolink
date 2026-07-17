@@ -15,7 +15,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 
 ## Etapes de publication
 
-1. Dans Supabase SQL Editor, executer le contenu de `supabase/schema.sql`. Il est idempotent : executez-le a nouveau apres chaque mise a jour qui ajoute une table ou un index.
+1. Dans Supabase SQL Editor, executer le contenu de `supabase/schema.sql`, puis `supabase/relational-backfill.sql`. Les deux scripts sont idempotents : executez-les a nouveau apres chaque mise a jour qui ajoute une table, un index ou une migration.
 2. Le script initialise une base vide. Recuperer ensuite la chaine "Connect > Transaction pooler" de Supabase (port `6543`, adaptee aux fonctions Vercel); ne jamais la coller dans un chat ni la commiter. La commande `npm run migrate:supabase -- --empty` reste disponible pour reinitialiser explicitement une base de test.
 3. Renseigner `DATABASE_URL` dans les variables Vercel, puis redeployer.
 4. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
