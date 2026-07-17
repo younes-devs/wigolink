@@ -158,11 +158,11 @@ export default function TripDetailSimple() {
               </div>
             ) : editing ? (
               <form className="trip-owner-form" onSubmit={updateOwnTrip}>
-                <div className="row">
+                <div className="row trip-owner-route-row">
                   <label className="field"><span>Depart</span><input value={editForm?.from || ''} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })} /></label>
                   <label className="field"><span>Arrivee</span><input value={editForm?.to || ''} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })} /></label>
                 </div>
-                <div className="row">
+                <div className="row trip-owner-details-row">
                   <label className="field"><span>Date</span><input type="date" value={editForm?.date || ''} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} /></label>
                   <label className="field"><span>Capacite (kg)</span><input type="number" min="1" max="30" value={editForm?.capacityKg || ''} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} /></label>
                   <label className="field"><span>Prix (EUR)</span><input type="number" min="1" value={editForm?.price || ''} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></label>

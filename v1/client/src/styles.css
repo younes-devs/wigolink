@@ -2898,6 +2898,11 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 }
 
 @media (max-width: 520px) {
+  .phone:has(.trip-owner-form) .content { padding-bottom: 118px; }
+  .trip-owner-form .field { min-width: 0; margin-bottom: 0; }
+  .trip-owner-route-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trip-owner-details-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trip-owner-details-row > :first-child { grid-column: 1 / -1; }
   .simple-hero, .trip-detail-main, .operation-detail-head, .operation-card {
     align-items: stretch; flex-direction: column;
   }
