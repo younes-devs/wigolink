@@ -91,7 +91,7 @@ export default function TripFeedSimple() {
               <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={42} />
               <div className="grow">
                 <div className="trip-post-title">
-                  <b>{trip.traveler?.name || 'Voyageur'}</b>
+                  <b title={trip.traveler?.name || 'Voyageur'}>{trip.traveler?.name || 'Voyageur'}</b>
                   {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal">Vérifié</span>}
                 </div>
                 <p>{trip.description}</p>
