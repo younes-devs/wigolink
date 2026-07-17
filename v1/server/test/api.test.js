@@ -11,7 +11,6 @@ import { startServer, stopServer, api, loginAs, completeTraining, registerKycVer
 // reconnecte à la volée grignote le même quota partagé — au-delà d'une dizaine de tests,
 // ça déclenchait un vrai 429 sur des identifiants pourtant corrects.
 const tokens = {};
-const PRIVATE_TEST_EMAIL = 'udiiudidi@gmail.com';
 before(async () => {
   await startServer();
   tokens.fatima = await loginAs('fatima@demo.wigofly.app');
@@ -25,6 +24,14 @@ test('GET /api/config répond', async () => {
   const { status, body } = await api('/config');
   assert.equal(status, 200);
   assert.equal(body.demo, true);
+});
+
+test('GET /api/health repond sans exposer de donnees sensibles', async () => {
+  const { status, body } = await api('/health');
+  assert.equal(status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.database, 'local');
+  assert.ok(Date.parse(body.at));
 });
 
 test('connexion : identifiants valides vs invalides', async () => {
@@ -67,25 +74,6 @@ test('auth : un compte email reste bloque jusqu a sa verification', async () => 
 
   const me = await api('/me', { token: verification.body.token });
   assert.equal(me.status, 200);
-});
-
-test('auth : le bypass prive n ouvre que l adresse configuree', async () => {
-  const registration = await api('/auth/register', {
-    method: 'POST',
-    body: { name: 'Compte de test prive', email: PRIVATE_TEST_EMAIL, password: 'motdepasse123', cguAccepted: true },
-  });
-  assert.equal(registration.status, 200);
-  assert.ok(registration.body.token, 'le compte prive est connecte sans envoi de code');
-
-  const me = await api('/me', { token: registration.body.token });
-  assert.equal(me.status, 200);
-  assert.equal(me.body.user.emailVerified, false, 'retirer la variable rebloque bien ce compte');
-
-  const login = await api('/auth/login', {
-    method: 'POST', body: { email: PRIVATE_TEST_EMAIL, password: 'motdepasse123' },
-  });
-  assert.equal(login.status, 200);
-  assert.ok(login.body.token, 'un compte test existant peut aussi se reconnecter');
 });
 
 test('IDOR : un tiers ne peut pas lire la transaction d\'autrui', async () => {
@@ -1497,6 +1485,45 @@ test('i18n des notifications : traduites à la lecture, la même notification su
 
   assert.equal(fr.body.notifications[0].id, ar.body.notifications[0].id);
   assert.equal(fr.body.notifications[0].id, nl.body.notifications[0].id);
+});
+
+test('gestion des roles : promotion admin protegee et dernier admin conserve', async () => {
+  const email = `role-${Date.now()}@exemple.com`;
+  const password = 'motdepasse123';
+  const registration = await api('/auth/register', {
+    method: 'POST', body: { name: 'Membre roles', email, password, cguAccepted: true },
+  });
+  const code = registration.body.demoHint.match(/\d{6}/)[0];
+  const verified = await api('/auth/verify-email', { method: 'POST', body: { email, code } });
+  assert.equal(verified.status, 200);
+
+  const forbidden = await api('/admin/users', { token: verified.body.token });
+  assert.equal(forbidden.status, 403);
+
+  const users = await api('/admin/users', { token: tokens.admin });
+  assert.equal(users.status, 200);
+  const member = users.body.users.find((user) => user.email === email);
+  assert.ok(member);
+
+  const promoted = await api(`/admin/users/${member.id}/role`, {
+    method: 'POST', token: tokens.admin, body: { role: 'admin' },
+  });
+  assert.equal(promoted.status, 200);
+  assert.equal(promoted.body.user.isAdmin, true);
+
+  const promotedAccess = await api('/admin/overview', { token: verified.body.token });
+  assert.equal(promotedAccess.status, 200);
+
+  const removed = await api(`/admin/users/${member.id}/role`, {
+    method: 'POST', token: tokens.admin, body: { role: 'member' },
+  });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.user.isAdmin, false);
+
+  const selfDemote = await api('/admin/users/u-admin/role', {
+    method: 'POST', token: tokens.admin, body: { role: 'member' },
+  });
+  assert.equal(selfDemote.status, 400);
 });
 
 test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {

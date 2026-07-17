@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { acquireDatabaseState, getDb, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase } from './store.js';
+import {
+  acquireDatabaseState, createPersistentSession, databasePool, deletePersistentSession, deletePersistentSessionsForUser,
+  getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
+} from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
@@ -13,6 +16,7 @@ const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const APP_ORIGINS = String(process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
 if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
+if (IS_PRODUCTION && process.env.TEST_EMAIL_BYPASS) throw new Error('TEST_EMAIL_BYPASS ne doit jamais etre active en production.');
 if (IS_PRODUCTION && (!emailConfig().apiKey || !emailConfig().from)) throw new Error('RESEND_API_KEY et EMAIL_FROM sont requis en production.');
 app.set('trust proxy', 1);
 app.use(cors({
@@ -24,10 +28,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
 }));
 app.use((req, res, next) => {
+  const requestId = req.headers['x-request-id'] || newId('req');
+  res.setHeader('X-Request-Id', requestId);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  // The bootstrap script in client/index.html applies theme and language before paint.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:");
   next();
 });
 app.use(express.json({ limit: '25mb' }));
@@ -122,30 +130,16 @@ const DEMO = process.env.DEMO === 'true';
 // démo (bascule de compte, remplissage auto). Ne révèle rien de sensible en lui-même.
 app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
 
-app.get('/api/realtime', authRealtime, (req, res) => {
-  res.status(200);
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-  const clients = realtimeClients.get(req.user.id) || new Set();
-  clients.add(res);
-  realtimeClients.set(req.user.id, clients);
-  lastSeenByUser.set(req.user.id, Date.now());
-  sendRealtime(req.user.id, { type: 'ready', userId: req.user.id });
-  broadcastPresence(req.user.id, true);
-  const heartbeat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    const current = realtimeClients.get(req.user.id);
-    if (!current) return;
-    current.delete(res);
-    if (current.size === 0) {
-      realtimeClients.delete(req.user.id);
-      lastSeenByUser.set(req.user.id, Date.now());
-      broadcastPresence(req.user.id, false);
-    }
-  });
+// Used by Vercel and manual launch checks. It deliberately exposes no secret,
+// user, or database implementation detail.
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ ok: true, database: usesDatabase() ? 'connected' : 'local', at: new Date().toISOString() });
+});
+
+// Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
+// Les clients synchronisent les conversations par polling discret et visible.
+app.get('/api/realtime', auth, (req, res) => {
+  res.status(410).json({ error: 'Le temps reel SSE est remplace par la synchronisation automatique.' });
 });
 
 // ---------- Helpers ----------
@@ -159,7 +153,7 @@ const publicUser = (u) =>
   };
 
 const findUser = (id) => db.users.find((u) => u.id === id);
-const { repositories } = createPersistence({ db, save, newId, findUser, publicUser });
+const { repositories } = createPersistence({ db, save, newId, findUser, publicUser, pool: databasePool() });
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
   messages: true,
@@ -177,29 +171,25 @@ function userSettings(user) {
 
 // Les comptes email restent bloques jusqu'a la verification de leur boite.
 // Google ne pourra etre exempte que lorsqu'un vrai flux OAuth est active.
-const canAccessApp = (user) => !!user && (
-  user.emailVerified === true || user.provider === 'google' || isPrivateTestEmail(user.email)
-);
+const canAccessApp = (user) => !!user && (user.emailVerified === true || user.provider === 'google');
 
-function activeSession(token) {
-  const session = token ? db.sessions?.[token] : null;
+async function activeSession(token) {
+  const session = await getPersistentSession(token);
   if (!session || typeof session !== 'object' || !session.userId) return null;
   if (!Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) {
-    delete db.sessions[token];
+    await deletePersistentSession(token);
     return null;
   }
   return session;
 }
 
-function clearUserSessions(userId) {
-  for (const [token, session] of Object.entries(db.sessions || {})) {
-    if (session?.userId === userId || session === userId) delete db.sessions[token];
-  }
+async function clearUserSessions(userId) {
+  await deletePersistentSessionsForUser(userId);
 }
 
-function denyUnverifiedSession(req, res) {
+async function denyUnverifiedSession(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token) delete db.sessions[token];
+  await deletePersistentSession(token);
   save();
   return res.status(403).json({
     needsVerification: true,
@@ -212,19 +202,24 @@ function denyUnverifiedSession(req, res) {
 // les messages, le récap douane, ou agir sur un litige qui s'y rattache.
 const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
 
-function auth(req, res, next) {
+async function auth(req, res, next) {
+  try {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  const userId = activeSession(token)?.userId;
+  const userId = (await activeSession(token))?.userId;
   if (!userId) return res.status(401).json({ error: 'Non authentifié' });
   req.user = findUser(userId);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   if (!canAccessApp(req.user)) return denyUnverifiedSession(req, res);
-  next();
+  return next();
+  } catch (error) {
+    console.error('Echec de verification de session', error);
+    return res.status(503).json({ error: 'Service de session temporairement indisponible.' });
+  }
 }
 
-function authRealtime(req, res, next) {
+async function authRealtime(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || String(req.query?.token || '');
-  const session = activeSession(token);
+  const session = await activeSession(token);
   const userId = session?.userId;
   if (!userId) return res.status(401).json({ error: 'Non authentifie' });
   req.user = findUser(session?.userId);
@@ -359,14 +354,6 @@ function positiveNumber(v, { allowZero = false } = {}) {
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
-// Acces de recette temporaire pour le proprietaire du projet en attendant le
-// domaine Resend. A retirer des que l'expedition email est configuree.
-const DEPLOYMENT_TEST_EMAIL = 'udiiudidi@gmail.com';
-const isPrivateTestEmail = (email) => {
-  const allowed = normEmail(process.env.TEST_EMAIL_BYPASS || '');
-  const candidate = normEmail(email);
-  return candidate === DEPLOYMENT_TEST_EMAIL || (!!allowed && candidate === allowed);
-};
 
 function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {
   return {
@@ -385,7 +372,7 @@ function makeUser({ name, email, phone, provider, emailVerified, passwordHash, c
 // corrélation pour le dashboard fraude, pas de preuve à elle seule).
 const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 
-function openSession(res, user, req) {
+async function openSession(res, user, req) {
   if (!canAccessApp(user)) {
     return res.status(403).json({
       needsVerification: true,
@@ -395,7 +382,7 @@ function openSession(res, user, req) {
   }
   const token = newToken();
   const sessionExpiresAt = Date.now() + SESSION_DURATION_MS;
-  db.sessions[token] = { userId: user.id, createdAt: Date.now(), expiresAt: sessionExpiresAt };
+  await createPersistentSession({ token, userId: user.id, expiresAt: sessionExpiresAt });
   if (req) {
     user.lastIp = clientIp(req);
     user.lastLoginAt = Date.now();
@@ -411,7 +398,7 @@ function openSession(res, user, req) {
 const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` : undefined);
 
 async function deliverAuthCode(email, code, purpose) {
-  if (DEMO || isPrivateTestEmail(email)) return;
+  if (DEMO) return;
   await sendVerificationEmail({ to: email, code, purpose });
 }
 
@@ -422,7 +409,6 @@ app.post('/api/auth/register', async (req, res) => {
   if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
   if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
   const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
-  const privateTestAccount = isPrivateTestEmail(user.email);
   const code = sixDigitCode();
   try {
     await deliverAuthCode(user.email, code, 'verify');
@@ -430,13 +416,12 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(503).json({ error: error.message });
   }
   db.users.push(user);
-  if (privateTestAccount) return openSession(res, user, req);
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
   save();
   res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
 });
 
-app.post('/api/auth/verify-email', (req, res) => {
+app.post('/api/auth/verify-email', async (req, res) => {
   const email = normEmail(req.body.email);
   if (rateLimit(`verify:${email}`))
     return res.status(429).json({ error: 'Trop de tentatives — demandez un nouveau code' });
@@ -449,7 +434,7 @@ app.post('/api/auth/verify-email', (req, res) => {
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   user.emailVerified = true;
   delete db.pendingVerifications[email];
-  openSession(res, user, req);
+  await openSession(res, user, req);
 });
 
 app.post('/api/auth/resend-code', async (req, res) => {
@@ -487,7 +472,7 @@ app.post('/api/auth/login', async (req, res) => {
     save();
     return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
   }
-  openSession(res, user, req);
+  await openSession(res, user, req);
 });
 
 // OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
@@ -529,7 +514,7 @@ app.post('/api/auth/forgot', async (req, res) => {
   });
 });
 
-app.post('/api/auth/reset', (req, res) => {
+app.post('/api/auth/reset', async (req, res) => {
   const email = normEmail(req.body.email);
   if (rateLimit(`reset:${email}`))
     return res.status(429).json({ error: 'Trop de tentatives — refaites une demande' });
@@ -545,7 +530,7 @@ app.post('/api/auth/reset', (req, res) => {
   user.passwordHash = hashPassword(req.body.password);
   delete db.resets[email];
   // Sécurité : invalide toutes les sessions existantes du compte
-  clearUserSessions(user.id);
+  await clearUserSessions(user.id);
   if (!canAccessApp(user)) {
     save();
     return res.json({
@@ -554,12 +539,12 @@ app.post('/api/auth/reset', (req, res) => {
       message: 'Mot de passe mis a jour. Verifiez maintenant votre adresse email pour acceder a l application.',
     });
   }
-  openSession(res, user, req);
+  await openSession(res, user, req);
 });
 
-app.post('/api/auth/logout', auth, (req, res) => {
+app.post('/api/auth/logout', auth, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  delete db.sessions[token];
+  await deletePersistentSession(token);
   save();
   res.json({ ok: true });
 });
@@ -800,7 +785,7 @@ app.get('/api/documents-center', auth, (req, res) => {
   res.json({ documents: documentCenterFor(req.user) });
 });
 
-app.post('/api/profile/delete', auth, (req, res) => {
+app.post('/api/profile/delete', auth, async (req, res) => {
   const uid = req.user.id;
   const activeTx = db.transactions.filter(
     (t) => [t.senderId, t.travelerId, t.recipientId].includes(uid) && !CLOSED_STATUSES.includes(t.status)
@@ -821,7 +806,7 @@ app.post('/api/profile/delete', auth, (req, res) => {
   // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
   // anonymisée pour l'audit de conformité, sans les photos.
   repositories.kyc.purgeSensitiveForUser(uid);
-  clearUserSessions(uid);
+  await clearUserSessions(uid);
   save();
   res.json({ ok: true });
 });
@@ -3377,6 +3362,56 @@ app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
 });
 
 // Retire une catégorie promue (repasse en zone grise pour les prochains envois).
+function adminUserView(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    city: user.city,
+    isAdmin: !!user.isAdmin,
+    emailVerified: !!user.emailVerified,
+    kycStatus: user.kycStatus,
+    createdAt: user.createdAt,
+    deletedAt: user.deletedAt || null,
+  };
+}
+
+app.get('/api/admin/users', auth, adminOnly, (req, res) => {
+  const query = String(req.query.q || '').trim().toLowerCase();
+  const users = db.users
+    .filter((user) => !query || `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query))
+    .sort((a, b) => Number(!!b.isAdmin) - Number(!!a.isAdmin) || (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 100)
+    .map(adminUserView);
+  res.json({ users, adminCount: db.users.filter((user) => user.isAdmin && !user.deletedAt).length });
+});
+
+app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
+  const target = findUser(req.params.id);
+  if (!target || target.deletedAt) return res.status(404).json({ error: 'Compte introuvable' });
+  const role = String(req.body?.role || '').toLowerCase();
+  if (!['admin', 'member'].includes(role)) return res.status(400).json({ error: 'Role invalide' });
+
+  const becomesAdmin = role === 'admin';
+  if (!becomesAdmin && target.id === req.user.id) {
+    return res.status(400).json({ error: 'Vous ne pouvez pas retirer votre propre acces administrateur.' });
+  }
+  const activeAdmins = db.users.filter((user) => user.isAdmin && !user.deletedAt);
+  if (!becomesAdmin && target.isAdmin && activeAdmins.length <= 1) {
+    return res.status(400).json({ error: 'Au moins un administrateur doit rester actif.' });
+  }
+  if (!!target.isAdmin === becomesAdmin) return res.json({ user: adminUserView(target), unchanged: true });
+
+  target.isAdmin = becomesAdmin;
+  target.roleChangedAt = Date.now();
+  target.roleChangedBy = req.user.id;
+  await audit(req.user.id, becomesAdmin ? 'role.admin.grant' : 'role.admin.revoke', 'user', target.id, {
+    email: target.email,
+  });
+  save();
+  res.json({ user: adminUserView(target) });
+});
+
 app.delete('/api/admin/whitelist/:id', auth, adminOnly, async (req, res) => {
   const removed = repositories.customWhitelist.remove(req.params.id);
   if (!removed) return res.status(404).json({ error: 'Catégorie introuvable' });
@@ -3719,14 +3754,14 @@ app.post('/api/admin/review/:id', auth, adminOnly, async (req, res) => {
 // ---------- Mode démo/test (à retirer en production) ----------
 if (DEMO) {
   // Connexion directe à un compte de démo, sans mot de passe.
-  app.post('/api/dev/impersonate', (req, res) => {
+  app.post('/api/dev/impersonate', async (req, res) => {
     const user = findByEmail(req.body.email);
     if (!user) return res.status(404).json({ error: 'Compte inconnu' });
-    openSession(res, user);
+    await openSession(res, user);
   });
 
   // Crée un utilisateur de test aléatoire, vérifié et KYC ok, connecté.
-  app.post('/api/dev/random-user', (req, res) => {
+  app.post('/api/dev/random-user', async (req, res) => {
     const n = Math.floor(Math.random() * 9000) + 1000;
     const names = ['Salma', 'Youssef', 'Nadia', 'Hamza', 'Leila', 'Adam', 'Sofia', 'Bilal'];
     const user = makeUser({
@@ -3739,7 +3774,7 @@ if (DEMO) {
     });
     user.kycStatus = 'verified';
     db.users.push(user);
-    openSession(res, user);
+    await openSession(res, user);
   });
 
   // Révèle les codes de validation d'une transaction (impossible en prod).

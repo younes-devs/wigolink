@@ -11,11 +11,6 @@ export function getToken() {
   return token;
 }
 
-export function realtimeUrl() {
-  const base = apiBase.startsWith('http') ? `${apiBase}/realtime` : `${window.location.origin}${apiBase}/realtime`;
-  return `${base}?token=${encodeURIComponent(token || '')}`;
-}
-
 export async function api(path, opts = {}) {
   const res = await fetch(`${apiBase}${path}`, {
     ...opts,

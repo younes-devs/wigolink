@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, realtimeUrl } from '../api';
+import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 import { useToast } from '../Toast.jsx';
@@ -44,13 +44,10 @@ export default function MessagesSimple() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    const source = new EventSource(realtimeUrl());
-    const onUpdate = (event) => {
-      const update = JSON.parse(event.data || '{}');
-      if (['message', 'read', 'message_deleted'].includes(update.type)) load();
-    };
-    source.addEventListener('update', onUpdate);
-    return () => { source.removeEventListener('update', onUpdate); source.close(); };
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 8_000);
+    return () => clearInterval(interval);
   }, []);
 
   const counts = useMemo(() => {

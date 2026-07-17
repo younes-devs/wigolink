@@ -15,20 +15,21 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 
 ## Etapes de publication
 
-1. Dans Supabase SQL Editor, executer le contenu de `supabase/schema.sql`.
+1. Dans Supabase SQL Editor, executer le contenu de `supabase/schema.sql`. Il est idempotent : executez-le a nouveau apres chaque mise a jour qui ajoute une table ou un index.
 2. Le script initialise une base vide. Recuperer ensuite la chaine "Connect > Transaction pooler" de Supabase (port `6543`, adaptee aux fonctions Vercel); ne jamais la coller dans un chat ni la commiter. La commande `npm run migrate:supabase -- --empty` reste disponible pour reinitialiser explicitement une base de test.
 3. Renseigner `DATABASE_URL` dans les variables Vercel, puis redeployer.
 4. Configurer Resend: domaine, cle API, puis `RESEND_API_KEY` et `EMAIL_FROM`.
 5. Deployer le dossier `v1` sur Vercel avec `npm run build` et la sortie `client/dist`.
-6. Definir `NODE_ENV=production`, `APP_ORIGIN` et `APP_URL` avec le domaine final dans Vercel.
-7. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
+6. Definir `NODE_ENV=production`, `APP_ORIGIN`, `APP_URL` et `PERSISTENCE_DRIVER=postgres` avec le domaine final dans Vercel.
+7. Ouvrir `/api/health` depuis le domaine final : la reponse doit indiquer `database: "connected"`.
+8. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
 
 En production, l'API refuse de demarrer sans `RESEND_API_KEY` et `EMAIL_FROM`; `DEMO=true` est egalement refuse. Les CORS sont limites a `APP_ORIGIN` et des en-tetes de securite sont poses par l'API.
 
-Pour tester avant la verification du domaine Resend, `TEST_EMAIL_BYPASS` peut contenir une seule adresse e-mail. Seule cette adresse peut creer puis utiliser un compte sans recevoir de code. Retirer cette variable avant l'ouverture au public.
+Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demarrer afin qu'aucun compte ne contourne la verification d'e-mail.
 
 ## Base de donnees
 
-La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour l'ensemble des collections : utilisateurs, sessions, trajets, annonces, conversations, messages, operations, KYC, litiges et notifications. Les requetes d'ecriture verrouillent l'etat, le mettent a jour et valident la transaction avant la reponse HTTP. Le fichier `server/data.json` reste reserve au developpement local.
+La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de transaction, notifications et journal d'audit sont des tables PostgreSQL indexees, donc elles ne chargent plus le document JSON global a chaque consultation. Les requetes d'ecriture des donnees metier verrouillent encore l'etat puis valident avant reponse HTTP. Le fichier `server/data.json` reste reserve au developpement local.

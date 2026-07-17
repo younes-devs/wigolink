@@ -8,6 +8,7 @@ import {
 
 const VALID_DRIVERS = new Set(['json', 'postgres']);
 const PARTIAL_POSTGRES_COLLECTIONS = new Set(['auditLogs', 'messages', 'notifications']);
+const DEFAULT_POSTGRES_COLLECTIONS = ['auditLogs', 'messages', 'notifications'];
 
 export function persistenceConfig(env = process.env) {
   const requested = String(env.PERSISTENCE_DRIVER || '').trim().toLowerCase();
@@ -18,8 +19,10 @@ export function persistenceConfig(env = process.env) {
   return {
     driver,
     hasDatabaseUrl: !!env.DATABASE_URL,
-    partialPostgresCollections: parseCollections(env.PERSISTENCE_POSTGRES_COLLECTIONS),
-    allowPartialPostgres: env.PERSISTENCE_ALLOW_PARTIAL === 'true',
+    partialPostgresCollections: parseCollections(
+      env.PERSISTENCE_POSTGRES_COLLECTIONS || (driver === 'postgres' ? DEFAULT_POSTGRES_COLLECTIONS.join(',') : '')
+    ),
+    allowPartialPostgres: driver === 'postgres' && env.PERSISTENCE_ALLOW_PARTIAL !== 'false',
     ready: driver === 'json',
   };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, realtimeUrl } from '../api';
+import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
@@ -102,18 +102,11 @@ export default function ConversationDetail() {
   }, [id]);
 
   useEffect(() => {
-    const source = new EventSource(realtimeUrl());
-    const onUpdate = (event) => {
-      const update = JSON.parse(event.data || '{}');
-      if (update.conversationId !== id) return;
-      if (update.type === 'typing') setOtherTyping(update.userId !== user.id && !!update.active);
-      if (update.type === 'presence') setOtherOnline(update.userId !== user.id && !!update.online);
-      if (['message', 'message_deleted', 'read'].includes(update.type)) load(true);
-    };
-    source.addEventListener('update', onUpdate);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') load(true);
+    }, 4_000);
     return () => {
-      source.removeEventListener('update', onUpdate);
-      source.close();
+      clearInterval(interval);
       clearTimeout(typingTimerRef.current);
       api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
     };

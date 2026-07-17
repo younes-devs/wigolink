@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import pg from 'pg';
 
 // Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
@@ -97,13 +98,15 @@ function seed() {
 let db = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : seed();
 let pool = null;
 let databaseEnabled = false;
+let persistentSessionsEnabled = false;
 let stateLoadedAt = 0;
 const READ_CACHE_MS = Math.max(250, Math.min(10_000, Number(process.env.STATE_READ_CACHE_MS) || 1_500));
 
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    max: 1,
+    // Keep state writes and independent session operations from blocking each other.
+    max: 2,
     idleTimeoutMillis: 5000,
   });
   const result = await pool.query('select state from wigofly_app_state where id = 1');
@@ -114,6 +117,8 @@ if (process.env.DATABASE_URL) {
     throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
   }
   databaseEnabled = true;
+  const sessionTable = await pool.query("select to_regclass('public.wigofly_sessions') as name");
+  persistentSessionsEnabled = !!sessionTable.rows[0]?.name;
 }
 
 // Migration : comptes existants sans email/mot de passe (démo : demo1234).
@@ -160,6 +165,55 @@ export function newId(prefix) {
 
 export function usesDatabase() {
   return databaseEnabled;
+}
+
+// Shared by the relational repositories so production uses one bounded pool.
+export function databasePool() {
+  return pool;
+}
+
+export async function createPersistentSession({ token, userId, expiresAt, createdAt = Date.now() }) {
+  if (!databaseEnabled || !persistentSessionsEnabled) {
+    db.sessions[token] = { userId, createdAt, expiresAt };
+    return;
+  }
+  await pool.query(
+    `insert into wigofly_sessions (token_hash, user_id, created_at, expires_at)
+     values ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0))`,
+    [hashToken(token), userId, createdAt, expiresAt]
+  );
+}
+
+export async function getPersistentSession(token) {
+  if (!token) return null;
+  if (!databaseEnabled || !persistentSessionsEnabled) return db.sessions?.[token] || null;
+  const result = await pool.query(
+    `select user_id, extract(epoch from expires_at) * 1000 as expires_at
+     from wigofly_sessions
+     where token_hash = $1 and expires_at > now()`,
+    [hashToken(token)]
+  );
+  const row = result.rows[0];
+  return row ? { userId: row.user_id, expiresAt: Number(row.expires_at) } : null;
+}
+
+export async function deletePersistentSession(token) {
+  if (!token) return;
+  if (!databaseEnabled || !persistentSessionsEnabled) {
+    delete db.sessions[token];
+    return;
+  }
+  await pool.query('delete from wigofly_sessions where token_hash = $1', [hashToken(token)]);
+}
+
+export async function deletePersistentSessionsForUser(userId) {
+  if (!databaseEnabled || !persistentSessionsEnabled) {
+    for (const [token, session] of Object.entries(db.sessions || {})) {
+      if (session?.userId === userId || session === userId) delete db.sessions[token];
+    }
+    return;
+  }
+  await pool.query('delete from wigofly_sessions where user_id = $1', [userId]);
 }
 
 function replaceState(next) {
@@ -213,3 +267,7 @@ export async function releaseDatabaseState(lock, { commit = false } = {}) {
 }
 
 if (migrated || !fs.existsSync(DATA_FILE)) save();
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}

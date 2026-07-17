@@ -9,11 +9,12 @@ test('persistence : JSON par defaut sans DATABASE_URL', () => {
   assert.equal(config.hasDatabaseUrl, false);
 });
 
-test('persistence : DATABASE_URL conserve les repositories JSON, persistes par le store', () => {
+test('persistence : DATABASE_URL conserve le mode JSON jusqu a la migration explicite', () => {
   const config = persistenceConfig({ DATABASE_URL: 'postgresql://example' });
   assert.equal(config.driver, 'json');
   assert.equal(config.ready, true);
   assert.equal(config.hasDatabaseUrl, true);
+  assert.deepEqual(config.partialPostgresCollections, []);
 });
 
 test('persistence : postgres partiel autorise auditLogs, notifications et messages explicitement', () => {

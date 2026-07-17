@@ -16,12 +16,13 @@ function fraudSignalCount(f) {
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | categories
+  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | categories | access
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [kycPending, setKycPending] = useState(null);
+  const [team, setTeam] = useState(null);
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -33,6 +34,9 @@ export default function Admin() {
   const loadFraud = useCallback(() => {
     api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
   }, []);
+  const loadTeam = useCallback(() => {
+    api('/admin/users').then(setTeam).catch(() => setTeam({ users: [], adminCount: 0 }));
+  }, []);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadOps(); }, [loadOps]);
@@ -41,6 +45,7 @@ export default function Admin() {
   // à cliquer à l'aveugle pour découvrir qu'il y a quelque chose à traiter. Requête légère,
   // découplée du fetch propre à KycPanel (filtres/recherche) qui reste inchangé.
   useEffect(() => { loadFraud(); }, [loadFraud]);
+  useEffect(() => { loadTeam(); }, [loadTeam]);
   useEffect(() => { api('/admin/kyc?status=pending').then((d) => setKycPending(d.stats?.pending ?? 0)).catch(() => {}); }, []);
 
   const decide = async (id, decision, extra = {}) => {
@@ -84,6 +89,7 @@ export default function Admin() {
           Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
         </button>
         <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
+        <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>Acces</button>
       </div>
 
       <div className="stat-grid mb">
@@ -147,12 +153,62 @@ export default function Admin() {
       {tab === 'kpis' && <KpiPanel />}
       {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
       {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
+      {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
     </div>
   );
 }
 
 // Revue d'une annonce en zone grise : l'approbation demande une quantité max, car
 // approuver promeut la catégorie en liste blanche pour tous les envois suivants.
+function AccessPanel({ data, reload }) {
+  const [query, setQuery] = useState('');
+  const [pending, setPending] = useState(null);
+  const toast = useToast();
+  const users = (data?.users || []).filter((user) => `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query.trim().toLowerCase()));
+
+  const apply = async () => {
+    if (!pending) return;
+    try {
+      await api(`/admin/users/${pending.user.id}/role`, { method: 'POST', body: { role: pending.role } });
+      toast.success(pending.role === 'admin' ? 'Acces administrateur accorde' : 'Acces administrateur retire');
+      reload();
+    } catch (error) {
+      toast.error(error.message || 'Modification impossible');
+    }
+  };
+
+  return (
+    <section className="card">
+      <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div><h2 style={{ margin: 0 }}>Acces administrateur</h2><p className="muted" style={{ marginBottom: 0 }}>{data?.adminCount ?? '...'} administrateur(s) actif(s)</p></div>
+        <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un membre" style={{ maxWidth: 260 }} />
+      </div>
+      <div className="list-stack" style={{ marginTop: 16 }}>
+        {users.map((user) => (
+          <div className="list-row" key={user.id}>
+            <div><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
+            <div className="row" style={{ marginLeft: 'auto' }}>
+              <span className={`pill ${user.isAdmin ? 'pill-teal' : 'pill-gray'}`}>{user.isAdmin ? 'Admin' : 'Membre'}</span>
+              <button className={`btn btn-sm ${user.isAdmin ? 'btn-danger-ghost' : 'btn-primary'}`} onClick={() => setPending({ user, role: user.isAdmin ? 'member' : 'admin' })}>
+                {user.isAdmin ? 'Retirer' : 'Promouvoir'}
+              </button>
+            </div>
+          </div>
+        ))}
+        {data && users.length === 0 && <p className="muted center">Aucun membre trouve.</p>}
+      </div>
+      {pending && <ConfirmDialog
+        title={pending.role === 'admin' ? 'Donner l acces administrateur' : 'Retirer l acces administrateur'}
+        message={`${pending.user.name} ${pending.role === 'admin' ? 'pourra administrer la plateforme.' : 'ne pourra plus acceder au back-office.'}`}
+        confirmLabel={pending.role === 'admin' ? 'Promouvoir' : 'Retirer'}
+        danger={pending.role === 'member'}
+        onConfirm={apply}
+        onClose={() => setPending(null)}
+      />}
+    </section>
+  );
+}
+
 function OpsPanel({ ops, error, setTab, reload }) {
   if (error) {
     return (
