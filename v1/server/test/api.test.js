@@ -41,6 +41,14 @@ test('connexion : identifiants valides vs invalides', async () => {
   assert.ok(ok.body.sessionExpiresAt >= Date.now() + 23 * 60 * 60 * 1000);
   assert.ok(ok.body.sessionExpiresAt <= Date.now() + 24 * 60 * 60 * 1000 + 2_000);
 
+  const remembered = await api('/auth/login', {
+    method: 'POST', body: { email: 'fatima@demo.wigofly.app', password: 'demo1234', rememberMe: true },
+  });
+  assert.equal(remembered.status, 200);
+  assert.equal(remembered.body.sessionDurationDays, 30);
+  assert.ok(remembered.body.sessionExpiresAt >= Date.now() + 29 * 24 * 60 * 60 * 1000);
+  assert.ok(remembered.body.sessionExpiresAt <= Date.now() + 30 * 24 * 60 * 60 * 1000 + 2_000);
+
   const badPassword = await api('/auth/login', { method: 'POST', body: { email: 'fatima@demo.wigofly.app', password: 'wrong' } });
   assert.equal(badPassword.status, 401);
 

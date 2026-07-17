@@ -17,6 +17,7 @@ export default function Login() {
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
   const [cguAccepted, setCguAccepted] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const switchMode = (m) => { setMode(m); setError(''); setHint(''); };
@@ -31,7 +32,7 @@ export default function Login() {
   const finishAuth = (d) => login(d.token, d.user);
 
   const submitLogin = () => run(async () => {
-    const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password } });
+    const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password, rememberMe } });
     if (d.needsVerification) { switchMode('verify'); setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); return; }
     finishAuth(d);
   });
@@ -39,13 +40,13 @@ export default function Login() {
   const submitRegister = () => run(async () => {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     if (!cguAccepted) throw new Error(t('err.cgu.required'));
-    const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted } });
+    const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted, rememberMe } });
     switchMode('verify');
     setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
   });
 
   const submitVerify = () => run(async () => {
-    const d = await api('/auth/verify-email', { method: 'POST', body: { email: form.email, code: form.code } });
+    const d = await api('/auth/verify-email', { method: 'POST', body: { email: form.email, code: form.code, rememberMe } });
     finishAuth(d);
   });
 
@@ -115,6 +116,7 @@ export default function Login() {
               </div>
               <button type="button" className="link-btn" onClick={() => switchMode('forgot')}>{t('auth.forgot.link')}</button>
             </div>
+            <RememberMe checked={rememberMe} onChange={setRememberMe} />
             <button className="btn btn-primary" onClick={submitLogin} disabled={busy || !form.email || !form.password}>
               {busy ? <span className="spinner" /> : t('auth.login.submit')}
             </button>
@@ -164,6 +166,7 @@ export default function Login() {
                 {t('auth.password.left', { n: 8 - form.password.length })}
               </div>
             )}
+            <RememberMe checked={rememberMe} onChange={setRememberMe} />
             <label className="cgu-check">
               <input type="checkbox" checked={cguAccepted} onChange={(e) => setCguAccepted(e.target.checked)} />
               <CguText />
@@ -262,6 +265,15 @@ function CguText() {
         return p;
       })}
     </span>
+  );
+}
+
+function RememberMe({ checked, onChange }) {
+  return (
+    <label className="remember-check">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{t('auth.remember')}</span>
+    </label>
   );
 }
 

@@ -179,6 +179,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 };
 const OFFER_REMINDER_MS = 6 * 3600e3;
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+const REMEMBER_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10);
 
 function userSettings(user) {
@@ -388,7 +389,7 @@ function makeUser({ name, email, phone, provider, emailVerified, passwordHash, c
 // corrélation pour le dashboard fraude, pas de preuve à elle seule).
 const clientIp = (req) => (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
 
-async function openSession(res, user, req) {
+async function openSession(res, user, req, { rememberMe = false } = {}) {
   if (!canAccessApp(user)) {
     return res.status(403).json({
       needsVerification: true,
@@ -397,14 +398,15 @@ async function openSession(res, user, req) {
     });
   }
   const token = newToken();
-  const sessionExpiresAt = Date.now() + SESSION_DURATION_MS;
+  const sessionDurationMs = rememberMe ? REMEMBER_SESSION_DURATION_MS : SESSION_DURATION_MS;
+  const sessionExpiresAt = Date.now() + sessionDurationMs;
   await createPersistentSession({ token, userId: user.id, expiresAt: sessionExpiresAt });
   if (req) {
     user.lastIp = clientIp(req);
     user.lastLoginAt = Date.now();
   }
   save();
-  res.json({ token, user: publicUser(user), sessionExpiresAt });
+  res.json({ token, user: publicUser(user), sessionExpiresAt, sessionDurationDays: rememberMe ? 30 : 1 });
 }
 
 // Le code n'est renvoyé dans la réponse API qu'en mode démo (pas de prestataire email
@@ -420,7 +422,7 @@ async function deliverAuthCode(email, code, purpose) {
 }
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, phone, password, cguAccepted } = req.body;
+  const { name, email, phone, password, cguAccepted, rememberMe } = req.body;
   const invalid = validRegistration({ name, email, password });
   if (invalid) return res.status(400).json({ error: invalid });
   if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
@@ -433,7 +435,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(503).json({ error: error.message });
   }
   db.users.push(user);
-  db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3 };
+  db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: rememberMe === true };
   save();
   res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
 });
@@ -451,7 +453,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   user.emailVerified = true;
   delete db.pendingVerifications[email];
-  await openSession(res, user, req);
+  await openSession(res, user, req, { rememberMe: req.body.rememberMe === true || pending.rememberMe === true });
 });
 
 app.post('/api/auth/resend-code', async (req, res) => {
@@ -466,7 +468,11 @@ app.post('/api/auth/resend-code', async (req, res) => {
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
-  db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
+  db.pendingVerifications[email] = {
+    code,
+    expires: Date.now() + 15 * 60e3,
+    rememberMe: db.pendingVerifications[email]?.rememberMe === true,
+  };
   save();
   res.json({ ok: true, message: 'Un nouveau code vient d etre envoye.', demoHint: demoHintFor(code) });
 });
@@ -485,11 +491,11 @@ app.post('/api/auth/login', async (req, res) => {
     } catch (error) {
       return res.status(503).json({ error: error.message });
     }
-    db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3 };
+    db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: req.body.rememberMe === true };
     save();
     return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
   }
-  await openSession(res, user, req);
+  await openSession(res, user, req, { rememberMe: req.body.rememberMe === true });
 });
 
 // OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect

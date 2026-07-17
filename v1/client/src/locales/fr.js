@@ -140,6 +140,7 @@ export default {
   'auth.password': 'Mot de passe',
   'auth.password.show': 'Afficher',
   'auth.password.hide': 'Masquer',
+  'auth.remember': 'Rester connecte pendant 30 jours',
   'auth.forgot.link': 'Mot de passe oublié ?',
   'auth.login.submit': 'Se connecter',
   'auth.google.login': 'Continuer avec Google',
