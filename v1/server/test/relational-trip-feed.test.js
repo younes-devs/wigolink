@@ -67,3 +67,23 @@ test('feed relationnel : ne synchronise que les ecritures changees', async () =>
   assert.ok(queries.some(({ sql }) => sql.includes('wigofly_trips')));
   assert.ok(queries.some(({ sql }) => sql.includes('wigofly_saved_trips')));
 });
+
+test('feed relationnel : synchronise aussi les messages de conversation modifies', async () => {
+  const before = snapshotRelationalTripState({
+    users: [], trips: [], savedTrips: [], transactions: [],
+    conversations: [{ id: 'conv-1', participantIds: ['u-1', 'u-2'] }],
+    messages: [{ id: 'm-1', conversationId: 'conv-1', from: 'u-1', text: 'Avant', at: 1 }],
+  });
+  const queries = [];
+  await syncRelationalTripState({
+    pool: { query(sql, params) { queries.push({ sql, params }); return Promise.resolve({}); } },
+    before,
+    after: {
+      users: [], trips: [], savedTrips: [], transactions: [],
+      conversations: [{ id: 'conv-1', participantIds: ['u-1', 'u-2'], pinnedBy: ['u-1'] }],
+      messages: [{ id: 'm-1', conversationId: 'conv-1', from: 'u-1', text: 'Apres', at: 2 }],
+    },
+  });
+  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_conversations')));
+  assert.ok(queries.some(({ sql }) => sql.includes('insert into public.messages')));
+});

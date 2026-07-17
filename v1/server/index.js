@@ -15,6 +15,9 @@ import {
   listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession,
   snapshotRelationalTripState, syncRelationalTripState,
 } from './relational-trip-feed.js';
+import {
+  listRelationalConversations, relationalConversation, relationalMessageReadsEnabled,
+} from './relational-messaging.js';
 
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -64,11 +67,17 @@ function isRelationalTripRead(req) {
     && (req.path === '/api/trips' || req.path === '/api/trips/mine');
 }
 
+function isRelationalMessageRead(req) {
+  return relationalMessageReadsEnabled()
+    && req.method === 'GET'
+    && (/^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/.test(req.path));
+}
+
 // Les lectures reutilisent un cache tres court par fonction Vercel. Seules les
 // ecritures prennent le verrou Postgres et attendent la validation avant reponse.
 app.use((req, res, next) => {
   if (!usesDatabase()) return next();
-  if (isRelationalTripRead(req)) return next();
+  if (isRelationalTripRead(req) || isRelationalMessageRead(req)) return next();
 
   const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
   if (!write) {
@@ -306,6 +315,48 @@ app.get('/api/trips', relationalTripAuth, async (req, res, next) => {
   } catch (error) {
     console.error('Echec de recherche relationnelle des trajets', error);
     res.status(503).json({ error: 'Recherche temporairement indisponible. Reessayez.' });
+  }
+});
+
+// Conversation reads use the indexed conversation and message tables once their
+// mirror is enabled. Writes deliberately keep the existing atomic state path.
+app.get('/api/conversations', relationalTripAuth, async (req, res, next) => {
+  if (!relationalMessageReadsEnabled()) return next('route');
+  try {
+    res.json(await listRelationalConversations({
+      pool: databasePool(), user: req.user, query: req.query, today: TODAY_ISO(),
+    }));
+  } catch (error) {
+    console.error('Echec de lecture relationnelle des conversations', error);
+    res.status(503).json({ error: 'Messagerie temporairement indisponible. Reessayez.' });
+  }
+});
+
+app.get('/api/conversations/:id', relationalTripAuth, async (req, res, next) => {
+  if (!relationalMessageReadsEnabled()) return next('route');
+  try {
+    const data = await relationalConversation({
+      pool: databasePool(), user: req.user, id: req.params.id, today: TODAY_ISO(),
+    });
+    if (!data) return res.status(404).json({ error: 'Conversation introuvable' });
+    return res.json(data);
+  } catch (error) {
+    console.error('Echec de lecture relationnelle de conversation', error);
+    return res.status(503).json({ error: 'Conversation temporairement indisponible. Reessayez.' });
+  }
+});
+
+app.get('/api/conversations/:id/messages', relationalTripAuth, async (req, res, next) => {
+  if (!relationalMessageReadsEnabled()) return next('route');
+  try {
+    const data = await relationalConversation({
+      pool: databasePool(), user: req.user, id: req.params.id, query: req.query, today: TODAY_ISO(), includeMessages: true,
+    });
+    if (!data) return res.status(404).json({ error: 'Conversation introuvable' });
+    return res.json(data);
+  } catch (error) {
+    console.error('Echec de lecture relationnelle des messages', error);
+    return res.status(503).json({ error: 'Messages temporairement indisponibles. Reessayez.' });
   }
 });
 

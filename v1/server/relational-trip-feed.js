@@ -5,6 +5,7 @@ const MIRRORED_COLLECTIONS = [
   ['trips', 'wigofly_trips'],
   ['savedTrips', 'wigofly_saved_trips'],
   ['transactions', 'wigofly_transactions'],
+  ['conversations', 'wigofly_conversations'],
 ];
 
 export function relationalTripReadsEnabled(env = process.env) {
@@ -20,6 +21,11 @@ export function snapshotRelationalTripState(state) {
         .map((item) => [String(item.id), JSON.stringify(item)])
     );
   }
+  snapshot.messages = new Map(
+    (Array.isArray(state?.messages) ? state.messages : [])
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), JSON.stringify(item)])
+  );
   return snapshot;
 }
 
@@ -48,6 +54,39 @@ export async function syncRelationalTripState({ pool, before, after }) {
     for (const id of previous.keys()) {
       if (!current.has(id)) await pool.query(`delete from public.${table} where id = $1`, [id]);
     }
+  }
+  await syncMessages({ pool, before: before.messages, after: after?.messages });
+}
+
+async function syncMessages({ pool, before = new Map(), after = [] }) {
+  const current = new Map(
+    (Array.isArray(after) ? after : [])
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), item])
+  );
+  for (const [id, message] of current) {
+    const serialized = JSON.stringify(message);
+    if (before.get(id) === serialized) continue;
+    await pool.query(
+      `insert into public.messages (id, tx_id, conversation_id, from_id, text, flagged, at, data)
+       values ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0), $8::jsonb)
+       on conflict (id) do update set tx_id = excluded.tx_id, conversation_id = excluded.conversation_id,
+         from_id = excluded.from_id, text = excluded.text, flagged = excluded.flagged,
+         at = excluded.at, data = excluded.data`,
+      [
+        id,
+        message.txId || null,
+        message.conversationId || null,
+        message.from || null,
+        message.text || '',
+        !!message.flagged,
+        entityTimestamp(message),
+        serialized,
+      ]
+    );
+  }
+  for (const id of before.keys()) {
+    if (!current.has(id)) await pool.query('delete from public.messages where id = $1', [id]);
   }
 }
 
