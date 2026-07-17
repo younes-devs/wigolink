@@ -11,6 +11,7 @@ import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
 import { emailConfig, sendVerificationEmail } from './email.js';
+import { listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession } from './relational-trip-feed.js';
 
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -54,10 +55,17 @@ app.use((req, res, next) => {
 const db = getDb();
 let stateQueue = Promise.resolve();
 
+function isRelationalTripRead(req) {
+  return relationalTripReadsEnabled()
+    && req.method === 'GET'
+    && (req.path === '/api/trips' || req.path === '/api/trips/mine');
+}
+
 // Les lectures reutilisent un cache tres court par fonction Vercel. Seules les
 // ecritures prennent le verrou Postgres et attendent la validation avant reponse.
 app.use((req, res, next) => {
   if (!usesDatabase()) return next();
+  if (isRelationalTripRead(req)) return next();
 
   const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
   if (!write) {
@@ -244,6 +252,54 @@ async function authRealtime(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   next();
 }
+
+async function relationalTripAuth(req, res, next) {
+  if (!relationalTripReadsEnabled()) return next('route');
+  const pool = databasePool();
+  if (!pool) return res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const user = await relationalUserFromSession({ token, getSession: activeSession, pool });
+    if (!user) return res.status(401).json({ error: 'Utilisateur inconnu ou session expiree' });
+    if (!canAccessApp(user)) return res.status(403).json({
+      needsVerification: true,
+      pendingEmail: user.email,
+      error: 'Verifiez votre adresse email avant d acceder a l application.',
+    });
+    req.user = user;
+    return next();
+  } catch (error) {
+    console.error('Echec de lecture relationnelle des trajets', error);
+    return res.status(503).json({ error: 'Recherche temporairement indisponible. Reessayez.' });
+  }
+}
+
+// High-traffic trip discovery bypasses the legacy JSON state when the relational
+// migration is enabled. The existing routes below remain the safe fallback until
+// the imported row counts have been checked in Supabase.
+app.get('/api/trips/mine', relationalTripAuth, async (req, res, next) => {
+  if (!relationalTripReadsEnabled()) return next('route');
+  try {
+    res.json(await listRelationalTrips({
+      pool: databasePool(), user: req.user, query: req.query, mine: true, today: TODAY_ISO(),
+    }));
+  } catch (error) {
+    console.error('Echec de lecture de mes trajets', error);
+    res.status(503).json({ error: 'Mes trajets sont temporairement indisponibles. Reessayez.' });
+  }
+});
+
+app.get('/api/trips', relationalTripAuth, async (req, res, next) => {
+  if (!relationalTripReadsEnabled()) return next('route');
+  try {
+    res.json(await listRelationalTrips({
+      pool: databasePool(), user: req.user, query: req.query, today: TODAY_ISO(),
+    }));
+  } catch (error) {
+    console.error('Echec de recherche relationnelle des trajets', error);
+    res.status(503).json({ error: 'Recherche temporairement indisponible. Reessayez.' });
+  }
+});
 
 function sendRealtime(userId, payload) {
   for (const client of realtimeClients.get(userId) || []) {
