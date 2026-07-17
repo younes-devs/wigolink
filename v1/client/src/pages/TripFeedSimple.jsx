@@ -251,7 +251,7 @@ function TripPublishForm({ onCreated }) {
 
   return (
     <form className="card trip-publish-form" onSubmit={submit}>
-      <div className="row">
+      <div className="row trip-publish-route-row">
         <div className="field">
           <label>Départ</label>
           <input value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
@@ -261,7 +261,7 @@ function TripPublishForm({ onCreated }) {
           <input value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
         </div>
       </div>
-      <div className="row">
+      <div className="row trip-publish-details-row">
         <div className="field">
           <label>Date du billet</label>
           <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
