@@ -131,6 +131,17 @@ if (process.env.DATABASE_URL) {
     )`);
     await pool.query('create index if not exists wigofly_sessions_user_id_idx on public.wigofly_sessions (user_id)');
     await pool.query('create index if not exists wigofly_sessions_expires_at_idx on public.wigofly_sessions (expires_at)');
+
+    // Preserve sessions created before the dedicated table was available.
+    for (const [token, session] of Object.entries(db.sessions || {})) {
+      if (!session?.userId || !Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) continue;
+      await pool.query(
+        `insert into wigofly_sessions (token_hash, user_id, created_at, expires_at)
+         values ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0))
+         on conflict (token_hash) do nothing`,
+        [hashToken(token), session.userId, session.createdAt || Date.now(), session.expiresAt]
+      );
+    }
   }
   persistentSessionsEnabled = true;
   } catch (error) {
