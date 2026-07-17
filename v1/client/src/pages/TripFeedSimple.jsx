@@ -10,18 +10,10 @@ export default function TripFeedSimple() {
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '', verified: '' };
   const [filters, setFilters] = useState(emptyFilters);
-  const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
   const [publishing, setPublishing] = useState(false);
   const toast = useToast();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setFilters((current) => ({ ...current, q: search.trim() }));
-    }, 260);
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   useEffect(() => {
     if (!filtersOpen) return undefined;
@@ -74,19 +66,15 @@ export default function TripFeedSimple() {
       )}
 
       <section className="trip-search-controls" aria-label="Recherche de trajets">
-        <div className="trip-search-row">
+        <button className="trip-search-row" type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label="Rechercher et filtrer les trajets">
           <Icon name="search" size={19} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un trajet" aria-label="Rechercher ville, voyageur ou description" />
-          <button className={`icon-btn trip-filter-trigger ${advancedFilterCount(filters) ? 'has-active' : ''}`} type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label="Ouvrir les filtres" title="Filtres">
-            <Icon name="filter" size={18} />
-            <span className="trip-filter-label">Filtres</span>
-            {advancedFilterCount(filters) > 0 && <span className="filter-count">{advancedFilterCount(filters)}</span>}
-          </button>
-        </div>
+          <span className={filters.q ? 'trip-search-value' : ''}>{filters.q || 'Rechercher un trajet'}</span>
+          {advancedFilterCount(filters) > 0 && <span className="filter-count">{advancedFilterCount(filters)}</span>}
+        </button>
       </section>
 
       <section className="simple-filters trip-desktop-filters">
-        <input className="chat-input" value={filters.q} onChange={(e) => { setSearch(e.target.value); setFilters({ ...filters, q: e.target.value }); }} placeholder="Rechercher ville, voyageur, description" />
+        <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Rechercher ville, voyageur, description" />
         <input className="chat-input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder="Départ" />
         <input className="chat-input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder="Arrivée" />
         <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label="Date minimum" />
@@ -109,6 +97,7 @@ export default function TripFeedSimple() {
               <button className="icon-btn" type="button" onClick={() => setFiltersOpen(false)} aria-label="Fermer les filtres" title="Fermer"><Icon name="x" size={18} /></button>
             </div>
             <div className="trip-filter-sheet-body">
+              <input className="chat-input" autoFocus value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder="Rechercher ville, voyageur, description" aria-label="Rechercher un trajet" />
               <input className="chat-input" value={draftFilters.from} onChange={(e) => setDraftFilters({ ...draftFilters, from: e.target.value })} placeholder="Depart" />
               <input className="chat-input" value={draftFilters.to} onChange={(e) => setDraftFilters({ ...draftFilters, to: e.target.value })} placeholder="Arrivee" />
               <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label="Date minimale" />
@@ -120,8 +109,8 @@ export default function TripFeedSimple() {
               </label>
             </div>
             <div className="trip-filter-sheet-actions">
-              <button className="btn btn-ghost" type="button" onClick={() => { setSearch(''); setFilters(emptyFilters); setDraftFilters(emptyFilters); setFiltersOpen(false); }}>Reinitialiser</button>
-              <button className="btn btn-primary" type="button" onClick={() => { setFilters({ ...draftFilters, q: search.trim() }); setFiltersOpen(false); }}>
+              <button className="btn btn-ghost" type="button" onClick={() => { setFilters(emptyFilters); setDraftFilters(emptyFilters); setFiltersOpen(false); }}>Reinitialiser</button>
+              <button className="btn btn-primary" type="button" onClick={() => { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); }}>
                 Voir les trajets{advancedFilterCount(draftFilters) > 0 ? ` (${advancedFilterCount(draftFilters)})` : ''}
               </button>
             </div>

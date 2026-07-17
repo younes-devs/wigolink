@@ -2852,21 +2852,14 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .trip-desktop-filters { display: none; }
   .trip-search-controls { margin-bottom: 14px; }
   .trip-search-row {
-    display: flex; align-items: center; gap: 9px; min-height: 48px;
+    display: flex; align-items: center; gap: 9px; width: 100%; min-height: 48px;
     padding: 0 10px 0 14px; border: 1px solid var(--hairline); border-radius: 12px;
-    background: var(--surface); color: var(--ink-soft);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer; text-align: left;
+    font: inherit;
   }
-  .trip-search-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
-  .trip-search-row input {
-    min-width: 0; flex: 1; border: 0; outline: 0; background: transparent;
-    color: var(--ink); font: inherit; font-size: 14px;
-  }
-  .trip-search-row input::placeholder { color: var(--ink-soft); }
-  .trip-filter-trigger {
-    position: relative; flex: 0 0 auto; min-width: 44px; min-height: 36px;
-    padding: 0 9px; gap: 5px; color: var(--accent);
-  }
-  .trip-filter-label { font-size: 12px; font-weight: 700; }
+  .trip-search-row:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  .trip-search-row > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+  .trip-search-row .trip-search-value { color: var(--ink); }
   .trip-filter-backdrop { align-items: flex-end; padding: 0; }
   .trip-filter-sheet {
     width: 100%; max-width: none; max-height: min(84dvh, 680px); display: flex; flex-direction: column;
