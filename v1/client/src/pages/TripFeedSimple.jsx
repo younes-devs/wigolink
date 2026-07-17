@@ -8,6 +8,7 @@ import { useToast } from '../Toast.jsx';
 
 export default function TripFeedSimple() {
   const [trips, setTrips] = useState(null);
+  const [myTrips, setMyTrips] = useState(null);
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '', verified: '' };
   const [filters, setFilters] = useState(emptyFilters);
@@ -33,9 +34,19 @@ export default function TripFeedSimple() {
     return params.toString();
   }, [filters]);
 
-  const load = () => api(`/trips${query ? `?${query}` : ''}`)
-    .then((data) => setTrips(data.trips))
-    .catch(() => setTrips([]));
+  const load = () => {
+    const params = new URLSearchParams(query);
+    params.set('excludeMine', '1');
+    return Promise.all([api(`/trips?${params.toString()}`), api('/trips/mine')])
+      .then(([feed, mine]) => {
+        setTrips(feed.trips);
+        setMyTrips(mine.trips);
+      })
+      .catch(() => {
+        setTrips([]);
+        setMyTrips([]);
+      });
+  };
 
   useEffect(() => { load(); }, [query]);
 
@@ -120,6 +131,49 @@ export default function TripFeedSimple() {
         document.body
       )}
 
+      <section className="trip-section">
+        <div className="section-head">
+          <h2>Mes trajets</h2>
+          {myTrips?.length > 0 && <span>{myTrips.length}</span>}
+        </div>
+        {myTrips === null && <SkeletonList count={1} />}
+        {myTrips?.length === 0 && <p className="muted trip-section-empty">Vous n'avez pas encore publie de trajet.</p>}
+        <div className="trip-post-list">
+          {myTrips?.map((trip) => (
+            <article className="card trip-post" key={trip.id}>
+              <div className="trip-post-route">
+                <div><b>{trip.from}</b><span>Depart</span></div>
+                <Icon name="plane" size={20} />
+                <div><b>{trip.to}</b><span>Arrivee</span></div>
+              </div>
+              <div className="trip-post-body">
+                <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={42} />
+                <div className="grow">
+                  <div className="trip-post-title">
+                    <b>Mon trajet</b>
+                    {trip.activeOperations > 0 && <span className="pill pill-saffron">{trip.activeOperations} en cours</span>}
+                  </div>
+                  <p>{trip.description}</p>
+                  <div className="trip-post-meta">
+                    <span><Icon name="clock" size={14} />{formatDate(trip.departureDate)}</span>
+                    <span><Icon name="luggage" size={14} />{trip.capacityKg} kg</span>
+                    <span><Icon name="euro" size={14} />{trip.price} {trip.currency}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="trip-post-actions">
+                <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">Gerer <Icon name="arrowRight" size={15} /></Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="trip-section">
+        <div className="section-head">
+          <h2>Trajets des autres</h2>
+          {trips?.length > 0 && <span>{trips.length}</span>}
+        </div>
       {trips === null && <SkeletonList count={4} />}
       {trips?.length === 0 && (
         <div className="card center empty-state">
@@ -167,6 +221,7 @@ export default function TripFeedSimple() {
           </article>
         ))}
       </div>
+      </section>
     </div>
   );
 }

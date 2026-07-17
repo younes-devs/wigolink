@@ -1106,6 +1106,7 @@ function availableTripPosts(user, query = {}) {
   let trips = db.trips
     .map((trip) => ({ ...trip, status: trip.status || (trip.date < today ? 'expired' : 'published') }))
     .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today);
+  if (query.excludeMine === '1') trips = trips.filter((trip) => trip.travelerId !== user.id);
   if (query.from) trips = trips.filter((t) => t.from.toLowerCase().includes(String(query.from).toLowerCase()));
   if (query.to) trips = trips.filter((t) => t.to.toLowerCase().includes(String(query.to).toLowerCase()));
   if (query.date) trips = trips.filter((t) => (t.departureDate || t.date) >= String(query.date));

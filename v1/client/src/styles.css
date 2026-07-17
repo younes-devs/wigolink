@@ -402,6 +402,9 @@ body {
 .chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
 
 .simple-page { padding-bottom: 18px; }
+.trip-section { margin-top: 20px; }
+.trip-section:first-of-type { margin-top: 0; }
+.trip-section-empty { margin: 0; padding: 12px 0; font-size: 13px; }
 .simple-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .simple-filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px; }
 .trip-search-row { display: none; }
