@@ -17,7 +17,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const APP_ORIGINS = String(process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
 if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
 if (IS_PRODUCTION && process.env.TEST_EMAIL_BYPASS) throw new Error('TEST_EMAIL_BYPASS ne doit jamais etre active en production.');
-if (IS_PRODUCTION && (!emailConfig().apiKey || !emailConfig().from)) throw new Error('RESEND_API_KEY et EMAIL_FROM sont requis en production.');
+const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
 app.set('trust proxy', 1);
 app.use(cors({
   origin(origin, callback) {
@@ -133,7 +133,13 @@ app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
 // Used by Vercel and manual launch checks. It deliberately exposes no secret,
 // user, or database implementation detail.
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ ok: true, database: usesDatabase() ? 'connected' : 'local', at: new Date().toISOString() });
+  const ready = !IS_PRODUCTION || EMAIL_READY;
+  res.status(ready ? 200 : 503).json({
+    ok: ready,
+    database: usesDatabase() ? 'connected' : 'local',
+    email: EMAIL_READY ? 'configured' : 'missing',
+    at: new Date().toISOString(),
+  });
 });
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
@@ -399,6 +405,7 @@ const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` 
 
 async function deliverAuthCode(email, code, purpose) {
   if (DEMO) return;
+  if (!EMAIL_READY) throw new Error('La verification par email n est pas encore configuree.');
   await sendVerificationEmail({ to: email, code, purpose });
 }
 

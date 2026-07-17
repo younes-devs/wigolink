@@ -26,7 +26,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 
 ## Gate de securite
 
-En production, l'API refuse de demarrer sans `RESEND_API_KEY` et `EMAIL_FROM`; `DEMO=true` est egalement refuse. Les CORS sont limites a `APP_ORIGIN` et des en-tetes de securite sont poses par l'API.
+En production, `DEMO=true` est refuse. Les CORS sont limites a `APP_ORIGIN` et des en-tetes de securite sont poses par l'API. Si `RESEND_API_KEY` ou `EMAIL_FROM` manque, l'API reste observable mais `/api/health` repond `503` et les routes qui envoient un email repondent clairement que la verification doit etre configuree : aucun compte ne contourne cette verification.
 
 Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demarrer afin qu'aucun compte ne contourne la verification d'e-mail.
 
