@@ -1,8 +1,54 @@
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 100;
+const MIRRORED_COLLECTIONS = [
+  ['users', 'wigofly_users'],
+  ['trips', 'wigofly_trips'],
+  ['savedTrips', 'wigofly_saved_trips'],
+  ['transactions', 'wigofly_transactions'],
+];
 
 export function relationalTripReadsEnabled(env = process.env) {
   return env.RELATIONAL_TRIP_READS === 'true';
+}
+
+export function snapshotRelationalTripState(state) {
+  const snapshot = {};
+  for (const [collection] of MIRRORED_COLLECTIONS) {
+    snapshot[collection] = new Map(
+      (Array.isArray(state?.[collection]) ? state[collection] : [])
+        .filter((item) => item?.id)
+        .map((item) => [String(item.id), JSON.stringify(item)])
+    );
+  }
+  return snapshot;
+}
+
+// Called inside the same Postgres transaction as the legacy state update. It
+// mirrors only rows changed by this request, keeping relational reads current
+// without re-importing the entire application document on every write.
+export async function syncRelationalTripState({ pool, before, after }) {
+  if (!pool || !before) return;
+  for (const [collection, table] of MIRRORED_COLLECTIONS) {
+    const previous = before[collection] || new Map();
+    const current = new Map(
+      (Array.isArray(after?.[collection]) ? after[collection] : [])
+        .filter((item) => item?.id)
+        .map((item) => [String(item.id), item])
+    );
+    for (const [id, entity] of current) {
+      const serialized = JSON.stringify(entity);
+      if (previous.get(id) === serialized) continue;
+      await pool.query(
+        `insert into public.${table} (id, data, created_at, updated_at)
+         values ($1, $2::jsonb, coalesce(to_timestamp($3 / 1000.0), now()), now())
+         on conflict (id) do update set data = excluded.data, updated_at = now()`,
+        [id, serialized, entityTimestamp(entity)]
+      );
+    }
+    for (const id of previous.keys()) {
+      if (!current.has(id)) await pool.query(`delete from public.${table} where id = $1`, [id]);
+    }
+  }
 }
 
 export async function relationalUserFromSession({ token, getSession, pool }) {
@@ -130,4 +176,12 @@ function boundedLimit(value) {
 function boundedOffset(value) {
   const number = Number(value || 0);
   return Math.max(0, Number.isFinite(number) ? Math.floor(number) : 0);
+}
+
+function entityTimestamp(entity) {
+  const raw = entity?.updatedAt || entity?.createdAt || Date.now();
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) return numeric;
+  const parsed = new Date(raw).getTime();
+  return Number.isFinite(parsed) ? parsed : Date.now();
 }

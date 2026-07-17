@@ -11,7 +11,10 @@ import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
 import { emailConfig, sendVerificationEmail } from './email.js';
-import { listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession } from './relational-trip-feed.js';
+import {
+  listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession,
+  snapshotRelationalTripState, syncRelationalTripState,
+} from './relational-trip-feed.js';
 
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -84,11 +87,15 @@ app.use((req, res, next) => {
 
   void (async () => {
     let lock = null;
+    let relationalSnapshot = null;
     let settled = false;
     const settle = async ({ commit = false, deliver = null } = {}) => {
       if (settled) return;
       settled = true;
       try {
+        if (commit && relationalSnapshot) {
+          await syncRelationalTripState({ pool: lock.client, before: relationalSnapshot, after: db });
+        }
         await releaseDatabaseState(lock, { commit });
         if (deliver) deliver();
       } catch (error) {
@@ -106,6 +113,7 @@ app.use((req, res, next) => {
     try {
       await previousTurn;
       lock = await acquireDatabaseState({ write });
+      if (relationalTripReadsEnabled()) relationalSnapshot = snapshotRelationalTripState(db);
 
       const nativeJson = res.json.bind(res);
       const nativeSend = res.send.bind(res);

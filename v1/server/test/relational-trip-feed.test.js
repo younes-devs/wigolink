@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession } from '../relational-trip-feed.js';
+import {
+  listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession,
+  snapshotRelationalTripState, syncRelationalTripState,
+} from '../relational-trip-feed.js';
 
 test('feed relationnel : l option est inactive par defaut', () => {
   assert.equal(relationalTripReadsEnabled({}), false);
@@ -44,4 +47,23 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.match(calls[0].sql, /wigofly_saved_trips/);
   assert.ok(calls[0].params.includes('%Oujda%'));
   assert.ok(calls[0].params.includes('%valise%'));
+});
+
+test('feed relationnel : ne synchronise que les ecritures changees', async () => {
+  const before = snapshotRelationalTripState({
+    users: [{ id: 'u-1', name: 'A' }], trips: [{ id: 't-1', price: 20 }], savedTrips: [], transactions: [],
+  });
+  const queries = [];
+  await syncRelationalTripState({
+    pool: { query(sql, params) { queries.push({ sql, params }); return Promise.resolve({}); } },
+    before,
+    after: {
+      users: [{ id: 'u-1', name: 'A' }], trips: [{ id: 't-1', price: 25 }],
+      savedTrips: [{ id: 's-1', userId: 'u-1', tripId: 't-1' }], transactions: [],
+    },
+  });
+  assert.equal(queries.length, 2);
+  assert.ok(queries.every(({ sql }) => sql.includes('insert into public.wigofly_')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_trips')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_saved_trips')));
 });
