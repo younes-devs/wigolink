@@ -1563,6 +1563,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.ok(minePublished, 'le profil voyageur doit lister le trajet publie');
   assert.equal(minePublished.activeOperations, 0);
 
+  const ownTripDetail = await api(`/trips/${published.body.trip.id}`, { token: karim });
+  assert.equal(ownTripDetail.status, 200);
+  assert.equal(ownTripDetail.body.trip.activeOperations, 0, 'le proprietaire voit le nombre de ses operations actives');
+
   const otherTravelersOnly = await api('/trips?excludeMine=1', { token: karim });
   assert.equal(otherTravelersOnly.status, 200);
   assert.ok(!otherTravelersOnly.body.trips.some((t) => t.id === published.body.trip.id), 'le feed des autres exclut mes trajets');

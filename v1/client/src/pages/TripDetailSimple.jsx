@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../App.jsx';
+import { ConfirmDialog } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
@@ -8,6 +10,7 @@ import { formatDate } from './TripFeedSimple.jsx';
 export default function TripDetailSimple() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
   const toast = useToast();
   const [trip, setTrip] = useState(null);
   const [parcel, setParcel] = useState('');
@@ -16,10 +19,17 @@ export default function TripDetailSimple() {
   const [confirmed, setConfirmed] = useState(false);
   const reviewRef = useRef(null);
   const [busy, setBusy] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const load = () => api(`/trips/${id}`).then((data) => setTrip(data.trip)).catch(() => setTrip(false));
   useEffect(() => { load(); }, [id]);
   useEffect(() => { if (trip?.price) setProposedPrice(String(trip.price)); }, [trip?.price]);
+  useEffect(() => {
+    if (!trip) return;
+    setEditForm({ from: trip.from, to: trip.to, date: trip.departureDate, capacityKg: trip.capacityKg, price: trip.price, description: trip.description, conditions: trip.conditions });
+  }, [trip]);
   useEffect(() => { if (reviewOpen) requestAnimationFrame(() => reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }, [reviewOpen]);
 
   const saveTrip = async () => {
@@ -63,8 +73,38 @@ export default function TripDetailSimple() {
     }
   };
 
+  const updateOwnTrip = async (event) => {
+    event.preventDefault();
+    setBusy('edit');
+    try {
+      await api(`/trips/${trip.id}`, { method: 'PATCH', body: editForm });
+      toast.success('Trajet modifie');
+      setEditing(false);
+      load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const removeOwnTrip = async () => {
+    setBusy('remove');
+    try {
+      await api(`/trips/${trip.id}`, { method: 'DELETE' });
+      toast.success('Trajet retire');
+      nav('/trajets');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
   if (trip === null) return <div className="card"><span className="spinner" /> Chargement...</div>;
   if (trip === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>Trajet introuvable.</p></div>;
+  const isOwner = user?.id === trip.traveler?.id;
+  const hasActiveOperations = Number(trip.activeOperations || 0) > 0;
 
   return (
     <div className="simple-page">
@@ -79,7 +119,7 @@ export default function TripDetailSimple() {
         <div className="trip-detail-main">
           <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={56} />
           <div className="grow">
-            <h1>{trip.traveler?.name || 'Voyageur'}</h1>
+            <h1>{isOwner ? 'Mon trajet' : trip.traveler?.name || 'Voyageur'}</h1>
             <div className="trip-post-meta">
               {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal">Identité vérifiée</span>}
               <span><Icon name="star" size={14} filled />{trip.traveler?.rating || 'Nouveau'}</span>
@@ -107,6 +147,40 @@ export default function TripDetailSimple() {
           <p>{trip.conditions}</p>
         </div>
 
+        {isOwner && (
+          <section className="trip-owner-tools">
+            <div className="section-head"><h2>Gerer ce trajet</h2></div>
+            {hasActiveOperations ? (
+              <div className="trip-owner-notice">
+                <Icon name="alert" size={17} />
+                <span>Ce trajet ne peut plus etre modifie ou retire tant qu'une operation est en cours.</span>
+                <Link to="/en-cours" className="btn btn-ghost btn-sm">Voir les operations</Link>
+              </div>
+            ) : editing ? (
+              <form className="trip-owner-form" onSubmit={updateOwnTrip}>
+                <div className="row">
+                  <label className="field"><span>Depart</span><input value={editForm?.from || ''} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })} /></label>
+                  <label className="field"><span>Arrivee</span><input value={editForm?.to || ''} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })} /></label>
+                </div>
+                <div className="row">
+                  <label className="field"><span>Date</span><input type="date" value={editForm?.date || ''} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} /></label>
+                  <label className="field"><span>Capacite (kg)</span><input type="number" min="1" max="30" value={editForm?.capacityKg || ''} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} /></label>
+                  <label className="field"><span>Prix (EUR)</span><input type="number" min="1" value={editForm?.price || ''} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></label>
+                </div>
+                <label className="field"><span>Description</span><textarea rows={3} value={editForm?.description || ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></label>
+                <label className="field"><span>Conditions</span><textarea rows={2} value={editForm?.conditions || ''} onChange={(e) => setEditForm({ ...editForm, conditions: e.target.value })} /></label>
+                <div className="trip-detail-actions"><button type="button" className="btn btn-ghost" onClick={() => setEditing(false)}>Annuler</button><button className="btn btn-primary" disabled={!!busy}>{busy === 'edit' ? <span className="spinner" /> : <Icon name="check" size={17} />}Enregistrer</button></div>
+              </form>
+            ) : (
+              <div className="trip-detail-actions">
+                <button className="btn btn-ghost" onClick={() => setEditing(true)}><Icon name="pencil" size={17} />Modifier</button>
+                <button className="btn btn-danger-ghost" onClick={() => setConfirmRemove(true)} disabled={!!busy}><Icon name="trash" size={17} />Retirer</button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {!isOwner && <>
         <label className="field">
           <span>Ce que vous voulez envoyer</span>
           <textarea value={parcel} onChange={(e) => setParcel(e.target.value)} rows={3} placeholder="Ex: petit colis propre, 2 kg, contenu conforme..." />
@@ -154,7 +228,9 @@ export default function TripDetailSimple() {
             </div>
           </section>
         )}
+        </>}
       </section>
+      {confirmRemove && <ConfirmDialog title="Retirer ce trajet ?" message="Il ne sera plus visible par les autres utilisateurs." confirmLabel="Retirer" danger onConfirm={removeOwnTrip} onClose={() => setConfirmRemove(false)} />}
     </div>
   );
 }

@@ -1442,6 +1442,8 @@ app.get('/api/trips/:id', auth, (req, res, next) => {
   const view = tripPostView(trip, req.user);
   if (view.status !== 'published' || view.departureDate < TODAY_ISO())
     return res.status(404).json({ error: 'Trajet expiré ou indisponible' });
+  if (trip.travelerId === req.user.id)
+    view.activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status)).length;
   res.json({ trip: view });
 });
 
