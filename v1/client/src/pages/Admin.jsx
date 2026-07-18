@@ -173,15 +173,18 @@ function MembersPanel({ data }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const users = (data?.users || []).filter((user) => `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const deletedCount = users.filter((user) => user.deletedAt).length;
   if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
   return <section className="card">
     <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <div><h2 style={{ margin: 0 }}>Dossiers membres</h2><p className="muted" style={{ marginBottom: 0 }}>Acces journalise aux informations necessaires a la securite, au KYC et au support.</p></div>
+      <div><h2 style={{ margin: 0 }}>Dossiers membres</h2><p className="muted" style={{ marginBottom: 0 }}>Acces journalise aux informations necessaires a la securite, au KYC et au support. Les comptes supprimes restent listes ici.</p></div>
       <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un membre" style={{ maxWidth: 260 }} />
     </div>
+    {data && deletedCount > 0 && <p className="muted" style={{ margin: '12px 0 0' }}>{deletedCount} compte{deletedCount > 1 ? 's' : ''} supprime{deletedCount > 1 ? 's' : ''} repertorie{deletedCount > 1 ? 's' : ''} dans ce resultat.</p>}
     <div className="list-stack" style={{ marginTop: 16 }}>
       {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => setSelectedId(user.id)}>
         <div className="cat-icon"><Icon name="user" size={20} /></div>
+        {user.deletedAt && <span className="pill pill-gray">Compte supprime</span>}
         <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
         <div className="row"><span className={`pill ${user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{user.kycStatus || 'none'}</span><Icon name="arrowRight" size={17} /></div>
       </button>)}
