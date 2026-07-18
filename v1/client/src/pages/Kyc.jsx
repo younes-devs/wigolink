@@ -9,7 +9,7 @@ import { useToast } from '../Toast.jsx';
 import { t, useLang } from '../i18n.js';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
-// Accès complet à la navigation ; cette page n'est requise que pour transacter.
+// Le flux est volontairement immersif pour laisser toute la place aux documents.
 export default function Kyc() {
   useLang();
   const nav = useNavigate();
@@ -20,11 +20,11 @@ export default function Kyc() {
   const load = () => api('/me').then(setMe);
   useEffect(() => { load(); }, []);
 
-  if (!me) return <SkeletonCard lines={3} />;
+  if (!me) return <div className="kyc-page"><SkeletonCard lines={3} /></div>;
   const status = me.kyc?.status || 'none';
 
   return (
-    <div>
+    <div className="kyc-page">
       <button className="link-btn mb" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />{t('common.back')}</button>
       <h1 className="page-title">{t('kyc.title')}</h1>
       <p className="page-sub">{t('kyc.sub')}</p>

@@ -106,6 +106,11 @@ body {
 /* Content */
 /* Padding bas réduit : le contenu glisse sous la barre de verre (liquid glass) */
 .content { flex: 1; padding: 20px 16px 46px; overflow-y: auto; }
+.phone:has(.kyc-page) .app-header,
+.phone:has(.kyc-page) .bottom-nav,
+.phone:has(.kyc-page) .side-rail { display: none; }
+.phone:has(.kyc-page) .content { padding-top: 24px; padding-bottom: 24px; }
+.kyc-page { width: 100%; }
 .phone:has(.conversation-detail) .app-header { display: none; }
 .phone:has(.conversation-detail) .content {
   min-height: 0;
@@ -2821,6 +2826,7 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 /* Desktop (≥900px) : sidebar de navigation à gauche, contenu centré */
 @media (min-width: 900px) {
   #root { display: block; }
+  .phone:has(.kyc-page) { margin-left: 0; }
   .phone { max-width: none; width: auto; margin-left: 248px; box-shadow: none; }
 
   .bottom-nav {
@@ -2856,6 +2862,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
     max-width: 720px; flex: 1 1 720px; min-width: 0;
     padding: 36px 32px 60px;
   }
+  .phone:has(.kyc-page) .main-wrap { display: block; }
+  .phone:has(.kyc-page) .content { max-width: 620px; margin: 0 auto; padding-top: 40px; }
   .phone:has(.conversation-detail) .content { padding-top: 16px; }
   .phone:has(.conversation-detail) .conversation-detail { height: calc(100dvh - 76px); }
   .page-title { font-size: 26px; }
