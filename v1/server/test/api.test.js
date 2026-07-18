@@ -696,7 +696,10 @@ test('suppression de compte (RGPD) : bloquée si transaction active, anonymise s
   assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
 
   // Transaction encore active (ni livrée, ni annulée, ni remboursée) : suppression bloquée.
-  const blockedDelete = await api('/profile/delete', { method: 'POST', token: sender.token });
+  const deleteRequest = await api('/profile/delete/request', { method: 'POST', token: sender.token });
+  assert.equal(deleteRequest.status, 200);
+  const deleteCode = deleteRequest.body.demoHint.match(/\d{6}/)[0];
+  const blockedDelete = await api('/profile/delete', { method: 'POST', token: sender.token, body: { code: deleteCode } });
   assert.equal(blockedDelete.status, 400);
   assert.match(blockedDelete.body.error, /en cours/);
 
@@ -705,7 +708,7 @@ test('suppression de compte (RGPD) : bloquée si transaction active, anonymise s
   const refused = await api(`/transactions/${accepted.body.transaction.id}/refuse`, { method: 'POST', token: traveler.token, body: { reason: 'RGPD test cleanup' } });
   assert.equal(refused.status, 200);
 
-  const deleted = await api('/profile/delete', { method: 'POST', token: sender.token });
+  const deleted = await api('/profile/delete', { method: 'POST', token: sender.token, body: { code: deleteCode } });
   assert.equal(deleted.status, 200);
 
   // Anonymisée, pas juste marquée : la session est invalidée et l'ancien email ne reconnecte plus.
@@ -714,6 +717,32 @@ test('suppression de compte (RGPD) : bloquée si transaction active, anonymise s
 
   const loginWithOldEmail = await api('/auth/login', { method: 'POST', body: { email: sender.email, password: 'demo1234' } });
   assert.equal(loginWithOldEmail.status, 401);
+});
+
+test('securite du compte : mot de passe et email exigent les confirmations attendues', async () => {
+  const oldEmail = `security-${Date.now()}@exemple.com`;
+  const newEmail = `security-new-${Date.now()}@exemple.com`;
+  const registration = await api('/auth/register', {
+    method: 'POST', body: { name: 'Compte securite', email: oldEmail, password: 'ancien-mdp1', cguAccepted: true },
+  });
+  const verifyCode = registration.body.demoHint.match(/\d{6}/)[0];
+  const verified = await api('/auth/verify-email', { method: 'POST', body: { email: oldEmail, code: verifyCode } });
+  assert.equal(verified.status, 200);
+
+  const badPassword = await api('/profile/password', { method: 'POST', token: verified.body.token, body: { currentPassword: 'incorrect', password: 'nouveau-mdp1' } });
+  assert.equal(badPassword.status, 400);
+  const changedPassword = await api('/profile/password', { method: 'POST', token: verified.body.token, body: { currentPassword: 'ancien-mdp1', password: 'nouveau-mdp1' } });
+  assert.equal(changedPassword.status, 200);
+  const relogin = await api('/auth/login', { method: 'POST', body: { email: oldEmail, password: 'nouveau-mdp1' } });
+  assert.equal(relogin.status, 200);
+
+  const request = await api('/profile/email/change/request', { method: 'POST', token: relogin.body.token, body: { newEmail, currentPassword: 'nouveau-mdp1' } });
+  assert.equal(request.status, 200);
+  const code = request.body.demoHint.match(/\d{6}/)[0];
+  const changedEmail = await api('/profile/email/change/confirm', { method: 'POST', token: relogin.body.token, body: { code } });
+  assert.equal(changedEmail.status, 200);
+  const loginNewEmail = await api('/auth/login', { method: 'POST', body: { email: newEmail, password: 'nouveau-mdp1' } });
+  assert.equal(loginNewEmail.status, 200);
 });
 
 test('export RGPD : contient mes données, jamais le hash du mot de passe', async () => {

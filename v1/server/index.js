@@ -932,6 +932,71 @@ app.post('/api/profile/photo', auth, (req, res) => {
 });
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
+app.post('/api/profile/password', auth, async (req, res) => {
+  const currentPassword = String(req.body?.currentPassword || '');
+  const password = String(req.body?.password || '');
+  if (!req.user.passwordHash || !verifyPassword(currentPassword, req.user.passwordHash))
+    return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+  if (password.length < 8) return res.status(400).json({ error: 'Mot de passe : 8 caracteres minimum' });
+  req.user.passwordHash = hashPassword(password);
+  await clearUserSessions(req.user.id);
+  save();
+  res.json({ ok: true, mustRelogin: true });
+});
+
+function accountConfirmation(userId) {
+  if (!db.accountConfirmations) db.accountConfirmations = {};
+  return db.accountConfirmations[userId] || null;
+}
+
+app.post('/api/profile/email/change/request', auth, async (req, res) => {
+  const newEmail = normEmail(req.body?.newEmail);
+  const currentPassword = String(req.body?.currentPassword || '');
+  if (!EMAIL_RE.test(newEmail)) return res.status(400).json({ error: 'Adresse email invalide' });
+  if (newEmail === req.user.email) return res.status(400).json({ error: 'Utilisez une adresse email differente' });
+  if (findByEmail(newEmail)) return res.status(400).json({ error: 'Un compte utilise deja cette adresse email' });
+  if (!req.user.passwordHash || !verifyPassword(currentPassword, req.user.passwordHash))
+    return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+  if (rateLimit(`change-email:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
+  const code = sixDigitCode();
+  try {
+    await deliverAuthCode(newEmail, code, 'change_email');
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+  db.accountConfirmations[req.user.id] = { type: 'change_email', newEmail, code, expires: Date.now() + 15 * 60e3 };
+  save();
+  res.json({ ok: true, demoHint: demoHintFor(code) });
+});
+
+app.post('/api/profile/email/change/confirm', auth, async (req, res) => {
+  const pending = accountConfirmation(req.user.id);
+  const code = String(req.body?.code || '').trim();
+  if (!pending || pending.type !== 'change_email' || pending.expires < Date.now())
+    return res.status(400).json({ error: 'Code expire. Recommencez la demande.' });
+  if (pending.code !== code) return res.status(400).json({ error: 'Code incorrect' });
+  if (findByEmail(pending.newEmail)) return res.status(400).json({ error: 'Cette adresse email est deja utilisee' });
+  req.user.email = pending.newEmail;
+  req.user.emailVerified = true;
+  delete db.accountConfirmations[req.user.id];
+  await clearUserSessions(req.user.id);
+  save();
+  res.json({ ok: true, mustRelogin: true });
+});
+
+app.post('/api/profile/delete/request', auth, async (req, res) => {
+  if (rateLimit(`delete-account:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
+  const code = sixDigitCode();
+  try {
+    await deliverAuthCode(req.user.email, code, 'delete_account');
+  } catch (error) {
+    return res.status(503).json({ error: error.message });
+  }
+  db.accountConfirmations[req.user.id] = { type: 'delete_account', code, expires: Date.now() + 15 * 60e3 };
+  save();
+  res.json({ ok: true, demoHint: demoHintFor(code) });
+});
+
 app.get('/api/profile/export', auth, async (req, res) => {
   const uid = req.user.id;
   const { passwordHash, ...userSafe } = req.user;
@@ -1043,6 +1108,11 @@ app.get('/api/documents-center', auth, (req, res) => {
 });
 
 app.post('/api/profile/delete', auth, async (req, res) => {
+  const pending = accountConfirmation(req.user.id);
+  const code = String(req.body?.code || '').trim();
+  if (!pending || pending.type !== 'delete_account' || pending.expires < Date.now())
+    return res.status(400).json({ error: 'Code de confirmation expire. Demandez-en un nouveau.' });
+  if (pending.code !== code) return res.status(400).json({ error: 'Code de confirmation incorrect' });
   const uid = req.user.id;
   const activeTx = db.transactions.filter(
     (t) => [t.senderId, t.travelerId, t.recipientId].includes(uid) && !CLOSED_STATUSES.includes(t.status)
@@ -1060,6 +1130,7 @@ app.post('/api/profile/delete', auth, async (req, res) => {
   req.user.passwordHash = null;
   req.user.provider = 'deleted';
   req.user.deletedAt = Date.now();
+  delete db.accountConfirmations[uid];
   // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
   // anonymisée pour l'audit de conformité, sans les photos.
   repositories.kyc.purgeSensitiveForUser(uid);

@@ -13,7 +13,7 @@ export function emptyState() {
   return {
     users: [], trips: [], listings: [], transactions: [], matchingOffers: [],
     savedTrips: [], conversations: [], messages: [], notifications: [], disputes: [],
-    reviewQueue: [], otps: {}, sessions: {}, resets: {}, pendingVerifications: {},
+    reviewQueue: [], otps: {}, sessions: {}, resets: {}, pendingVerifications: {}, accountConfirmations: {},
     customWhitelist: [], kycSubmissions: [], kycDecisions: [], auditLogs: [], nextId: 100,
   };
 }
@@ -175,6 +175,7 @@ for (const u of db.users) {
 }
 if (!db.resets) { db.resets = {}; migrated = true; }
 if (!db.pendingVerifications) { db.pendingVerifications = {}; migrated = true; }
+if (!db.accountConfirmations) { db.accountConfirmations = {}; migrated = true; }
 if (!db.customWhitelist) { db.customWhitelist = []; migrated = true; }
 if (!db.kycSubmissions) { db.kycSubmissions = []; migrated = true; }
 if (!db.kycDecisions) { db.kycDecisions = []; migrated = true; }

@@ -1344,6 +1344,16 @@ body {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .settings-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.settings-entry { margin-bottom: 10px; }
+.settings-entry:last-of-type { margin-bottom: 0; }
+.settings-arrow { color: var(--ink-faint); flex: 0 0 auto; }
+.settings-detail-page h1 { font-size: 24px; font-weight: 750; margin-bottom: 16px; }
+.settings-detail-back {
+  display: inline-flex; align-items: center; gap: 7px; margin: 0 0 18px;
+  border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.settings-detail-back:hover { color: var(--accent); }
+.settings-detail-card { margin-bottom: 8px; }
 .settings-row-icon {
   flex: 0 0 auto; width: 36px; height: 36px; border-radius: 11px;
   background: var(--accent-tint); color: var(--accent);
@@ -1425,6 +1435,15 @@ body {
 }
 
 .settings-row.link-row { text-decoration: none; }
+
+.account-action-modal { width: min(460px, calc(100vw - 32px)); max-height: min(620px, calc(100dvh - 32px)); display: flex; flex-direction: column; }
+.account-action-body { display: grid; gap: 10px; padding: 18px; overflow-y: auto; }
+.account-action-body .muted { font-size: 13px; line-height: 1.55; }
+.account-action-body label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.account-action-body input { min-height: 44px; }
+.account-action-body .btn { justify-content: center; margin-top: 4px; }
+.settings-danger-row .settings-row-icon { background: var(--danger-tint); color: var(--danger); }
+.settings-danger-row .settings-row-title { color: var(--danger); }
 
 /* Politique de confidentialité */
 .policy-section { padding: 18px; }

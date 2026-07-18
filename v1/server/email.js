@@ -11,10 +11,13 @@ export function emailConfig(env = process.env) {
 export async function sendVerificationEmail({ to, code, purpose, env = process.env }) {
   const config = emailConfig(env);
   if (!config.apiKey || !config.from) throw new Error('Service email indisponible');
-  const title = purpose === 'reset' ? 'Reinitialisez votre mot de passe' : 'Confirmez votre adresse email';
-  const body = purpose === 'reset'
-    ? `Utilisez ce code Wigofly pour reinitialiser votre mot de passe : ${code}`
-    : `Utilisez ce code Wigofly pour confirmer votre adresse email : ${code}`;
+  const content = {
+    reset: ['Reinitialisez votre mot de passe', `Utilisez ce code Wigofly pour reinitialiser votre mot de passe : ${code}`],
+    change_email: ['Confirmez votre nouvelle adresse email', `Utilisez ce code Wigofly pour confirmer votre nouvelle adresse email : ${code}`],
+    delete_account: ['Confirmez la suppression de votre compte', `Utilisez ce code Wigofly pour confirmer la suppression de votre compte : ${code}`],
+    verify: ['Confirmez votre adresse email', `Utilisez ce code Wigofly pour confirmer votre adresse email : ${code}`],
+  }[purpose] || ['Confirmez votre adresse email', `Utilisez ce code Wigofly pour confirmer votre adresse email : ${code}`];
+  const [title, body] = content;
   const response = await fetch(RESEND_ENDPOINT, {
     method: 'POST',
     headers: {
