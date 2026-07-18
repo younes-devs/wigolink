@@ -678,6 +678,8 @@ body {
 .conversation-menu button:hover, .conversation-header-menu button:hover, .conversation-header-menu a:hover {
   background: rgba(10, 108, 245, 0.08); color: var(--accent);
 }
+.conversation-menu-danger { color: var(--danger) !important; }
+.conversation-menu-danger:hover { background: var(--danger-tint) !important; color: var(--danger) !important; }
 .message-state {
   display: grid; place-items: center; gap: 9px; text-align: center; min-height: 190px;
   padding: 22px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface);
@@ -698,6 +700,12 @@ body {
   border: 1px solid var(--hairline); border-radius: 10px; padding: 9px 10px;
   box-shadow: 0 10px 26px rgba(8, 19, 38, 0.08);
 }
+.conversation-contact {
+  min-width: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 10px;
+  color: inherit; text-decoration: none;
+}
+.conversation-contact:hover .conversation-title b { color: var(--accent); }
+.conversation-contact:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
 .conversation-title { min-width: 0; }
 .conversation-title b {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1617,6 +1625,12 @@ body {
 .public-profile {
   display: grid; gap: 12px;
 }
+.profile-back {
+  width: fit-content; display: inline-flex; align-items: center; gap: 7px; margin-bottom: 12px;
+  border: 0; padding: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 700;
+  text-decoration: none; cursor: pointer;
+}
+.profile-back:hover { color: var(--accent); }
 .public-profile-card {
   display: grid; gap: 14px;
 }
@@ -2887,6 +2901,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 
 @media (max-width: 899px) {
   .messages-shell { display: block; }
+  .phone:has(.conversation-detail) .bottom-nav { display: none; }
+  .phone:has(.conversation-detail) .content { padding-bottom: 8px; }
 }
 
 @media (min-width: 900px) {
@@ -2923,19 +2939,25 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .messages-shell { display: block; }
   .messages-head { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
   .message-filters button { min-width: 88px; }
-  .conversation-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .conversation-row { grid-template-columns: minmax(0, 1fr) auto; overflow: hidden; }
+  .conversation-row.menu-open { overflow: visible; z-index: 90; }
   .conversation-row-main { gap: 10px; padding: 12px 0 12px 10px; }
   .conversation-side { align-self: center; }
   .conversation-side { padding: 10px 8px 10px 0; }
-  .conversation-menu { right: 6px; min-width: 176px; }
+  .conversation-menu {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); top: auto;
+    min-width: 0; z-index: 160; padding: 7px; border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(4, 10, 18, 0.36);
+  }
   .conversation-detail {
     height: calc(100dvh - 122px);
     min-height: 480px;
     gap: 7px;
   }
-  .phone:has(.conversation-detail) .content { padding: 8px 8px 84px; }
+  .phone:has(.conversation-detail) .bottom-nav { display: none; }
+  .phone:has(.conversation-detail) .content { padding: 8px; }
   .phone:has(.conversation-detail) .conversation-detail {
-    height: calc(100dvh - 96px);
+    height: calc(100dvh - 16px);
     min-height: 0;
   }
   .conversation-header {

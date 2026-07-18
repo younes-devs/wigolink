@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { Stars, TrustBadge } from '../components.jsx';
@@ -10,6 +10,7 @@ const dateFmt = () => new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', mo
 export default function PublicProfile() {
   useLang();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [reviews, setReviews] = useState(null);
   const [error, setError] = useState('');
@@ -52,6 +53,7 @@ export default function PublicProfile() {
 
   return (
     <div className="public-profile">
+      <button type="button" className="profile-back" onClick={() => navigate(-1)}><Icon name="arrowLeft" size={17} /> Retour</button>
       <section className="card public-profile-card">
         <div className="public-profile-head">
           <Avatar name={user.name} photo={user.photoUrl} size={74} />

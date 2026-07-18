@@ -33,6 +33,7 @@ export async function listRelationalConversations({ pool, user, query = {}, toda
          and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
      ) unread on true
      where c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)
      order by coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) desc
      limit $2 offset $3`,
     [user.id, limit, offset]
@@ -66,7 +67,8 @@ export async function relationalConversation({ pool, user, id, query = {}, today
        where m.conversation_id = c.id and m.from_id <> $1
          and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
      ) unread on true
-     where c.id = $2 and c.data->'participantIds' ? $1`,
+     where c.id = $2 and c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`,
     [user.id, id]
   );
   const row = result.rows[0];

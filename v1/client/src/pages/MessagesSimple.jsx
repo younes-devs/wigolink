@@ -121,6 +121,16 @@ export default function MessagesSimple() {
     }
   };
 
+  const remove = async (conversationId) => {
+    try {
+      await api(`/conversations/${conversationId}`, { method: 'DELETE' });
+      toast.success('Conversation supprimée');
+      load();
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    }
+  };
+
   return (
     <div className="messages-shell">
       <section className="messages-inbox" aria-label={t('messages.inbox.aria')}>
@@ -196,6 +206,7 @@ export default function MessagesSimple() {
               onRestore={restore}
               onUnread={markUnread}
               onTogglePin={togglePin}
+              onRemove={remove}
             />
           ))}
         </div>
@@ -205,7 +216,7 @@ export default function MessagesSimple() {
   );
 }
 
-function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, onRestore, onUnread, onTogglePin }) {
+function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, onRestore, onUnread, onTogglePin, onRemove }) {
   const menuRef = useRef(null);
   const touchStart = useRef(null);
   const [swiped, setSwiped] = useState(false);
@@ -279,6 +290,9 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
                 <Icon name="eyeOff" size={15} /> {t('messages.action.archive')}
               </button>
             )}
+            <button type="button" role="menuitem" className="conversation-menu-danger" onClick={() => runAction(() => onRemove(conversation.id))}>
+              <Icon name="trash" size={15} /> Supprimer
+            </button>
           </div>
         )}
       </div>

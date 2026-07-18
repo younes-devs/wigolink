@@ -122,7 +122,9 @@ app.use((req, res, next) => {
     try {
       await previousTurn;
       lock = await acquireDatabaseState({ write });
-      if (relationalTripReadsEnabled()) relationalSnapshot = snapshotRelationalTripState(db);
+      if (relationalTripReadsEnabled() || relationalMessageReadsEnabled()) {
+        relationalSnapshot = snapshotRelationalTripState(db);
+      }
 
       const nativeJson = res.json.bind(res);
       const nativeSend = res.send.bind(res);
@@ -1812,6 +1814,7 @@ app.get('/api/conversations', auth, (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   const conversations = db.conversations
     .filter((c) => c.participantIds.includes(req.user.id))
+    .filter((c) => !(c.deletedBy || []).includes(req.user.id))
     .map((c) => conversationView(c, req.user.id))
     .filter((c) => filter === 'archived' || !c.archived)
     .filter((c) => {
@@ -1829,13 +1832,13 @@ app.get('/api/conversations', auth, (req, res) => {
 });
 
 app.get('/api/conversations/:id', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id) && !(c.deletedBy || []).includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
   res.json({ conversation: conversationView(conversation, req.user.id) });
 });
 
 app.get('/api/conversations/:id/messages', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id) && !(c.deletedBy || []).includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
   const { messages, page } = conversationMessagesPage(conversation, req.query);
   if (markConversationRead(conversation.id, req.user.id)) save();
@@ -1998,6 +2001,16 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
     conversation: conversationView(conversation, req.user.id),
     warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
   });
+});
+
+// La suppression retire une discussion de la boite du demandeur uniquement. Les
+// messages restent disponibles pour l'autre participant et pour la moderation.
+app.delete('/api/conversations/:id', auth, (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  conversation.deletedBy = [...new Set([...(conversation.deletedBy || []), req.user.id])];
+  save();
+  res.json({ ok: true });
 });
 
 app.delete('/api/conversations/:id/messages/:messageId', auth, (req, res) => {

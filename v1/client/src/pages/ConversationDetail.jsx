@@ -367,16 +367,29 @@ export default function ConversationDetail() {
   const seenRecently = conversation.otherLastSeenAt && Date.now() - conversation.otherLastSeenAt < 24 * 60 * 60 * 1000;
   const headerMeta = otherTyping ? 'ecrit...' : otherOnline ? 'En ligne' : seenRecently ? 'Vu recemment' : [profileLabel, contextText, price ? `${price} ${currency}` : null].filter(Boolean).join(' - ');
   const hasSafetyWarning = messages.some((message) => message.flagged || message.type === 'warning');
+  const profileHref = conversation.other?.id ? `/membres/${conversation.other.id}` : null;
 
   return (
     <div className="conversation-detail">
       <header className="conversation-header">
         <Link to="/messages" className="icon-btn conversation-back" aria-label={t('messages.back')}><Icon name="arrowLeft" size={18} /></Link>
-        <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
-        <div className="grow conversation-title">
-          <b>{conversation.other?.name || t('messages.contact')}</b>
-          <span>{headerMeta}</span>
-        </div>
+        {profileHref ? (
+          <Link to={profileHref} className="conversation-contact" aria-label={t('messages.action.viewProfile')}>
+            <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
+            <div className="grow conversation-title">
+              <b>{conversation.other?.name || t('messages.contact')}</b>
+              <span>{headerMeta}</span>
+            </div>
+          </Link>
+        ) : (
+          <div className="conversation-contact">
+            <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
+            <div className="grow conversation-title">
+              <b>{conversation.other?.name || t('messages.contact')}</b>
+              <span>{headerMeta}</span>
+            </div>
+          </div>
+        )}
         <div className="conversation-actions" ref={menuRef}>
           {conversation.actionHref && <Link to={conversation.actionHref} className="btn btn-sm">{conversation.actionLabel || t('messages.action.view')}</Link>}
           <button
@@ -393,11 +406,6 @@ export default function ConversationDetail() {
           </button>
           {menuOpen && (
             <div className="conversation-header-menu" role="menu">
-              {conversation.other?.id && (
-                <Link to={`/membres/${conversation.other.id}`} role="menuitem" onClick={() => setMenuOpen(false)}>
-                  <Icon name="user" size={15} /> {t('messages.action.viewProfile')}
-                </Link>
-              )}
               <button type="button" role="menuitem" onClick={() => { setSearchOpen((value) => !value); setMenuOpen(false); }}>
                 <Icon name="search" size={15} /> {t('messages.action.searchInConversation')}
               </button>
@@ -406,15 +414,6 @@ export default function ConversationDetail() {
                   <Icon name={conversation.contextType === 'trip' ? 'plane' : 'repeat'} size={15} /> {conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}
                 </Link>
               )}
-              <button type="button" role="menuitem" onClick={togglePin}>
-                <Icon name="pin" size={15} /> {conversation.pinned ? t('messages.action.unpin') : t('messages.action.pin')}
-              </button>
-              <button type="button" role="menuitem" onClick={markUnread}>
-                <Icon name="mail" size={15} /> {t('messages.action.markUnread')}
-              </button>
-              <button type="button" role="menuitem" onClick={() => toggleArchive(!conversation.archived)}>
-                <Icon name={conversation.archived ? 'eye' : 'eyeOff'} size={15} /> {conversation.archived ? t('messages.action.restore') : t('messages.action.archive')}
-              </button>
               <button type="button" role="menuitem" onClick={() => { setReportOpen(true); setMenuOpen(false); }}>
                 <Icon name="alert" size={15} /> {t('messages.action.report')}
               </button>
