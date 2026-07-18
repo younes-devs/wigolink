@@ -3799,6 +3799,7 @@ function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
     .filter((conversation) => conversation.participantIds.includes(user.id))
     .sort((a, b) => (b.lastMessageAt || b.createdAt || 0) - (a.lastMessageAt || a.createdAt || 0));
   const conversationIds = new Set(conversations.map((conversation) => conversation.id));
+  const conversationsById = new Map(conversations.map((conversation) => [conversation.id, conversation]));
   const allMessages = db.messages
     .filter((message) => conversationIds.has(message.conversationId))
     .sort((a, b) => b.at - a.at);
@@ -3817,13 +3818,18 @@ function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
     }));
   const auditLogs = (db.auditLogs || []).filter((entry) => entry.actorId === user.id || (entry.targetType === 'user' && entry.targetId === user.id))
     .sort((a, b) => b.at - a.at).slice(0, 100);
-  const messages = allMessages.slice(messageOffset, messageOffset + messageLimit).map((message) => ({
-    id: message.id, conversationId: message.conversationId, from: adminCaseParticipant(findUser(message.from)),
-    text: message.text || '', type: message.type || 'text', flagged: !!message.flagged, flagReason: message.flagReason || null,
-    attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.type, size: attachment.size })),
-    location: message.location ? { label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
-    at: message.at, deletedAt: message.deletedAt || null,
-  }));
+  const messages = allMessages.slice(messageOffset, messageOffset + messageLimit).map((message) => {
+    const conversation = conversationsById.get(message.conversationId);
+    const recipientIds = (conversation?.participantIds || []).filter((id) => id !== message.from);
+    return {
+      id: message.id, conversationId: message.conversationId, from: adminCaseParticipant(findUser(message.from)),
+      to: recipientIds.map((id) => adminCaseParticipant(findUser(id))).filter(Boolean),
+      text: message.text || '', type: message.type || 'text', flagged: !!message.flagged, flagReason: message.flagReason || null,
+      attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.type, size: attachment.size })),
+      location: message.location ? { label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
+      at: message.at, deletedAt: message.deletedAt || null,
+    };
+  });
   return {
     member: { ...adminCaseParticipant(user), suspensionReason: user.suspensionReason || null, suspendedUntil: user.suspendedUntil || null },
     kyc,
