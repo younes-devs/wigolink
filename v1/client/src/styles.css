@@ -438,7 +438,6 @@ body {
 }
 .trip-publish-form { display: grid; gap: 12px; margin-bottom: 14px; }
 .trip-publish-form .btn { justify-self: end; }
-.profile-simple-links { display: grid; gap: 0; margin-bottom: 12px; }
 .trip-post-list, .saved-list, .operation-list, .conversation-list { display: grid; gap: 10px; }
 .trip-post { display: grid; gap: 14px; }
 .trip-post-route, .trip-detail-route {

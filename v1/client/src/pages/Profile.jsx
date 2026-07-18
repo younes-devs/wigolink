@@ -138,41 +138,6 @@ export default function Profile() {
       <KycBanner status={me?.kyc?.status || user.kycStatus} />
       <ProfileSummary user={user} me={me} memberSince={memberSince} />
 
-      <div className="profile-simple-links">
-        <Link to="/trajets" className="profile-trust-link">
-          <span className="settings-row-icon"><Icon name="plane" size={18} /></span>
-          <span className="grow">
-            <b>Trajets</b>
-            <small>Voir les voyageurs disponibles ou publier votre propre trajet</small>
-          </span>
-          <Icon name="arrowRight" size={16} />
-        </Link>
-        <Link to="/en-cours" className="profile-trust-link">
-          <span className="settings-row-icon"><Icon name="repeat" size={18} /></span>
-          <span className="grow">
-            <b>En cours</b>
-            <small>Suivre les opérations acceptées, payées ou en transport</small>
-          </span>
-          <Icon name="arrowRight" size={16} />
-        </Link>
-        <Link to="/enregistres" className="profile-trust-link">
-          <span className="settings-row-icon"><Icon name="star" size={18} /></span>
-          <span className="grow">
-            <b>Enregistrés</b>
-            <small>Retrouver les trajets sauvegardés avant expiration</small>
-          </span>
-          <Icon name="arrowRight" size={16} />
-        </Link>
-        <Link to="/messages" className="profile-trust-link">
-          <span className="settings-row-icon"><Icon name="chat" size={18} /></span>
-          <span className="grow">
-            <b>Messagerie</b>
-            <small>Discuter avec les voyageurs et expéditeurs</small>
-          </span>
-          <Icon name="arrowRight" size={16} />
-        </Link>
-      </div>
-
       <div className="stat-grid mb">
         <div className="stat"><div className="num">{user.completed}</div><div className="lbl">{t('profile.stat.completed')}</div></div>
         <div className="stat"><div className="num">{user.rating ?? '—'}</div><div className="lbl">{t('profile.stat.rating')}</div></div>
@@ -187,16 +152,6 @@ export default function Profile() {
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>
           {t('profile.caps.text', { active: me?.maxActive ?? '…', value: me?.maxValue ?? '…' })}
         </p>
-      </div>
-
-      <div className="card">
-        <h2 style={{ marginBottom: 8 }}><Icon name="shieldCheck" size={17} />{t('profile.guarantees.title')}</h2>
-        <ul className="checklist">
-          <li>{t('profile.g1')}</li>
-          <li>{t('profile.g2')}</li>
-          <li>{t('profile.g3')}</li>
-          <li>{t('profile.g4')}</li>
-        </ul>
       </div>
 
       <ReviewsSection userId={user.id} />
