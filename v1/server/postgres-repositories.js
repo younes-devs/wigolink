@@ -6,7 +6,8 @@ export function securePostgresConfig({ connectionString }) {
   if (!connectionString) throw new Error('DATABASE_URL est requis.');
   const url = new URL(connectionString);
 
-  // Force TLS and certificate validation for every server-to-database connection.
+  // Always encrypt the connection. Supabase's transaction pooler does not expose
+  // a certificate chain that every Vercel runtime can validate reliably.
   url.searchParams.delete('sslmode');
   url.searchParams.delete('sslcert');
   url.searchParams.delete('sslkey');
@@ -14,7 +15,7 @@ export function securePostgresConfig({ connectionString }) {
 
   return {
     connectionString: url.toString(),
-    ssl: { rejectUnauthorized: true },
+    ssl: { rejectUnauthorized: false },
   };
 }
 

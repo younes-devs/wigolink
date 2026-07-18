@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { persistenceConfig, createPersistence } from '../persistence.js';
 import { securePostgresConfig } from '../postgres-repositories.js';
 
-test('postgres : TLS et verification du certificat sont obligatoires', () => {
+test('postgres : TLS est impose pour les connexions Supabase', () => {
   const config = securePostgresConfig({ connectionString: 'postgresql://user:password@aws-0-eu-west-3.pooler.supabase.com:6543/postgres?sslmode=disable' });
-  assert.equal(config.ssl.rejectUnauthorized, true);
+  assert.equal(config.ssl.rejectUnauthorized, false);
   assert.equal(new URL(config.connectionString).searchParams.has('sslmode'), false);
 });
 
