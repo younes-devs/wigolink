@@ -7,6 +7,7 @@ import { getTheme, setTheme } from '../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../i18n.js';
 
 const DEFAULT_NOTIFICATIONS = { transactions: true, messages: true, shipments: true, reminders: true, security: true };
+const SUPPORT_EMAIL = 'support@wigofly.app';
 
 export default function Settings() {
   useLang();
@@ -26,6 +27,8 @@ export default function Settings() {
       notifications: { title: 'Notifications', content: <NotificationsSection /> },
       appearance: { title: 'Apparence et langue', content: <AppearanceSection /> },
       legal: { title: 'Légal', content: <LegalSection /> },
+      blocked: { title: 'Compte bloqué', content: <BlockedAccountSection /> },
+      support: { title: 'Support', content: <SupportSection /> },
     }[section];
     return (
       <div className="settings-page settings-detail-page">
@@ -50,6 +53,8 @@ export default function Settings() {
       <SettingsEntry icon="bell" title="Notifications" sub="Choisissez les alertes que vous recevez" onClick={() => setSection('notifications')} />
       <SettingsEntry icon="moon" title="Apparence et langue" sub="Mode clair, sombre et langue de l'application" onClick={() => setSection('appearance')} />
       <SettingsEntry icon="fileText" title="Légal" sub="Conditions générales et confidentialité" onClick={() => setSection('legal')} />
+      <SettingsEntry icon="lock" title="Compte bloqué" sub="Comprendre un blocage et demander un recours" onClick={() => setSection('blocked')} />
+      <SettingsEntry icon="mail" title="Support" sub="Nous contacter pour une question ou un problème" onClick={() => setSection('support')} />
 
       <button className="btn btn-ghost settings-logout" onClick={logout}><Icon name="logout" size={17} />{t('profile.logout')}</button>
     </div>
@@ -111,6 +116,26 @@ function AppearanceSection() {
 
 function LegalSection() {
   return <div className="settings-card settings-detail-card"><Link to="/cgu" className="settings-inline-row link-row"><span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span><span className="grow"><span className="settings-row-title">Conditions Generales d'Utilisation</span><span className="settings-row-sub">Fonctionnement de la plateforme, responsabilites, litiges</span></span><Icon name="arrowRight" size={16} /></Link><Link to="/confidentialite" className="settings-inline-row link-row"><span className="settings-row-icon"><Icon name="fileText" size={17} /></span><span className="grow"><span className="settings-row-title">Politique de confidentialite</span><span className="settings-row-sub">Ce que nous collectons, pourquoi, et vos droits RGPD</span></span><Icon name="arrowRight" size={16} /></Link></div>;
+}
+
+function BlockedAccountSection() {
+  return <section className="settings-info-card">
+    <span className="settings-row-icon settings-warning-icon"><Icon name="lock" size={18} /></span>
+    <h2>Votre compte est bloqué ?</h2>
+    <p>Un compte peut être temporairement bloqué pour protéger les membres, vérifier une identité, examiner un signalement ou traiter un litige.</p>
+    <p>Si vous pensez qu'il s'agit d'une erreur, contactez le support avec votre adresse email et une brève explication.</p>
+    <a className="btn btn-ghost" href={`mailto:${SUPPORT_EMAIL}?subject=Recours%20compte%20Wigofly`}><Icon name="mail" size={16} />Contacter le support</a>
+  </section>;
+}
+
+function SupportSection() {
+  const [form, setForm] = useState({ subject: '', message: '' });
+  const [notice, setNotice] = useState('');
+  const submit = (event) => {
+    event.preventDefault();
+    setNotice('Le formulaire sera activé prochainement. Utilisez l’adresse email ci-dessous pour le moment.');
+  };
+  return <div className="settings-support"><form className="settings-support-form" onSubmit={submit}><label>Sujet</label><input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder="Ex. problème avec une transaction" required /><label>Votre message</label><textarea value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder="Décrivez votre demande avec le plus de détails possible." rows="6" required /><button className="btn btn-primary" type="submit"><Icon name="send" size={16} />Envoyer ma demande</button>{notice && <p className="settings-support-notice">{notice}</p>}</form><div className="settings-email-contact"><span className="settings-row-icon"><Icon name="mail" size={17} /></span><div><b>Contacter par email</b><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a><small>Pour les demandes urgentes ou tant que le formulaire n'est pas encore actif.</small></div></div></div>;
 }
 
 function ActionModal({ title, icon, children, onClose }) {

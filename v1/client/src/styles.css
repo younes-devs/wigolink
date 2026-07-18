@@ -1444,6 +1444,25 @@ body {
 .account-action-body .btn { justify-content: center; margin-top: 4px; }
 .settings-danger-row .settings-row-icon { background: var(--danger-tint); color: var(--danger); }
 .settings-danger-row .settings-row-title { color: var(--danger); }
+.settings-info-card, .settings-support-form, .settings-email-contact {
+  border: 1px solid var(--glass-border); border-radius: var(--radius); background: var(--glass); box-shadow: var(--shadow);
+}
+.settings-info-card { padding: 18px; }
+.settings-info-card h2 { margin: 12px 0 8px; font-size: 17px; }
+.settings-info-card p { color: var(--ink-soft); font-size: 13px; line-height: 1.55; margin: 0 0 10px; }
+.settings-info-card .btn { margin-top: 4px; }
+.settings-warning-icon { background: var(--amber-tint); color: var(--amber); }
+.settings-support { display: grid; gap: 12px; }
+.settings-support-form { display: grid; gap: 9px; padding: 18px; }
+.settings-support-form label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.settings-support-form textarea { width: 100%; min-height: 132px; resize: vertical; }
+.settings-support-form .btn { justify-content: center; margin-top: 3px; }
+.settings-support-notice { color: var(--amber); font-size: 12px; line-height: 1.45; }
+.settings-email-contact { display: flex; align-items: flex-start; gap: 12px; padding: 14px; }
+.settings-email-contact b, .settings-email-contact a, .settings-email-contact small { display: block; }
+.settings-email-contact b { font-size: 13px; }
+.settings-email-contact a { color: var(--accent); font-size: 13px; font-weight: 700; margin-top: 3px; }
+.settings-email-contact small { color: var(--ink-soft); font-size: 11.5px; line-height: 1.4; margin-top: 4px; }
 
 /* Politique de confidentialité */
 .policy-section { padding: 18px; }
