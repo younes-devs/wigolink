@@ -5,14 +5,14 @@ import { useAuth } from '../App.jsx';
 import { Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 
-// Auth complète : connexion / inscription / vérification email / mot de passe oublié.
-// La vérification d'identité est déclenchée à la demande (page dédiée), pas ici.
+// Authentication: login, registration, email verification, password reset and appeal.
 export default function Login() {
   useLang();
   const { login } = useAuth();
-  const [mode, setMode] = useState('login'); // login | register | verify | forgot | reset | appeal
+  const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', code: '' });
   const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
@@ -20,31 +20,49 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [appealReason, setAppealReason] = useState('');
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const switchMode = (m) => { setMode(m); setError(''); setHint(''); };
-
-  const run = async (fn) => {
-    setError(''); setBusy(true);
-    try { await fn(); } catch (e) { setError(e.message); } finally { setBusy(false); }
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    setError('');
+    setHint('');
+    setShowPwd(false);
+    setShowConfirm(false);
   };
 
-  // La vérification d'identité n'est plus exigée à l'inscription (PRD KYC §2) :
-  // elle est demandée seulement au moment d'une action transactionnelle.
-  const finishAuth = (d) => login(d.token, d.user);
+  const run = async (action) => {
+    setError('');
+    setBusy(true);
+    try {
+      await action();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const finishAuth = (data) => login(data.token, data.user);
 
   const submitLogin = () => run(async () => {
     try {
-      const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password, rememberMe } });
-      if (d.needsVerification) { switchMode('verify'); setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); return; }
-      finishAuth(d);
-    } catch (error) {
-      if (error.data?.code === 'account_suspended' && error.data?.token) {
-        setToken(error.data.token);
-        setMode('appeal');
-        setHint(error.data.reason || 'Votre compte est temporairement suspendu. Expliquez votre situation a l equipe.');
+      const data = await api('/auth/login', {
+        method: 'POST',
+        body: { email: form.email, password: form.password, rememberMe },
+      });
+      if (data.needsVerification) {
+        switchMode('verify');
+        setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
         return;
       }
-      throw error;
+      finishAuth(data);
+    } catch (requestError) {
+      if (requestError.data?.code === 'account_suspended' && requestError.data?.token) {
+        setToken(requestError.data.token);
+        setMode('appeal');
+        setHint(requestError.data.reason || 'Votre compte est temporairement suspendu. Expliquez votre situation a l equipe.');
+        return;
+      }
+      throw requestError;
     }
   });
 
@@ -59,244 +77,380 @@ export default function Login() {
   const submitRegister = () => run(async () => {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     if (!cguAccepted) throw new Error(t('err.cgu.required'));
-    const d = await api('/auth/register', { method: 'POST', body: { ...form, cguAccepted, rememberMe } });
+    const data = await api('/auth/register', {
+      method: 'POST',
+      body: { ...form, cguAccepted, rememberMe },
+    });
     switchMode('verify');
-    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
+    setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
   });
 
   const submitVerify = () => run(async () => {
-    const d = await api('/auth/verify-email', { method: 'POST', body: { email: form.email, code: form.code, rememberMe } });
-    finishAuth(d);
+    const data = await api('/auth/verify-email', {
+      method: 'POST',
+      body: { email: form.email, code: form.code, rememberMe },
+    });
+    finishAuth(data);
   });
 
   const resendCode = () => run(async () => {
-    const d = await api('/auth/resend-code', { method: 'POST', body: { email: form.email } });
-    setHint(d.message || 'Consultez votre boite email pour recuperer le code.');
+    const data = await api('/auth/resend-code', { method: 'POST', body: { email: form.email } });
+    setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
   });
 
   const submitForgot = () => run(async () => {
-    const d = await api('/auth/forgot', { method: 'POST', body: { email: form.email } });
+    const data = await api('/auth/forgot', { method: 'POST', body: { email: form.email } });
     switchMode('reset');
-    setHint(d.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
+    setHint(data.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
   });
 
   const submitReset = () => run(async () => {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
-    const d = await api('/auth/reset', { method: 'POST', body: { email: form.email, code: form.code, password: form.password } });
-    if (d.needsVerification) {
+    const data = await api('/auth/reset', {
+      method: 'POST',
+      body: { email: form.email, code: form.code, password: form.password },
+    });
+    if (data.needsVerification) {
       switchMode('verify');
-      setHint(d.message || 'Verifiez votre adresse email pour acceder a l application.');
+      setHint(data.message || 'Verifiez votre adresse email pour acceder a l application.');
       return;
     }
-    finishAuth(d);
+    finishAuth(data);
   });
 
+  const heroTitle = mode === 'appeal' ? 'Recours de securite' : t(`auth.title.${mode}`);
+  const heroSubtitle = mode === 'appeal'
+    ? 'Expliquez la situation a l equipe de moderation.'
+    : mode === 'verify'
+      ? t('auth.sub.verify', { email: form.email || t('auth.sub.verify.fallback') })
+      : t(`auth.sub.${mode}`);
 
   return (
     <div className="auth-page">
-      <div className="auth-hero">
-        <div className="auth-hero-glow" />
-        <a href="/decouvrir/" className="brand-link auth-hero-brand">
-          <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
-        </a>
-        <h1 className="auth-hero-title">{mode === 'appeal' ? 'Recours de securite' : t(`auth.title.${mode}`)}</h1>
-        <p className="auth-hero-sub">{
-          mode === 'appeal'
-            ? 'Expliquez la situation a l equipe de moderation.'
-            : mode === 'verify'
-            ? t('auth.sub.verify', { email: form.email || t('auth.sub.verify.fallback') })
-            : t(`auth.sub.${mode}`)
-        }</p>
-        <div className="auth-hero-badges">
-          <span><Icon name="shieldCheck" size={13} />{t('auth.badge.escrow')}</span>
-          <span><Icon name="camera" size={13} />{t('auth.badge.video')}</span>
-        </div>
-      </div>
+      <div className="auth-shell">
+        <aside className="auth-hero">
+          <a href="/decouvrir/" className="brand-link auth-hero-brand">
+            <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
+          </a>
 
-      {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
-      {hint && <div className="alert alert-teal"><Icon name="mail" size={17} />{hint}</div>}
-
-      {mode === 'login' && (
-        <>
-          <div className="card">
-            <div className="field">
-              <label>{t('auth.email')}</label>
-              <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
-                placeholder="vous@exemple.com" autoComplete="email" />
-            </div>
-            <div className="field">
-              <label>{t('auth.password')}</label>
-              <div className="pwd-wrap">
-                <input type={showPwd ? 'text' : 'password'} value={form.password}
-                  onChange={(e) => set('password', e.target.value)} placeholder="••••••••"
-                  autoComplete="current-password" onKeyDown={(e) => e.key === 'Enter' && submitLogin()} />
-                <button type="button" className="pwd-toggle" onClick={() => setShowPwd(!showPwd)}
-                  aria-label={showPwd ? t('auth.password.hide') : t('auth.password.show')}>
-                  <Icon name={showPwd ? 'eyeOff' : 'eye'} size={18} />
-                </button>
-              </div>
-              <button type="button" className="link-btn" onClick={() => switchMode('forgot')}>{t('auth.forgot.link')}</button>
-            </div>
-            <RememberMe checked={rememberMe} onChange={setRememberMe} />
-            <button className="btn btn-primary" onClick={submitLogin} disabled={busy || !form.email || !form.password}>
-              {busy ? <span className="spinner" /> : t('auth.login.submit')}
-            </button>
+          <div className="auth-route" aria-label="Bruxelles, Casablanca">
+            <span>Bruxelles</span>
+            <span className="auth-route-line"><Icon name="plane" size={16} /></span>
+            <span>Casablanca</span>
           </div>
-          <p className="auth-switch">
-            {t('auth.no.account')}{' '}
-            <button className="link-btn" onClick={() => switchMode('register')}>{t('auth.create.account')}</button>
-          </p>
-        </>
-      )}
 
-      {mode === 'register' && (
-        <>
-          <div className="card">
-            <div className="field">
-              <label>{t('auth.name')}</label>
-              <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder={t('auth.name.ph')} autoComplete="name" />
+          <h1 className="auth-hero-title">{heroTitle}</h1>
+          <p className="auth-hero-sub">{heroSubtitle}</p>
+
+          <div className="auth-hero-badges">
+            <span><Icon name="shieldCheck" size={14} />{t('auth.badge.verified')}</span>
+            <span><Icon name="camera" size={14} />{t('auth.badge.video')}</span>
+          </div>
+        </aside>
+
+        <main className="auth-panel">
+          {(mode === 'login' || mode === 'register') && (
+            <div className="auth-mode-switch" role="tablist" aria-label={t('auth.mode.aria')}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'login'}
+                className={mode === 'login' ? 'active' : ''}
+                onClick={() => switchMode('login')}
+              >
+                {t('auth.login.submit')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'register'}
+                className={mode === 'register' ? 'active' : ''}
+                onClick={() => switchMode('register')}
+              >
+                {t('auth.create.account')}
+              </button>
             </div>
-            <div className="field">
-              <label>{t('auth.email')}</label>
-              <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
-                placeholder="vous@exemple.com" autoComplete="email" />
-            </div>
-            <div className="field">
-              <label>{t('auth.phone')} <span className="muted">{t('auth.phone.hint')}</span></label>
-              <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+32 / +212…" inputMode="tel" autoComplete="tel" />
-            </div>
-            <div className="row">
+          )}
+
+          {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
+          {hint && <div className="alert alert-teal"><Icon name="mail" size={17} />{hint}</div>}
+
+          {mode === 'login' && (
+            <div className="auth-form">
               <div className="field">
-                <label>{t('auth.password')}</label>
-                <div className="pwd-wrap">
-                  <input type={showPwd ? 'text' : 'password'} value={form.password}
-                    onChange={(e) => set('password', e.target.value)} placeholder={t('auth.password.min')} autoComplete="new-password" />
-                  <button type="button" className="pwd-toggle" onClick={() => setShowPwd(!showPwd)}>
-                    <Icon name={showPwd ? 'eyeOff' : 'eye'} size={18} />
+                <label>{t('auth.email')}</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => set('email', event.target.value)}
+                  placeholder="vous@exemple.com"
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <div className="auth-field-head">
+                  <label>{t('auth.password')}</label>
+                  <button type="button" className="link-btn" onClick={() => switchMode('forgot')}>
+                    {t('auth.forgot.link')}
                   </button>
                 </div>
+                <PasswordField
+                  value={form.password}
+                  onChange={(value) => set('password', value)}
+                  visible={showPwd}
+                  onToggle={() => setShowPwd((current) => !current)}
+                  autoComplete="current-password"
+                  onEnter={submitLogin}
+                />
+              </div>
+              <RememberMe checked={rememberMe} onChange={setRememberMe} />
+              <button className="btn btn-primary" onClick={submitLogin} disabled={busy || !form.email || !form.password}>
+                {busy ? <span className="spinner" /> : t('auth.login.submit')}
+              </button>
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div className="auth-form">
+              <div className="field">
+                <label>{t('auth.name')}</label>
+                <input
+                  value={form.name}
+                  onChange={(event) => set('name', event.target.value)}
+                  placeholder={t('auth.name.ph')}
+                  autoComplete="name"
+                />
+              </div>
+              <div className="field">
+                <label>{t('auth.email')}</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => set('email', event.target.value)}
+                  placeholder="vous@exemple.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="field">
+                <label>{t('auth.phone')} <span className="muted">{t('auth.phone.hint')}</span></label>
+                <input
+                  value={form.phone}
+                  onChange={(event) => set('phone', event.target.value)}
+                  placeholder="+32 / +212..."
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+              </div>
+              <div className="auth-password-grid">
+                <div className="field">
+                  <label>{t('auth.password')}</label>
+                  <PasswordField
+                    value={form.password}
+                    onChange={(value) => set('password', value)}
+                    visible={showPwd}
+                    onToggle={() => setShowPwd((current) => !current)}
+                    placeholder={t('auth.password.min')}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="field">
+                  <label>{t('auth.password.confirm')}</label>
+                  <PasswordField
+                    value={form.confirm}
+                    onChange={(value) => set('confirm', value)}
+                    visible={showConfirm}
+                    onToggle={() => setShowConfirm((current) => !current)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              {form.password && form.password.length < 8 && (
+                <div className="auth-password-hint">
+                  {t('auth.password.left', { n: 8 - form.password.length })}
+                </div>
+              )}
+              <RememberMe checked={rememberMe} onChange={setRememberMe} />
+              <label className="cgu-check">
+                <input type="checkbox" checked={cguAccepted} onChange={(event) => setCguAccepted(event.target.checked)} />
+                <CguText />
+              </label>
+              <button
+                className="btn btn-primary"
+                onClick={submitRegister}
+                disabled={busy || !form.name || !form.email || form.password.length < 8 || !form.confirm || !cguAccepted}
+              >
+                {busy ? <span className="spinner" /> : t('auth.register.submit')}
+              </button>
+            </div>
+          )}
+
+          {mode === 'verify' && (
+            <div className="auth-form">
+              <div className="field">
+                <label>{t('auth.verify.code')}</label>
+                <input
+                  className="code-input"
+                  value={form.code}
+                  onChange={(event) => set('code', event.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoFocus
+                />
+              </div>
+              <button className="btn btn-primary mb" onClick={submitVerify} disabled={busy || form.code.length !== 6}>
+                {busy ? <span className="spinner" /> : t('auth.verify.submit')}
+              </button>
+              <button className="btn btn-ghost" onClick={resendCode} disabled={busy}>{t('auth.verify.resend')}</button>
+              <AuthBack onClick={() => switchMode('login')} />
+            </div>
+          )}
+
+          {mode === 'forgot' && (
+            <div className="auth-form">
+              <div className="field">
+                <label>{t('auth.forgot.email')}</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => set('email', event.target.value)}
+                  placeholder="vous@exemple.com"
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              <button className="btn btn-primary mb" onClick={submitForgot} disabled={busy || !form.email}>
+                {busy ? <span className="spinner" /> : t('auth.forgot.submit')}
+              </button>
+              <AuthBack onClick={() => switchMode('login')} />
+            </div>
+          )}
+
+          {mode === 'reset' && (
+            <div className="auth-form">
+              <div className="field">
+                <label>{t('auth.reset.code')}</label>
+                <input
+                  className="code-input"
+                  value={form.code}
+                  onChange={(event) => set('code', event.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label>{t('auth.reset.newpwd')}</label>
+                <PasswordField
+                  value={form.password}
+                  onChange={(value) => set('password', value)}
+                  visible={showPwd}
+                  onToggle={() => setShowPwd((current) => !current)}
+                  placeholder={t('auth.password.min')}
+                  autoComplete="new-password"
+                />
               </div>
               <div className="field">
                 <label>{t('auth.password.confirm')}</label>
-                <input type={showPwd ? 'text' : 'password'} value={form.confirm}
-                  onChange={(e) => set('confirm', e.target.value)} placeholder="••••••••" autoComplete="new-password" />
+                <PasswordField
+                  value={form.confirm}
+                  onChange={(value) => set('confirm', value)}
+                  visible={showConfirm}
+                  onToggle={() => setShowConfirm((current) => !current)}
+                  autoComplete="new-password"
+                />
               </div>
-            </div>
-            {form.password && form.password.length < 8 && (
-              <div className="hint" style={{ marginTop: -8, marginBottom: 10, color: 'var(--amber)' }}>
-                {t('auth.password.left', { n: 8 - form.password.length })}
-              </div>
-            )}
-            <RememberMe checked={rememberMe} onChange={setRememberMe} />
-            <label className="cgu-check">
-              <input type="checkbox" checked={cguAccepted} onChange={(e) => setCguAccepted(e.target.checked)} />
-              <CguText />
-            </label>
-            <button className="btn btn-primary" onClick={submitRegister}
-              disabled={busy || !form.name || !form.email || form.password.length < 8 || !form.confirm || !cguAccepted}>
-              {busy ? <span className="spinner" /> : t('auth.register.submit')}
-            </button>
-          </div>
-          <p className="auth-switch">
-            {t('auth.already.member')}{' '}
-            <button className="link-btn" onClick={() => switchMode('login')}>{t('auth.login.submit')}</button>
-          </p>
-        </>
-      )}
-
-      {mode === 'verify' && (
-        <div className="card">
-          <div className="field">
-            <label>{t('auth.verify.code')}</label>
-            <input className="code-input" value={form.code} onChange={(e) => set('code', e.target.value.replace(/\D/g, ''))}
-              placeholder="000000" inputMode="numeric" maxLength={6} autoFocus />
-          </div>
-          <button className="btn btn-primary mb" onClick={submitVerify} disabled={busy || form.code.length !== 6}>
-            {busy ? <span className="spinner" /> : t('auth.verify.submit')}
-          </button>
-          <button className="btn btn-ghost" onClick={resendCode} disabled={busy}>{t('auth.verify.resend')}</button>
-          <p className="auth-switch" style={{ marginTop: 12 }}>
-            <button className="link-btn" onClick={() => switchMode('login')}>
-              <Icon name="arrowLeft" size={13} /> {t('auth.back.login')}
-            </button>
-          </p>
-        </div>
-      )}
-
-      {mode === 'forgot' && (
-        <div className="card">
-          <div className="field">
-            <label>{t('auth.forgot.email')}</label>
-            <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
-              placeholder="vous@exemple.com" autoComplete="email" autoFocus />
-          </div>
-          <button className="btn btn-primary mb" onClick={submitForgot} disabled={busy || !form.email}>
-            {busy ? <span className="spinner" /> : t('auth.forgot.submit')}
-          </button>
-          <p className="auth-switch">
-            <button className="link-btn" onClick={() => switchMode('login')}>
-              <Icon name="arrowLeft" size={13} /> {t('auth.back.login')}
-            </button>
-          </p>
-        </div>
-      )}
-
-      {mode === 'reset' && (
-        <div className="card">
-          <div className="field">
-            <label>{t('auth.reset.code')}</label>
-            <input className="code-input" value={form.code} onChange={(e) => set('code', e.target.value.replace(/\D/g, ''))}
-              placeholder="000000" inputMode="numeric" maxLength={6} autoFocus />
-          </div>
-          <div className="field">
-            <label>{t('auth.reset.newpwd')}</label>
-            <div className="pwd-wrap">
-              <input type={showPwd ? 'text' : 'password'} value={form.password}
-                onChange={(e) => set('password', e.target.value)} placeholder={t('auth.password.min')} autoComplete="new-password" />
-              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(!showPwd)}>
-                <Icon name={showPwd ? 'eyeOff' : 'eye'} size={18} />
+              <button
+                className="btn btn-primary"
+                onClick={submitReset}
+                disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}
+              >
+                {busy ? <span className="spinner" /> : t('auth.reset.submit')}
               </button>
             </div>
-          </div>
-          <div className="field">
-            <label>{t('auth.password.confirm')}</label>
-            <input type={showPwd ? 'text' : 'password'} value={form.confirm}
-              onChange={(e) => set('confirm', e.target.value)} placeholder="••••••••" autoComplete="new-password" />
-          </div>
-          <button className="btn btn-primary" onClick={submitReset}
-            disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}>
-            {busy ? <span className="spinner" /> : t('auth.reset.submit')}
-          </button>
-        </div>
-      )}
+          )}
 
-      {mode === 'appeal' && (
-        <div className="card">
-          <div className="field">
-            <label>Votre recours</label>
-            <textarea value={appealReason} onChange={(e) => setAppealReason(e.target.value.slice(0, 1000))} rows={5} placeholder="Expliquez pourquoi la suspension devrait etre reexaminee." autoFocus />
-          </div>
-          <button className="btn btn-primary" onClick={submitAppeal} disabled={busy || appealReason.trim().length < 10}>
-            {busy ? <span className="spinner" /> : 'Envoyer mon recours'}
-          </button>
-          <p className="auth-switch" style={{ marginTop: 12 }}><button className="link-btn" onClick={() => { setToken(null); switchMode('login'); }}>Retour a la connexion</button></p>
-        </div>
-      )}
+          {mode === 'appeal' && (
+            <div className="auth-form">
+              <div className="field">
+                <label>Votre recours</label>
+                <textarea
+                  value={appealReason}
+                  onChange={(event) => setAppealReason(event.target.value.slice(0, 1000))}
+                  rows={5}
+                  placeholder="Expliquez pourquoi la suspension devrait etre reexaminee."
+                  autoFocus
+                />
+              </div>
+              <button className="btn btn-primary" onClick={submitAppeal} disabled={busy || appealReason.trim().length < 10}>
+                {busy ? <span className="spinner" /> : 'Envoyer mon recours'}
+              </button>
+              <p className="auth-switch">
+                <button className="link-btn" onClick={() => { setToken(null); switchMode('login'); }}>
+                  Retour a la connexion
+                </button>
+              </p>
+            </div>
+          )}
 
+          <p className="auth-secure-note"><Icon name="lock" size={14} />{t('auth.secure')}</p>
+        </main>
+      </div>
     </div>
   );
 }
 
-// Phrase CGU traduite avec liens inline : découpe la chaîne autour des placeholders
-// {cgu} et {privacy} pour y insérer les <Link> (l'ordre des mots varie selon la langue).
+function PasswordField({
+  value,
+  onChange,
+  visible,
+  onToggle,
+  placeholder = '********',
+  autoComplete,
+  onEnter,
+}) {
+  return (
+    <div className="pwd-wrap">
+      <input
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        onKeyDown={(event) => event.key === 'Enter' && onEnter?.()}
+      />
+      <button
+        type="button"
+        className="pwd-toggle"
+        onClick={onToggle}
+        aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
+      >
+        <Icon name={visible ? 'eyeOff' : 'eye'} size={18} />
+      </button>
+    </div>
+  );
+}
+
+function AuthBack({ onClick }) {
+  return (
+    <p className="auth-switch">
+      <button className="link-btn" onClick={onClick}>
+        <Icon name="arrowLeft" size={13} /> {t('auth.back.login')}
+      </button>
+    </p>
+  );
+}
+
 function CguText() {
   const parts = t('auth.cgu').split(/(\{cgu\}|\{privacy\})/);
   return (
     <span>
-      {parts.map((p, i) => {
-        if (p === '{cgu}') return <Link key={i} to="/cgu" target="_blank">{t('auth.cgu.link')}</Link>;
-        if (p === '{privacy}') return <Link key={i} to="/confidentialite" target="_blank">{t('auth.privacy.link')}</Link>;
-        return p;
+      {parts.map((part, index) => {
+        if (part === '{cgu}') return <Link key={index} to="/cgu" target="_blank">{t('auth.cgu.link')}</Link>;
+        if (part === '{privacy}') return <Link key={index} to="/confidentialite" target="_blank">{t('auth.privacy.link')}</Link>;
+        return part;
       })}
     </span>
   );
@@ -310,4 +464,3 @@ function RememberMe({ checked, onChange }) {
     </label>
   );
 }
-
