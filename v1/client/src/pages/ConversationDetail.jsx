@@ -6,7 +6,7 @@ import { Avatar, Icon } from '../Icons.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
 import { subscribeToMessageUpdates } from '../realtime.js';
 import { useToast } from '../Toast.jsx';
-import { shortDate } from './MessagesSimple.jsx';
+import { markInboxConversationRead, shortDate } from './MessagesSimple.jsx';
 
 const REPORT_REASONS = ['external_payment', 'abuse', 'suspicious', 'off_platform', 'other'];
 const threadCacheByKey = new Map();
@@ -68,6 +68,15 @@ export default function ConversationDetail() {
   const lastTypingRef = useRef(0);
   const messageNodesRef = useRef(new Map());
 
+  const markConversationRead = () => api(`/conversations/${id}/read`, { method: 'POST' })
+    .then((read) => {
+      markInboxConversationRead(user.id, id, read.conversation);
+      setConversation((current) => current?.id === id
+        ? { ...current, ...read.conversation, unread: 0, unreadCount: 0 }
+        : current);
+    })
+    .catch(() => {});
+
   const load = (silent = false, q = messageQuery) => {
     const params = new URLSearchParams({ limit: '50' });
     if (q.trim()) params.set('q', q.trim());
@@ -97,7 +106,7 @@ export default function ConversationDetail() {
         at: Date.now(),
       });
       setError('');
-      if (!silent) api(`/conversations/${id}/read`, { method: 'POST' }).catch(() => {});
+      if (!silent) void markConversationRead();
     })
     .catch((err) => {
       setError(err.message || t('messages.conversation.notFound'));
@@ -131,7 +140,10 @@ export default function ConversationDetail() {
       setMessagePage(cached.page);
       latestMessageAtRef.current = cached.latestAt || latestMessageAt(cached.messages);
       setOtherOnline(!!cached.conversation?.otherOnline);
-      if (Date.now() - cached.at < THREAD_CACHE_MS) return;
+      if (Date.now() - cached.at < THREAD_CACHE_MS) {
+        void markConversationRead();
+        return;
+      }
     }
     load();
   }, [id]);

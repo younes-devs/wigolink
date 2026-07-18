@@ -19,6 +19,18 @@ const FILTERS = [
 const inboxCacheByUser = new Map();
 const INBOX_CACHE_MS = 20_000;
 
+// The inbox can stay cached while a user reads a thread. Reflect that read
+// immediately so returning to the list never shows a stale unread badge.
+export function markInboxConversationRead(userId, conversationId, conversation = null) {
+  const cached = inboxCacheByUser.get(userId);
+  if (!cached) return;
+  const conversations = cached.conversations.map((item) => {
+    if (item.id !== conversationId) return item;
+    return { ...item, ...(conversation || {}), unread: 0, unreadCount: 0 };
+  });
+  inboxCacheByUser.set(userId, { ...cached, conversations });
+}
+
 export default function MessagesSimple() {
   useLang();
   const toast = useToast();
