@@ -1859,7 +1859,7 @@ app.get('/api/conversations', auth, (req, res) => {
     .filter((c) => c.participantIds.includes(req.user.id))
     .filter((c) => !(c.deletedBy || []).includes(req.user.id))
     .map((c) => conversationView(c, req.user.id))
-    .filter((c) => filter === 'archived' || !c.archived)
+    .filter((c) => req.query.includeArchived === '1' || filter === 'archived' || !c.archived)
     .filter((c) => {
       if (filter === 'unread') return c.unreadCount > 0;
       if (filter === 'action') return c.actionRequired;

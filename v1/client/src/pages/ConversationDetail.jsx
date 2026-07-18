@@ -8,6 +8,12 @@ import { useToast } from '../Toast.jsx';
 import { shortDate } from './MessagesSimple.jsx';
 
 const REPORT_REASONS = ['external_payment', 'abuse', 'suspicious', 'off_platform', 'other'];
+const threadCacheByKey = new Map();
+const THREAD_CACHE_MS = 15_000;
+
+function threadCacheKey(userId, conversationId) {
+  return `${userId || 'anonymous'}:${conversationId}`;
+}
 
 export default function ConversationDetail() {
   useLang();
@@ -70,6 +76,13 @@ export default function ConversationDetail() {
       setOtherOnline(!!data.conversation?.otherOnline);
       setMessages(incoming);
       setMessagePage(data.page || null);
+      threadCacheByKey.set(threadCacheKey(user.id, id), {
+        conversation: data.conversation,
+        messages: incoming,
+        page: data.page || null,
+        latestAt: latestMessageAtRef.current,
+        at: Date.now(),
+      });
       setError('');
       if (!silent) api(`/conversations/${id}/read`, { method: 'POST' }).catch(() => {});
     })
@@ -80,6 +93,7 @@ export default function ConversationDetail() {
   };
 
   useEffect(() => {
+    const cached = threadCacheByKey.get(threadCacheKey(user.id, id));
     setConversation(null);
     setMessages([]);
     setNewMessageCount(0);
@@ -98,6 +112,14 @@ export default function ConversationDetail() {
     setReportReason('');
     setMessageQuery('');
     setText(sessionStorage.getItem(`draft:${id}`) || '');
+    if (cached) {
+      setConversation(cached.conversation);
+      setMessages(cached.messages);
+      setMessagePage(cached.page);
+      latestMessageAtRef.current = cached.latestAt || latestMessageAt(cached.messages);
+      setOtherOnline(!!cached.conversation?.otherOnline);
+      if (Date.now() - cached.at < THREAD_CACHE_MS) return;
+    }
     load();
   }, [id]);
 

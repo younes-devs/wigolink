@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 import { useToast } from '../Toast.jsx';
@@ -14,39 +15,44 @@ const FILTERS = [
   { id: 'done', label: 'messages.filter.done' },
   { id: 'archived', label: 'messages.filter.archived' },
 ];
+const inboxCacheByUser = new Map();
+const INBOX_CACHE_MS = 20_000;
 
 export default function MessagesSimple() {
   useLang();
   const toast = useToast();
-  const [conversations, setConversations] = useState(null);
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState(() => inboxCacheByUser.get(user?.id)?.conversations || null);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  const load = () => {
+  const load = async ({ force = false } = {}) => {
     setOpenMenuId(null);
     setError('');
-    Promise.all([api('/conversations'), api('/conversations?filter=archived')])
-      .then(([activeData, archivedData]) => {
-        const byId = new Map();
-        for (const conversation of [...(activeData.conversations || []), ...(archivedData.conversations || [])]) {
-          byId.set(conversation.id, conversation);
-        }
-        setConversations([...byId.values()]);
-      })
-      .catch((err) => {
-        setError(err.message || t('messages.error.load'));
-        setConversations([]);
-      });
+    const cached = inboxCacheByUser.get(user?.id);
+    if (cached) {
+      setConversations(cached.conversations);
+      if (!force && Date.now() - cached.at < INBOX_CACHE_MS) return;
+    }
+    try {
+      const data = await api('/conversations?includeArchived=1');
+      const next = { conversations: data.conversations || [], at: Date.now() };
+      inboxCacheByUser.set(user?.id, next);
+      setConversations(next.conversations);
+    } catch (err) {
+      setError(err.message || t('messages.error.load'));
+      if (!cached) setConversations([]);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') load();
-    }, 8_000);
+      if (document.visibilityState === 'visible') load({ force: true });
+    }, 12_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -80,12 +86,16 @@ export default function MessagesSimple() {
   }, [conversations, filter, q]);
 
   const unreadTotal = (conversations || []).reduce((sum, conversation) => sum + unreadCount(conversation), 0);
+  const refreshAfterMutation = () => {
+    inboxCacheByUser.delete(user?.id);
+    return load({ force: true });
+  };
 
   const archive = async (conversationId) => {
     try {
       await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: true } });
       toast.success(t('messages.toast.archived'));
-      load();
+      refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
     }
@@ -95,7 +105,7 @@ export default function MessagesSimple() {
     try {
       await api(`/conversations/${conversationId}/archive`, { method: 'POST', body: { archived: false } });
       toast.success(t('messages.toast.restored'));
-      load();
+      refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
     }
@@ -105,7 +115,7 @@ export default function MessagesSimple() {
     try {
       await api(`/conversations/${conversationId}/unread`, { method: 'POST' });
       toast.success(t('messages.toast.markedUnread'));
-      load();
+      refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
     }
@@ -115,7 +125,7 @@ export default function MessagesSimple() {
     try {
       const data = await api(`/conversations/${conversation.id}/pin`, { method: 'POST', body: { pinned: !conversation.pinned } });
       toast.success(data.conversation.pinned ? t('messages.toast.pinned') : t('messages.toast.unpinned'));
-      load();
+      refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
     }
@@ -125,7 +135,7 @@ export default function MessagesSimple() {
     try {
       await api(`/conversations/${conversationId}`, { method: 'DELETE' });
       toast.success('Conversation supprimée');
-      load();
+      refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
     }
@@ -139,7 +149,7 @@ export default function MessagesSimple() {
             <h1 className="page-title">{t('messages.title')}</h1>
             <p className="page-sub">{t('messages.subtitle')}</p>
           </div>
-          <button className="icon-btn" onClick={load} aria-label={t('messages.refresh')} title={t('messages.refresh')}>
+          <button className="icon-btn" onClick={() => load({ force: true })} aria-label={t('messages.refresh')} title={t('messages.refresh')}>
             <Icon name="repeat" size={17} />
           </button>
           {unreadTotal > 0 && <span className="messages-unread-total">{unreadTotal}</span>}

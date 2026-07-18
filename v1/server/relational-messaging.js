@@ -212,7 +212,7 @@ function applyConversationFilters(conversations, query) {
   const filter = String(query.filter || 'all');
   const q = String(query.q || '').trim().toLowerCase();
   return conversations
-    .filter((item) => filter === 'archived' || !item.archived)
+    .filter((item) => query.includeArchived === '1' || filter === 'archived' || !item.archived)
     .filter((item) => {
       if (filter === 'unread') return item.unreadCount > 0;
       if (filter === 'action') return item.actionRequired;
