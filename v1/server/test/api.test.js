@@ -1686,13 +1686,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
       attachments: [{ name: 'colis.png', dataUrl: TINY_PNG }],
     },
   });
-  assert.equal(attached.status, 422, JSON.stringify(attached.body));
-  assert.equal(attached.body.code, 'message_attachment_restricted');
-
-  const postAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
-    method: 'POST', token: fatima, body: { text: 'Les details restent ecrits dans Wigofly.' },
-  });
-  assert.equal(postAttachment.status, 200, JSON.stringify(postAttachment.body));
+  assert.equal(attached.status, 200, JSON.stringify(attached.body));
+  assert.equal(attached.body.message.type, 'attachment');
+  assert.equal(attached.body.message.attachments.length, 1);
+  assert.equal(attached.body.message.attachments[0].type, 'image');
 
   const badAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
@@ -1702,7 +1699,7 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
       attachments: [{ name: 'note.txt', dataUrl: 'data:text/plain;base64,SGVsbG8=' }],
     },
   });
-  assert.equal(badAttachment.status, 422);
+  assert.equal(badAttachment.status, 400);
 
   const flaggedConversationMessage = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
@@ -1826,10 +1823,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(olderMessages.status, 200);
   assert.equal(olderMessages.body.messages.length >= 1, true);
   assert.ok(olderMessages.body.messages.every((m) => m.at < pagedMessages.body.page.nextBefore));
-  const searchedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?q=message%20idempotent`, { token: fatima });
+  const searchedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?q=photo%20du%20colis`, { token: fatima });
   assert.equal(searchedMessages.status, 200);
-  assert.equal(searchedMessages.body.messages.some((m) => m.id === retry1.body.message.id), true);
-  assert.equal(searchedMessages.body.messages.every((m) => `${m.text || ''} ${(m.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes('message idempotent')), true);
+  assert.equal(searchedMessages.body.messages.some((m) => m.id === attached.body.message.id), true);
+  assert.equal(searchedMessages.body.messages.every((m) => `${m.text || ''} ${(m.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes('photo du colis')), true);
 
   const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',

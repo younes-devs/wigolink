@@ -2120,13 +2120,6 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   const text = String(req.body?.text || '').trim().slice(0, 1000);
   const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments.slice(0, 1) : [];
   if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message vide' });
-  // A chat image can carry a QR code, a written phone number or a payment handle that
-  // text inspection cannot reliably read. Transaction evidence has its dedicated,
-  // auditable dispute flow; direct messages stay text-only by design.
-  if (attachments.length > 0) return res.status(422).json({
-    code: 'message_attachment_restricted',
-    error: 'Les images ne sont pas autorisees dans la messagerie afin de proteger vos coordonnees. Utilisez les preuves du litige si necessaire.',
-  });
   if (attachments.length > 0 && !validPhotos(attachments.map((a) => a?.dataUrl || a)))
     return res.status(400).json({ error: 'Piece jointe invalide' });
   const normalizedAttachments = attachments.map((attachment, index) => {

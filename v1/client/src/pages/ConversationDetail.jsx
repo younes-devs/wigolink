@@ -644,9 +644,15 @@ export default function ConversationDetail() {
         </div>
       )}
 
-      <div className="message-privacy-note"><Icon name="shieldCheck" size={14} />Les contacts, paiements externes, liens et images sont bloques ici pour votre securite.</div>
+      <div className="message-privacy-note"><Icon name="shieldCheck" size={14} />Les contacts, paiements externes et liens sont bloques ici pour votre securite.</div>
 
-      <form className={`message-compose text-only ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
+      <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
+        <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
+        <button type="button" className="compose-attach" disabled={!canWrite || sending} onClick={() => fileRef.current?.click()} aria-label={t('messages.attachment.add')} title={t('messages.attachment.add')}>
+          <Icon name="image" size={18} />
+        </button>
+        <button type="button" className="compose-attach camera" disabled={!canWrite || sending} onClick={() => cameraRef.current?.click()} aria-label="Prendre une photo" title="Prendre une photo"><Icon name="camera" size={18} /></button>
         <textarea
           className={unsafeDraftCategories.length ? 'message-compose-unsafe' : ''}
           value={text}
