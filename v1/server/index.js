@@ -1575,8 +1575,16 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
 
-  const price = positiveNumber(req.body?.price ?? view.price);
-  if (price === null) return res.status(400).json({ error: 'Prix invalide' });
+  const shipmentType = req.body?.shipmentType === 'document' ? 'document' : 'parcel';
+  const documentCount = shipmentType === 'document' ? Number(req.body?.documentCount) : 0;
+  const weightKg = shipmentType === 'parcel' ? positiveNumber(req.body?.weightKg ?? view.capacityKg) : 0;
+  if (shipmentType === 'document' && (!Number.isInteger(documentCount) || documentCount < 1 || documentCount > 20))
+    return res.status(400).json({ error: 'Indiquez entre 1 et 20 documents.' });
+  if (shipmentType === 'parcel' && (weightKg === null || weightKg > view.capacityKg))
+    return res.status(400).json({ error: `Le colis doit peser entre 0 et ${view.capacityKg} kg.` });
+  const price = shipmentType === 'document'
+    ? documentCount * 3
+    : Math.round((view.price / view.capacityKg) * weightKg * 100) / 100;
   const descriptionParcel = String(req.body?.descriptionParcel || '').trim().slice(0, 500);
   const commission = Math.round(price * 0.18 * 100) / 100;
   const tx = {
@@ -1590,6 +1598,9 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
     operationStatus: 'attente_confirmation',
     price,
     currency: view.currency,
+    shipmentType,
+    documentCount: shipmentType === 'document' ? documentCount : null,
+    weightKg: shipmentType === 'parcel' ? weightKg : 0,
     descriptionParcel,
     paymentStatus: 'pending',
     escrow: createEscrow({ travelerPay: price, commission }),
@@ -1601,7 +1612,7 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
   };
   tx.escrow.state = 'pending';
   delete tx.escrow.heldAt;
-  addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price });
+  addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price, shipmentType, documentCount: tx.documentCount, weightKg: tx.weightKg });
   db.transactions.push(tx);
   const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
   await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'messages', 'messages');

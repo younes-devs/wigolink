@@ -14,7 +14,9 @@ export default function TripDetailSimple() {
   const toast = useToast();
   const [trip, setTrip] = useState(null);
   const [parcel, setParcel] = useState('');
-  const [proposedPrice, setProposedPrice] = useState('');
+  const [shipmentType, setShipmentType] = useState('parcel');
+  const [weightKg, setWeightKg] = useState('');
+  const [documentCount, setDocumentCount] = useState('1');
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const reviewRef = useRef(null);
@@ -25,7 +27,6 @@ export default function TripDetailSimple() {
 
   const load = () => api(`/trips/${id}`).then((data) => setTrip(data.trip)).catch(() => setTrip(false));
   useEffect(() => { load(); }, [id]);
-  useEffect(() => { if (trip?.price) setProposedPrice(String(trip.price)); }, [trip?.price]);
   useEffect(() => {
     if (!trip) return;
     setEditForm({ from: trip.from, to: trip.to, date: trip.departureDate, capacityKg: trip.capacityKg, price: trip.price, description: trip.description, conditions: trip.conditions });
@@ -62,7 +63,12 @@ export default function TripDetailSimple() {
     try {
       const data = await api(`/trips/${trip.id}/accept`, {
         method: 'POST',
-        body: { descriptionParcel: parcel, price: proposedPrice || trip.price },
+        body: {
+          descriptionParcel: parcel,
+          shipmentType,
+          weightKg: shipmentType === 'parcel' ? weightKg : undefined,
+          documentCount: shipmentType === 'document' ? documentCount : undefined,
+        },
       });
       toast.success('Opération créée');
       nav(`/operations/${data.operation.id}`);
@@ -105,6 +111,18 @@ export default function TripDetailSimple() {
   if (trip === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>Trajet introuvable.</p></div>;
   const isOwner = user?.id === trip.traveler?.id;
   const hasActiveOperations = Number(trip.activeOperations || 0) > 0;
+  const quantity = shipmentType === 'document' ? Number(documentCount) : Number(weightKg);
+  const calculatedPrice = shipmentType === 'document'
+    ? (Number.isInteger(quantity) && quantity > 0 ? quantity * 3 : 0)
+    : (Number.isFinite(quantity) && quantity > 0
+      ? Math.round((Number(trip.price || 0) / Math.max(1, Number(trip.capacityKg || 1))) * quantity * 100) / 100
+      : 0);
+  const requestIsValid = parcel.trim().length > 0 && (shipmentType === 'document'
+    ? Number.isInteger(quantity) && quantity >= 1 && quantity <= 20
+    : Number.isFinite(quantity) && quantity > 0 && quantity <= Number(trip.capacityKg));
+  const shipmentLabel = shipmentType === 'document'
+    ? `${documentCount} document${quantity > 1 ? 's' : ''}`
+    : `${weightKg} kg`;
 
   return (
     <div className="simple-page">
@@ -181,19 +199,39 @@ export default function TripDetailSimple() {
         )}
 
         {!isOwner && <>
-        <label className="field">
-          <span>Ce que vous voulez envoyer</span>
-          <textarea value={parcel} onChange={(e) => setParcel(e.target.value)} rows={3} placeholder="Ex: petit colis propre, 2 kg, contenu conforme..." />
-        </label>
-
-        <label className="field">
-          <span>Votre proposition de prix</span>
-          <div className="price-input">
-            <input type="number" min="1" value={proposedPrice} onChange={(e) => setProposedPrice(e.target.value)} />
-            <b>{trip.currency || 'EUR'}</b>
+        <section className="trip-request-form" aria-label="Votre envoi">
+          <div className="request-kind-switch" role="group" aria-label="Type d'envoi">
+            <button type="button" className={shipmentType === 'parcel' ? 'active' : ''} onClick={() => setShipmentType('parcel')}><Icon name="package" size={17} />Colis</button>
+            <button type="button" className={shipmentType === 'document' ? 'active' : ''} onClick={() => setShipmentType('document')}><Icon name="fileText" size={17} />Document</button>
           </div>
-          <small>Le voyageur devra accepter la demande avant tout paiement.</small>
-        </label>
+
+          {shipmentType === 'parcel' ? (
+            <label className="field">
+              <span>Poids de votre colis</span>
+              <div className="price-input">
+                <input type="number" min="0.1" max={trip.capacityKg} step="0.1" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder={`Maximum ${trip.capacityKg}`} />
+                <b>kg</b>
+              </div>
+              <small>Le prix est calcule selon la part de capacite utilisee.</small>
+            </label>
+          ) : (
+            <label className="field">
+              <span>Nombre de documents</span>
+              <div className="price-input">
+                <input type="number" min="1" max="20" step="1" inputMode="numeric" value={documentCount} onChange={(e) => setDocumentCount(e.target.value)} />
+                <b>docs</b>
+              </div>
+              <small>3 EUR par document, quel que soit son type.</small>
+            </label>
+          )}
+
+          <label className="field">
+            <span>Ce que vous voulez envoyer</span>
+            <textarea value={parcel} onChange={(e) => setParcel(e.target.value)} rows={3} placeholder={shipmentType === 'document' ? 'Ex: diplome, feuilles administratives...' : 'Ex: petit colis propre, contenu conforme...'} />
+          </label>
+
+          <div className="request-price-preview"><span>Prix calcule</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
+        </section>
 
         <div className="trip-detail-actions">
           <button className="btn btn-ghost" onClick={saveTrip} disabled={!!busy}>
@@ -204,7 +242,7 @@ export default function TripDetailSimple() {
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             Message
           </button>
-          <button className="btn btn-primary" onClick={() => setReviewOpen(true)} disabled={!!busy || !parcel.trim() || !proposedPrice}>
+          <button className="btn btn-primary" onClick={() => setReviewOpen(true)} disabled={!!busy || !requestIsValid}>
             {busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}
             Faire une demande
           </button>
@@ -218,10 +256,11 @@ export default function TripDetailSimple() {
             </div>
             <div className="trip-request-summary">
               <div><span>Trajet</span><b>{trip.from} <Icon name="arrowRight" size={14} /> {trip.to}</b></div>
-              <div><span>Prix propose</span><b>{proposedPrice} {trip.currency || 'EUR'}</b></div>
-              <div><span>Votre colis</span><b>{parcel}</b></div>
+              <div><span>Votre envoi</span><b>{shipmentLabel}</b></div>
+              <div><span>Prix calcule</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
+              <div><span>Description</span><b>{parcel}</b></div>
             </div>
-            <label className="request-confirmation"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /><span>Mon colis est conforme et je reglerai uniquement via Wigofly.</span></label>
+            <label className="request-confirmation"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /><span>Mon envoi est conforme et je reglerai uniquement via Wigofly.</span></label>
             <div className="trip-detail-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setReviewOpen(false)}>Modifier</button>
               <button type="button" className="btn btn-primary" onClick={accept} disabled={!confirmed || !!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}Envoyer la demande</button>

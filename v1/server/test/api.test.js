@@ -1827,10 +1827,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
     token: fatima,
-    body: { descriptionParcel: 'Demande test refus voyageur', price: trip.price },
+    body: { descriptionParcel: 'Demande test refus voyageur', shipmentType: 'parcel', weightKg: 2, price: 1 },
   });
   assert.equal(acceptedThenRejected.status, 200, JSON.stringify(acceptedThenRejected.body));
   assert.equal(acceptedThenRejected.body.operation.operationStatus, 'attente_confirmation');
+  assert.equal(acceptedThenRejected.body.operation.shipmentType, 'parcel');
+  assert.equal(acceptedThenRejected.body.operation.weightKg, 2);
+  assert.equal(acceptedThenRejected.body.operation.price, Math.round((trip.price / trip.capacityKg) * 2 * 100) / 100, 'le prix colis doit etre calcule par le serveur');
   const rejected = await api(`/operations/${acceptedThenRejected.body.operation.id}/reject`, {
     method: 'POST',
     token: karim,
@@ -1843,10 +1846,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const acceptedThenCancelled = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
     token: fatima,
-    body: { descriptionParcel: 'Demande test annulation expediteur', price: trip.price },
+    body: { descriptionParcel: 'Demande test annulation expediteur', shipmentType: 'document', documentCount: 2, price: 1 },
   });
   assert.equal(acceptedThenCancelled.status, 200, JSON.stringify(acceptedThenCancelled.body));
   assert.equal(acceptedThenCancelled.body.operation.operationStatus, 'attente_confirmation');
+  assert.equal(acceptedThenCancelled.body.operation.shipmentType, 'document');
+  assert.equal(acceptedThenCancelled.body.operation.documentCount, 2);
+  assert.equal(acceptedThenCancelled.body.operation.price, 6, 'un document coute 3 EUR');
   const cancelledBySender = await api(`/operations/${acceptedThenCancelled.body.operation.id}/cancel`, {
     method: 'POST',
     token: fatima,

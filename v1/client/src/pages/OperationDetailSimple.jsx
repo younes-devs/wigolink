@@ -202,9 +202,17 @@ export default function OperationDetailSimple() {
           </div>
         )}
 
+        {operation.shipmentType && (
+          <div className="trip-detail-grid operation-shipment-summary">
+            <div><span>Type d'envoi</span><b>{operation.shipmentType === 'document' ? 'Document' : 'Colis'}</b></div>
+            <div><span>Quantite</span><b>{operation.shipmentType === 'document' ? `${operation.documentCount || 0} document${Number(operation.documentCount) > 1 ? 's' : ''}` : `${operation.weightKg || 0} kg`}</b></div>
+            <div><span>Prix calcule</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
+          </div>
+        )}
+
         {operation.descriptionParcel && (
           <div className="trip-detail-copy">
-            <h2>Colis</h2>
+            <h2>{operation.shipmentType === 'document' ? 'Documents' : 'Colis'}</h2>
             <p>{operation.descriptionParcel}</p>
           </div>
         )}
