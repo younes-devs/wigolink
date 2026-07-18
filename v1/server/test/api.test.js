@@ -1618,6 +1618,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const feed = await api('/trips', { token: fatima });
   assert.equal(feed.status, 200);
   assert.ok(feed.body.trips.length >= 1, 'le feed doit exposer des posts voyageurs');
+  const overview = await api('/trips/overview', { token: fatima });
+  assert.equal(overview.status, 200, JSON.stringify(overview.body));
+  assert.ok(Array.isArray(overview.body.trips));
+  assert.ok(Array.isArray(overview.body.myTrips));
   const trip = feed.body.trips.find((t) => t.id === published.body.trip.id)
     || feed.body.trips.find((t) => t.from === 'Casablanca' && t.to === 'Bruxelles')
     || feed.body.trips[0];

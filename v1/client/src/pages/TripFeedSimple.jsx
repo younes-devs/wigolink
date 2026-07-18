@@ -6,9 +6,12 @@ import { Avatar, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
 
+const tripOverviewCache = new Map();
+const TRIP_OVERVIEW_CACHE_MS = 30_000;
+
 export default function TripFeedSimple() {
-  const [trips, setTrips] = useState(null);
-  const [myTrips, setMyTrips] = useState(null);
+  const [trips, setTrips] = useState(() => tripOverviewCache.get('')?.trips || null);
+  const [myTrips, setMyTrips] = useState(() => tripOverviewCache.get('')?.myTrips || null);
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '' };
   const [filters, setFilters] = useState(emptyFilters);
@@ -34,18 +37,26 @@ export default function TripFeedSimple() {
     return params.toString();
   }, [filters]);
 
-  const load = () => {
+  const load = async ({ force = false } = {}) => {
     const params = new URLSearchParams(query);
-    params.set('excludeMine', '1');
-    return Promise.all([api(`/trips?${params.toString()}`), api('/trips/mine')])
-      .then(([feed, mine]) => {
-        setTrips(feed.trips);
-        setMyTrips(mine.trips);
-      })
-      .catch(() => {
+    const cached = tripOverviewCache.get(query);
+    if (cached) {
+      setTrips(cached.trips);
+      setMyTrips(cached.myTrips);
+      if (!force && Date.now() - cached.at < TRIP_OVERVIEW_CACHE_MS) return;
+    }
+    try {
+      const data = await api(`/trips/overview?${params.toString()}`);
+      const next = { trips: data.trips, myTrips: data.myTrips, at: Date.now() };
+      tripOverviewCache.set(query, next);
+      setTrips(next.trips);
+      setMyTrips(next.myTrips);
+    } catch {
+      if (!cached) {
         setTrips([]);
         setMyTrips([]);
-      });
+      }
+    }
   };
 
   useEffect(() => { load(); }, [query]);
@@ -55,7 +66,8 @@ export default function TripFeedSimple() {
       if (trip.saved) await api(`/saved-trips/${trip.id}`, { method: 'DELETE' });
       else await api(`/saved-trips/${trip.id}`, { method: 'POST' });
       toast.success(trip.saved ? 'Trajet retiré' : 'Trajet enregistré');
-      load();
+      tripOverviewCache.clear();
+      load({ force: true });
     } catch (e) {
       toast.error(e.message);
     }
@@ -74,7 +86,7 @@ export default function TripFeedSimple() {
       </div>
 
       {publishing && (
-        <TripPublishForm onCreated={() => { setPublishing(false); toast.success('Trajet publié'); load(); }} />
+        <TripPublishForm onCreated={() => { setPublishing(false); toast.success('Trajet publié'); tripOverviewCache.clear(); load({ force: true }); }} />
       )}
 
       <section className="trip-search-controls" aria-label="Recherche de trajets">

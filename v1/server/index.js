@@ -64,7 +64,7 @@ let stateQueue = Promise.resolve();
 function isRelationalTripRead(req) {
   return relationalTripReadsEnabled()
     && req.method === 'GET'
-    && (req.path === '/api/trips' || req.path === '/api/trips/mine');
+    && (req.path === '/api/trips' || req.path === '/api/trips/mine' || req.path === '/api/trips/overview');
 }
 
 function isRelationalMessageRead(req) {
@@ -317,6 +317,25 @@ app.get('/api/trips', relationalTripAuth, async (req, res, next) => {
   } catch (error) {
     console.error('Echec de recherche relationnelle des trajets', error);
     res.status(503).json({ error: 'Recherche temporairement indisponible. Reessayez.' });
+  }
+});
+
+app.get('/api/trips/overview', relationalTripAuth, async (req, res, next) => {
+  if (!relationalTripReadsEnabled()) return next('route');
+  try {
+    const pool = databasePool();
+    const [feed, mine] = await Promise.all([
+      listRelationalTrips({
+        pool, user: req.user, query: { ...req.query, excludeMine: '1' }, today: TODAY_ISO(),
+      }),
+      listRelationalTrips({
+        pool, user: req.user, query: req.query, mine: true, today: TODAY_ISO(),
+      }),
+    ]);
+    res.json({ trips: feed.trips, myTrips: mine.trips });
+  } catch (error) {
+    console.error('Echec de chargement de l apercu des trajets', error);
+    res.status(503).json({ error: 'Les trajets sont temporairement indisponibles. Reessayez.' });
   }
 });
 
@@ -1550,6 +1569,19 @@ app.get('/api/navigation-summary', auth, (req, res) => {
 app.get('/api/trips', auth, (req, res) => {
   const trips = availableTripPosts(req.user, req.query);
   res.json({ trips });
+});
+
+app.get('/api/trips/overview', auth, (req, res) => {
+  const myTrips = db.trips
+    .filter((t) => t.travelerId === req.user.id)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .map((t) => {
+      const view = tripPostView(t, req.user);
+      const operations = db.transactions.filter((tx) => tx.tripId === t.id && !CLOSED_STATUSES.includes(tx.status));
+      return { ...view, activeOperations: operations.length };
+    });
+  const trips = availableTripPosts(req.user, { ...req.query, excludeMine: '1' });
+  res.json({ trips, myTrips });
 });
 
 app.get('/api/trips/:id', auth, (req, res, next) => {
