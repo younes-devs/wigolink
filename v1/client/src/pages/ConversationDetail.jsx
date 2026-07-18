@@ -48,6 +48,11 @@ export default function ConversationDetail() {
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
   const [attachment, setAttachment] = useState(null);
   const [attachmentState, setAttachmentState] = useState('');
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+  const [locationSheet, setLocationSheet] = useState(null);
+  const [locationDraft, setLocationDraft] = useState(null);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [otherTyping, setOtherTyping] = useState(false);
   const [otherOnline, setOtherOnline] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
@@ -61,6 +66,7 @@ export default function ConversationDetail() {
   const endRef = useRef(null);
   const fileRef = useRef(null);
   const cameraRef = useRef(null);
+  const attachmentMenuRef = useRef(null);
   const menuRef = useRef(null);
   const latestMessageAtRef = useRef(0);
   const nearBottomRef = useRef(true);
@@ -124,6 +130,11 @@ export default function ConversationDetail() {
     setFailed(null);
     setAttachment(null);
     setAttachmentState('');
+    setAttachmentMenuOpen(false);
+    setLocationSheet(null);
+    setLocationDraft(null);
+    setLocationBusy(false);
+    setLocationError('');
     setOtherTyping(false);
     setOtherOnline(false);
     setPreviewImage(null);
@@ -196,6 +207,7 @@ export default function ConversationDetail() {
   }, [messages.length, nearBottom]);
 
   useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
+  useDismissibleMenu(attachmentMenuOpen, attachmentMenuRef, () => setAttachmentMenuOpen(false));
 
   const conversationOpen = conversation && conversation.status !== 'completed' && conversation.status !== 'archived';
   const unsafeDraftCategories = useMemo(() => draftSafety(text), [text]);
@@ -241,11 +253,13 @@ export default function ConversationDetail() {
     }
   };
 
-  const send = async (e, retryText = null, retryClientId = null, retryAttachment = null) => {
+  const send = async (e, retryText = null, retryClientId = null, retryAttachment = null, retryLocation = null) => {
     e?.preventDefault();
-    const bodyText = (retryText || text).trim();
-    const outgoingAttachment = retryText ? retryAttachment : attachment;
-    if ((!bodyText && !outgoingAttachment) || sending || !canWrite) {
+    const isRetry = retryClientId !== null;
+    const bodyText = String(isRetry ? retryText : text).trim();
+    const outgoingAttachment = isRetry ? retryAttachment : attachment;
+    const outgoingLocation = isRetry ? retryLocation : locationDraft;
+    if ((!bodyText && !outgoingAttachment && !outgoingLocation) || sending || !canWrite) {
       if (!isOnline) toast.error(t('messages.offline.toast'));
       if (unsafeDraftCategories.length) toast.error('Retirez les coordonnees, liens et paiements externes pour envoyer ce message.');
       if (conversation?.blocked || conversation?.blockedByOther) toast.error('Cette conversation est bloquee.');
@@ -261,8 +275,9 @@ export default function ConversationDetail() {
       clientId,
       from: user.id,
       text: bodyText,
-      type: outgoingAttachment ? 'attachment' : 'text',
+      type: outgoingLocation ? 'location' : outgoingAttachment ? 'attachment' : 'text',
       attachments: outgoingAttachment ? [{ ...outgoingAttachment, id: `${clientId}-attachment` }] : [],
+      location: outgoingLocation,
       deliveryStatus: 'sending',
       at: Date.now(),
       readBy: [user.id],
@@ -273,6 +288,7 @@ export default function ConversationDetail() {
       setMessages((current) => [...current, optimistic]);
       setText('');
       setAttachment(null);
+      setLocationDraft(null);
       sessionStorage.removeItem(`draft:${id}`);
     }
     try {
@@ -282,6 +298,7 @@ export default function ConversationDetail() {
           text: bodyText,
           clientId,
           attachments: outgoingAttachment ? [outgoingAttachment] : [],
+          location: outgoingLocation,
         },
       });
       if (data.warning) toast.info(data.warning);
@@ -294,7 +311,7 @@ export default function ConversationDetail() {
         toast.error(err.message || 'Ce message ne peut pas etre envoye hors de Wigofly.');
         return;
       }
-      setFailed({ text: bodyText, clientId, attachment: outgoingAttachment, message: err.message || t('messages.composer.failed') });
+      setFailed({ text: bodyText, clientId, attachment: outgoingAttachment, location: outgoingLocation, message: err.message || t('messages.composer.failed') });
       setMessages((current) => current.map((message) =>
         message.id === clientId ? { ...message, deliveryStatus: 'failed' } : message
       ));
@@ -410,12 +427,50 @@ export default function ConversationDetail() {
       setAttachmentState('Compression de la photo...');
       const dataUrl = await resizeImage(file);
       setAttachment({ dataUrl, name: file.name, type: 'image' });
+      setLocationDraft(null);
+      setAttachmentMenuOpen(false);
       setAttachmentState('Photo optimisee et prete a envoyer');
     } catch {
       toast.error(t('messages.attachment.failed'));
     } finally {
       setTimeout(() => setAttachmentState(''), 1800);
     }
+  };
+
+  const openLocationSheet = () => {
+    setAttachmentMenuOpen(false);
+    setLocationError('');
+    setLocationSheet('choice');
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('La localisation n est pas disponible sur cet appareil. Choisissez un lieu de rendez-vous.');
+      return;
+    }
+    setLocationBusy(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationDraft({
+          kind: 'current', label: 'Position actuelle', city: '', latitude: position.coords.latitude,
+          longitude: position.coords.longitude, accuracy: position.coords.accuracy, expiresInMinutes: 120,
+        });
+        setLocationBusy(false);
+        setLocationSheet('confirm');
+      },
+      () => {
+        setLocationBusy(false);
+        setLocationError('Autorisation de localisation refusee ou position introuvable.');
+      },
+      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 }
+    );
+  };
+
+  const useMeetingPlace = () => {
+    setLocationDraft({ kind: 'place', label: '', city: '', expiresInMinutes: 120 });
+    setLocationError('');
+    setLocationSheet('confirm');
   };
 
   const copyMessage = async (message) => {
@@ -636,7 +691,7 @@ export default function ConversationDetail() {
         <div className="message-send-error">
           <Icon name="alert" size={16} />
           <span>{failed.message}</span>
-          <button type="button" onClick={(e) => send(e, failed.text, failed.clientId, failed.attachment)}>{t('common.retry')}</button>
+          <button type="button" onClick={(e) => send(e, failed.text, failed.clientId, failed.attachment, failed.location)}>{t('common.retry')}</button>
         </div>
       )}
 
@@ -648,6 +703,18 @@ export default function ConversationDetail() {
         </div>
       )}
       {attachmentState && <div className="attachment-progress"><span className="spinner" />{attachmentState}</div>}
+
+      {locationDraft && (
+        <div className="message-location-preview">
+          <Icon name="mapPin" size={20} />
+          <div>
+            <b>{locationDraft.label || 'Lieu de rendez-vous'}</b>
+            <span>{locationDraft.kind === 'current' ? 'Position partagee de facon securisee' : locationDraft.city || 'Ajoutez une ville avant l envoi'}</span>
+          </div>
+          <button type="button" onClick={() => setLocationSheet('confirm')} aria-label="Modifier la localisation"><Icon name="pencil" size={14} /></button>
+          <button type="button" onClick={() => setLocationDraft(null)} aria-label="Retirer la localisation"><Icon name="x" size={14} /></button>
+        </div>
+      )}
 
       {unsafeDraftCategories.length > 0 && (
         <div className="message-safety-draft" role="alert">
@@ -661,10 +728,24 @@ export default function ConversationDetail() {
       <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
         <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
-        <button type="button" className="compose-attach" disabled={!canWrite || sending} onClick={() => fileRef.current?.click()} aria-label={t('messages.attachment.add')} title={t('messages.attachment.add')}>
-          <Icon name="image" size={18} />
-        </button>
-        <button type="button" className="compose-attach camera" disabled={!canWrite || sending} onClick={() => cameraRef.current?.click()} aria-label="Prendre une photo" title="Prendre une photo"><Icon name="camera" size={18} /></button>
+        <div className="compose-attachments" ref={attachmentMenuRef}>
+          <button
+            type="button"
+            className="compose-attach"
+            disabled={!canWrite || sending}
+            onClick={() => setAttachmentMenuOpen((value) => !value)}
+            aria-label="Ajouter"
+            title="Ajouter"
+            aria-expanded={attachmentMenuOpen}
+          ><Icon name="plus" size={19} /></button>
+          {attachmentMenuOpen && (
+            <div className="compose-attachment-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => cameraRef.current?.click()}><Icon name="camera" size={18} /><span>Camera</span></button>
+              <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}><Icon name="image" size={18} /><span>Galerie</span></button>
+              <button type="button" role="menuitem" onClick={openLocationSheet}><Icon name="mapPin" size={18} /><span>Localisation</span></button>
+            </div>
+          )}
+        </div>
         <textarea
           className={unsafeDraftCategories.length ? 'message-compose-unsafe' : ''}
           value={text}
@@ -677,10 +758,31 @@ export default function ConversationDetail() {
           }}
         />
         <span className="compose-count">{text.length}/1000</span>
-        <button className="chat-send" disabled={sending || (!text.trim() && !attachment) || !canWrite} aria-label={t('messages.composer.send')}>
+        <button className="chat-send" disabled={sending || (!text.trim() && !attachment && !locationDraft) || !canWrite} aria-label={t('messages.composer.send')}>
           {sending ? <span className="spinner" /> : <Icon name="send" size={18} />}
         </button>
       </form>
+      {locationSheet && (
+        <LocationShareSheet
+          step={locationSheet}
+          draft={locationDraft}
+          busy={locationBusy}
+          error={locationError}
+          onClose={() => { setLocationSheet(null); setLocationError(''); }}
+          onCurrent={useCurrentLocation}
+          onPlace={useMeetingPlace}
+          onChange={setLocationDraft}
+          onConfirm={() => {
+            if (locationDraft?.kind === 'place' && !locationDraft.label.trim() && !locationDraft.city.trim()) {
+              setLocationError('Indiquez au moins le nom du lieu ou la ville.');
+              return;
+            }
+            setAttachment(null);
+            setLocationSheet(null);
+            setLocationError('');
+          }}
+        />
+      )}
       {previewImage && <ImagePreview image={previewImage} onClose={() => setPreviewImage(null)} />}
       {selectedMessage && <MessageActions message={selectedMessage} mine={selectedMessage.from === user.id} onCopy={copyMessage} onDelete={deleteMessage} onReport={() => { setSelectedMessage(null); setReportOpen(true); }} onClose={() => setSelectedMessage(null)} />}
     </div>
@@ -744,6 +846,7 @@ function MessageGroup({ group, userId, conversation, query, onPreview, onSelect,
                 ))}
               </div>
             )}
+            {message.location && <LocationMessage location={message.location} mine={mine} />}
             {message.text && <p><HighlightedText text={message.text} query={query} /></p>}
             <span className="message-status"><time>{shortDate(message.at)}</time>{mine && <DeliveryState message={message} />}</span>
           </div>
@@ -776,6 +879,65 @@ function ImagePreview({ image, onClose }) {
     <button type="button" className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="x" size={20} /></button>
     <img src={image.dataUrl} alt={image.name || 'Photo jointe'} onClick={(event) => event.stopPropagation()} />
   </div>;
+}
+
+function LocationShareSheet({ step, draft, busy, error, onClose, onCurrent, onPlace, onChange, onConfirm }) {
+  const current = draft?.kind === 'current';
+  return (
+    <div className="location-sheet-backdrop" role="presentation" onClick={onClose}>
+      <section className="location-sheet" role="dialog" aria-modal="true" aria-label="Partager une localisation" onClick={(event) => event.stopPropagation()}>
+        <div className="location-sheet-head">
+          <div><b>Partager une localisation</b><span>Vous gardez le controle de ce qui est partage.</span></div>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Fermer"><Icon name="x" size={18} /></button>
+        </div>
+        {step === 'choice' ? (
+          <div className="location-choices">
+            <button type="button" onClick={onCurrent} disabled={busy}>
+              <span className="location-choice-icon"><Icon name="mapPin" size={21} /></span>
+              <span><b>{busy ? 'Recherche de votre position...' : 'Ma position actuelle'}</b><small>Partage ponctuel, jamais de suivi en direct.</small></span>
+            </button>
+            <button type="button" onClick={onPlace} disabled={busy}>
+              <span className="location-choice-icon"><Icon name="search" size={21} /></span>
+              <span><b>Lieu de rendez-vous</b><small>Indiquez un cafe, une gare, une adresse ou une ville.</small></span>
+            </button>
+          </div>
+        ) : (
+          <div className="location-confirm">
+            <div className="location-privacy"><Icon name="shieldCheck" size={17} /><span>{current ? 'La position sera approximative tant que l operation n est pas confirmee.' : 'Le lieu disparait automatiquement apres la duree choisie.'}</span></div>
+            {!current && (
+              <>
+                <label>Nom du lieu<input value={draft?.label || ''} onChange={(event) => onChange({ ...draft, label: event.target.value.slice(0, 120) })} placeholder="Ex. Gare de Bruxelles-Midi" autoFocus /></label>
+                <label>Ville ou adresse<input value={draft?.city || ''} onChange={(event) => onChange({ ...draft, city: event.target.value.slice(0, 80) })} placeholder="Bruxelles" /></label>
+              </>
+            )}
+            {current && <div className="location-current-summary"><Icon name="mapPin" size={20} /><span>Position actuelle prete a etre ajoutee au message.</span></div>}
+            <label>Duree du partage<select value={draft?.expiresInMinutes || 120} onChange={(event) => onChange({ ...draft, expiresInMinutes: Number(event.target.value) })}><option value={30}>30 minutes</option><option value={120}>2 heures</option></select></label>
+            <button type="button" className="btn btn-primary location-confirm-button" onClick={onConfirm}>Ajouter au message</button>
+          </div>
+        )}
+        {error && <p className="location-error"><Icon name="alert" size={15} />{error}</p>}
+      </section>
+    </div>
+  );
+}
+
+function LocationMessage({ location, mine }) {
+  const expired = location.expiresAt && Number(location.expiresAt) <= Date.now();
+  const query = location.latitude !== null && location.longitude !== null
+    ? `${location.latitude},${location.longitude}`
+    : [location.label, location.city].filter(Boolean).join(', ');
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  return (
+    <div className={`location-message ${expired ? 'expired' : ''}`}>
+      <div className="location-message-icon"><Icon name="mapPin" size={19} /></div>
+      <div>
+        <b>{expired ? 'Localisation expiree' : location.label || 'Localisation partagee'}</b>
+        <span>{expired ? 'Ce partage n est plus accessible.' : location.city || (location.precision === 'approximate' ? 'Zone approximative' : 'Position de rendez-vous')}</span>
+        {!expired && <a href={mapUrl} target="_blank" rel="noreferrer">Ouvrir l itineraire</a>}
+      </div>
+      {!expired && location.precision === 'approximate' && <small>Approx.</small>}
+    </div>
+  );
 }
 
 function MessageActions({ message, mine, onCopy, onDelete, onReport, onClose }) {

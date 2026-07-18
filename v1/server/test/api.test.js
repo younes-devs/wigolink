@@ -1691,6 +1691,27 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(attached.body.message.attachments.length, 1);
   assert.equal(attached.body.message.attachments[0].type, 'image');
 
+  const located = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST',
+    token: fatima,
+    body: {
+      location: {
+        kind: 'current', label: 'Point de rendez-vous', latitude: 50.85045, longitude: 4.34878,
+        accuracy: 18, expiresInMinutes: 30,
+      },
+    },
+  });
+  assert.equal(located.status, 200, JSON.stringify(located.body));
+  assert.equal(located.body.message.type, 'location');
+  assert.equal(located.body.message.location.precision, 'approximate');
+  assert.equal(located.body.message.location.latitude, 50.85);
+  assert.equal(located.body.message.location.expiresAt > Date.now(), true);
+
+  const badLocation = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST', token: fatima, body: { location: { kind: 'current', latitude: 999, longitude: 4 } },
+  });
+  assert.equal(badLocation.status, 400);
+
   const badAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
     token: fatima,

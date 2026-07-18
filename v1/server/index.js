@@ -525,6 +525,41 @@ function validPhotos(photos) {
   return photos.every((p) => IMG_RE.test(p) && p.length <= 700 * 1024);
 }
 
+const LOCATION_EXPIRY_MINUTES = new Set([30, 120]);
+function locationCanBePrecise(conversation) {
+  const operation = conversation.operationId ? db.transactions.find((item) => item.id === conversation.operationId) : null;
+  const status = operation?.operationStatus || operation?.status;
+  return ['paye', 'collecte_prevue', 'en_transport'].includes(status);
+}
+
+function normalizeMessageLocation(value, conversation, now = Date.now()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const kind = value.kind === 'place' ? 'place' : value.kind === 'current' ? 'current' : null;
+  if (!kind) return null;
+  const label = String(value.label || '').trim().slice(0, 120);
+  const city = String(value.city || '').trim().slice(0, 80);
+  const latitude = Number(value.latitude);
+  const longitude = Number(value.longitude);
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
+    && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+  if (kind === 'current' && !hasCoordinates) return null;
+  if (kind === 'place' && !label && !city) return null;
+  const precise = hasCoordinates && locationCanBePrecise(conversation);
+  const expiresInMinutes = LOCATION_EXPIRY_MINUTES.has(Number(value.expiresInMinutes))
+    ? Number(value.expiresInMinutes)
+    : 120;
+  return {
+    kind,
+    label: label || (kind === 'current' ? 'Position actuelle' : 'Lieu de rendez-vous'),
+    city: city || null,
+    latitude: hasCoordinates ? (precise ? latitude : Number(latitude.toFixed(2))) : null,
+    longitude: hasCoordinates ? (precise ? longitude : Number(longitude.toFixed(2))) : null,
+    accuracy: hasCoordinates && Number.isFinite(Number(value.accuracy)) ? Math.round(Math.max(0, Math.min(Number(value.accuracy), 10000))) : null,
+    precision: precise ? 'exact' : 'approximate',
+    expiresAt: now + expiresInMinutes * 60 * 1000,
+  };
+}
+
 // Liste blanche effective = base statique + catégories promues depuis la zone grise
 // après validation admin (évite de rejuger indéfiniment le même produit — §4.2).
 const combinedWhitelist = () => repositories.customWhitelist.combinedWith(WHITELIST);
@@ -1412,7 +1447,7 @@ function conversationView(conversation, viewerId) {
   const lastMessageAt = lastMessage?.at || conversation.lastMessageAt || conversation.createdAt;
   const lastMessagePreview = lastMessage?.flagged
     ? 'Message signale par securite'
-    : (lastMessage?.text || (lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
+    : (lastMessage?.text || (lastMessage?.location ? 'Localisation partagee' : lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
   const participants = conversationParticipants(conversation, viewerId);
   const other = participants.find((user) => user.id !== viewerId) || null;
   return {
@@ -1542,7 +1577,7 @@ function conversationMessagesPage(conversation, query = {}) {
   const q = String(query.q || '').trim().toLowerCase();
   if (q) {
     messages = messages.filter((message) =>
-      `${message.text || ''} ${message.systemEvent?.type || ''} ${(message.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes(q)
+      `${message.text || ''} ${message.location?.label || ''} ${message.location?.city || ''} ${message.systemEvent?.type || ''} ${(message.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes(q)
     );
   }
   const before = Number(query.before || 0);
@@ -2119,7 +2154,10 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   }
   const text = String(req.body?.text || '').trim().slice(0, 1000);
   const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments.slice(0, 1) : [];
-  if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message vide' });
+  const now = Date.now();
+  const location = normalizeMessageLocation(req.body?.location, conversation, now);
+  if (req.body?.location && !location) return res.status(400).json({ error: 'Localisation invalide' });
+  if (!text && attachments.length === 0 && !location) return res.status(400).json({ error: 'Message vide' });
   if (attachments.length > 0 && !validPhotos(attachments.map((a) => a?.dataUrl || a)))
     return res.status(400).json({ error: 'Piece jointe invalide' });
   const normalizedAttachments = attachments.map((attachment, index) => {
@@ -2155,7 +2193,7 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
     .slice(-4)
     .map((message) => message.text || '')
     .join(' ');
-  const safety = analyzeMessageSafety(`${recentOutboundText} ${text}`);
+  const safety = analyzeMessageSafety(`${recentOutboundText} ${text} ${location?.label || ''} ${location?.city || ''}`);
   if (safety.blocked) {
     const attempt = registerMessageSafetyAttempt({ user: req.user, conversation, analysis: safety });
     await audit(req.user.id, 'message.safety_blocked', 'conversation', conversation.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });
@@ -2163,7 +2201,6 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
     return res.status(attempt.cooldownUntil ? 429 : 422).json(messageSafetyError({ analysis: safety, cooldownUntil: attempt.cooldownUntil }));
   }
   const flagged = false;
-  const now = Date.now();
   const msg = {
     id: newId('m'),
     clientId,
@@ -2173,8 +2210,9 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
     text,
     flagged,
     flagReason: flagged ? 'contact_outside_app' : null,
-    type: normalizedAttachments.length ? 'attachment' : flagged ? 'warning' : 'text',
+    type: location ? 'location' : normalizedAttachments.length ? 'attachment' : flagged ? 'warning' : 'text',
     attachments: normalizedAttachments,
+    location,
     deliveryStatus: 'sent',
     readBy: [req.user.id],
     at: now,

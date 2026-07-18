@@ -133,7 +133,7 @@ function conversationView(row, viewer, today) {
   const lastMessageAt = lastMessage?.at || conversation.lastMessageAt || conversation.createdAt || Date.now();
   const lastMessagePreview = lastMessage?.flagged
     ? 'Message signale par securite'
-    : (lastMessage?.text || (lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
+    : (lastMessage?.text || (lastMessage?.location ? 'Localisation partagee' : lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
   return {
     ...conversation,
     participants: [],
