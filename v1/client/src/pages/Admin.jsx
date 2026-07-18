@@ -97,6 +97,7 @@ export default function Admin() {
           Securite {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
         </button>
         <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
+        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>Membres</button>
         <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>Acces</button>
       </div>
 
@@ -162,9 +163,67 @@ export default function Admin() {
       {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
       {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
       {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
+      {tab === 'members' && <MembersPanel data={team} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
     </div>
   );
+}
+
+function MembersPanel({ data }) {
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const users = (data?.users || []).filter((user) => `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query.trim().toLowerCase()));
+  if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
+  return <section className="card">
+    <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div><h2 style={{ margin: 0 }}>Dossiers membres</h2><p className="muted" style={{ marginBottom: 0 }}>Acces journalise aux informations necessaires a la securite, au KYC et au support.</p></div>
+      <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un membre" style={{ maxWidth: 260 }} />
+    </div>
+    <div className="list-stack" style={{ marginTop: 16 }}>
+      {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => setSelectedId(user.id)}>
+        <div className="cat-icon"><Icon name="user" size={20} /></div>
+        <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
+        <div className="row"><span className={`pill ${user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{user.kycStatus || 'none'}</span><Icon name="arrowRight" size={17} /></div>
+      </button>)}
+      {data && users.length === 0 && <p className="muted center">Aucun membre trouve.</p>}
+    </div>
+  </section>;
+}
+
+function MemberCaseFile({ userId, onBack }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [zoom, setZoom] = useState(null);
+  const load = useCallback((offset = 0) => {
+    api(`/admin/users/${userId}/case-file?offset=${offset}&limit=50`)
+      .then((response) => setData((current) => offset > 0 && current ? { ...response.caseFile, messages: [...current.messages, ...response.caseFile.messages] } : response.caseFile))
+      .catch((reason) => setError(reason.message || 'Chargement impossible'));
+  }, [userId]);
+  useEffect(() => {
+    void api(`/admin/users/${userId}/case-file/access`, { method: 'POST', body: { section: 'overview' } }).catch(() => {});
+    load();
+  }, [userId, load]);
+  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour aux membres</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
+  if (!data) return <SkeletonCard lines={5} />;
+  const { member } = data;
+  return <div className="admin-case-file">
+    <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour aux membres</button>
+    <div className="alert alert-warn"><Icon name="shieldCheck" size={17} /><span>Consultation reservee aux administrateurs et journalisee. Les donnees sont affichees uniquement pour une raison de securite, support, KYC ou litige.</span></div>
+    <section className="card">
+      <div className="list-row"><div className="cat-icon"><Icon name="user" size={22} /></div><div className="grow"><h2 style={{ marginBottom: 2 }}>{member.name}</h2><div className="muted">{member.email} · {member.phone || 'Telephone non renseigne'}</div></div><span className={`pill ${member.deletedAt ? 'pill-gray' : member.kycStatus === 'verified' ? 'pill-teal' : 'pill-saffron'}`}>{member.deletedAt ? 'Compte anonymise' : member.kycStatus}</span></div>
+      <div className="kyc-recap mt"><div><span className="muted">Ville</span><b>{member.city || '—'}</b></div><div><span className="muted">Inscrit le</span><b>{formatAdminDate(member.createdAt)}</b></div><div><span className="muted">Email</span><b>{member.emailVerified ? 'Verifie' : 'Non verifie'}</b></div><div><span className="muted">Connexion</span><b>{member.provider || 'email'}</b></div></div>
+      {member.suspendedUntil && <div className="alert alert-danger mt"><Icon name="alert" size={16} /><span>Suspendu jusqu au {formatAdminDate(member.suspendedUntil)}. {member.suspensionReason || ''}</span></div>}
+    </section>
+    <section className="card"><h2><Icon name="shieldCheck" size={18} />Dossier KYC</h2>{data.kyc.length === 0 ? <p className="muted mt">Aucune soumission KYC.</p> : data.kyc.map((submission) => <div className="admin-case-kyc" key={submission.id}><div className="list-row"><div className="grow"><b>{submission.legalName || 'Identite masquee'}</b><div className="muted">{submission.documentType || 'Document'} · {formatAdminDate(submission.submittedAt)} · {submission.status}</div></div></div>{submission.documentsPurged ? <div className="alert alert-warn mt"><Icon name="lock" size={15} /><span>Images KYC purgées apres une demande d effacement ou a la fin de leur conservation. La decision et son historique restent disponibles.</span></div> : <div className="kyc-review-grid mt"><KycDoc label="Selfie" photo={submission.selfiePhoto} onZoom={setZoom} selfie /><KycDoc label="Recto" photo={submission.idFrontPhoto} onZoom={setZoom} />{submission.idBackPhoto && <KycDoc label="Verso" photo={submission.idBackPhoto} onZoom={setZoom} />}</div>}</div>)}</section>
+    <section className="card"><h2><Icon name="repeat" size={18} />Activite et operations</h2><div className="kyc-recap mt"><div><span className="muted">Trajets</span><b>{data.trips.length}</b></div><div><span className="muted">Annonces</span><b>{data.listings.length}</b></div><div><span className="muted">Operations</span><b>{data.transactions.length}</b></div><div><span className="muted">Litiges</span><b>{data.disputes.length}</b></div></div><div className="list-stack mt">{data.transactions.map((transaction) => <div className="list-row" key={transaction.id}><div className="grow"><b>{transaction.id}</b><div className="muted">{transaction.status} · {formatAdminDate(transaction.createdAt)}</div></div><span className="pill pill-gray">{transaction.escrow?.state || 'pending'}</span></div>)}</div></section>
+    <section className="card"><h2><Icon name="chat" size={18} />Conversations et messages</h2><p className="muted mt">{data.conversations.length} conversation(s) et {data.messagePage.total} message(s). Les pieces jointes sont repertoriees sans etre telechargees automatiquement.</p><div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || 'Compte inconnu'}</b><span>{formatAdminDate(message.at)} · {message.type}</span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.label || 'Localisation'} {message.location.city ? `· ${message.location.city}` : ''} · {message.location.precision === 'approximate' ? 'approximative' : 'precise'}</small>}{message.attachments?.length > 0 && <small><Icon name="image" size={13} />{message.attachments.map((attachment) => attachment.name || 'Image').join(', ')}</small>}{message.flagged && <span className="pill pill-danger">Signale: {message.flagReason || 'securite'}</span>}</div>)}</div>{data.messagePage.hasMore && <button className="btn btn-sm mt" onClick={() => load(data.messagePage.offset + data.messagePage.limit)}>Charger les messages precedents</button>}</section>
+    <section className="card"><h2><Icon name="clock" size={18} />Historique de securite</h2><div className="list-stack mt">{data.auditLogs.length === 0 ? <p className="muted">Aucune entree d audit liee a ce membre.</p> : data.auditLogs.map((log) => <div className="list-row" key={log.id}><div className="grow"><b>{log.action}</b><div className="muted">{formatAdminDate(log.at)} · {log.actorId || 'system'}</div></div></div>)}</div></section>
+    {zoom && <div className="modal-backdrop" onClick={() => setZoom(null)}><img src={zoom} alt="Document KYC" className="kyc-zoom" onClick={(event) => event.stopPropagation()} /></div>}
+  </div>;
+}
+
+function formatAdminDate(value) {
+  return value ? new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
 }
 
 // Revue d'une annonce en zone grise : l'approbation demande une quantité max, car

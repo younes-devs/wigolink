@@ -3785,6 +3785,83 @@ app.get('/api/admin/users', auth, adminOnly, (req, res) => {
   res.json({ users, adminCount: db.users.filter((user) => user.isAdmin && !user.deletedAt).length });
 });
 
+function adminCaseParticipant(user) {
+  if (!user) return null;
+  return {
+    id: user.id, name: user.name, email: user.email, phone: user.phone || null, city: user.city || null,
+    photoUrl: user.photoUrl || null, provider: user.provider || 'email', emailVerified: !!user.emailVerified,
+    kycStatus: user.kycStatus || 'none', createdAt: user.createdAt || null, deletedAt: user.deletedAt || null,
+  };
+}
+
+function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
+  const conversations = db.conversations
+    .filter((conversation) => conversation.participantIds.includes(user.id))
+    .sort((a, b) => (b.lastMessageAt || b.createdAt || 0) - (a.lastMessageAt || a.createdAt || 0));
+  const conversationIds = new Set(conversations.map((conversation) => conversation.id));
+  const allMessages = db.messages
+    .filter((message) => conversationIds.has(message.conversationId))
+    .sort((a, b) => b.at - a.at);
+  const transactions = db.transactions
+    .filter((transaction) => [transaction.senderId, transaction.travelerId, transaction.recipientId].includes(user.id))
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const transactionIds = new Set(transactions.map((transaction) => transaction.id));
+  const kyc = repositories.kyc.listForUser(user.id)
+    .sort((a, b) => b.submittedAt - a.submittedAt)
+    .map((submission) => ({
+      id: submission.id, status: submission.status, legalName: submission.legalName, birthDate: submission.birthDate,
+      documentType: submission.documentType, submittedAt: submission.submittedAt, reviewedAt: submission.reviewedAt || null,
+      reviewedBy: submission.reviewedBy || null, decisionReason: submission.decisionReason || null,
+      selfiePhoto: submission.selfiePhoto || null, idFrontPhoto: submission.idFrontPhoto || null, idBackPhoto: submission.idBackPhoto || null,
+      documentsPurged: !submission.selfiePhoto && !submission.idFrontPhoto && !submission.idBackPhoto,
+    }));
+  const auditLogs = (db.auditLogs || []).filter((entry) => entry.actorId === user.id || (entry.targetType === 'user' && entry.targetId === user.id))
+    .sort((a, b) => b.at - a.at).slice(0, 100);
+  const messages = allMessages.slice(messageOffset, messageOffset + messageLimit).map((message) => ({
+    id: message.id, conversationId: message.conversationId, from: adminCaseParticipant(findUser(message.from)),
+    text: message.text || '', type: message.type || 'text', flagged: !!message.flagged, flagReason: message.flagReason || null,
+    attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.type, size: attachment.size })),
+    location: message.location ? { label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
+    at: message.at, deletedAt: message.deletedAt || null,
+  }));
+  return {
+    member: { ...adminCaseParticipant(user), suspensionReason: user.suspensionReason || null, suspendedUntil: user.suspendedUntil || null },
+    kyc,
+    trips: db.trips.filter((trip) => trip.travelerId === user.id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
+    listings: db.listings.filter((listing) => listing.senderId === user.id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
+    transactions,
+    disputes: db.disputes.filter((dispute) => transactionIds.has(dispute.txId)).sort((a, b) => b.createdAt - a.createdAt),
+    conversations: conversations.map((conversation) => ({
+      id: conversation.id, createdAt: conversation.createdAt, lastMessageAt: conversation.lastMessageAt || null,
+      tripId: conversation.tripId || null, operationId: conversation.operationId || null,
+      participants: conversation.participantIds.map((id) => adminCaseParticipant(findUser(id))),
+      reports: conversation.reports || [], messageCount: allMessages.filter((message) => message.conversationId === conversation.id).length,
+    })),
+    messages,
+    messagePage: { offset: messageOffset, limit: messageLimit, total: allMessages.length, hasMore: messageOffset + messages.length < allMessages.length },
+    notifications: (db.notifications || []).filter((notification) => notification.userId === user.id).sort((a, b) => b.at - a.at).slice(0, 100),
+    safetyAppeals: (db.safetyAppeals || []).filter((appeal) => appeal.userId === user.id).sort((a, b) => b.createdAt - a.createdAt),
+    auditLogs,
+    retention: { kycImagesAvailable: kyc.some((submission) => !submission.documentsPurged), note: 'Les documents KYC peuvent etre purges a l issue de la duree de conservation applicable. La trace de decision reste auditable.' },
+  };
+}
+
+app.get('/api/admin/users/:id/case-file', auth, adminOnly, (req, res) => {
+  const user = findUser(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Membre introuvable' });
+  const offset = Math.max(0, Number(req.query.offset || 0) || 0);
+  const limit = Math.max(10, Math.min(100, Number(req.query.limit || 50) || 50));
+  res.json({ caseFile: adminCaseFile(user, { messageOffset: offset, messageLimit: limit }) });
+});
+
+app.post('/api/admin/users/:id/case-file/access', auth, adminOnly, async (req, res) => {
+  const user = findUser(req.params.id);
+  if (!user) return res.status(404).json({ error: 'Membre introuvable' });
+  await audit(req.user.id, 'admin.member_case.view', 'user', user.id, { section: String(req.body?.section || 'overview').slice(0, 40) });
+  save();
+  res.json({ ok: true });
+});
+
 app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
   const target = findUser(req.params.id);
   if (!target || target.deletedAt) return res.status(404).json({ error: 'Compte introuvable' });

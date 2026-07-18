@@ -1513,6 +1513,17 @@ test('gestion des roles : promotion admin protegee et dernier admin conserve', a
   const member = users.body.users.find((user) => user.email === email);
   assert.ok(member);
 
+  const forbiddenCaseFile = await api(`/admin/users/${member.id}/case-file`, { token: verified.body.token });
+  assert.equal(forbiddenCaseFile.status, 403);
+  const caseFile = await api(`/admin/users/${member.id}/case-file`, { token: tokens.admin });
+  assert.equal(caseFile.status, 200, JSON.stringify(caseFile.body));
+  assert.equal(caseFile.body.caseFile.member.id, member.id);
+  assert.ok(Array.isArray(caseFile.body.caseFile.messages));
+  const caseFileAccess = await api(`/admin/users/${member.id}/case-file/access`, {
+    method: 'POST', token: tokens.admin, body: { section: 'overview' },
+  });
+  assert.equal(caseFileAccess.status, 200);
+
   const promoted = await api(`/admin/users/${member.id}/role`, {
     method: 'POST', token: tokens.admin, body: { role: 'admin' },
   });
