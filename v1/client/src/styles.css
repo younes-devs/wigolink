@@ -2388,15 +2388,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .profile-trust-link { margin-bottom: 12px; }
 
 /* Profil */
-.profile-card { padding: 0 18px 18px; overflow: hidden; }
-.profile-banner {
-  height: 88px; margin: 0 -18px 0;
-  background:
-    radial-gradient(80% 120% at 20% 0%, rgba(10, 108, 245, 0.35), transparent 60%),
-    radial-gradient(70% 100% at 85% 20%, rgba(45, 190, 235, 0.3), transparent 60%),
-    linear-gradient(135deg, #0a6cf5, #7d5af5);
-}
-.profile-head { display: flex; gap: 16px; align-items: flex-end; margin-top: -34px; }
+.profile-card { padding: 20px 18px 18px; overflow: hidden; background: var(--surface); }
+.profile-head { display: flex; gap: 16px; align-items: flex-start; }
 .profile-avatar-wrap { position: relative; flex: 0 0 auto; }
 .profile-avatar-wrap .avatar { border: 3.5px solid #fff; box-shadow: var(--shadow); }
 .avatar-edit {
@@ -2407,10 +2400,10 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   cursor: pointer; transition: transform 0.1s;
 }
 .avatar-edit:hover { transform: scale(1.1); }
-.profile-id { flex: 1; min-width: 0; padding-top: 40px; }
+.profile-id { flex: 1; min-width: 0; padding-top: 2px; }
 .profile-id h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
-.profile-edit-btn { align-self: flex-start; margin-top: 46px; }
-.profile-actions { display: flex; align-items: center; gap: 8px; margin-top: 46px; align-self: flex-start; }
+.profile-edit-btn { align-self: flex-start; margin-top: 0; }
+.profile-actions { display: flex; align-items: center; gap: 8px; margin-top: 0; align-self: flex-start; }
 .profile-actions .profile-edit-btn { margin-top: 0; }
 .profile-summary {
   margin-bottom: 12px; padding: 14px;

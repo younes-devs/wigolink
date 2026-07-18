@@ -75,7 +75,6 @@ export default function Profile() {
     <div>
       {/* En-tête profil : bannière + avatar + actions */}
       <div className="card profile-card">
-        <div className="profile-banner" />
         <div className="profile-head">
           <div className="profile-avatar-wrap">
             <Avatar name={user.name} photo={user.photoUrl} size={92} />
