@@ -674,6 +674,15 @@ app.post('/api/auth/login', async (req, res) => {
   const user = findByEmail(email);
   if (!user || !verifyPassword(req.body.password || '', user.passwordHash))
     return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  if (user.suspendedUntil && user.suspendedUntil > Date.now()) {
+    const token = newToken();
+    await createPersistentSession({ token, userId: user.id, expiresAt: Date.now() + SESSION_DURATION_MS });
+    return res.status(403).json({
+      code: 'account_suspended', token, suspended: true, suspendedUntil: user.suspendedUntil,
+      reason: user.suspensionReason || null,
+      error: 'Votre compte est temporairement suspendu. Vous pouvez envoyer un recours.',
+    });
+  }
   if (!canAccessApp(user)) {
     const code = sixDigitCode();
     try {
@@ -3785,7 +3794,6 @@ app.post('/api/admin/users/:id/safety', auth, adminOnly, async (req, res) => {
     target.suspensionReason = reason;
     target.suspendedAt = Date.now();
     target.suspendedBy = req.user.id;
-    await deletePersistentSessionsForUser(target.id);
   } else if (action === 'restore') {
     target.suspendedUntil = null;
     target.suspensionReason = null;

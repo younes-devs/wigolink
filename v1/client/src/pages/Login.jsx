@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api';
+import { api, setToken } from '../api';
 import { useAuth } from '../App.jsx';
 import { Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
@@ -10,7 +10,7 @@ import { t, useLang } from '../i18n.js';
 export default function Login() {
   useLang();
   const { login } = useAuth();
-  const [mode, setMode] = useState('login'); // login | register | verify | forgot | reset
+  const [mode, setMode] = useState('login'); // login | register | verify | forgot | reset | appeal
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', code: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
@@ -18,6 +18,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [cguAccepted, setCguAccepted] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [appealReason, setAppealReason] = useState('');
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const switchMode = (m) => { setMode(m); setError(''); setHint(''); };
@@ -32,9 +33,27 @@ export default function Login() {
   const finishAuth = (d) => login(d.token, d.user);
 
   const submitLogin = () => run(async () => {
-    const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password, rememberMe } });
-    if (d.needsVerification) { switchMode('verify'); setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); return; }
-    finishAuth(d);
+    try {
+      const d = await api('/auth/login', { method: 'POST', body: { email: form.email, password: form.password, rememberMe } });
+      if (d.needsVerification) { switchMode('verify'); setHint(d.message || 'Consultez votre boite email pour recuperer le code.'); return; }
+      finishAuth(d);
+    } catch (error) {
+      if (error.data?.code === 'account_suspended' && error.data?.token) {
+        setToken(error.data.token);
+        setMode('appeal');
+        setHint(error.data.reason || 'Votre compte est temporairement suspendu. Expliquez votre situation a l equipe.');
+        return;
+      }
+      throw error;
+    }
+  });
+
+  const submitAppeal = () => run(async () => {
+    await api('/safety/appeals', { method: 'POST', body: { reason: appealReason } });
+    setToken(null);
+    switchMode('login');
+    setHint('Votre recours a ete envoye. Vous recevrez une reponse apres examen.');
+    setAppealReason('');
   });
 
   const submitRegister = () => run(async () => {
@@ -80,9 +99,11 @@ export default function Login() {
         <a href="/decouvrir/" className="brand-link auth-hero-brand">
           <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
         </a>
-        <h1 className="auth-hero-title">{t(`auth.title.${mode}`)}</h1>
+        <h1 className="auth-hero-title">{mode === 'appeal' ? 'Recours de securite' : t(`auth.title.${mode}`)}</h1>
         <p className="auth-hero-sub">{
-          mode === 'verify'
+          mode === 'appeal'
+            ? 'Expliquez la situation a l equipe de moderation.'
+            : mode === 'verify'
             ? t('auth.sub.verify', { email: form.email || t('auth.sub.verify.fallback') })
             : t(`auth.sub.${mode}`)
         }</p>
@@ -246,6 +267,19 @@ export default function Login() {
             disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}>
             {busy ? <span className="spinner" /> : t('auth.reset.submit')}
           </button>
+        </div>
+      )}
+
+      {mode === 'appeal' && (
+        <div className="card">
+          <div className="field">
+            <label>Votre recours</label>
+            <textarea value={appealReason} onChange={(e) => setAppealReason(e.target.value.slice(0, 1000))} rows={5} placeholder="Expliquez pourquoi la suspension devrait etre reexaminee." autoFocus />
+          </div>
+          <button className="btn btn-primary" onClick={submitAppeal} disabled={busy || appealReason.trim().length < 10}>
+            {busy ? <span className="spinner" /> : 'Envoyer mon recours'}
+          </button>
+          <p className="auth-switch" style={{ marginTop: 12 }}><button className="link-btn" onClick={() => { setToken(null); switchMode('login'); }}>Retour a la connexion</button></p>
         </div>
       )}
 
