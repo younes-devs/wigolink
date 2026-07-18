@@ -89,14 +89,12 @@ export default function Admin() {
         <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>
           Identités {kycPending > 0 ? `(${kycPending})` : ''}
         </button>
-        <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
         <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
           Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
         </button>
         <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}>
           Securite {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
         </button>
-        <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
         <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>Membres</button>
         <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>Acces</button>
       </div>
