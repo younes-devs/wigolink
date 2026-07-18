@@ -24,7 +24,7 @@ function draftSafety(text) {
   if (/(?:https?:\/\/|www\.|\.(?:com|net|org|io|me)\b)/i.test(value)) categories.push('link');
   if (/@[a-z0-9_.]{3,}/i.test(value)) categories.push('social');
   if (/\+?\d(?:[\s().-]*\d){7,}/.test(value)) categories.push('phone');
-  if (/(whats?app|telegram|signal|instagram|insta|facebook|snapchat|paypal|revolut|wise|western union|moneygram|bitcoin|crypto|virement|bank transfer|transferencia|uberweisung|واتساب|تلغرام|رقم الهاتف|تحويل بنكي|بايبال)/i.test(normalized)) categories.push('outside');
+  if (/(\bwhats?app\b|\btelegram\b|\bsignal\b|\binstagram\b|\binsta\b|\bfacebook\b|\bsnapchat\b|\bpaypal\b|\brevolut\b|\bwise\b|\bwestern union\b|\bmoneygram\b|\bbitcoin\b|\bcrypto\b|\bvirement\b|\bbank transfer\b|\btransferencia\b|\buberweisung\b|واتساب|تلغرام|رقم الهاتف|تحويل بنكي|بايبال)/i.test(normalized)) categories.push('outside');
   return [...new Set(categories)];
 }
 

@@ -135,7 +135,9 @@ export function normalizeSafetyText(value) {
 function containsKeyword(normalized, compact, keywords) {
   return keywords.some((keyword) => {
     const value = normalizeSafetyText(keyword);
-    return normalized.includes(value) || compact.includes(value.replace(/\s+/g, ''));
+    // Delimited words avoid false positives such as "signaler" matching Signal.
+    // Punctuation has already become a space during normalization.
+    return ` ${normalized} `.includes(` ${value} `);
   });
 }
 function wordDigitRun(normalized) {
