@@ -3,12 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import pg from 'pg';
+import { createPostgresPool } from './postgres-repositories.js';
 
 // Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
 // data.json du dev/démo en cours) — voir server/test/.
 const DATA_FILE = process.env.DATA_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), 'data.json');
-const { Pool } = pg;
 
 export function emptyState() {
   return {
@@ -105,7 +104,7 @@ const READ_CACHE_MS = Math.max(250, Math.min(10_000, Number(process.env.STATE_RE
 
 if (process.env.DATABASE_URL) {
   try {
-  pool = new Pool({
+  pool = createPostgresPool({
     connectionString: process.env.DATABASE_URL,
     // Keep state writes and independent session operations from blocking each other.
     max: 2,

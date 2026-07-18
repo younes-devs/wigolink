@@ -1,10 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pg from 'pg';
 import { emptyState } from './store.js';
+import { createPostgresPool } from './postgres-repositories.js';
 
-const { Pool } = pg;
 const defaultDataFile = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data.json');
 
 if (!process.env.DATABASE_URL) {
@@ -14,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 const dataFile = process.argv.find((arg) => arg.startsWith('--data-file='))?.slice('--data-file='.length) || defaultDataFile;
 const useEmptyState = process.argv.includes('--empty');
 const state = useEmptyState ? emptyState() : JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = createPostgresPool({ connectionString: process.env.DATABASE_URL });
 
 try {
   await pool.query(

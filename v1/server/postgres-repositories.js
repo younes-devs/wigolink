@@ -2,8 +2,24 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
-export function createPostgresPool({ connectionString }) {
-  return new Pool({ connectionString });
+export function securePostgresConfig({ connectionString }) {
+  if (!connectionString) throw new Error('DATABASE_URL est requis.');
+  const url = new URL(connectionString);
+
+  // Force TLS and certificate validation for every server-to-database connection.
+  url.searchParams.delete('sslmode');
+  url.searchParams.delete('sslcert');
+  url.searchParams.delete('sslkey');
+  url.searchParams.delete('sslrootcert');
+
+  return {
+    connectionString: url.toString(),
+    ssl: { rejectUnauthorized: true },
+  };
+}
+
+export function createPostgresPool({ connectionString, ...options }) {
+  return new Pool({ ...options, ...securePostgresConfig({ connectionString }) });
 }
 
 export function createPostgresAuditLogRepository({ pool, findUser, publicUser }) {

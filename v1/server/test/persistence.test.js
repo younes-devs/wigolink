@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { persistenceConfig, createPersistence } from '../persistence.js';
+import { securePostgresConfig } from '../postgres-repositories.js';
+
+test('postgres : TLS et verification du certificat sont obligatoires', () => {
+  const config = securePostgresConfig({ connectionString: 'postgresql://user:password@aws-0-eu-west-3.pooler.supabase.com:6543/postgres?sslmode=disable' });
+  assert.equal(config.ssl.rejectUnauthorized, true);
+  assert.equal(new URL(config.connectionString).searchParams.has('sslmode'), false);
+});
 
 test('persistence : JSON par defaut sans DATABASE_URL', () => {
   const config = persistenceConfig({});
