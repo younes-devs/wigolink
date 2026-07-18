@@ -2,197 +2,92 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '../Icons.jsx';
 import { useIndexable } from '../useIndexable.js';
 
-const LAST_UPDATE = '11 juillet 2026';
+const LAST_UPDATE = '18 juillet 2026';
+const CONTACT = '[A COMPLETER - contact confidentialite et adresse postale]';
+const RETENTION = '[A COMPLETER - duree validee avec votre conseil juridique]';
 
 const SECTIONS = [
   {
-    id: 'responsable',
-    title: '1. Responsable du traitement',
-    body: (
-      <>
-        <p>
-          Wigofly (ci-après « <b>nous</b> », « <b>la Plateforme</b> ») est responsable du traitement des données
-          personnelles collectées via l'application, au sens de l'article 4.7 du Règlement Général sur la
-          Protection des Données (RGPD — UE 2016/679).
-        </p>
-        <p>
-          Pour toute question relative à vos données, vous pouvez contacter notre Délégué à la Protection des
-          Données : <a href="mailto:dpo@wigofly.app">dpo@wigofly.app</a>.
-        </p>
-      </>
-    ),
+    id: 'controller', title: '1. Responsable du traitement', body: <>
+      <p>Le responsable du traitement est <b>[A COMPLETER - raison sociale de Wigofly]</b>, etabli a <b>[A COMPLETER - adresse du siege]</b>.</p>
+      <p>Pour toute question ou demande concernant vos donnees : <b>{CONTACT}</b>. Ne designez une personne comme DPO que lorsqu elle a ete officiellement nommee.</p>
+    </>,
   },
   {
-    id: 'donnees',
-    title: '2. Données que nous collectons',
-    body: (
-      <>
-        <table className="policy-table">
-          <thead><tr><th>Catégorie</th><th>Exemples</th><th>Source</th></tr></thead>
-          <tbody>
-            <tr><td>Identité</td><td>Nom, email, téléphone, ville, photo de profil</td><td>Vous, à l'inscription</td></tr>
-            <tr><td>Vérification d'identité (KYC)</td><td>Pièce d'identité (recto/verso), selfie, nom légal, date de naissance</td><td>Vous, lors de la vérification</td></tr>
-            <tr><td>Transaction</td><td>Annonces, photos de produits, valeur déclarée, trajets</td><td>Vous</td></tr>
-            <tr><td>Preuve & traçabilité</td><td>Vidéo de scellage, horodatage, géolocalisation au scellage</td><td>Application, avec votre action</td></tr>
-            <tr><td>Paiement</td><td>Statut d'escrow, montants — jamais les coordonnées bancaires complètes</td><td>Prestataire de paiement agréé</td></tr>
-            <tr><td>Communication</td><td>Messages échangés dans la messagerie in-app</td><td>Vous</td></tr>
-            <tr><td>Réputation</td><td>Notes, avis, badges, taux d'annulation</td><td>Vous et vos partenaires de transaction</td></tr>
-            <tr><td>Technique</td><td>Journal des événements de transaction, adresse IP, appareil</td><td>Application</td></tr>
-          </tbody>
-        </table>
-        <p className="policy-note">
-          <Icon name="lock" size={14} /> Vos documents d'identité (pièce, selfie) sont conservés de façon
-          sécurisée et ne sont accessibles qu'à notre équipe de vérification habilitée, jamais visibles par
-          les autres membres. Ils ne sont pas inclus dans l'export standard de vos données.
-        </p>
-      </>
-    ),
+    id: 'data', title: '2. Donnees traitees', body: <table className="policy-table"><thead><tr><th>Categorie</th><th>Exemples</th><th>Origine</th></tr></thead><tbody>
+      <tr><td>Compte</td><td>Nom, email, ville, photo, langue, preferences</td><td>Vous</td></tr>
+      <tr><td>Connexion et securite</td><td>Mot de passe hache, sessions, tentatives de connexion, journaux de securite</td><td>Application</td></tr>
+      <tr><td>Verification d identite</td><td>Nom legal, date de naissance, piece, selfie, decisions de verification</td><td>Vous</td></tr>
+      <tr><td>Trajets et operations</td><td>Itineraires, dates, capacite, annonces, prix proposes, preuves</td><td>Vous et votre partenaire</td></tr>
+      <tr><td>Messagerie</td><td>Messages, photos jointes, signalements et actions de moderation</td><td>Vous</td></tr>
+      <tr><td>Localisation ponctuelle</td><td>Lieu choisi ou position actuelle, precision, expiration</td><td>Vous, apres autorisation du navigateur</td></tr>
+      <tr><td>Paiement</td><td>Statut et montants d une operation lorsque le paiement reel sera active</td><td>Prestataire de paiement</td></tr>
+    </tbody></table>,
   },
   {
-    id: 'finalites',
-    title: '3. Pourquoi nous les utilisons',
-    body: (
-      <ul className="checklist">
-        <li>Créer et sécuriser votre compte, vérifier votre identité avant toute transaction.</li>
-        <li>Mettre en relation expéditeurs et voyageurs sur un trajet compatible.</li>
-        <li>Séquestrer et libérer les paiements via notre prestataire agréé.</li>
-        <li>Produire une preuve du contenu transporté (vidéo, horodatage) en cas de litige ou de contrôle douanier.</li>
-        <li>Détecter les tentatives de fraude, de désintermédiation ou de comptes liés.</li>
-        <li>Calculer votre score de fiabilité et vos plafonds progressifs.</li>
-        <li>Résoudre les litiges selon notre grille d'arbitrage.</li>
-        <li>Respecter nos obligations légales (lutte contre la fraude, conservation à des fins douanières).</li>
-      </ul>
-    ),
+    id: 'purposes', title: '3. Finalites et bases legales', body: <ul className="checklist">
+      <li><b>Execution du contrat :</b> creer le compte, proposer des trajets, coordonner les operations et fournir la messagerie.</li>
+      <li><b>Interet legitime :</b> proteger le service, prevenir la fraude, moderer les abus, conserver une trace des actions et ameliorer la fiabilite.</li>
+      <li><b>Consentement :</b> utiliser la localisation de l appareil, recevoir des communications optionnelles ou activer un fournisseur optionnel.</li>
+      <li><b>Obligation legale :</b> repondre a une demande valable d une autorite, respecter les obligations qui s appliqueront au service et conserver les elements requis.</li>
+    </ul>,
   },
   {
-    id: 'base-legale',
-    title: '4. Base légale du traitement',
-    body: (
-      <ul className="checklist">
-        <li><b>Exécution du contrat</b> — gestion de compte, matching, escrow, messagerie.</li>
-        <li><b>Obligation légale</b> — vérification d'identité (KYC), lutte anti-blanchiment, conservation à des fins fiscales/douanières.</li>
-        <li><b>Intérêt légitime</b> — prévention de la fraude, sécurité de la plateforme, amélioration du service.</li>
-        <li><b>Consentement</b> — notifications optionnelles, cookies non essentiels (voir §8).</li>
-      </ul>
-    ),
+    id: 'location', title: '4. Localisation', body: <>
+      <p>Wigofly ne suit pas votre position en continu. La localisation n est lue qu apres votre action dans une conversation et l autorisation de votre navigateur. Vous pouvez choisir votre position actuelle ou un lieu de rendez-vous.</p>
+      <p>Le partage est ponctuel, expire au bout de 30 minutes ou 2 heures, et est approximatif avant confirmation d une operation. Une fois expire, le destinataire ne peut plus ouvrir le partage dans l interface. La trace du message peut toutefois rester liee a la conversation pendant la duree de conservation applicable.</p>
+    </>,
   },
   {
-    id: 'destinataires',
-    title: '5. Qui a accès à vos données',
-    body: (
-      <>
-        <p>Vos données ne sont jamais vendues. Elles peuvent être partagées avec :</p>
-        <ul className="checklist">
-          <li><b>Prestataire de vérification d'identité</b> (KYC) — pour valider votre pièce d'identité.</li>
-          <li><b>Prestataire de paiement agréé</b> (escrow) — pour séquestrer et verser les fonds. Wigofly ne détient jamais vos fonds ni vos coordonnées bancaires complètes.</li>
-          <li><b>Votre partenaire de transaction</b> — nom, photo, score de fiabilité, badges (jamais votre téléphone avant l'accord).</li>
-          <li><b>Autorités compétentes</b> — sur réquisition légale (douanes, justice).</li>
-          <li><b>Notre équipe support/arbitrage</b> — pour instruire un litige, avec accès restreint et journalisé.</li>
-        </ul>
-      </>
-    ),
+    id: 'recipients', title: '5. Destinataires et sous-traitants', body: <ul className="checklist">
+      <li>Votre partenaire de transaction : uniquement les informations necessaires a la coordination et celles que vous partagez dans l application.</li>
+      <li>Equipe Wigofly : acces limite aux dossiers, demandes de verification, signalements et litiges selon le besoin d intervention.</li>
+      <li><b>Supabase</b> : base de donnees, authentification technique et temps reel.</li>
+      <li><b>Vercel</b> : hebergement de l application et fonctions serveur.</li>
+      <li><b>Resend</b> : envoi des emails transactionnels, notamment la verification d email.</li>
+      <li><b>Google</b> : seulement si et lorsque la connexion Google OAuth est effectivement activee.</li>
+      <li>Un prestataire de paiement ou de KYC ne sera ajoute a cette liste qu apres son activation et la mise a jour de cette politique.</li>
+      <li>Autorites publiques : uniquement en cas d obligation legale ou de demande valable.</li>
+    </ul>,
   },
   {
-    id: 'conservation',
-    title: '6. Durée de conservation',
-    body: (
-      <ul className="checklist">
-        <li><b>Compte actif</b> — pendant toute la durée d'utilisation du service.</li>
-        <li><b>Vidéos de scellage</b> — durée de la transaction + durée légale de contestation, puis suppression.</li>
-        <li><b>Historique de transactions</b> — conservé après clôture du compte à des fins de traçabilité douanière et de gestion des litiges, données personnelles anonymisées.</li>
-        <li><b>Documents KYC</b> — selon la politique de rétention du prestataire, conforme aux obligations anti-blanchiment.</li>
-        <li><b>Compte supprimé</b> — anonymisation immédiate du nom, email, téléphone et photo (voir « Supprimer mon compte » dans les réglages).</li>
-      </ul>
-    ),
+    id: 'retention', title: '6. Conservation et suppression', body: <ul className="checklist">
+      <li>Compte et profil : pendant la duree du compte, puis selon {RETENTION}.</li>
+      <li>Messages, photos et donnees de localisation : {RETENTION}. La visibilite d une localisation peut expirer avant la suppression technique des donnees.</li>
+      <li>Pieces et selfie de verification : {RETENTION}, avec acces strictement limite. Les images KYC sont exclues de l export standard.</li>
+      <li>Journal de securite et de moderation : {RETENTION}.</li>
+      <li>En cas de suppression du compte, Wigofly anonymise les donnees de profil lorsque cela est techniquement et legalement possible ; les elements necessaires a une obligation legale ou un litige en cours peuvent etre conserves.</li>
+    </ul>,
   },
   {
-    id: 'droits',
-    title: '7. Vos droits',
-    body: (
-      <>
-        <p>Conformément aux articles 15 à 22 du RGPD, vous disposez des droits suivants :</p>
-        <ul className="checklist">
-          <li><b>Droit d'accès</b> — obtenir une copie de vos données (bouton « Exporter mes données »).</li>
-          <li><b>Droit de rectification</b> — corriger vos informations depuis votre profil.</li>
-          <li><b>Droit à l'effacement</b> — supprimer votre compte (anonymisation immédiate, sous réserve d'aucune transaction active).</li>
-          <li><b>Droit à la portabilité</b> — récupérer vos données dans un format structuré (JSON).</li>
-          <li><b>Droit d'opposition et de limitation</b> — nous contacter pour toute demande spécifique.</li>
-          <li><b>Droit de réclamation</b> — auprès de l'Autorité de protection des données belge (APD) ou de la CNIL française.</li>
-        </ul>
-      </>
-    ),
+    id: 'rights', title: '7. Vos droits', body: <>
+      <p>Vous pouvez demander l acces, la rectification, l effacement, la limitation, l opposition et la portabilite de vos donnees. L application propose deja l export et la suppression de compte dans les reglages, sous certaines conditions de securite et d operations en cours.</p>
+      <p>Adressez les demandes specifiques a {CONTACT}. Une reponse est fournie dans le delai legal applicable, en principe un mois. Vous pouvez egalement introduire une reclamation aupres de l autorite de protection des donnees competente.</p>
+    </>,
   },
   {
-    id: 'securite',
-    title: '8. Sécurité et cookies',
-    body: (
-      <>
-        <p>
-          Mots de passe hachés (jamais stockés en clair), sessions révocables, détection anti-fraude et
-          anti-brute-force sur les connexions. Nous utilisons uniquement des cookies techniques nécessaires au
-          fonctionnement du service (session, préférence de thème) — aucun cookie publicitaire tiers.
-        </p>
-      </>
-    ),
+    id: 'security', title: '8. Securite, stockage local et cookies', body: <>
+      <p>Les mots de passe sont stockes sous forme hachee. Wigofly utilise des sessions, des protections contre les tentatives de connexion abusives et des controles de securite pour la messagerie et les comptes.</p>
+      <p>L application utilise le stockage local du navigateur pour conserver notamment la session, la langue, le theme et certains brouillons. Aucun cookie publicitaire tiers n est utilise par l application a ce jour. Cette affirmation doit etre revue si des outils de mesure d audience, publicite ou pixels sont ajoutes.</p>
+    </>,
   },
   {
-    id: 'transferts',
-    title: '9. Transferts internationaux',
-    body: (
-      <p>
-        Le corridor Belgique/France ↔ Maroc implique des transferts de données vers le Maroc (identité du
-        destinataire, coordination logistique). Ces transferts sont encadrés par des clauses contractuelles types
-        conformes à l'article 46 du RGPD avec nos prestataires.
-      </p>
-    ),
-  },
-  {
-    id: 'modifications',
-    title: '10. Modifications de cette politique',
-    body: (
-      <p>
-        Cette politique peut être mise à jour pour refléter des évolutions légales ou fonctionnelles. Toute
-        modification substantielle vous sera notifiée dans l'application avant son entrée en vigueur.
-      </p>
-    ),
+    id: 'transfers', title: '9. Transferts internationaux et modifications', body: <>
+      <p>Les emplacements reels de traitement et les mecanismes de transfert des sous-traitants doivent etre confirmes dans leurs documents contractuels avant le lancement commercial. Si un transfert hors EEE est necessaire, Wigofly mettra en place le mecanisme legal approprie et mettra a jour cette politique.</p>
+      <p>Cette politique peut evoluer en cas de changement legal, technique ou fonctionnel. Les changements importants seront annonces dans l application avant leur prise d effet.</p>
+    </>,
   },
 ];
 
 export default function PrivacyPolicy() {
   const nav = useNavigate();
   useIndexable();
-  return (
-    <div>
-      <button className="link-btn mb" onClick={() => nav(-1)}>
-        <Icon name="arrowLeft" size={14} />Retour
-      </button>
-      <h1 className="page-title">Politique de confidentialité</h1>
-      <p className="page-sub">Dernière mise à jour : {LAST_UPDATE}</p>
-
-      <div className="alert alert-teal">
-        <Icon name="shieldCheck" size={17} />
-        <span>
-          Document de référence complet. Pour agir sur vos données (export, suppression), rendez-vous dans
-          Profil → Confidentialité et données.
-        </span>
-      </div>
-
-      {SECTIONS.map((s) => (
-        <div className="card policy-section" key={s.id}>
-          <h2 className="policy-h2">{s.title}</h2>
-          <div className="policy-body">{s.body}</div>
-        </div>
-      ))}
-
-      <div className="card center" style={{ padding: '20px 18px' }}>
-        <Icon name="mail" size={22} />
-        <p className="muted mt" style={{ fontSize: 13 }}>
-          Une question sur vos données ? Écrivez à notre DPO :
-        </p>
-        <a href="mailto:dpo@wigofly.app" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>
-          dpo@wigofly.app
-        </a>
-      </div>
-    </div>
-  );
+  return <div>
+    <button className="link-btn mb" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />Retour</button>
+    <h1 className="page-title">Politique de confidentialite</h1>
+    <p className="page-sub">Derniere mise a jour : {LAST_UPDATE}</p>
+    <div className="alert alert-warn"><Icon name="alert" size={17} /><span>Texte pre-publication : completez les champs entre crochets, les durees de conservation et les informations de societe avant le lancement commercial.</span></div>
+    {SECTIONS.map((section) => <div id={section.id} className="card policy-section" key={section.id}><h2 className="policy-h2">{section.title}</h2><div className="policy-body">{section.body}</div></div>)}
+    <div className="card center" style={{ padding: '20px 18px' }}><Icon name="mail" size={22} /><p className="muted mt" style={{ fontSize: 13 }}>Question concernant vos donnees ?</p><b style={{ color: 'var(--accent)' }}>{CONTACT}</b></div>
+  </div>;
 }
