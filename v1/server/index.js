@@ -2145,7 +2145,15 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
       });
     }
   }
-  const safety = analyzeMessageSafety(text);
+  // Join a short, recent sequence from the same sender. This catches a number or
+  // payment handle deliberately split across several chat bubbles, while limiting
+  // the inspection to the conversation and a ten-minute coordination window.
+  const recentOutboundText = db.messages
+    .filter((message) => message.conversationId === conversation.id && message.from === req.user.id && message.at > Date.now() - 10 * 60 * 1000)
+    .slice(-4)
+    .map((message) => message.text || '')
+    .join(' ');
+  const safety = analyzeMessageSafety(`${recentOutboundText} ${text}`);
   if (safety.blocked) {
     const attempt = registerMessageSafetyAttempt({ user: req.user, conversation, analysis: safety });
     await audit(req.user.id, 'message.safety_blocked', 'conversation', conversation.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });

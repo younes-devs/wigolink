@@ -25,6 +25,13 @@ test('message safety catches external payments and Arabic digits', () => {
   }
 });
 
+test('message safety catches a contact split across chat bubbles', () => {
+  const sequence = ['Mon numero est', '06 12', '34 56 78'].join(' ');
+  const result = analyzeMessageSafety(sequence);
+  assert.equal(result.blocked, true);
+  assert.ok(result.categories.includes('phone'));
+});
+
 test('message safety preserves ordinary coordination messages', () => {
   for (const text of ['Bonjour, ou se fait la remise ?', 'Le colis pese 3 kg et le prix est 15 EUR.', 'Je confirme le rendez-vous demain.']) {
     assert.equal(analyzeMessageSafety(text).blocked, false, text);
