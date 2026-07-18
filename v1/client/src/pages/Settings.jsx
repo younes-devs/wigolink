@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
-import { Icon } from '../Icons.jsx';
+import { Avatar, Icon } from '../Icons.jsx';
 import { getTheme, setTheme } from '../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../i18n.js';
 
@@ -27,7 +27,7 @@ export default function Settings() {
       notifications: { title: 'Notifications', content: <NotificationsSection /> },
       appearance: { title: 'Apparence et langue', content: <AppearanceSection /> },
       legal: { title: 'Légal', content: <LegalSection /> },
-      blocked: { title: 'Compte bloqué', content: <BlockedAccountSection /> },
+      blocked: { title: 'Comptes bloqués', content: <BlockedAccountSection /> },
       support: { title: 'Support', content: <SupportSection /> },
     }[section];
     return (
@@ -53,7 +53,7 @@ export default function Settings() {
       <SettingsEntry icon="bell" title="Notifications" sub="Choisissez les alertes que vous recevez" onClick={() => setSection('notifications')} />
       <SettingsEntry icon="moon" title="Apparence et langue" sub="Mode clair, sombre et langue de l'application" onClick={() => setSection('appearance')} />
       <SettingsEntry icon="fileText" title="Légal" sub="Conditions générales et confidentialité" onClick={() => setSection('legal')} />
-      <SettingsEntry icon="lock" title="Compte bloqué" sub="Comprendre un blocage et demander un recours" onClick={() => setSection('blocked')} />
+      <SettingsEntry icon="lock" title="Comptes bloqués" sub="Gérer les personnes que vous avez bloquées" onClick={() => setSection('blocked')} />
       <SettingsEntry icon="mail" title="Support" sub="Nous contacter pour une question ou un problème" onClick={() => setSection('support')} />
 
       <button className="btn btn-ghost settings-logout" onClick={logout}><Icon name="logout" size={17} />{t('profile.logout')}</button>
@@ -119,12 +119,20 @@ function LegalSection() {
 }
 
 function BlockedAccountSection() {
-  return <section className="settings-info-card">
-    <span className="settings-row-icon settings-warning-icon"><Icon name="lock" size={18} /></span>
-    <h2>Votre compte est bloqué ?</h2>
-    <p>Un compte peut être temporairement bloqué pour protéger les membres, vérifier une identité, examiner un signalement ou traiter un litige.</p>
-    <p>Si vous pensez qu'il s'agit d'une erreur, contactez le support avec votre adresse email et une brève explication.</p>
-    <a className="btn btn-ghost" href={`mailto:${SUPPORT_EMAIL}?subject=Recours%20compte%20Wigofly`}><Icon name="mail" size={16} />Contacter le support</a>
+  const [users, setUsers] = useState(null);
+  const [openMenu, setOpenMenu] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => { api('/blocked-users').then((data) => setUsers(data.users || [])).catch((err) => { setUsers([]); setError(err.message); }); }, []);
+  const unblock = async (id) => {
+    setError('');
+    try { await api(`/blocked-users/${id}/unblock`, { method: 'POST' }); setUsers((current) => current.filter((user) => user.id !== id)); setOpenMenu(''); }
+    catch (err) { setError(err.message); }
+  };
+  if (users === null) return <div className="settings-empty-state">Chargement des comptes bloqués...</div>;
+  return <section className="blocked-users-panel">
+    <p className="blocked-users-intro">Les personnes bloquées ne peuvent plus vous écrire. Vous pouvez les débloquer à tout moment.</p>
+    {error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}
+    {users.length === 0 ? <div className="settings-empty-state"><Icon name="shieldCheck" size={22} /><b>Aucun compte bloqué</b><span>Les comptes que vous bloquez depuis une conversation apparaîtront ici.</span></div> : <div className="blocked-users-list">{users.map((user) => <div className="blocked-user-row" key={user.id}><Avatar name={user.name} photo={user.photoUrl} size={44} /><div className="grow"><b>{user.name}</b><small>{user.city || 'Membre Wigofly'}</small></div><div className="blocked-user-actions"><button className="icon-btn blocked-user-more" onClick={() => setOpenMenu(openMenu === user.id ? '' : user.id)} aria-label={`Options pour ${user.name}`}><Icon name="moreVertical" size={18} /></button>{openMenu === user.id && <div className="blocked-user-menu"><button onClick={() => unblock(user.id)}><Icon name="check" size={16} />Débloquer</button></div>}</div></div>)}</div>}
   </section>;
 }
 

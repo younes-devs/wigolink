@@ -1455,7 +1455,12 @@ body {
 .settings-support { display: grid; gap: 12px; }
 .settings-support-form { display: grid; gap: 9px; padding: 18px; }
 .settings-support-form label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
-.settings-support-form textarea { width: 100%; min-height: 132px; resize: vertical; }
+.settings-support-form input, .settings-support-form textarea {
+  width: 100%; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 14px; padding: 12px;
+}
+.settings-support-form input:focus, .settings-support-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.settings-support-form textarea { min-height: 132px; resize: vertical; }
 .settings-support-form .btn { justify-content: center; margin-top: 3px; }
 .settings-support-notice { color: var(--amber); font-size: 12px; line-height: 1.45; }
 .settings-email-contact { display: flex; align-items: flex-start; gap: 12px; padding: 14px; }
@@ -1463,6 +1468,21 @@ body {
 .settings-email-contact b { font-size: 13px; }
 .settings-email-contact a { color: var(--accent); font-size: 13px; font-weight: 700; margin-top: 3px; }
 .settings-email-contact small { color: var(--ink-soft); font-size: 11.5px; line-height: 1.4; margin-top: 4px; }
+.blocked-users-panel { display: grid; gap: 12px; }
+.blocked-users-intro { color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.blocked-users-list { border: 1px solid var(--glass-border); border-radius: var(--radius); overflow: visible; background: var(--glass); box-shadow: var(--shadow); }
+.blocked-user-row { position: relative; display: flex; align-items: center; gap: 12px; min-height: 70px; padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+.blocked-user-row:last-child { border-bottom: 0; }
+.blocked-user-row b, .blocked-user-row small { display: block; }
+.blocked-user-row b { font-size: 14px; }
+.blocked-user-row small { color: var(--ink-soft); font-size: 12px; margin-top: 3px; }
+.blocked-user-actions { position: relative; flex: 0 0 auto; }
+.blocked-user-more { width: 36px; height: 36px; border-radius: 10px; background: var(--surface); }
+.blocked-user-menu { position: absolute; right: 0; top: 42px; z-index: 3; min-width: 140px; padding: 5px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-lg); }
+.blocked-user-menu button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; border-radius: 7px; background: transparent; color: var(--ink); padding: 9px; font: inherit; font-size: 13px; cursor: pointer; }
+.blocked-user-menu button:hover { background: var(--accent-tint); color: var(--accent); }
+.settings-empty-state { display: grid; justify-items: center; gap: 7px; padding: 28px 18px; border: 1px solid var(--glass-border); border-radius: var(--radius); background: var(--glass); color: var(--ink-soft); text-align: center; font-size: 13px; }
+.settings-empty-state b { color: var(--ink); }
 
 /* Politique de confidentialité */
 .policy-section { padding: 18px; }

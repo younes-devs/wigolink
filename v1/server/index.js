@@ -2214,6 +2214,29 @@ app.post('/api/conversations/:id/block', auth, async (req, res) => {
   res.json({ ok: true, blocked, conversation: conversationView(conversation, req.user.id) });
 });
 
+app.get('/api/blocked-users', auth, (req, res) => {
+  const users = [...blockedUserIds(req.user)]
+    .map((id) => publicUser(findUser(id)))
+    .filter(Boolean);
+  res.json({ users });
+});
+
+app.post('/api/blocked-users/:id/unblock', auth, async (req, res) => {
+  const otherId = req.params.id;
+  const ids = blockedUserIds(req.user);
+  if (!ids.has(otherId)) return res.status(404).json({ error: 'Compte bloque introuvable' });
+  ids.delete(otherId);
+  req.user.blockedUserIds = [...ids];
+  for (const conversation of db.conversations) {
+    if (conversation.participantIds?.includes(req.user.id) && conversation.participantIds?.includes(otherId)) {
+      conversation.blockedBy = (conversation.blockedBy || []).filter((id) => id !== req.user.id);
+    }
+  }
+  await audit(req.user.id, 'user.unblock', 'user', otherId, {});
+  save();
+  res.json({ ok: true });
+});
+
 app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
