@@ -24,6 +24,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
     "@vitejs/plugin-react": "^6.0.3",
     "concurrently": "^10.0.3",
     "cors": "^2.8.6",

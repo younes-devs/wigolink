@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
+import { subscribeToMessageUpdates } from '../realtime.js';
 import { useToast } from '../Toast.jsx';
 
 const FILTERS = [
@@ -55,6 +56,21 @@ export default function MessagesSimple() {
     }, 12_000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    let cancelled = false;
+    void subscribeToMessageUpdates(user?.id, () => {
+      if (document.visibilityState === 'visible') void load({ force: true });
+    }).then((dispose) => {
+      if (cancelled) dispose();
+      else unsubscribe = dispose;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [user?.id]);
 
   const counts = useMemo(() => {
     const list = conversations || [];

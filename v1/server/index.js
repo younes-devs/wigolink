@@ -22,6 +22,8 @@ import {
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const APP_ORIGINS = String(process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_REALTIME_ORIGIN = SUPABASE_URL ? SUPABASE_URL.replace(/^http/, 'ws') : '';
 if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
 if (IS_PRODUCTION && process.env.TEST_EMAIL_BYPASS) throw new Error('TEST_EMAIL_BYPASS ne doit jamais etre active en production.');
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
@@ -42,7 +44,8 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   // The bootstrap script in client/index.html applies theme and language before paint.
-  res.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:");
+  const realtimeConnectSrc = SUPABASE_URL ? ` ${SUPABASE_URL} ${SUPABASE_REALTIME_ORIGIN}` : '';
+  res.setHeader('Content-Security-Policy', `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'${realtimeConnectSrc}; font-src 'self' data:`);
   next();
 });
 app.use(express.json({ limit: '25mb' }));
@@ -156,6 +159,38 @@ app.use((req, res, next) => {
 const realtimeClients = new Map();
 const lastSeenByUser = new Map();
 
+function realtimeBroadcastConfig() {
+  const publishableKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
+  const secretKey = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!SUPABASE_URL || !publishableKey || !secretKey) return null;
+  return { url: SUPABASE_URL, publishableKey, secretKey };
+}
+
+function ensureRealtimeChannel(user) {
+  if (!user.realtimeChannel) user.realtimeChannel = `wigofly:${newToken()}`;
+  return user.realtimeChannel;
+}
+
+async function publishRealtimeUpdate(userId, payload) {
+  const config = realtimeBroadcastConfig();
+  const user = findUser(userId);
+  if (!config || !user?.realtimeChannel) return;
+  try {
+    await fetch(`${config.url}/realtime/v1/api/broadcast/${encodeURIComponent(user.realtimeChannel)}/events/update`, {
+      method: 'POST',
+      headers: {
+        apikey: config.secretKey,
+        Authorization: `Bearer ${config.secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    // Realtime improves responsiveness but must never block a message or its persistence.
+    console.error('Echec de diffusion temps reel', error);
+  }
+}
+
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
 // passe) et les codes de vérification en clair dans les réponses API — jamais en
@@ -180,9 +215,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
-// Les clients synchronisent les conversations par polling discret et visible.
+// Les clients utilisent donc le WebSocket gere par Supabase Realtime.
 app.get('/api/realtime', auth, (req, res) => {
   res.status(410).json({ error: 'Le temps reel SSE est remplace par la synchronisation automatique.' });
+});
+
+app.post('/api/realtime/session', auth, (req, res) => {
+  const config = realtimeBroadcastConfig();
+  if (!config) return res.json({ enabled: false });
+  res.json({
+    enabled: true,
+    url: config.url,
+    publishableKey: config.publishableKey,
+    channel: ensureRealtimeChannel(req.user),
+  });
 });
 
 // ---------- Helpers ----------
@@ -389,7 +435,11 @@ function sendRealtime(userId, payload) {
 
 function broadcastConversation(conversation, payload, exceptUserId = null) {
   for (const userId of conversation.participantIds || []) {
-    if (userId !== exceptUserId) sendRealtime(userId, { conversationId: conversation.id, ...payload });
+    if (userId !== exceptUserId) {
+      const update = { conversationId: conversation.id, ...payload, at: Date.now() };
+      sendRealtime(userId, update);
+      void publishRealtimeUpdate(userId, update);
+    }
   }
 }
 

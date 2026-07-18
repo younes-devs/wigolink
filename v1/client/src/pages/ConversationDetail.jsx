@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
+import { subscribeToMessageUpdates } from '../realtime.js';
 import { useToast } from '../Toast.jsx';
 import { shortDate } from './MessagesSimple.jsx';
 
@@ -131,6 +132,21 @@ export default function ConversationDetail() {
       clearInterval(interval);
       clearTimeout(typingTimerRef.current);
       api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
+    };
+  }, [id, user.id]);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    let cancelled = false;
+    void subscribeToMessageUpdates(user.id, (update) => {
+      if (update.conversationId === id && document.visibilityState === 'visible') void load(true);
+    }).then((dispose) => {
+      if (cancelled) dispose();
+      else unsubscribe = dispose;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
     };
   }, [id, user.id]);
 
