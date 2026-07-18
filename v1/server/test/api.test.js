@@ -582,9 +582,9 @@ test('messagerie : le partage de coordonnées est détecté et signalé', async 
   assert.equal(cleanMsg.body.warning, null);
 
   const leakedMsg = await api(`/transactions/${tx.id}/messages`, { method: 'POST', token: karim, body: { text: 'Appelle-moi au 0612345678 direct' } });
-  assert.equal(leakedMsg.status, 200); // le chat avertit mais ne bloque pas (contrairement aux avis)
-  assert.equal(leakedMsg.body.message.flagged, true);
-  assert.ok(leakedMsg.body.warning);
+  assert.equal(leakedMsg.status, 422);
+  assert.equal(leakedMsg.body.code, 'message_safety_blocked');
+  assert.ok(leakedMsg.body.categories.includes('phone'));
 
   const mehdi = tokens.mehdi;
   const outsiderRead = await api(`/transactions/${tx.id}/messages`, { token: mehdi });
@@ -1686,10 +1686,13 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
       attachments: [{ name: 'colis.png', dataUrl: TINY_PNG }],
     },
   });
-  assert.equal(attached.status, 200, JSON.stringify(attached.body));
-  assert.equal(attached.body.message.type, 'attachment');
-  assert.equal(attached.body.message.attachments.length, 1);
-  assert.equal(attached.body.message.attachments[0].type, 'image');
+  assert.equal(attached.status, 422, JSON.stringify(attached.body));
+  assert.equal(attached.body.code, 'message_attachment_restricted');
+
+  const postAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
+    method: 'POST', token: fatima, body: { text: 'Les details restent ecrits dans Wigofly.' },
+  });
+  assert.equal(postAttachment.status, 200, JSON.stringify(postAttachment.body));
 
   const badAttachment = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
@@ -1699,16 +1702,16 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
       attachments: [{ name: 'note.txt', dataUrl: 'data:text/plain;base64,SGVsbG8=' }],
     },
   });
-  assert.equal(badAttachment.status, 400);
+  assert.equal(badAttachment.status, 422);
 
   const flaggedConversationMessage = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',
     token: fatima,
     body: { text: 'Mon telephone est 0612345678 mais je reste sur Wigofly.' },
   });
-  assert.equal(flaggedConversationMessage.status, 200, JSON.stringify(flaggedConversationMessage.body));
-  assert.equal(flaggedConversationMessage.body.message.flagged, true);
-  assert.match(flaggedConversationMessage.body.warning, /Wigofly/);
+  assert.equal(flaggedConversationMessage.status, 422, JSON.stringify(flaggedConversationMessage.body));
+  assert.equal(flaggedConversationMessage.body.code, 'message_safety_blocked');
+  assert.ok(flaggedConversationMessage.body.categories.includes('phone'));
 
   const navKarimUnread = await api('/navigation-summary', { token: karim });
   assert.equal(navKarimUnread.status, 200);
@@ -1823,10 +1826,10 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(olderMessages.status, 200);
   assert.equal(olderMessages.body.messages.length >= 1, true);
   assert.ok(olderMessages.body.messages.every((m) => m.at < pagedMessages.body.page.nextBefore));
-  const searchedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?q=photo%20du%20colis`, { token: fatima });
+  const searchedMessages = await api(`/conversations/${conversation.body.conversation.id}/messages?q=message%20idempotent`, { token: fatima });
   assert.equal(searchedMessages.status, 200);
-  assert.equal(searchedMessages.body.messages.some((m) => m.id === attached.body.message.id), true);
-  assert.equal(searchedMessages.body.messages.every((m) => `${m.text || ''} ${(m.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes('photo du colis')), true);
+  assert.equal(searchedMessages.body.messages.some((m) => m.id === retry1.body.message.id), true);
+  assert.equal(searchedMessages.body.messages.every((m) => `${m.text || ''} ${(m.attachments || []).map((a) => a.name).join(' ')}`.toLowerCase().includes('message idempotent')), true);
 
   const acceptedThenRejected = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',

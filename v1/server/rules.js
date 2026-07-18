@@ -96,6 +96,68 @@ const LEAK_PATTERNS = [
   /hors app|en dehors de l'app/i,
 ];
 
-export function detectLeak(text) {
-  return LEAK_PATTERNS.some((re) => re.test(text));
+// This runs on the server. Normalization catches punctuation, accents, Arabic
+// digits and simple obfuscation before a message is persisted.
+const EXTERNAL_CONTACT = [
+  'whatsapp', 'telegram', 'signal', 'viber', 'wechat', 'line', 'instagram', 'insta',
+  'facebook', 'messenger', 'snapchat', 'tiktok', 'linkedin', 'discord', 'telefono',
+  'telefon', 'telephone', 'tel', 'numero', 'nummer', 'call me', 'appelle moi',
+  'llamame', 'ruf mich an', 'schreib mir', 'escribeme', 'contact me', 'outside the app',
+  'off platform', 'hors app', 'en dehors de l app', 'fuera de la app', 'ausserhalb der app',
+  'buiten de app', 'واتساب', 'تلغرام', 'تيليجرام', 'سيغنال', 'رقمي', 'رقم الهاتف', 'اتصل بي',
+  'راسلني', 'خارج التطبيق', 'خارج المنصة', 'انستغرام', 'فيسبوك',
+];
+const EXTERNAL_PAYMENT = [
+  'paypal', 'pay pal', 'revolut', 'wise', 'western union', 'moneygram', 'money gram',
+  'bank transfer', 'wire transfer', 'cashapp', 'cash app', 'venmo', 'zelle', 'crypto',
+  'bitcoin', 'usdt', 'binance', 'virement', 'vire moi', 'especes', 'cash', 'pago fuera',
+  'transferencia bancaria', 'efectivo', 'transferencia', 'uberweisung', 'bankuberweisung',
+  'barzahlung', 'krypto', 'overschrijving', 'bankoverschrijving', 'contant', 'تحويل بنكي',
+  'حوالة', 'كاش', 'نقدا', 'بيتكوين', 'عملات رقمية', 'بايبال',
+];
+const WORD_DIGITS = [
+  'zero', 'un', 'une', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+  'one', 'two', 'three', 'four', 'five', 'seven', 'eight', 'nine', 'cero', 'uno', 'dos',
+  'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'null', 'eins', 'zwei',
+  'drei', 'vier', 'funf', 'fuenf', 'sechs', 'sieben', 'acht', 'neun', 'nul', 'een', 'twee',
+  'drie', 'vijf', 'zes', 'zeven', 'negen', 'صفر', 'واحد', 'اثنان', 'اثنين', 'ثلاثة',
+  'اربعة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة',
+];
+const ARABIC_DIGITS = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9', '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9' };
+
+export function normalizeSafetyText(value) {
+  return String(value || '')
+    .replace(/[٠-٩۰-۹]/g, (digit) => ARABIC_DIGITS[digit] || digit)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[\u200b-\u200d\ufeff]/g, '').replace(/[^\p{L}\p{N}@+]/gu, ' ')
+    .replace(/\s+/g, ' ').trim();
 }
+function containsKeyword(normalized, compact, keywords) {
+  return keywords.some((keyword) => {
+    const value = normalizeSafetyText(keyword);
+    return normalized.includes(value) || compact.includes(value.replace(/\s+/g, ''));
+  });
+}
+function wordDigitRun(normalized) {
+  let run = 0;
+  for (const token of normalized.split(' ').filter(Boolean)) {
+    if (WORD_DIGITS.includes(token)) { run += 1; if (run >= 5) return true; } else run = 0;
+  }
+  return false;
+}
+export function analyzeMessageSafety(text) {
+  const raw = String(text || '');
+  const normalized = normalizeSafetyText(raw);
+  const compact = normalized.replace(/\s+/g, '');
+  const categories = [];
+  if (/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(raw)) categories.push('email');
+  if (/(?:https?:\/\/|www\.|\.(?:com|net|org|io|me)\b)/i.test(raw)) categories.push('url');
+  if (/@[a-z0-9_.]{3,}/i.test(raw)) categories.push('social_handle');
+  if (/\+?\d(?:[\s().-]*\d){7,}/.test(normalized) || /\d{8,}/.test(compact)) categories.push('phone');
+  if (wordDigitRun(normalized)) categories.push('phone_words');
+  if (containsKeyword(normalized, compact, EXTERNAL_CONTACT)) categories.push('off_platform_contact');
+  if (containsKeyword(normalized, compact, EXTERNAL_PAYMENT)) categories.push('external_payment');
+  const unique = [...new Set(categories)];
+  return { blocked: unique.length > 0, categories: unique, severity: unique.some((item) => ['external_payment', 'phone', 'email'].includes(item)) ? 'high' : unique.length ? 'medium' : 'none' };
+}
+export function detectLeak(text) { return analyzeMessageSafety(text).blocked; }

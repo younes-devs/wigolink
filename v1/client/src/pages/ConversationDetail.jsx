@@ -16,6 +16,18 @@ function threadCacheKey(userId, conversationId) {
   return `${userId || 'anonymous'}:${conversationId}`;
 }
 
+function draftSafety(text) {
+  const value = String(text || '');
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const categories = [];
+  if (/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(value)) categories.push('email');
+  if (/(?:https?:\/\/|www\.|\.(?:com|net|org|io|me)\b)/i.test(value)) categories.push('link');
+  if (/@[a-z0-9_.]{3,}/i.test(value)) categories.push('social');
+  if (/\+?\d(?:[\s().-]*\d){7,}/.test(value)) categories.push('phone');
+  if (/(whats?app|telegram|signal|instagram|insta|facebook|snapchat|paypal|revolut|wise|western union|moneygram|bitcoin|crypto|virement|bank transfer|transferencia|uberweisung|واتساب|تلغرام|رقم الهاتف|تحويل بنكي|بايبال)/i.test(normalized)) categories.push('outside');
+  return [...new Set(categories)];
+}
+
 export default function ConversationDetail() {
   useLang();
   const { id } = useParams();
@@ -174,7 +186,8 @@ export default function ConversationDetail() {
   useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
 
   const conversationOpen = conversation && conversation.status !== 'completed' && conversation.status !== 'archived';
-  const canWrite = conversationOpen && isOnline;
+  const unsafeDraftCategories = useMemo(() => draftSafety(text), [text]);
+  const canWrite = conversationOpen && isOnline && !conversation.blocked && !conversation.blockedByOther;
   const visibleMessages = useMemo(() => {
     return messages;
   }, [messages]);
@@ -222,6 +235,12 @@ export default function ConversationDetail() {
     const outgoingAttachment = retryText ? retryAttachment : attachment;
     if ((!bodyText && !outgoingAttachment) || sending || !canWrite) {
       if (!isOnline) toast.error(t('messages.offline.toast'));
+      if (unsafeDraftCategories.length) toast.error('Retirez les coordonnees, liens et paiements externes pour envoyer ce message.');
+      if (conversation?.blocked || conversation?.blockedByOther) toast.error('Cette conversation est bloquee.');
+      return;
+    }
+    if (!retryText && unsafeDraftCategories.length) {
+      toast.error('Pour votre securite, gardez les coordonnees et le paiement dans Wigofly.');
       return;
     }
     const clientId = retryClientId || `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -257,6 +276,12 @@ export default function ConversationDetail() {
       api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
       await load(true);
     } catch (err) {
+      if (err.data?.code === 'message_safety_blocked' || err.data?.code === 'message_safety_cooldown') {
+        setMessages((current) => current.filter((message) => message.id !== clientId));
+        if (!retryText) setText(bodyText);
+        toast.error(err.message || 'Ce message ne peut pas etre envoye hors de Wigofly.');
+        return;
+      }
       setFailed({ text: bodyText, clientId, attachment: outgoingAttachment, message: err.message || t('messages.composer.failed') });
       setMessages((current) => current.map((message) =>
         message.id === clientId ? { ...message, deliveryStatus: 'failed' } : message
@@ -327,6 +352,20 @@ export default function ConversationDetail() {
       toast.success(archived ? t('messages.toast.archived') : t('messages.toast.restored'));
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
+    } finally {
+      setMenuOpen(false);
+    }
+  };
+
+  const toggleBlock = async () => {
+    const nextBlocked = !conversation.blocked;
+    if (nextBlocked && !window.confirm('Bloquer ce contact ? Il ne pourra plus vous envoyer de message dans Wigofly.')) return;
+    try {
+      const data = await api(`/conversations/${id}/block`, { method: 'POST', body: { blocked: nextBlocked } });
+      setConversation(data.conversation);
+      toast.success(nextBlocked ? 'Contact bloque' : 'Contact debloque');
+    } catch (err) {
+      toast.error(err.message || 'Action impossible');
     } finally {
       setMenuOpen(false);
     }
@@ -455,6 +494,9 @@ export default function ConversationDetail() {
               <button type="button" role="menuitem" onClick={() => { setReportOpen(true); setMenuOpen(false); }}>
                 <Icon name="alert" size={15} /> {t('messages.action.report')}
               </button>
+              <button type="button" role="menuitem" className={conversation.blocked ? '' : 'conversation-menu-danger'} onClick={toggleBlock}>
+                <Icon name={conversation.blocked ? 'eye' : 'lock'} size={15} /> {conversation.blocked ? 'Debloquer ce contact' : 'Bloquer ce contact'}
+              </button>
             </div>
           )}
         </div>
@@ -482,6 +524,14 @@ export default function ConversationDetail() {
           <Icon name="shieldCheck" size={16} />
           <span>Pour votre securite, gardez paiement et echanges sur Wigofly.</span>
           <button type="button" onClick={() => setReportOpen(true)}>Signaler</button>
+        </div>
+      )}
+
+      {(conversation.blocked || conversation.blockedByOther) && (
+        <div className="conversation-safety-banner conversation-blocked-banner">
+          <Icon name="lock" size={16} />
+          <span>{conversation.blocked ? 'Vous avez bloque ce contact. La discussion reste visible mais l envoi est ferme.' : 'Ce contact ne peut plus recevoir de nouveaux messages.'}</span>
+          {conversation.blocked && <button type="button" onClick={toggleBlock}>Debloquer</button>}
         </div>
       )}
 
@@ -587,14 +637,18 @@ export default function ConversationDetail() {
       )}
       {attachmentState && <div className="attachment-progress"><span className="spinner" />{attachmentState}</div>}
 
-      <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
-        <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
-        <button type="button" className="compose-attach" disabled={!canWrite || sending} onClick={() => fileRef.current?.click()} aria-label={t('messages.attachment.add')} title={t('messages.attachment.add')}>
-          <Icon name="image" size={18} />
-        </button>
-        <button type="button" className="compose-attach camera" disabled={!canWrite || sending} onClick={() => cameraRef.current?.click()} aria-label="Prendre une photo" title="Prendre une photo"><Icon name="camera" size={18} /></button>
+      {unsafeDraftCategories.length > 0 && (
+        <div className="message-safety-draft" role="alert">
+          <Icon name="shieldCheck" size={16} />
+          <span>Ce brouillon contient {unsafeDraftCategories.map((category) => ({ phone: 'un numero', email: 'un email', link: 'un lien', social: 'un pseudo social', outside: 'un paiement ou contact externe' }[category] || category)).join(', ')}. Retirez-le pour envoyer.</span>
+        </div>
+      )}
+
+      <div className="message-privacy-note"><Icon name="shieldCheck" size={14} />Les contacts, paiements externes, liens et images sont bloques ici pour votre securite.</div>
+
+      <form className={`message-compose text-only ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
         <textarea
+          className={unsafeDraftCategories.length ? 'message-compose-unsafe' : ''}
           value={text}
           onChange={(e) => { setText(e.target.value.slice(0, 1000)); announceTyping(); }}
           placeholder={conversationOpen ? (isOnline ? t('messages.composer.placeholder') : t('messages.offline.placeholder')) : t('messages.composer.closed')}

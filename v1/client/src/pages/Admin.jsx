@@ -16,13 +16,14 @@ function fraudSignalCount(f) {
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | categories | access
+  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | safety | categories | access
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [kycPending, setKycPending] = useState(null);
   const [team, setTeam] = useState(null);
+  const [safety, setSafety] = useState(null);
   const toast = useToast();
 
   const load = useCallback(() => {
@@ -37,6 +38,9 @@ export default function Admin() {
   const loadTeam = useCallback(() => {
     api('/admin/users').then(setTeam).catch(() => setTeam({ users: [], adminCount: 0 }));
   }, []);
+  const loadSafety = useCallback(() => {
+    api('/admin/safety').then(setSafety).catch(() => setSafety({ riskyUsers: [], appeals: [] }));
+  }, []);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadOps(); }, [loadOps]);
@@ -46,6 +50,7 @@ export default function Admin() {
   // découplée du fetch propre à KycPanel (filtres/recherche) qui reste inchangé.
   useEffect(() => { loadFraud(); }, [loadFraud]);
   useEffect(() => { loadTeam(); }, [loadTeam]);
+  useEffect(() => { loadSafety(); }, [loadSafety]);
   useEffect(() => { api('/admin/kyc?status=pending').then((d) => setKycPending(d.stats?.pending ?? 0)).catch(() => {}); }, []);
 
   const decide = async (id, decision, extra = {}) => {
@@ -87,6 +92,9 @@ export default function Admin() {
         <button className={tab === 'kpis' ? 'active' : ''} onClick={() => setTab('kpis')}>KPIs</button>
         <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
           Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
+        </button>
+        <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}>
+          Securite {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
         </button>
         <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Catégories</button>
         <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>Acces</button>
@@ -152,6 +160,7 @@ export default function Admin() {
       {tab === 'kyc' && <KycPanel />}
       {tab === 'kpis' && <KpiPanel />}
       {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
+      {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
       {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
     </div>
@@ -205,6 +214,64 @@ function AccessPanel({ data, reload }) {
         onConfirm={apply}
         onClose={() => setPending(null)}
       />}
+    </section>
+  );
+}
+
+function SafetyPanel({ data, reload }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState('');
+  const act = async (user, action) => {
+    const reason = action === 'restore' ? '' : window.prompt(action === 'warn' ? 'Motif de l avertissement' : 'Motif de la suspension');
+    if (action !== 'restore' && (!reason || reason.trim().length < 5)) return;
+    const durationHours = action === 'suspend' ? Number(window.prompt('Duree en heures (1 a 720)', '24')) : null;
+    if (action === 'suspend' && (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 720)) return;
+    setBusy(`${user.id}:${action}`);
+    try {
+      await api(`/admin/users/${user.id}/safety`, { method: 'POST', body: { action, reason, durationHours } });
+      toast.success(action === 'suspend' ? 'Compte suspendu' : action === 'restore' ? 'Compte retabli' : 'Avertissement envoye');
+      reload();
+    } catch (error) { toast.error(error.message || 'Action impossible'); } finally { setBusy(''); }
+  };
+  const decideAppeal = async (appeal, decision) => {
+    const reason = window.prompt(decision === 'approve' ? 'Note de validation (facultative)' : 'Motif du refus (facultatif)') || '';
+    setBusy(`${appeal.id}:${decision}`);
+    try {
+      await api(`/admin/safety/appeals/${appeal.id}`, { method: 'POST', body: { decision, reason } });
+      toast.success(decision === 'approve' ? 'Recours accepte et compte retabli' : 'Recours refuse');
+      reload();
+    } catch (error) { toast.error(error.message || 'Decision impossible'); } finally { setBusy(''); }
+  };
+  if (!data) return <SkeletonList count={3} avatar={false} />;
+  const openAppeals = data.appeals.filter((appeal) => appeal.status === 'open');
+  return (
+    <section className="list-stack">
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Recours ouverts</h2>
+        {openAppeals.length === 0 && <p className="muted">Aucun recours en attente.</p>}
+        {openAppeals.map((appeal) => (
+          <div className="list-row" key={appeal.id}>
+            <div className="grow"><b>{appeal.user?.name || 'Compte supprime'}</b><div className="muted">{appeal.user?.email}</div><p style={{ margin: '6px 0 0' }}>{appeal.reason}</p></div>
+            <div className="row" style={{ alignSelf: 'center' }}>
+              <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'approve')}>Accepter</button>
+              <button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'reject')}>Refuser</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Comptes a surveiller</h2>
+        <p className="muted">Les signaux ne sont pas une preuve. Verifiez le contexte de conversation avant toute sanction.</p>
+        {data.riskyUsers.length === 0 && <p className="muted">Aucun compte a surveiller.</p>}
+        {data.riskyUsers.map((user) => (
+          <div className="list-row" key={user.id}>
+            <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div><small>{user.suspendedUntil ? `Suspendu jusqu au ${new Date(user.suspendedUntil).toLocaleString('fr-BE')}` : `${user.messageSafetyAttempts} tentative(s) bloquee(s) ces 24 h`}</small></div>
+            <div className="row" style={{ alignSelf: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {user.suspendedUntil ? <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => act(user, 'restore')}>Retablir</button> : <><button className="btn btn-sm" disabled={!!busy} onClick={() => act(user, 'warn')}>Avertir</button><button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => act(user, 'suspend')}>Suspendre</button></>}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -421,6 +488,13 @@ function ConversationReviewCard({ item, decide }) {
             <b>Motif :</b> {reportReasonLabel(latestReport.reasonCode)} · {latestReport.reason}
             {latestReport.comment ? <><br /><b>Commentaire :</b> {latestReport.comment}</> : null}
           </span>
+        </div>
+      )}
+
+      {(c.safetyIncidents || []).length > 0 && (
+        <div className="alert alert-danger" style={{ fontSize: 12.5 }}>
+          <Icon name="shieldCheck" size={16} />
+          <span><b>{c.safetyIncidents.length} tentative(s) bloquee(s) :</b> {c.safetyIncidents.slice(0, 3).map((incident) => `${incident.user?.name || 'Compte'} (${incident.categories.join(', ')})`).join(' · ')}</span>
         </div>
       )}
 

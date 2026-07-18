@@ -4,7 +4,7 @@ import {
   acquireDatabaseState, createPersistentSession, databasePool, deletePersistentSession, deletePersistentSessionsForUser,
   databaseHealth, getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
 } from './store.js';
-import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, localizeCategory } from './rules.js';
+import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, analyzeMessageSafety, localizeCategory } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
@@ -299,6 +299,9 @@ async function auth(req, res, next) {
   if (!userId) return res.status(401).json({ error: 'Non authentifié' });
   req.user = findUser(userId);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
+  if (req.user.suspendedUntil && req.user.suspendedUntil > Date.now()) {
+    return res.status(403).json({ code: 'account_suspended', error: 'Votre compte est temporairement suspendu. Vous pouvez contester cette decision depuis votre profil.' });
+  }
   if (!canAccessApp(req.user)) return denyUnverifiedSession(req, res);
   return next();
   } catch (error) {
@@ -313,6 +316,7 @@ async function authRealtime(req, res, next) {
   const userId = session?.userId;
   if (!userId) return res.status(401).json({ error: 'Non authentifie' });
   req.user = findUser(session?.userId);
+  if (req.user?.suspendedUntil && req.user.suspendedUntil > Date.now()) return res.status(403).json({ code: 'account_suspended', error: 'Compte temporairement suspendu.' });
   if (req.user && !canAccessApp(req.user)) return denyUnverifiedSession(req, res);
   if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
   next();
@@ -1416,6 +1420,8 @@ function conversationView(conversation, viewerId) {
     status,
     archived: (conversation.archivedBy || []).includes(viewerId),
     pinned: (conversation.pinnedBy || []).includes(viewerId),
+    blocked: (conversation.blockedBy || []).includes(viewerId),
+    blockedByOther: !!other && blockedUserIds(findUser(other.id)).has(viewerId),
     actionRequired: action.actionRequired,
     actionLabel: action.actionLabel,
     actionHref: action.actionHref,
@@ -1455,6 +1461,10 @@ function adminConversationModerationView(conversation) {
     participants: conversation.participantIds.map((id) => publicUser(findUser(id))).filter(Boolean),
     reportCount: reports.length,
     reports,
+    safetyIncidents: (conversation.safetyIncidents || []).slice().sort((a, b) => b.at - a.at).slice(0, 12).map((incident) => ({
+      ...incident,
+      user: publicUser(findUser(incident.userId)),
+    })),
     messages,
     lastMessagePreview: messages[messages.length - 1]?.text || null,
     moderationStatus: conversation.moderationStatus || 'pending',
@@ -1542,6 +1552,47 @@ function conversationMessagesPage(conversation, query = {}) {
       nextBefore,
       q,
     },
+  };
+}
+
+const MESSAGE_SAFETY_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MESSAGE_SAFETY_COOLDOWN_MS = 30 * 60 * 1000;
+const MESSAGE_SAFETY_STRIKE_LIMIT = 3;
+
+function blockedUserIds(user) {
+  return new Set(Array.isArray(user?.blockedUserIds) ? user.blockedUserIds : []);
+}
+
+function areConversationParticipantsBlocked(conversation, userId) {
+  const otherId = conversation.participantIds.find((id) => id !== userId);
+  const other = otherId ? findUser(otherId) : null;
+  return !!(other && (blockedUserIds(findUser(userId)).has(otherId) || blockedUserIds(other).has(userId)));
+}
+
+function registerMessageSafetyAttempt({ user, conversation, analysis }) {
+  const now = Date.now();
+  const prior = (user.messageSafetyAttempts || []).filter((item) => item.at > now - MESSAGE_SAFETY_ATTEMPT_WINDOW_MS);
+  const attempt = { id: newId('msa'), at: now, conversationId: conversation?.id || null, categories: analysis.categories, severity: analysis.severity };
+  prior.push(attempt);
+  user.messageSafetyAttempts = prior;
+  const highCount = prior.filter((item) => item.severity === 'high').length;
+  if (highCount >= MESSAGE_SAFETY_STRIKE_LIMIT) user.messageSafetyBlockedUntil = Math.max(user.messageSafetyBlockedUntil || 0, now + MESSAGE_SAFETY_COOLDOWN_MS);
+  if (conversation) {
+    conversation.safetyIncidents = [...(conversation.safetyIncidents || []), { ...attempt, userId: user.id }].slice(-50);
+    const hasQueueItem = repositories.reviewQueue.open().some((item) => item.type === 'conversation' && item.refId === conversation.id);
+    if (!hasQueueItem && (analysis.severity === 'high' || highCount >= MESSAGE_SAFETY_STRIKE_LIMIT)) repositories.reviewQueue.append({ type: 'conversation', refId: conversation.id });
+  }
+  return { cooldownUntil: user.messageSafetyBlockedUntil || null, highCount };
+}
+
+function messageSafetyError({ analysis, cooldownUntil = null }) {
+  return {
+    code: cooldownUntil ? 'message_safety_cooldown' : 'message_safety_blocked',
+    categories: analysis.categories,
+    cooldownUntil,
+    error: cooldownUntil
+      ? 'Pour votre securite, l envoi est temporairement limite. Gardez les echanges et le paiement dans Wigofly.'
+      : 'Pour votre securite, les coordonnees, liens, reseaux sociaux et paiements externes ne peuvent pas etre partages. Gardez vos echanges dans Wigofly.',
   };
 }
 
@@ -2031,12 +2082,42 @@ app.post('/api/conversations/:id/report', auth, async (req, res) => {
   res.json({ ok: true, report, conversation: conversationView(conversation, req.user.id) });
 });
 
+app.post('/api/conversations/:id/block', auth, async (req, res) => {
+  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
+  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  const otherId = conversation.participantIds.find((id) => id !== req.user.id);
+  if (!otherId) return res.status(400).json({ error: 'Participant introuvable' });
+  const blocked = req.body?.blocked !== false;
+  const ids = blockedUserIds(req.user);
+  if (blocked) ids.add(otherId); else ids.delete(otherId);
+  req.user.blockedUserIds = [...ids];
+  conversation.blockedBy = blocked
+    ? [...new Set([...(conversation.blockedBy || []), req.user.id])]
+    : (conversation.blockedBy || []).filter((id) => id !== req.user.id);
+  await audit(req.user.id, blocked ? 'conversation.block' : 'conversation.unblock', 'conversation', conversation.id, { otherId });
+  save();
+  res.json({ ok: true, blocked, conversation: conversationView(conversation, req.user.id) });
+});
+
 app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
+  if (areConversationParticipantsBlocked(conversation, req.user.id)) {
+    return res.status(403).json({ code: 'conversation_blocked', error: 'Cette conversation est bloquee. Aucun nouveau message ne peut etre envoye.' });
+  }
+  if (req.user.messageSafetyBlockedUntil && req.user.messageSafetyBlockedUntil > Date.now()) {
+    return res.status(429).json(messageSafetyError({ analysis: { categories: ['repeated_attempts'], severity: 'high' }, cooldownUntil: req.user.messageSafetyBlockedUntil }));
+  }
   const text = String(req.body?.text || '').trim().slice(0, 1000);
   const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments.slice(0, 1) : [];
   if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message vide' });
+  // A chat image can carry a QR code, a written phone number or a payment handle that
+  // text inspection cannot reliably read. Transaction evidence has its dedicated,
+  // auditable dispute flow; direct messages stay text-only by design.
+  if (attachments.length > 0) return res.status(422).json({
+    code: 'message_attachment_restricted',
+    error: 'Les images ne sont pas autorisees dans la messagerie afin de proteger vos coordonnees. Utilisez les preuves du litige si necessaire.',
+  });
   if (attachments.length > 0 && !validPhotos(attachments.map((a) => a?.dataUrl || a)))
     return res.status(400).json({ error: 'Piece jointe invalide' });
   const normalizedAttachments = attachments.map((attachment, index) => {
@@ -2064,7 +2145,14 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
       });
     }
   }
-  const flagged = detectLeak(text);
+  const safety = analyzeMessageSafety(text);
+  if (safety.blocked) {
+    const attempt = registerMessageSafetyAttempt({ user: req.user, conversation, analysis: safety });
+    await audit(req.user.id, 'message.safety_blocked', 'conversation', conversation.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });
+    save();
+    return res.status(attempt.cooldownUntil ? 429 : 422).json(messageSafetyError({ analysis: safety, cooldownUntil: attempt.cooldownUntil }));
+  }
+  const flagged = false;
   const now = Date.now();
   const msg = {
     id: newId('m'),
@@ -3356,7 +3444,15 @@ app.post('/api/transactions/:id/messages', auth, async (req, res) => {
   if (!isPartyToTx(t, req.user.id))
     return res.status(403).json({ error: 'Non autorisé' });
   const text = String(req.body.text || '').slice(0, 2000);
-  const flagged = detectLeak(text);
+  const safety = analyzeMessageSafety(text);
+  if (safety.blocked) {
+    const pseudoConversation = db.conversations.find((conversation) => conversation.operationId === t.id && conversation.participantIds.includes(req.user.id));
+    const attempt = registerMessageSafetyAttempt({ user: req.user, conversation: pseudoConversation, analysis: safety });
+    await audit(req.user.id, 'message.safety_blocked', 'transaction', t.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });
+    save();
+    return res.status(attempt.cooldownUntil ? 429 : 422).json(messageSafetyError({ analysis: safety, cooldownUntil: attempt.cooldownUntil }));
+  }
+  const flagged = false;
   const msg = await repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
   await notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
@@ -3614,6 +3710,7 @@ app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
 
 // Retire une catégorie promue (repasse en zone grise pour les prochains envois).
 function adminUserView(user) {
+  if (!user) return null;
   return {
     id: user.id,
     name: user.name,
@@ -3624,6 +3721,9 @@ function adminUserView(user) {
     kycStatus: user.kycStatus,
     createdAt: user.createdAt,
     deletedAt: user.deletedAt || null,
+    suspendedUntil: user.suspendedUntil || null,
+    suspensionReason: user.suspensionReason || null,
+    messageSafetyAttempts: (user.messageSafetyAttempts || []).filter((item) => item.at > Date.now() - MESSAGE_SAFETY_ATTEMPT_WINDOW_MS).length,
   };
 }
 
@@ -3661,6 +3761,86 @@ app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
   });
   save();
   res.json({ user: adminUserView(target) });
+});
+
+app.post('/api/admin/users/:id/safety', auth, adminOnly, async (req, res) => {
+  const target = findUser(req.params.id);
+  if (!target || target.deletedAt) return res.status(404).json({ error: 'Compte introuvable' });
+  if (target.isAdmin) return res.status(400).json({ error: 'Un administrateur ne peut pas etre sanctionne depuis cet ecran.' });
+  const action = String(req.body?.action || '').trim();
+  const reason = String(req.body?.reason || '').trim().slice(0, 500);
+  if (!['warn', 'suspend', 'restore'].includes(action)) return res.status(400).json({ error: 'Action invalide' });
+  if (action !== 'restore' && reason.length < 5) return res.status(400).json({ error: 'Motif obligatoire (5 caracteres minimum)' });
+  if (action === 'suspend') {
+    const durationHours = Math.max(1, Math.min(24 * 30, Number(req.body?.durationHours || 24)));
+    target.suspendedUntil = Date.now() + durationHours * 3600e3;
+    target.suspensionReason = reason;
+    target.suspendedAt = Date.now();
+    target.suspendedBy = req.user.id;
+    await deletePersistentSessionsForUser(target.id);
+  } else if (action === 'restore') {
+    target.suspendedUntil = null;
+    target.suspensionReason = null;
+    target.restoredAt = Date.now();
+    target.restoredBy = req.user.id;
+  } else {
+    target.lastSafetyWarningAt = Date.now();
+    target.lastSafetyWarningReason = reason;
+  }
+  await audit(req.user.id, `user.safety.${action}`, 'user', target.id, { reason, durationHours: req.body?.durationHours || null });
+  save();
+  res.json({ ok: true, user: adminUserView(target) });
+});
+
+// A suspended user may still submit an appeal with their existing session token.
+app.post('/api/safety/appeals', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const session = await activeSession(token);
+  const user = session ? findUser(session.userId) : null;
+  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  const reason = String(req.body?.reason || '').trim().slice(0, 1000);
+  if (reason.length < 10) return res.status(400).json({ error: 'Expliquez votre recours en au moins 10 caracteres.' });
+  db.safetyAppeals = db.safetyAppeals || [];
+  const existing = db.safetyAppeals.find((appeal) => appeal.userId === user.id && appeal.status === 'open');
+  if (existing) return res.status(409).json({ error: 'Un recours est deja en cours de traitement.' });
+  const appeal = { id: newId('appeal'), userId: user.id, reason, status: 'open', createdAt: Date.now() };
+  db.safetyAppeals.push(appeal);
+  repositories.reviewQueue.append({ type: 'safety_appeal', refId: appeal.id });
+  await audit(user.id, 'user.safety.appeal', 'safety_appeal', appeal.id, {});
+  save();
+  res.json({ ok: true, appeal });
+});
+
+app.get('/api/admin/safety', auth, adminOnly, (req, res) => {
+  const now = Date.now();
+  const riskyUsers = db.users
+    .filter((user) => !user.isAdmin && ((user.suspendedUntil && user.suspendedUntil > now) || (user.messageSafetyAttempts || []).some((item) => item.at > now - MESSAGE_SAFETY_ATTEMPT_WINDOW_MS)))
+    .map(adminUserView)
+    .sort((a, b) => Number(!!b.suspendedUntil) - Number(!!a.suspendedUntil) || b.messageSafetyAttempts - a.messageSafetyAttempts);
+  const appeals = (db.safetyAppeals || []).slice().sort((a, b) => b.createdAt - a.createdAt).map((appeal) => ({ ...appeal, user: adminUserView(findUser(appeal.userId)) }));
+  res.json({ riskyUsers, appeals });
+});
+
+app.post('/api/admin/safety/appeals/:id', auth, adminOnly, async (req, res) => {
+  const appeal = (db.safetyAppeals || []).find((item) => item.id === req.params.id);
+  if (!appeal || appeal.status !== 'open') return res.status(404).json({ error: 'Recours introuvable' });
+  const decision = String(req.body?.decision || 'reject');
+  if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'Decision invalide' });
+  appeal.status = decision === 'approve' ? 'accepted' : 'rejected';
+  appeal.reviewedAt = Date.now();
+  appeal.reviewedBy = req.user.id;
+  appeal.decisionReason = String(req.body?.reason || '').trim().slice(0, 500) || null;
+  const user = findUser(appeal.userId);
+  if (decision === 'approve' && user) {
+    user.suspendedUntil = null;
+    user.suspensionReason = null;
+    user.messageSafetyBlockedUntil = null;
+  }
+  const queueItem = repositories.reviewQueue.open().find((item) => item.type === 'safety_appeal' && item.refId === appeal.id);
+  if (queueItem) repositories.reviewQueue.close(queueItem, decision);
+  await audit(req.user.id, `user.safety.appeal.${decision}`, 'safety_appeal', appeal.id, { userId: appeal.userId });
+  save();
+  res.json({ ok: true, appeal });
 });
 
 app.delete('/api/admin/whitelist/:id', auth, adminOnly, async (req, res) => {
