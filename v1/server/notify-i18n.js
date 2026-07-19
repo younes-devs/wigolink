@@ -123,9 +123,58 @@ const TEMPLATES = {
 // simplement pas traduites).
 function renderNotification(lang, n) {
   const tpl = n.key && TEMPLATES[n.key];
-  if (!tpl) return n.text || '';
+  if (!tpl) return renderLegacyNotification(lang, n.text || '');
   const fn = tpl[lang] || tpl.fr;
   try { return fn(n.params || {}); } catch { return (tpl.fr)(n.params || {}); }
 }
 
-export { TEMPLATES, renderNotification };
+const LEGACY_PATTERNS = [
+  {
+    re: /^(.+) vous propose de transporter « (.+) »\.$/,
+    ar: (m) => `${m[1]} يقترح عليك نقل « ${m[2]} ».`,
+    nl: (m) => `${m[1]} stelt voor om « ${m[2]} » te vervoeren.`,
+  },
+  {
+    re: /^(.+) a décliné la proposition\.$/,
+    ar: (m) => `${m[1]} رفض العرض.`,
+    nl: (m) => `${m[1]} heeft het voorstel geweigerd.`,
+  },
+  {
+    re: /^(.+) a retiré sa proposition\.$/,
+    ar: (m) => `${m[1]} سحب عرضه.`,
+    nl: (m) => `${m[1]} heeft zijn voorstel ingetrokken.`,
+  },
+  {
+    re: /^(.+) a envoyé une contre-proposition\.$/,
+    ar: (m) => `${m[1]} أرسل عرضا مضادا.`,
+    nl: (m) => `${m[1]} heeft een tegenvoorstel verstuurd.`,
+  },
+  {
+    re: /^(.+) transporte « (.+) »\. Paiement séquestré\.$/,
+    ar: (m) => `${m[1]} ينقل « ${m[2]} ». الدفع محجوز.`,
+    nl: (m) => `${m[1]} vervoert « ${m[2]} ». Betaling in bewaring.`,
+  },
+  {
+    re: /^(.+) vous a envoyé un message\.$/,
+    ar: (m) => `أرسل لك ${m[1]} رسالة.`,
+    nl: (m) => `${m[1]} heeft u een bericht gestuurd.`,
+  },
+];
+
+function renderLegacyNotification(lang, text) {
+  if (!text || lang === 'fr') return text;
+  for (const template of Object.values(TEMPLATES)) {
+    try {
+      if (template.fr({}) === text) return (template[lang] || template.fr)({});
+    } catch {
+      // Les modèles dynamiques sont couverts par les motifs ci-dessous.
+    }
+  }
+  for (const pattern of LEGACY_PATTERNS) {
+    const match = text.match(pattern.re);
+    if (match && pattern[lang]) return pattern[lang](match);
+  }
+  return text;
+}
+
+export { LEGACY_PATTERNS, TEMPLATES, renderLegacyNotification, renderNotification };

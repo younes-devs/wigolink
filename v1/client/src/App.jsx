@@ -5,6 +5,7 @@ import { Header, BottomNav } from './components.jsx';
 import { ToastProvider } from './Toast.jsx';
 import SideRail from './SideRail.jsx';
 import Onboarding, { shouldOnboard } from './Onboarding.jsx';
+import { t } from './i18n.js';
 
 // Les ecrans ne sont telecharges que lorsqu'ils sont ouverts. Cela garde la
 // connexion et le premier trajet rapides, meme avec les centres admin/PDF actifs.
@@ -181,7 +182,7 @@ export default function App() {
 
 function PageLoading() {
   return (
-    <div className="boot-splash" aria-label="Chargement">
+    <div className="boot-splash" aria-label={t('common.loading')}>
       <span className="spinner boot-spinner" />
     </div>
   );

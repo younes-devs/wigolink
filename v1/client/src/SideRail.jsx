@@ -7,7 +7,7 @@ import { t, useLang } from './i18n.js';
 // Panneau contextuel affiché à droite sur grand écran (≥1200px).
 // Le contenu s'adapte à la page consultée.
 export default function SideRail({ user }) {
-  useLang();
+  const lang = useLang();
   const { pathname } = useLocation();
   const [rules, setRules] = useState(null);
   const [listingsCount, setListingsCount] = useState(null);
@@ -18,7 +18,7 @@ export default function SideRail({ user }) {
     if (!user) return;
     api('/rules').then(setRules).catch(() => {});
     api('/me').then(setMe).catch(() => {});
-  }, [user]);
+  }, [user, lang]);
 
   useEffect(() => {
     if (!user) return;
@@ -138,11 +138,11 @@ export default function SideRail({ user }) {
 
       {isAdmin && (
         <div className="rail-card">
-          <h3>Grille d'arbitrage</h3>
+          <h3>{t('rail.arbitration.title')}</h3>
           <ul className="rail-list">
-            <li>État ≠ vidéo de scellage → responsabilité <b>voyageur</b>.</li>
-            <li>Conforme vidéo mais ≠ annonce → responsabilité <b>expéditeur</b>.</li>
-            <li>SLA : première réponse &lt; 24 h, résolution &lt; 7 jours.</li>
+            <li>{t('rail.arbitration.1')}</li>
+            <li>{t('rail.arbitration.2')}</li>
+            <li>{t('rail.arbitration.3')}</li>
           </ul>
         </div>
       )}

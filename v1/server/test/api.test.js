@@ -618,6 +618,14 @@ test('récapitulatif douane : contenu correct, réservé aux parties', async () 
   assert.equal(recap.body.recap.valueEur, 40);
   assert.equal(recap.body.recap.weightKg, 2);
   assert.ok(recap.body.recap.corridor, 'la franchise douanière du corridor doit être incluse');
+
+  const recapNl = await api(`/transactions/${tx.id}/customs-recap`, { token: karim, lang: 'nl' });
+  assert.equal(recapNl.body.recap.category, 'Verzegelde arganolie');
+  assert.equal(recapNl.body.recap.corridor.franchise, '430 € per reiziger (luchtvervoer)');
+
+  const recapAr = await api(`/transactions/${tx.id}/customs-recap`, { token: karim, lang: 'ar' });
+  assert.equal(recapAr.body.recap.category, 'زيت أركان مختوم');
+  assert.equal(recapAr.body.recap.corridor.franchise, '430 € لكل مسافر (جواً)');
 });
 
 test('KPIs admin : réservés aux admins, forme correcte', async () => {
@@ -1214,6 +1222,20 @@ test('centre assistance : agrège actions, dossiers et guide', async () => {
 
 test('centre conformité : expose catalogue, corridors et risques utilisateur', async () => {
   const fatima = tokens.fatima;
+  const preflightBody = {
+    title: 'Controle i18n', categoryId: 'argan', categoryLabel: "Huile d'argan",
+    description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
+    valueEur: 30, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
+    travelerPay: 10, customsAccepted: true, photos: [TINY_PNG],
+  };
+  const preflightNl = await api('/listings/preflight', { method: 'POST', token: fatima, lang: 'nl', body: preflightBody });
+  assert.equal(preflightNl.body.preflight.category.label, 'Verzegelde arganolie');
+  assert.equal(preflightNl.body.preflight.customs.corridor.franchise, '430 € per reiziger (luchtvervoer)');
+  assert.ok(preflightNl.body.preflight.checks.every((check) => check.labelKey));
+
+  const preflightAr = await api('/listings/preflight', { method: 'POST', token: fatima, lang: 'ar', body: preflightBody });
+  assert.equal(preflightAr.body.preflight.category.label, 'زيت أركان مختوم');
+  assert.equal(preflightAr.body.preflight.customs.corridor.franchise, '430 € لكل مسافر (جواً)');
 
   const gray = await api('/listings', {
     method: 'POST', token: fatima,
@@ -1243,6 +1265,14 @@ test('centre conformité : expose catalogue, corridors et risques utilisateur', 
   assert.ok(center.body.compliance.totals.overFranchise >= 1);
   assert.ok(center.body.compliance.actions.some((a) => a.listingId === gray.body.listing.id && a.action.id === 'wait_review'));
   assert.ok(center.body.compliance.actions.some((a) => a.listingId === over.body.listing.id && a.action.id === 'customs_value'));
+
+  const centerNl = await api('/compliance-center', { token: fatima, lang: 'nl' });
+  assert.equal(centerNl.body.compliance.corridors[0].franchise, '430 € per reiziger (luchtvervoer)');
+  assert.equal(centerNl.body.compliance.catalogue.allowed.find((item) => item.id === 'argan').label, 'Verzegelde arganolie');
+
+  const centerAr = await api('/compliance-center', { token: fatima, lang: 'ar' });
+  assert.equal(centerAr.body.compliance.corridors[0].franchise, '430 € لكل مسافر (جواً)');
+  assert.equal(centerAr.body.compliance.catalogue.allowed.find((item) => item.id === 'argan').label, 'زيت أركان مختوم');
 });
 
 test('centre matching expediteur : relie annonces actives et trajets compatibles', async () => {
@@ -1256,7 +1286,7 @@ test('centre matching expediteur : relie annonces actives et trajets compatibles
       title: 'Matching colis test', categoryId: 'miel', categoryLabel: 'Miel',
       description: 'Description suffisamment longue pour passer la validation', weightKg: 1,
       valueEur: 25, from: 'Casablanca', to: 'Bruxelles', dateFrom: '2026-08-01', dateTo: '2026-08-20',
-      travelerPay: 7, customsAccepted: true, photos: [TINY_PNG],
+      travelerPay: 700, customsAccepted: true, photos: [TINY_PNG],
     },
   });
   assert.equal(listing.status, 200, JSON.stringify(listing.body));
@@ -1266,6 +1296,16 @@ test('centre matching expediteur : relie annonces actives et trajets compatibles
     body: { from: 'Casablanca', to: 'Bruxelles', date: '2026-08-10', capacityKg: 5 },
   });
   assert.equal(trip.status, 200, JSON.stringify(trip.body));
+
+  const missionNl = await api('/trips/mission', { token: traveler.token, lang: 'nl' });
+  const missionNlItem = missionNl.body.missions.find((item) => item.trip.id === trip.body.trip.id);
+  assert.equal(missionNlItem.customs.corridor.franchise, '430 € per reiziger (luchtvervoer)');
+  assert.equal(missionNlItem.topMatches.find((item) => item.id === listing.body.listing.id).categoryLabel, 'Verpakte honing');
+
+  const missionAr = await api('/trips/mission', { token: traveler.token, lang: 'ar' });
+  const missionArItem = missionAr.body.missions.find((item) => item.trip.id === trip.body.trip.id);
+  assert.equal(missionArItem.customs.corridor.franchise, '430 € لكل مسافر (جواً)');
+  assert.equal(missionArItem.topMatches.find((item) => item.id === listing.body.listing.id).categoryLabel, 'عسل معبأ');
 
   const pending = await api('/listings', {
     method: 'POST', token: fatima,
@@ -1458,6 +1498,11 @@ test('recherche élargie : couvre titre, description et catégorie (PRD UI/UX U1
   assert.equal(found.status, 200);
   assert.ok(found.body.listings.some((l) => l.id === listing.body.listing.id),
     'un mot présent seulement dans la description doit être trouvé');
+
+  const foundNl = await api(`/listings?all=1&q=${uniq}`, { token: karim, lang: 'nl' });
+  assert.equal(foundNl.body.listings.find((l) => l.id === listing.body.listing.id).categoryLabel, 'Verzegelde arganolie');
+  const foundAr = await api(`/listings?all=1&q=${uniq}`, { token: karim, lang: 'ar' });
+  assert.equal(foundAr.body.listings.find((l) => l.id === listing.body.listing.id).categoryLabel, 'زيت أركان مختوم');
 
   const notFound = await api('/listings?all=1&q=motquinexistenullepart', { token: karim });
   assert.ok(!notFound.body.listings.some((l) => l.id === listing.body.listing.id));

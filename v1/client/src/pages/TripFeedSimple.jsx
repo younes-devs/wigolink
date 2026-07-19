@@ -5,11 +5,13 @@ import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { dateLocale, t, useLang } from '../i18n.js';
 
 const tripOverviewCache = new Map();
 const TRIP_OVERVIEW_CACHE_MS = 30_000;
 
 export default function TripFeedSimple() {
+  useLang();
   const [trips, setTrips] = useState(() => tripOverviewCache.get('')?.trips || null);
   const [myTrips, setMyTrips] = useState(() => tripOverviewCache.get('')?.myTrips || null);
   const today = new Date().toISOString().slice(0, 10);
@@ -65,7 +67,7 @@ export default function TripFeedSimple() {
     try {
       if (trip.saved) await api(`/saved-trips/${trip.id}`, { method: 'DELETE' });
       else await api(`/saved-trips/${trip.id}`, { method: 'POST' });
-      toast.success(trip.saved ? 'Trajet retiré' : 'Trajet enregistré');
+      toast.success(trip.saved ? t('trips.toast.unsaved') : t('trips.toast.saved'));
       tripOverviewCache.clear();
       load({ force: true });
     } catch (e) {
@@ -77,33 +79,33 @@ export default function TripFeedSimple() {
     <div className="simple-page">
       <div className="simple-hero">
         <div>
-          <h1 className="page-title">Trajets</h1>
-          <p className="page-sub">Trouvez un voyageur, discutez, puis acceptez le trajet qui vous convient.</p>
+          <h1 className="page-title">{t('trips.title')}</h1>
+          <p className="page-sub">{t('trips.subtitle')}</p>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => setPublishing(!publishing)}>
-          <Icon name={publishing ? 'x' : 'plus'} size={15} />{publishing ? 'Fermer' : 'Publier mon trajet'}
+          <Icon name={publishing ? 'x' : 'plus'} size={15} />{publishing ? t('common.close') : t('trips.publish.open')}
         </button>
       </div>
 
       {publishing && (
-        <TripPublishForm onCreated={() => { setPublishing(false); toast.success('Trajet publié'); tripOverviewCache.clear(); load({ force: true }); }} />
+        <TripPublishForm onCreated={() => { setPublishing(false); toast.success(t('trips.toast.published')); tripOverviewCache.clear(); load({ force: true }); }} />
       )}
 
-      <section className="trip-search-controls" aria-label="Recherche de trajets">
-        <button className="trip-search-row" type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label="Rechercher et filtrer les trajets">
+      <section className="trip-search-controls" aria-label={t('trips.search.aria')}>
+        <button className="trip-search-row" type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label={t('trips.search.filter.aria')}>
           <Icon name="search" size={19} />
-          <span className={filters.q ? 'trip-search-value' : ''}>{filters.q || 'Rechercher un trajet'}</span>
+          <span className={filters.q ? 'trip-search-value' : ''}>{filters.q || t('trips.search.short')}</span>
           {advancedFilterCount(filters) > 0 && <span className="filter-count">{advancedFilterCount(filters)}</span>}
         </button>
       </section>
 
       <section className="simple-filters trip-desktop-filters">
-        <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Rechercher ville, voyageur, description" />
-        <input className="chat-input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder="Départ" />
-        <input className="chat-input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder="Arrivée" />
-        <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label="Date minimum" />
-        <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder="Prix max" />
-        <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder="Kg min" />
+        <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t('trips.search.placeholder')} />
+        <input className="chat-input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder={t('trips.from')} />
+        <input className="chat-input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder={t('trips.to')} />
+        <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label={t('trips.filter.date')} />
+        <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder={t('trips.filter.price.short')} />
+        <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity.short')} />
       </section>
 
       {filtersOpen && createPortal(
@@ -111,23 +113,23 @@ export default function TripFeedSimple() {
           <section className="modal trip-filter-sheet" role="dialog" aria-modal="true" aria-labelledby="trip-filter-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head trip-filter-head">
               <div>
-                <h2 id="trip-filter-title">Filtrer les trajets</h2>
-                <p>Affinez les voyageurs qui correspondent a votre envoi.</p>
+                <h2 id="trip-filter-title">{t('trips.filter.title')}</h2>
+                <p>{t('trips.filter.subtitle')}</p>
               </div>
-              <button className="icon-btn" type="button" onClick={() => setFiltersOpen(false)} aria-label="Fermer les filtres" title="Fermer"><Icon name="x" size={18} /></button>
+              <button className="icon-btn" type="button" onClick={() => setFiltersOpen(false)} aria-label={t('trips.filter.close')} title={t('common.close')}><Icon name="x" size={18} /></button>
             </div>
             <div className="trip-filter-sheet-body">
-              <input className="chat-input" autoFocus value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder="Rechercher ville, voyageur, description" aria-label="Rechercher un trajet" />
-              <input className="chat-input" value={draftFilters.from} onChange={(e) => setDraftFilters({ ...draftFilters, from: e.target.value })} placeholder="Depart" />
-              <input className="chat-input" value={draftFilters.to} onChange={(e) => setDraftFilters({ ...draftFilters, to: e.target.value })} placeholder="Arrivee" />
-              <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label="Date minimale" />
-              <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.maxPrice} onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })} placeholder="Prix maximum (EUR)" />
-              <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.capacityKg} onChange={(e) => setDraftFilters({ ...draftFilters, capacityKg: e.target.value })} placeholder="Capacite minimum (kg)" />
+              <input className="chat-input" autoFocus value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder={t('trips.search.placeholder')} aria-label={t('trips.search.short')} />
+              <input className="chat-input" value={draftFilters.from} onChange={(e) => setDraftFilters({ ...draftFilters, from: e.target.value })} placeholder={t('trips.from')} />
+              <input className="chat-input" value={draftFilters.to} onChange={(e) => setDraftFilters({ ...draftFilters, to: e.target.value })} placeholder={t('trips.to')} />
+              <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label={t('trips.filter.date')} />
+              <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.maxPrice} onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })} placeholder={t('trips.filter.price')} />
+              <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.capacityKg} onChange={(e) => setDraftFilters({ ...draftFilters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity')} />
             </div>
             <div className="trip-filter-sheet-actions">
-              <button className="btn btn-ghost" type="button" onClick={() => { setFilters(emptyFilters); setDraftFilters(emptyFilters); setFiltersOpen(false); }}>Reinitialiser</button>
+              <button className="btn btn-ghost" type="button" onClick={() => { setFilters(emptyFilters); setDraftFilters(emptyFilters); setFiltersOpen(false); }}>{t('trips.filter.reset')}</button>
               <button className="btn btn-primary" type="button" onClick={() => { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); }}>
-                Voir les trajets{advancedFilterCount(draftFilters) > 0 ? ` (${advancedFilterCount(draftFilters)})` : ''}
+                {t('trips.filter.show')}{advancedFilterCount(draftFilters) > 0 ? ` (${advancedFilterCount(draftFilters)})` : ''}
               </button>
             </div>
           </section>
@@ -137,25 +139,25 @@ export default function TripFeedSimple() {
 
       <section className="trip-section">
         <div className="section-head">
-          <h2>Mes trajets</h2>
+          <h2>{t('trips.mine')}</h2>
           {myTrips?.length > 0 && <span>{myTrips.length}</span>}
         </div>
         {myTrips === null && <SkeletonList count={1} />}
-        {myTrips?.length === 0 && <p className="muted trip-section-empty">Vous n'avez pas encore publie de trajet.</p>}
+        {myTrips?.length === 0 && <p className="muted trip-section-empty">{t('trips.mine.empty')}</p>}
         <div className="trip-post-list">
           {myTrips?.map((trip) => (
             <article className="card trip-post" key={trip.id}>
               <div className="trip-post-route">
-                <div><b>{trip.from}</b><span>Depart</span></div>
+                <div><b>{trip.from}</b><span>{t('trips.from')}</span></div>
                 <Icon name="plane" size={20} />
-                <div><b>{trip.to}</b><span>Arrivee</span></div>
+                <div><b>{trip.to}</b><span>{t('trips.to')}</span></div>
               </div>
               <div className="trip-post-body">
-                <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={42} />
+                <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={42} />
                 <div className="grow">
                   <div className="trip-post-title">
-                    <b>Mon trajet</b>
-                    {trip.activeOperations > 0 && <span className="pill pill-saffron">{trip.activeOperations} en cours</span>}
+                    <b>{t('trips.mine.one')}</b>
+                    {trip.activeOperations > 0 && <span className="pill pill-saffron">{t('trips.active', { count: trip.activeOperations })}</span>}
                   </div>
                   <p>{trip.description}</p>
                   <div className="trip-post-meta">
@@ -166,7 +168,7 @@ export default function TripFeedSimple() {
                 </div>
               </div>
               <div className="trip-post-actions">
-                <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">Gerer <Icon name="arrowRight" size={15} /></Link>
+                <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">{t('trips.manage')} <Icon name="arrowRight" size={15} /></Link>
               </div>
             </article>
           ))}
@@ -175,14 +177,14 @@ export default function TripFeedSimple() {
 
       <section className="trip-section">
         <div className="section-head">
-          <h2>Trajets des autres</h2>
+          <h2>{t('trips.others')}</h2>
           {trips?.length > 0 && <span>{trips.length}</span>}
         </div>
       {trips === null && <SkeletonList count={4} />}
       {trips?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="plane" size={34} />
-          <p className="muted">Aucun trajet disponible avec ces filtres.</p>
+          <p className="muted">{t('trips.empty')}</p>
         </div>
       )}
       <div className="trip-post-list">
@@ -191,20 +193,20 @@ export default function TripFeedSimple() {
             <div className="trip-post-route">
               <div>
                 <b>{trip.from}</b>
-                <span>Départ</span>
+                <span>{t('trips.from')}</span>
               </div>
               <Icon name="plane" size={20} />
               <div>
                 <b>{trip.to}</b>
-                <span>Arrivée</span>
+                <span>{t('trips.to')}</span>
               </div>
             </div>
             <div className="trip-post-body">
-              <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={42} />
+              <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={42} />
               <div className="grow">
                 <div className="trip-post-title">
-                  <b title={trip.traveler?.name || 'Voyageur'}>{trip.traveler?.name || 'Voyageur'}</b>
-                  {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal">Vérifié</span>}
+                  <b title={trip.traveler?.name || t('trips.traveler')}>{trip.traveler?.name || t('trips.traveler')}</b>
+                  {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal">{t('trips.verified')}</span>}
                 </div>
                 <p>{trip.description}</p>
                 <div className="trip-post-meta">
@@ -216,10 +218,10 @@ export default function TripFeedSimple() {
             </div>
             <div className="trip-post-actions">
               <button className="btn btn-ghost btn-sm" onClick={() => toggleSaved(trip)}>
-                <Icon name={trip.saved ? 'check' : 'star'} size={15} />{trip.saved ? 'Enregistré' : 'Enregistrer'}
+                <Icon name={trip.saved ? 'check' : 'star'} size={15} />{trip.saved ? t('trips.saved') : t('trips.save')}
               </button>
               <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">
-                Voir <Icon name="arrowRight" size={15} />
+                {t('common.view')} <Icon name="arrowRight" size={15} />
               </Link>
             </div>
           </article>
@@ -235,6 +237,7 @@ function advancedFilterCount(filters) {
 }
 
 function TripPublishForm({ onCreated }) {
+  useLang();
   const today = new Date().toISOString().slice(0, 10);
   const toast = useToast();
   const [form, setForm] = useState({
@@ -243,8 +246,8 @@ function TripPublishForm({ onCreated }) {
     date: '',
     capacityKg: 6,
     price: 25,
-    description: 'Je pars avec une valise soute, je peux prendre un petit colis propre.',
-    conditions: 'Colis propre, fermé, conforme et pas trop fragile.',
+    description: t('trips.publish.description.default'),
+    conditions: t('trips.publish.conditions.default'),
   });
   const [busy, setBusy] = useState(false);
 
@@ -265,45 +268,45 @@ function TripPublishForm({ onCreated }) {
     <form className="card trip-publish-form" onSubmit={submit}>
       <div className="row trip-publish-route-row">
         <div className="field">
-          <label>Départ</label>
+          <label>{t('trips.from')}</label>
           <input value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
         </div>
         <div className="field">
-          <label>Arrivée</label>
+          <label>{t('trips.to')}</label>
           <input value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
         </div>
       </div>
       <div className="row trip-publish-details-row">
         <div className="field">
-          <label>Date du billet</label>
+          <label>{t('trips.ticketDate')}</label>
           <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </div>
         <div className="field">
-          <label>Capacité kg</label>
+          <label>{t('trips.capacityKg')}</label>
           <input type="number" min="1" max="30" value={form.capacityKg} onChange={(e) => setForm({ ...form, capacityKg: e.target.value })} />
         </div>
         <div className="field">
-          <label>Prix proposé</label>
+          <label>{t('trips.proposedPrice')}</label>
           <input type="number" min="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </div>
       </div>
       <div className="field">
-        <label>Description</label>
+        <label>{t('common.description')}</label>
         <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </div>
       <div className="field">
-        <label>Conditions</label>
+        <label>{t('trips.conditions')}</label>
         <textarea rows={2} value={form.conditions} onChange={(e) => setForm({ ...form, conditions: e.target.value })} />
       </div>
       <button className="btn btn-primary" disabled={busy || !form.from || !form.to || !form.date}>
         {busy ? <span className="spinner" /> : <Icon name="plane" size={17} />}
-        Publier le trajet
+        {t('trips.publish.submit')}
       </button>
     </form>
   );
 }
 
 export function formatDate(value) {
-  if (!value) return 'Date à confirmer';
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value));
+  if (!value) return t('trips.date.pending');
+  return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value));
 }

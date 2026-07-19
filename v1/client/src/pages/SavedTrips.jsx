@@ -4,8 +4,10 @@ import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
+import { t, useLang } from '../i18n.js';
 
 export default function SavedTrips() {
+  useLang();
   const [trips, setTrips] = useState(null);
   const [busy, setBusy] = useState('');
   const toast = useToast();
@@ -15,7 +17,7 @@ export default function SavedTrips() {
 
   const remove = async (tripId) => {
     await api(`/saved-trips/${tripId}`, { method: 'DELETE' });
-    toast.info('Trajet retiré');
+    toast.info(t('trips.toast.unsaved'));
     load();
   };
 
@@ -32,33 +34,33 @@ export default function SavedTrips() {
 
   return (
     <div className="simple-page">
-      <h1 className="page-title">Enregistrés</h1>
-      <p className="page-sub">Les trajets que vous gardez pour plus tard. Les trajets expirés disparaissent automatiquement.</p>
+      <h1 className="page-title">{t('saved.title')}</h1>
+      <p className="page-sub">{t('saved.subtitle')}</p>
 
-      {trips === null && <div className="card"><span className="spinner" /> Chargement...</div>}
+      {trips === null && <div className="card"><span className="spinner" /> {t('common.loading')}</div>}
       {trips?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="star" size={34} />
-          <p className="muted">Aucun trajet enregistré pour l’instant.</p>
-          <Link to="/trajets" className="btn btn-primary btn-sm">Voir les trajets</Link>
+          <p className="muted">{t('saved.empty')}</p>
+          <Link to="/trajets" className="btn btn-primary btn-sm">{t('trips.filter.show')}</Link>
         </div>
       )}
       <div className="saved-list">
         {trips?.map((trip) => (
           <article className="card saved-trip" key={trip.id}>
-            <Avatar name={trip.traveler?.name || 'Voyageur'} photo={trip.traveler?.photoUrl} size={44} />
+            <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={44} />
             <div className="grow">
               <b>{trip.from} {'->'} {trip.to}</b>
               <span>{formatDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
-              <small>{trip.traveler?.name || 'Voyageur'}</small>
+              <small>{trip.traveler?.name || t('trips.traveler')}</small>
             </div>
             <div className="saved-actions">
-              <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">Voir</Link>
+              <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">{t('common.view')}</Link>
               <button className="btn btn-ghost btn-sm" onClick={() => message(trip.id)} disabled={busy === trip.id}>
                 {busy === trip.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}
-                Message
+                {t('messages.title')}
               </button>
-              <button className="icon-btn" onClick={() => remove(trip.id)} title="Retirer"><Icon name="trash" size={16} /></button>
+              <button className="icon-btn" onClick={() => remove(trip.id)} title={t('trips.remove')}><Icon name="trash" size={16} /></button>
             </div>
           </article>
         ))}

@@ -4,7 +4,7 @@ import { api } from '../api';
 import { StatusPill } from '../components.jsx';
 import { Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
-import { t, useLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const money = (n) => `${Math.round((Number(n) || 0) * 100) / 100} €`;
 
@@ -119,7 +119,7 @@ function FinanceRow({ row }) {
       {row.dispute && (
         <div className="finance-dispute">
           <Icon name="alert" size={15} />
-          <span>{t('finance.dispute.open')} · {t('finance.dispute.deadline', { date: new Date(row.dispute.evidenceDeadline).toLocaleDateString() })}</span>
+          <span>{t('finance.dispute.open')} · {t('finance.dispute.deadline', { date: new Date(row.dispute.evidenceDeadline).toLocaleDateString(dateLocale()) })}</span>
         </div>
       )}
     </Link>

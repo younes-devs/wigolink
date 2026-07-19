@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test server/test/*.test.js",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "dev": "concurrently -n api,web -c yellow,cyan \"node server/index.js\" \"vite client --port 5173\"",
     "build": "vite build client",
     "start": "node server/index.js",

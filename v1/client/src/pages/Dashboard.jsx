@@ -4,7 +4,7 @@ import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { StatusPill, TrustBadge } from '../components.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
-import { t, useLang, getLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 function txTarget(tx) {
   if (tx.status === 'disputed') return 'litige';
@@ -193,7 +193,7 @@ export default function Dashboard() {
                   <Icon name={n.read ? 'bell' : 'alert'} size={17} />
                   <span className="grow">
                     <b>{n.text}</b>
-                    <small>{new Date(n.at).toLocaleString(getLang() === 'ar' ? 'ar-MA' : 'fr-BE')}</small>
+                    <small>{new Date(n.at).toLocaleString(dateLocale())}</small>
                   </span>
                 </Link>
               ))}

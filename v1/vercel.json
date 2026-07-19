@@ -7,6 +7,14 @@
       "dest": "/api/[...path].js"
     },
     {
+      "src": "/cgu",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/confidentialite",
+      "dest": "/index.html"
+    },
+    {
       "handle": "filesystem"
     },
     {

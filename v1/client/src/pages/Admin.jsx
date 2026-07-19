@@ -4,6 +4,7 @@ import { Icon } from '../Icons.jsx';
 import { ConfirmDialog } from '../components.jsx';
 import { SkeletonCard, SkeletonList, SkeletonStatGrid } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { dateLocale, t, useLang } from '../i18n.js';
 
 // Compte total des signaux de fraude, tous types confondus — sert au badge du menu
 // pour qu'un admin sache qu'il y a quelque chose à regarder sans devoir cliquer à l'aveugle.
@@ -14,6 +15,7 @@ function fraudSignalCount(f) {
 }
 
 export default function Admin() {
+  useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | safety | categories | access
@@ -57,15 +59,15 @@ export default function Admin() {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
     load();
     loadOps();
-    toast.success('Décision enregistrée', 2200);
+    toast.success(t('admin.toast.decisionSaved'), 2200);
   };
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
   if (!data) {
     return (
       <div>
-        <h1 className="page-title">Back-office</h1>
-        <p className="page-sub">Revue humaine, litiges, KPIs et surveillance fraude.</p>
+        <h1 className="page-title">{t('admin.title')}</h1>
+        <p className="page-sub">{t('admin.subtitle')}</p>
         <SkeletonStatGrid />
         <SkeletonList count={3} avatar={false} />
       </div>
@@ -76,34 +78,34 @@ export default function Admin() {
 
   return (
     <div>
-      <h1 className="page-title">Back-office</h1>
-      <p className="page-sub">Revue humaine, litiges, KPIs et surveillance fraude.</p>
+      <h1 className="page-title">{t('admin.title')}</h1>
+      <p className="page-sub">{t('admin.subtitle')}</p>
 
       <div className="tabs">
         <button className={tab === 'ops' ? 'active' : ''} onClick={() => setTab('ops')}>
-          Opérations {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
+          {t('admin.tab.operations')} {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
         </button>
         <button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>
-          File de revue {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
+          {t('admin.tab.review')} {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
         <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>
-          Identités {kycPending > 0 ? `(${kycPending})` : ''}
+          {t('admin.tab.identities')} {kycPending > 0 ? `(${kycPending})` : ''}
         </button>
         <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
-          Fraude {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
+          {t('admin.tab.fraud')} {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
         </button>
         <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}>
-          Securite {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
+          {t('admin.tab.safety')} {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
         </button>
-        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>Membres</button>
-        <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>Acces</button>
+        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>{t('admin.tab.members')}</button>
+        <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>{t('admin.tab.access')}</button>
       </div>
 
       <div className="stat-grid mb">
-        <div className="stat"><div className="num">{stats.users}</div><div className="lbl">Membres</div></div>
-        <div className="stat"><div className="num">{stats.released}/{stats.transactions}</div><div className="lbl">Transactions livrées</div></div>
-        <div className="stat"><div className="num">{stats.escrowHeld.toFixed(0)} €</div><div className="lbl">Escrow séquestré</div></div>
-        <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">Messages signalés</div></div>
+        <div className="stat"><div className="num">{stats.users}</div><div className="lbl">{t('admin.stat.members')}</div></div>
+        <div className="stat"><div className="num">{stats.released}/{stats.transactions}</div><div className="lbl">{t('admin.stat.delivered')}</div></div>
+        <div className="stat"><div className="num">{stats.escrowHeld.toFixed(0)} €</div><div className="lbl">{t('admin.stat.escrow')}</div></div>
+        <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">{t('admin.stat.flagged')}</div></div>
       </div>
 
       {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} reload={() => { load(); loadOps(); loadFraud(); }} />}
@@ -112,7 +114,7 @@ export default function Admin() {
           {reviewQueue.length === 0 && (
             <div className="card center empty-state">
               <Icon name="check" size={32} />
-              <p className="muted">File vide — rien à arbitrer.</p>
+              <p className="muted">{t('admin.review.empty')}</p>
             </div>
           )}
 
@@ -123,15 +125,15 @@ export default function Admin() {
               )}
               {item.type === 'dispute' && item.dispute && (
                 <>
-                  <span className="pill pill-danger mb"><Icon name="alert" size={13} />Litige — {item.dispute.txId}</span>
+                  <span className="pill pill-danger mb"><Icon name="alert" size={13} />{t('admin.review.dispute')} — {item.dispute.txId}</span>
                   <div className="mt mb" style={{ fontSize: 13.5 }}>
-                    <b>Motif :</b> {item.dispute.reason}
+                    <b>{t('admin.reason')}:</b> {item.dispute.reason}
                   </div>
                   {item.dispute.evidence.length > 0 && (
                     <div className="evidence-list">
                       {item.dispute.evidence.map((e, i) => (
                         <div key={i} className="evidence-item">
-                          {e.photo && <img src={e.photo} alt="Preuve" />}
+                          {e.photo && <img src={e.photo} alt={t('admin.evidence')} />}
                           {e.text && <p>{e.text}</p>}
                         </div>
                       ))}
@@ -139,12 +141,11 @@ export default function Admin() {
                   )}
                   <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
                     <Icon name="fileText" size={16} />
-                    <span>Grille : état ≠ vidéo de scellage → responsabilité voyageur (rembourser).
-                    Conforme à la vidéo mais ≠ annonce → responsabilité expéditeur (payer le voyageur).</span>
+                    <span>{t('admin.review.disputeGuide')}</span>
                   </div>
                   <div className="row">
-                    <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'release_traveler')}>Payer le voyageur</button>
-                    <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'refund_sender')}>Rembourser l'expéditeur</button>
+                    <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'release_traveler')}>{t('admin.review.payTraveler')}</button>
+                    <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'refund_sender')}>{t('admin.review.refundSender')}</button>
                   </div>
                 </>
               )}
@@ -175,18 +176,18 @@ function MembersPanel({ data }) {
   if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
   return <section className="card">
     <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <div><h2 style={{ margin: 0 }}>Dossiers membres</h2><p className="muted" style={{ marginBottom: 0 }}>Acces journalise aux informations necessaires a la securite, au KYC et au support. Les comptes supprimes restent listes ici.</p></div>
-      <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un membre" style={{ maxWidth: 260 }} />
+      <div><h2 style={{ margin: 0 }}>{t('admin.members.files')}</h2><p className="muted" style={{ marginBottom: 0 }}>{t('admin.members.filesHelp')}</p></div>
+      <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} style={{ maxWidth: 260 }} />
     </div>
-    {data && deletedCount > 0 && <p className="muted" style={{ margin: '12px 0 0' }}>{deletedCount} compte{deletedCount > 1 ? 's' : ''} supprime{deletedCount > 1 ? 's' : ''} repertorie{deletedCount > 1 ? 's' : ''} dans ce resultat.</p>}
+    {data && deletedCount > 0 && <p className="muted" style={{ margin: '12px 0 0' }}>{t(deletedCount > 1 ? 'admin.members.deletedCount.plural' : 'admin.members.deletedCount', { count: deletedCount })}</p>}
     <div className="list-stack" style={{ marginTop: 16 }}>
       {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => setSelectedId(user.id)}>
         <div className="cat-icon"><Icon name="user" size={20} /></div>
-        {user.deletedAt && <span className="pill pill-gray">Compte supprime</span>}
+        {user.deletedAt && <span className="pill pill-gray">{t('admin.member.deleted')}</span>}
         <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
-        <div className="row"><span className={`pill ${user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{user.kycStatus || 'none'}</span><Icon name="arrowRight" size={17} /></div>
+        <div className="row"><span className={`pill ${user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{adminStatus(user.kycStatus || 'none')}</span><Icon name="arrowRight" size={17} /></div>
       </button>)}
-      {data && users.length === 0 && <p className="muted center">Aucun membre trouve.</p>}
+      {data && users.length === 0 && <p className="muted center">{t('admin.members.none')}</p>}
     </div>
   </section>;
 }
@@ -198,33 +199,118 @@ function MemberCaseFile({ userId, onBack }) {
   const load = useCallback((offset = 0) => {
     api(`/admin/users/${userId}/case-file?offset=${offset}&limit=50`)
       .then((response) => setData((current) => offset > 0 && current ? { ...response.caseFile, messages: [...current.messages, ...response.caseFile.messages] } : response.caseFile))
-      .catch((reason) => setError(reason.message || 'Chargement impossible'));
+      .catch((reason) => setError(reason.message || t('common.load.error')));
   }, [userId]);
   useEffect(() => {
     void api(`/admin/users/${userId}/case-file/access`, { method: 'POST', body: { section: 'overview' } }).catch(() => {});
     load();
   }, [userId, load]);
-  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour aux membres</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
+  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
   if (!data) return <SkeletonCard lines={5} />;
   const { member } = data;
   return <div className="admin-case-file">
-    <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour aux membres</button>
-    <div className="alert alert-warn"><Icon name="shieldCheck" size={17} /><span>Consultation reservee aux administrateurs et journalisee. Les donnees sont affichees uniquement pour une raison de securite, support, KYC ou litige.</span></div>
+    <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button>
+    <div className="alert alert-warn"><Icon name="shieldCheck" size={17} /><span>{t('admin.member.auditNotice')}</span></div>
     <section className="card">
-      <div className="list-row"><div className="cat-icon"><Icon name="user" size={22} /></div><div className="grow"><h2 style={{ marginBottom: 2 }}>{member.name}</h2><div className="muted">{member.email} · {member.phone || 'Telephone non renseigne'}</div></div><span className={`pill ${member.deletedAt ? 'pill-gray' : member.kycStatus === 'verified' ? 'pill-teal' : 'pill-saffron'}`}>{member.deletedAt ? 'Compte anonymise' : member.kycStatus}</span></div>
-      <div className="kyc-recap mt"><div><span className="muted">Ville</span><b>{member.city || '—'}</b></div><div><span className="muted">Inscrit le</span><b>{formatAdminDate(member.createdAt)}</b></div><div><span className="muted">Email</span><b>{member.emailVerified ? 'Verifie' : 'Non verifie'}</b></div><div><span className="muted">Connexion</span><b>{member.provider || 'email'}</b></div></div>
-      {member.suspendedUntil && <div className="alert alert-danger mt"><Icon name="alert" size={16} /><span>Suspendu jusqu au {formatAdminDate(member.suspendedUntil)}. {member.suspensionReason || ''}</span></div>}
+      <div className="list-row"><div className="cat-icon"><Icon name="user" size={22} /></div><div className="grow"><h2 style={{ marginBottom: 2 }}>{member.name}</h2><div className="muted">{member.email} · {member.phone || t('admin.member.phoneMissing')}</div></div><span className={`pill ${member.deletedAt ? 'pill-gray' : member.kycStatus === 'verified' ? 'pill-teal' : 'pill-saffron'}`}>{member.deletedAt ? t('admin.member.anonymized') : adminStatus(member.kycStatus)}</span></div>
+      <div className="kyc-recap mt"><div><span className="muted">{t('admin.member.city')}</span><b>{member.city || '—'}</b></div><div><span className="muted">{t('admin.member.joined')}</span><b>{formatAdminDate(member.createdAt)}</b></div><div><span className="muted">{t('admin.member.email')}</span><b>{member.emailVerified ? t('common.verified') : t('common.notVerified')}</b></div><div><span className="muted">{t('admin.member.login')}</span><b>{member.provider || 'email'}</b></div></div>
+      {member.suspendedUntil && <div className="alert alert-danger mt"><Icon name="alert" size={16} /><span>{t('admin.member.suspendedUntil', { date: formatAdminDate(member.suspendedUntil) })} {member.suspensionReason || ''}</span></div>}
     </section>
-    <section className="card"><h2><Icon name="shieldCheck" size={18} />Dossier KYC</h2>{data.kyc.length === 0 ? <p className="muted mt">Aucune soumission KYC.</p> : data.kyc.map((submission) => <div className="admin-case-kyc" key={submission.id}><div className="list-row"><div className="grow"><b>{submission.legalName || 'Identite masquee'}</b><div className="muted">{submission.documentType || 'Document'} · {formatAdminDate(submission.submittedAt)} · {submission.status}</div></div></div>{submission.documentsPurged ? <div className="alert alert-warn mt"><Icon name="lock" size={15} /><span>Images KYC purgées apres une demande d effacement ou a la fin de leur conservation. La decision et son historique restent disponibles.</span></div> : <div className="kyc-review-grid mt"><KycDoc label="Selfie" photo={submission.selfiePhoto} onZoom={setZoom} selfie /><KycDoc label="Recto" photo={submission.idFrontPhoto} onZoom={setZoom} />{submission.idBackPhoto && <KycDoc label="Verso" photo={submission.idBackPhoto} onZoom={setZoom} />}</div>}</div>)}</section>
-    <section className="card"><h2><Icon name="repeat" size={18} />Activite et operations</h2><div className="kyc-recap mt"><div><span className="muted">Trajets</span><b>{data.trips.length}</b></div><div><span className="muted">Annonces</span><b>{data.listings.length}</b></div><div><span className="muted">Operations</span><b>{data.transactions.length}</b></div><div><span className="muted">Litiges</span><b>{data.disputes.length}</b></div></div><div className="list-stack mt">{data.transactions.map((transaction) => <div className="list-row" key={transaction.id}><div className="grow"><b>{transaction.id}</b><div className="muted">{transaction.status} · {formatAdminDate(transaction.createdAt)}</div></div><span className="pill pill-gray">{transaction.escrow?.state || 'pending'}</span></div>)}</div></section>
-    <section className="card"><h2><Icon name="chat" size={18} />Conversations et messages</h2><p className="muted mt">{data.conversations.length} conversation(s) et {data.messagePage.total} message(s). Les pieces jointes sont repertoriees sans etre telechargees automatiquement.</p><div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || 'Compte inconnu'}</b><span>{formatAdminDate(message.at)} · {message.type}</span></div><div className="admin-message-route"><span>De : <b>{message.from?.name || message.from?.id || 'Compte inconnu'}</b></span><span>A : <b>{message.to?.map((recipient) => recipient.name || recipient.id).join(', ') || 'Destinataire introuvable'}</b></span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.label || 'Localisation'} {message.location.city ? `· ${message.location.city}` : ''} · {message.location.precision === 'approximate' ? 'approximative' : 'precise'}</small>}{message.attachments?.length > 0 && <small><Icon name="image" size={13} />{message.attachments.map((attachment) => attachment.name || 'Image').join(', ')}</small>}{message.flagged && <span className="pill pill-danger">Signale: {message.flagReason || 'securite'}</span>}</div>)}</div>{data.messagePage.hasMore && <button className="btn btn-sm mt" onClick={() => load(data.messagePage.offset + data.messagePage.limit)}>Charger les messages precedents</button>}</section>
-    <section className="card"><h2><Icon name="clock" size={18} />Historique de securite</h2><div className="list-stack mt">{data.auditLogs.length === 0 ? <p className="muted">Aucune entree d audit liee a ce membre.</p> : data.auditLogs.map((log) => <div className="list-row" key={log.id}><div className="grow"><b>{log.action}</b><div className="muted">{formatAdminDate(log.at)} · {log.actorId || 'system'}</div></div></div>)}</div></section>
-    {zoom && <div className="modal-backdrop" onClick={() => setZoom(null)}><img src={zoom} alt="Document KYC" className="kyc-zoom" onClick={(event) => event.stopPropagation()} /></div>}
+    <section className="card"><h2><Icon name="shieldCheck" size={18} />{t('admin.member.kycFile')}</h2>{data.kyc.length === 0 ? <p className="muted mt">{t('admin.member.noKyc')}</p> : data.kyc.map((submission) => <div className="admin-case-kyc" key={submission.id}><div className="list-row"><div className="grow"><b>{submission.legalName || t('admin.member.identityHidden')}</b><div className="muted">{submission.documentType || t('admin.document')} · {formatAdminDate(submission.submittedAt)} · {adminStatus(submission.status)}</div></div></div>{submission.documentsPurged ? <div className="alert alert-warn mt"><Icon name="lock" size={15} /><span>{t('admin.member.kycPurged')}</span></div> : <div className="kyc-review-grid mt"><KycDoc label={t('admin.kyc.selfie')} photo={submission.selfiePhoto} onZoom={setZoom} selfie /><KycDoc label={t('admin.kyc.front')} photo={submission.idFrontPhoto} onZoom={setZoom} />{submission.idBackPhoto && <KycDoc label={t('admin.kyc.back')} photo={submission.idBackPhoto} onZoom={setZoom} />}</div>}</div>)}</section>
+    <section className="card"><h2><Icon name="repeat" size={18} />{t('admin.member.activity')}</h2><div className="kyc-recap mt"><div><span className="muted">{t('admin.member.trips')}</span><b>{data.trips.length}</b></div><div><span className="muted">{t('admin.member.listings')}</span><b>{data.listings.length}</b></div><div><span className="muted">{t('admin.member.operations')}</span><b>{data.transactions.length}</b></div><div><span className="muted">{t('admin.member.disputes')}</span><b>{data.disputes.length}</b></div></div><div className="list-stack mt">{data.transactions.map((transaction) => <div className="list-row" key={transaction.id}><div className="grow"><b>{transaction.id}</b><div className="muted">{adminStatus(transaction.status)} · {formatAdminDate(transaction.createdAt)}</div></div><span className="pill pill-gray">{adminStatus(transaction.escrow?.state || 'pending')}</span></div>)}</div></section>
+    <section className="card"><h2><Icon name="chat" size={18} />{t('admin.member.conversations')}</h2><p className="muted mt">{t('admin.member.messageSummary', { conversations: data.conversations.length, messages: data.messagePage.total })}</p><div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b><span>{formatAdminDate(message.at)} · {adminStatus(message.type)}</span></div><div className="admin-message-route"><span>{t('admin.member.from')}: <b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b></span><span>{t('admin.member.to')}: <b>{message.to?.map((recipient) => recipient.name || recipient.id).join(', ') || t('admin.member.recipientMissing')}</b></span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.labelKey ? t(message.location.labelKey) : message.location.label || t('messages.location')} {message.location.city ? `· ${message.location.city}` : ''} · {t(message.location.precision === 'approximate' ? 'messages.location.approximate' : 'messages.location.precise')}</small>}{message.attachments?.length > 0 && <small><Icon name="image" size={13} />{message.attachments.map((attachment) => attachment.name || t('admin.image')).join(', ')}</small>}{message.flagged && <span className="pill pill-danger">{t('admin.member.flagged')}: {message.flagReason || t('admin.member.security')}</span>}</div>)}</div>{data.messagePage.hasMore && <button className="btn btn-sm mt" onClick={() => load(data.messagePage.offset + data.messagePage.limit)}>{t('admin.member.loadPrevious')}</button>}</section>
+    <section className="card"><h2><Icon name="clock" size={18} />{t('admin.member.securityHistory')}</h2><div className="list-stack mt">{data.auditLogs.length === 0 ? <p className="muted">{t('admin.member.noAudit')}</p> : data.auditLogs.map((log) => <div className="list-row" key={log.id}><div className="grow"><b>{adminStatus(log.action)}</b><div className="muted">{formatAdminDate(log.at)} · {log.actorId || t('admin.system')}</div></div></div>)}</div></section>
+    {zoom && <div className="modal-backdrop" onClick={() => setZoom(null)}><img src={zoom} alt={t('admin.kyc.document')} className="kyc-zoom" onClick={(event) => event.stopPropagation()} /></div>}
   </div>;
 }
 
 function formatAdminDate(value) {
-  return value ? new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+}
+
+function formatAdminShortDate(value) {
+  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+}
+
+function formatPercent(value) {
+  return new Intl.NumberFormat(dateLocale(), { style: 'percent', maximumFractionDigits: 1 }).format(value);
+}
+
+function adminStatus(status) {
+  const key = {
+    none: 'admin.status.none',
+    pending: 'admin.status.pending',
+    approved: 'admin.status.approved',
+    verified: 'admin.status.verified',
+    rejected: 'admin.status.rejected',
+    refused: 'admin.status.refused',
+    expired: 'admin.status.expired',
+    accepted: 'admin.status.accepted',
+    awaiting_payment: 'admin.status.awaitingPayment',
+    paid: 'admin.status.paid',
+    meetup: 'admin.status.meetup',
+    sealed: 'admin.status.sealed',
+    in_transit: 'admin.status.inTransit',
+    delivered: 'admin.status.delivered',
+    released: 'admin.status.released',
+    disputed: 'admin.status.disputed',
+    refunded: 'admin.status.refunded',
+    cancelled: 'admin.status.cancelled',
+    held: 'admin.status.held',
+    release_pending: 'admin.status.releasePending',
+    message: 'admin.status.message',
+    photo: 'admin.status.photo',
+    location: 'admin.status.location',
+    warning: 'admin.status.warning',
+    system: 'admin.system',
+    'message.safety_blocked': 'admin.audit.messageBlocked',
+    'kyc.approve': 'admin.audit.kycApproved',
+    'kyc.reject': 'admin.audit.kycRejected',
+    'kyc.refuse': 'admin.audit.kycRefused',
+  }[status];
+  return key ? t(key) : status || '—';
+}
+
+function opsTaskCopy(id, field, fallback) {
+  const suffix = {
+    'review-disputes': 'disputes',
+    'kyc-overdue': 'kyc',
+    'gray-listings': 'gray',
+    'review-conversations': 'conversations',
+    'fraud-signals': 'fraud',
+    'offer-watch': 'offers',
+  }[id];
+  if (!suffix) return fallback;
+  if (field === 'body' && id === 'kyc-overdue') {
+    return t(fallback?.includes('SLA') ? 'admin.task.kyc.overdueBody' : 'admin.task.kyc.body');
+  }
+  if (field === 'body' && id === 'offer-watch') {
+    return t(fallback?.includes('expire') ? 'admin.task.offers.riskBody' : 'admin.task.offers.body');
+  }
+  return t(`admin.task.${suffix}.${field}`);
+}
+
+function conversationContextLabel(type, fallback) {
+  const key = {
+    operation: 'admin.context.operation',
+    trip: 'admin.context.trip',
+    direct: 'admin.context.direct',
+  }[type];
+  return key ? t(key) : (fallback || t('admin.context.direct'));
+}
+
+function safetyCategoryLabel(category) {
+  const key = {
+    email: 'messages.safety.category.email',
+    phone: 'messages.safety.category.phone',
+    phone_words: 'messages.safety.category.phone',
+    url: 'messages.safety.category.link',
+    social_handle: 'messages.safety.category.social',
+    off_platform_contact: 'messages.safety.category.outside',
+    external_payment: 'admin.report.externalPayment',
+    repeated_attempts: 'admin.safety.repeatedAttempts',
+  }[category];
+  return key ? t(key) : category;
 }
 
 // Revue d'une annonce en zone grise : l'approbation demande une quantité max, car
@@ -239,37 +325,37 @@ function AccessPanel({ data, reload }) {
     if (!pending) return;
     try {
       await api(`/admin/users/${pending.user.id}/role`, { method: 'POST', body: { role: pending.role } });
-      toast.success(pending.role === 'admin' ? 'Acces administrateur accorde' : 'Acces administrateur retire');
+      toast.success(t(pending.role === 'admin' ? 'admin.access.granted' : 'admin.access.removed'));
       reload();
     } catch (error) {
-      toast.error(error.message || 'Modification impossible');
+      toast.error(error.message || t('admin.access.failed'));
     }
   };
 
   return (
     <section className="card">
       <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div><h2 style={{ margin: 0 }}>Acces administrateur</h2><p className="muted" style={{ marginBottom: 0 }}>{data?.adminCount ?? '...'} administrateur(s) actif(s)</p></div>
-        <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un membre" style={{ maxWidth: 260 }} />
+        <div><h2 style={{ margin: 0 }}>{t('admin.access.title')}</h2><p className="muted" style={{ marginBottom: 0 }}>{t('admin.access.activeCount', { count: data?.adminCount ?? '...' })}</p></div>
+        <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} style={{ maxWidth: 260 }} />
       </div>
       <div className="list-stack" style={{ marginTop: 16 }}>
         {users.map((user) => (
           <div className="list-row" key={user.id}>
             <div><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
             <div className="row" style={{ marginLeft: 'auto' }}>
-              <span className={`pill ${user.isAdmin ? 'pill-teal' : 'pill-gray'}`}>{user.isAdmin ? 'Admin' : 'Membre'}</span>
+              <span className={`pill ${user.isAdmin ? 'pill-teal' : 'pill-gray'}`}>{t(user.isAdmin ? 'admin.role.admin' : 'admin.role.member')}</span>
               <button className={`btn btn-sm ${user.isAdmin ? 'btn-danger-ghost' : 'btn-primary'}`} onClick={() => setPending({ user, role: user.isAdmin ? 'member' : 'admin' })}>
-                {user.isAdmin ? 'Retirer' : 'Promouvoir'}
+                {t(user.isAdmin ? 'admin.access.remove' : 'admin.access.promote')}
               </button>
             </div>
           </div>
         ))}
-        {data && users.length === 0 && <p className="muted center">Aucun membre trouve.</p>}
+        {data && users.length === 0 && <p className="muted center">{t('admin.members.none')}</p>}
       </div>
       {pending && <ConfirmDialog
-        title={pending.role === 'admin' ? 'Donner l acces administrateur' : 'Retirer l acces administrateur'}
-        message={`${pending.user.name} ${pending.role === 'admin' ? 'pourra administrer la plateforme.' : 'ne pourra plus acceder au back-office.'}`}
-        confirmLabel={pending.role === 'admin' ? 'Promouvoir' : 'Retirer'}
+        title={t(pending.role === 'admin' ? 'admin.access.confirmGrant' : 'admin.access.confirmRemove')}
+        message={t(pending.role === 'admin' ? 'admin.access.grantMessage' : 'admin.access.removeMessage', { name: pending.user.name })}
+        confirmLabel={t(pending.role === 'admin' ? 'admin.access.promote' : 'admin.access.remove')}
         danger={pending.role === 'member'}
         onConfirm={apply}
         onClose={() => setPending(null)}
@@ -282,52 +368,52 @@ function SafetyPanel({ data, reload }) {
   const toast = useToast();
   const [busy, setBusy] = useState('');
   const act = async (user, action) => {
-    const reason = action === 'restore' ? '' : window.prompt(action === 'warn' ? 'Motif de l avertissement' : 'Motif de la suspension');
+    const reason = action === 'restore' ? '' : window.prompt(t(action === 'warn' ? 'admin.safety.warnReason' : 'admin.safety.suspendReason'));
     if (action !== 'restore' && (!reason || reason.trim().length < 5)) return;
-    const durationHours = action === 'suspend' ? Number(window.prompt('Duree en heures (1 a 720)', '24')) : null;
+    const durationHours = action === 'suspend' ? Number(window.prompt(t('admin.safety.duration'), '24')) : null;
     if (action === 'suspend' && (!Number.isFinite(durationHours) || durationHours < 1 || durationHours > 720)) return;
     setBusy(`${user.id}:${action}`);
     try {
       await api(`/admin/users/${user.id}/safety`, { method: 'POST', body: { action, reason, durationHours } });
-      toast.success(action === 'suspend' ? 'Compte suspendu' : action === 'restore' ? 'Compte retabli' : 'Avertissement envoye');
+      toast.success(t(action === 'suspend' ? 'admin.safety.suspended' : action === 'restore' ? 'admin.safety.restored' : 'admin.safety.warned'));
       reload();
-    } catch (error) { toast.error(error.message || 'Action impossible'); } finally { setBusy(''); }
+    } catch (error) { toast.error(error.message || t('common.action.error')); } finally { setBusy(''); }
   };
   const decideAppeal = async (appeal, decision) => {
-    const reason = window.prompt(decision === 'approve' ? 'Note de validation (facultative)' : 'Motif du refus (facultatif)') || '';
+    const reason = window.prompt(t(decision === 'approve' ? 'admin.safety.appealApproveNote' : 'admin.safety.appealRejectReason')) || '';
     setBusy(`${appeal.id}:${decision}`);
     try {
       await api(`/admin/safety/appeals/${appeal.id}`, { method: 'POST', body: { decision, reason } });
-      toast.success(decision === 'approve' ? 'Recours accepte et compte retabli' : 'Recours refuse');
+      toast.success(t(decision === 'approve' ? 'admin.safety.appealAccepted' : 'admin.safety.appealRejected'));
       reload();
-    } catch (error) { toast.error(error.message || 'Decision impossible'); } finally { setBusy(''); }
+    } catch (error) { toast.error(error.message || t('admin.safety.decisionFailed')); } finally { setBusy(''); }
   };
   if (!data) return <SkeletonList count={3} avatar={false} />;
   const openAppeals = data.appeals.filter((appeal) => appeal.status === 'open');
   return (
     <section className="list-stack">
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>Recours ouverts</h2>
-        {openAppeals.length === 0 && <p className="muted">Aucun recours en attente.</p>}
+        <h2 style={{ marginTop: 0 }}>{t('admin.safety.openAppeals')}</h2>
+        {openAppeals.length === 0 && <p className="muted">{t('admin.safety.noAppeals')}</p>}
         {openAppeals.map((appeal) => (
           <div className="list-row" key={appeal.id}>
-            <div className="grow"><b>{appeal.user?.name || 'Compte supprime'}</b><div className="muted">{appeal.user?.email}</div><p style={{ margin: '6px 0 0' }}>{appeal.reason}</p></div>
+            <div className="grow"><b>{appeal.user?.name || t('admin.member.deleted')}</b><div className="muted">{appeal.user?.email}</div><p style={{ margin: '6px 0 0' }}>{appeal.reason}</p></div>
             <div className="row" style={{ alignSelf: 'center' }}>
-              <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'approve')}>Accepter</button>
-              <button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'reject')}>Refuser</button>
+              <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'approve')}>{t('common.accept')}</button>
+              <button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => decideAppeal(appeal, 'reject')}>{t('common.reject')}</button>
             </div>
           </div>
         ))}
       </div>
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>Comptes a surveiller</h2>
-        <p className="muted">Les signaux ne sont pas une preuve. Verifiez le contexte de conversation avant toute sanction.</p>
-        {data.riskyUsers.length === 0 && <p className="muted">Aucun compte a surveiller.</p>}
+        <h2 style={{ marginTop: 0 }}>{t('admin.safety.watchAccounts')}</h2>
+        <p className="muted">{t('admin.safety.signalNotice')}</p>
+        {data.riskyUsers.length === 0 && <p className="muted">{t('admin.safety.none')}</p>}
         {data.riskyUsers.map((user) => (
           <div className="list-row" key={user.id}>
-            <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div><small>{user.suspendedUntil ? `Suspendu jusqu au ${new Date(user.suspendedUntil).toLocaleString('fr-BE')}` : `${user.messageSafetyAttempts} tentative(s) bloquee(s) ces 24 h`}</small></div>
+            <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div><small>{user.suspendedUntil ? t('admin.member.suspendedUntil', { date: new Date(user.suspendedUntil).toLocaleString(dateLocale()) }) : t('admin.safety.blockedAttempts', { count: user.messageSafetyAttempts })}</small></div>
             <div className="row" style={{ alignSelf: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {user.suspendedUntil ? <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => act(user, 'restore')}>Retablir</button> : <><button className="btn btn-sm" disabled={!!busy} onClick={() => act(user, 'warn')}>Avertir</button><button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => act(user, 'suspend')}>Suspendre</button></>}
+              {user.suspendedUntil ? <button className="btn btn-teal btn-sm" disabled={!!busy} onClick={() => act(user, 'restore')}>{t('admin.safety.restore')}</button> : <><button className="btn btn-sm" disabled={!!busy} onClick={() => act(user, 'warn')}>{t('admin.safety.warn')}</button><button className="btn btn-danger-ghost btn-sm" disabled={!!busy} onClick={() => act(user, 'suspend')}>{t('admin.safety.suspend')}</button></>}
             </div>
           </div>
         ))}
@@ -341,17 +427,17 @@ function OpsPanel({ ops, error, setTab, reload }) {
     return (
       <div className="alert alert-danger">
         <Icon name="alert" size={17} />{error}
-        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>Réessayer</button>
+        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>{t('common.retry')}</button>
       </div>
     );
   }
   if (!ops) return <SkeletonList count={4} avatar={false} lines={2} />;
 
   const statusCopy = {
-    clear: ['Plateforme claire', 'Aucune urgence opérationnelle ouverte.'],
-    watch: ['Surveillance active', 'Des dossiers attendent une revue, sans dépassement critique.'],
-    critical: ['Priorité immédiate', 'Au moins un litige ou KYC en retard demande une action rapide.'],
-  }[ops.health.status] || ['Opérations', 'État courant du back-office.'];
+    clear: [t('admin.ops.clear'), t('admin.ops.clearHelp')],
+    watch: [t('admin.ops.watch'), t('admin.ops.watchHelp')],
+    critical: [t('admin.ops.critical'), t('admin.ops.criticalHelp')],
+  }[ops.health.status] || [t('admin.tab.operations'), t('admin.ops.currentState')];
 
   return (
     <div className="ops-panel">
@@ -360,15 +446,15 @@ function OpsPanel({ ops, error, setTab, reload }) {
           <h2>{statusCopy[0]}</h2>
           <p>{statusCopy[1]}</p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={reload}><Icon name="repeat" size={15} />Actualiser</button>
+        <button className="btn btn-ghost btn-sm" onClick={reload}><Icon name="repeat" size={15} />{t('common.refresh')}</button>
       </div>
 
       <div className="ops-metrics">
-        <OpsMetric label="Revue ouverte" value={ops.health.reviewOpen} icon="fileText" />
-        <OpsMetric label="KYC en retard" value={ops.health.kycOverdue} icon="clock" danger={ops.health.kycOverdue > 0} />
-        <OpsMetric label="Litiges ouverts" value={ops.health.openDisputes} icon="alert" danger={ops.health.openDisputes > 0} />
-        <OpsMetric label="Offres à risque" value={ops.health.offersAtRisk || 0} icon="send" danger={(ops.health.offersAtRisk || 0) > 0} />
-        <OpsMetric label="Escrow gelé/tenu" value={`${Math.round(ops.health.escrowHeld)} €`} icon="lock" />
+        <OpsMetric label={t('admin.ops.reviewOpen')} value={ops.health.reviewOpen} icon="fileText" />
+        <OpsMetric label={t('admin.ops.kycOverdue')} value={ops.health.kycOverdue} icon="clock" danger={ops.health.kycOverdue > 0} />
+        <OpsMetric label={t('admin.ops.openDisputes')} value={ops.health.openDisputes} icon="alert" danger={ops.health.openDisputes > 0} />
+        <OpsMetric label={t('admin.ops.offersAtRisk')} value={ops.health.offersAtRisk || 0} icon="send" danger={(ops.health.offersAtRisk || 0) > 0} />
+        <OpsMetric label={t('admin.ops.escrowHeld')} value={`${Math.round(ops.health.escrowHeld)} €`} icon="lock" />
       </div>
 
       <div className="ops-task-grid">
@@ -376,8 +462,8 @@ function OpsPanel({ ops, error, setTab, reload }) {
           <button key={task.id} className={`ops-task ops-${task.severity}`} onClick={() => setTab(task.tab)}>
             <span className="ops-task-count">{task.count}</span>
             <span className="grow">
-              <b>{task.title}</b>
-              <small>{task.body}</small>
+              <b>{opsTaskCopy(task.id, 'title', task.title)}</b>
+              <small>{opsTaskCopy(task.id, 'body', task.body)}</small>
             </span>
             <Icon name="arrowRight" size={16} />
           </button>
@@ -387,30 +473,30 @@ function OpsPanel({ ops, error, setTab, reload }) {
       <div className="ops-grid">
         <section className="ops-section">
           <div className="ops-section-head">
-            <h2><Icon name="fileText" size={17} />Derniers dossiers</h2>
-            <button className="link-btn" onClick={() => setTab('review')}>Ouvrir</button>
+            <h2><Icon name="fileText" size={17} />{t('admin.ops.latestCases')}</h2>
+            <button className="link-btn" onClick={() => setTab('review')}>{t('common.open')}</button>
           </div>
           {ops.latest.reviewQueue.length === 0 ? (
-            <p className="muted" style={{ fontSize: 13 }}>Aucun dossier en revue.</p>
+            <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noReview')}</p>
           ) : ops.latest.reviewQueue.map((item) => (
             <button key={item.id} className="ops-row" onClick={() => setTab('review')}>
               <Icon name={item.type === 'dispute' ? 'alert' : item.type === 'conversation' ? 'chat' : 'package'} size={16} />
               <span className="grow">
-                <b>{item.type === 'dispute' ? 'Litige' : item.type === 'conversation' ? 'Conversation signalee' : 'Annonce zone grise'}</b>
+                <b>{t(item.type === 'dispute' ? 'admin.review.dispute' : item.type === 'conversation' ? 'admin.review.flaggedConversation' : 'admin.review.grayListing')}</b>
                 <small>{item.label || item.refId}</small>
               </span>
-              <small>{DT_FMT.format(item.createdAt)}</small>
+              <small>{formatAdminShortDate(item.createdAt)}</small>
             </button>
           ))}
         </section>
 
         <section className="ops-section">
           <div className="ops-section-head">
-            <h2><Icon name="shieldCheck" size={17} />Identités à vérifier</h2>
-            <button className="link-btn" onClick={() => setTab('kyc')}>Ouvrir</button>
+            <h2><Icon name="shieldCheck" size={17} />{t('admin.ops.identitiesToCheck')}</h2>
+            <button className="link-btn" onClick={() => setTab('kyc')}>{t('common.open')}</button>
           </div>
           {ops.latest.kyc.length === 0 ? (
-            <p className="muted" style={{ fontSize: 13 }}>Aucune demande KYC en attente.</p>
+            <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noPendingKyc')}</p>
           ) : ops.latest.kyc.map((item) => (
             <button key={item.id} className={`ops-row ${item.overdue ? 'is-danger' : ''}`} onClick={() => setTab('kyc')}>
               <Icon name={item.overdue ? 'alert' : 'user'} size={16} />
@@ -418,7 +504,7 @@ function OpsPanel({ ops, error, setTab, reload }) {
                 <b>{item.legalName}</b>
                 <small>{item.user?.email || item.user?.name}</small>
               </span>
-              <small>{DT_FMT.format(item.submittedAt)}</small>
+              <small>{formatAdminShortDate(item.submittedAt)}</small>
             </button>
           ))}
         </section>
@@ -426,11 +512,11 @@ function OpsPanel({ ops, error, setTab, reload }) {
 
       <section className="ops-section">
         <div className="ops-section-head">
-          <h2><Icon name="send" size={17} />Négociation à surveiller</h2>
-          <button className="link-btn" onClick={() => setTab('ops')}>{ops.health.offersActive || 0} actives</button>
+          <h2><Icon name="send" size={17} />{t('admin.ops.negotiations')}</h2>
+          <button className="link-btn" onClick={() => setTab('ops')}>{t('admin.ops.activeCount', { count: ops.health.offersActive || 0 })}</button>
         </div>
         {!ops.latest.offers?.length ? (
-          <p className="muted" style={{ fontSize: 13 }}>Aucune proposition active ou expirée.</p>
+          <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noOffers')}</p>
         ) : (
           <div className="ops-offer-list">
             {ops.latest.offers.map((offer) => (
@@ -441,7 +527,7 @@ function OpsPanel({ ops, error, setTab, reload }) {
                   <small>{offer.sender?.name} → {offer.traveler?.name} · +{offer.offeredPay} €</small>
                 </span>
                 <span className="ops-offer-meta">
-                  <b>{offer.waitingFor === 'traveler' ? 'Voyageur' : offer.waitingFor === 'sender' ? 'Expéditeur' : 'Expirée'}</b>
+                  <b>{t(offer.waitingFor === 'traveler' ? 'admin.role.traveler' : offer.waitingFor === 'sender' ? 'admin.role.sender' : 'admin.status.expired')}</b>
                   <small>{offerTimeLabel(offer)}</small>
                 </span>
               </div>
@@ -452,16 +538,16 @@ function OpsPanel({ ops, error, setTab, reload }) {
 
       <section className="ops-section">
         <div className="ops-section-head">
-          <h2><Icon name="alert" size={17} />Signalement risque</h2>
-          <button className="link-btn" onClick={() => setTab('fraud')}>Analyser</button>
+          <h2><Icon name="alert" size={17} />{t('admin.ops.riskSignals')}</h2>
+          <button className="link-btn" onClick={() => setTab('fraud')}>{t('admin.ops.analyze')}</button>
         </div>
         <div className="ops-risk-list">
-          <RiskPill label="Comptes liés" value={ops.risk.linkedAccounts} />
-          <RiskPill label="Paires répétées" value={ops.risk.repeatPairs} />
-          <RiskPill label="Messages hors app" value={ops.risk.flaggedMessaging} />
-          <RiskPill label="Annulations" value={ops.risk.abnormalCancel} />
-          <RiskPill label="Litiges répétés" value={ops.risk.disputeProne} />
-          <RiskPill label="KYC répétés" value={ops.risk.kycRepeatRejections} />
+          <RiskPill label={t('admin.risk.linked')} value={ops.risk.linkedAccounts} />
+          <RiskPill label={t('admin.risk.repeatedPairs')} value={ops.risk.repeatPairs} />
+          <RiskPill label={t('admin.risk.offPlatform')} value={ops.risk.flaggedMessaging} />
+          <RiskPill label={t('admin.risk.cancellations')} value={ops.risk.abnormalCancel} />
+          <RiskPill label={t('admin.risk.repeatedDisputes')} value={ops.risk.disputeProne} />
+          <RiskPill label={t('admin.risk.repeatedKyc')} value={ops.risk.kycRepeatRejections} />
         </div>
       </section>
     </div>
@@ -483,10 +569,10 @@ function RiskPill({ label, value }) {
 }
 
 function offerTimeLabel(offer) {
-  if (offer.status === 'expired' || offer.expiresIn <= 0) return 'expirée';
+  if (offer.status === 'expired' || offer.expiresIn <= 0) return t('admin.status.expired');
   const hours = Math.ceil(offer.expiresIn / 3600000);
-  if (hours <= 48) return `${hours} h`;
-  return `${Math.ceil(hours / 24)} j`;
+  if (hours <= 48) return t('time.hours', { n: hours });
+  return t('time.days', { n: Math.ceil(hours / 24) });
 }
 
 function ListingReviewCard({ item, decide }) {
@@ -495,32 +581,32 @@ function ListingReviewCard({ item, decide }) {
 
   return (
     <>
-      <span className="pill pill-saffron mb"><Icon name="alert" size={13} />Zone grise — {item.listing.categoryLabel}</span>
+      <span className="pill pill-saffron mb"><Icon name="alert" size={13} />{t('admin.review.grayZone')} — {item.listing.categoryLabel}</span>
       <div className="mt"><b>{item.listing.title}</b></div>
       <div className="muted mb" style={{ fontSize: 13 }}>{item.listing.description} · {item.listing.valueEur} €</div>
 
       {!approving ? (
         <div className="row">
           <button className="btn btn-teal btn-sm" onClick={() => setApproving(true)}>
-            <Icon name="check" size={15} />Publier
+            <Icon name="check" size={15} />{t('common.publish')}
           </button>
           <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'reject')}>
-            <Icon name="x" size={15} />Refuser
+            <Icon name="x" size={15} />{t('common.reject')}
           </button>
         </div>
       ) : (
         <div className="mt">
           <div className="field">
-            <label>Quantité max autorisée pour « {item.listing.categoryLabel} »</label>
-            <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} placeholder="Ex. : 3 kg, 2 L, 500 g…" autoFocus />
+            <label>{t('admin.review.maxQuantity', { category: item.listing.categoryLabel })}</label>
+            <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} placeholder={t('admin.review.maxQuantityExample')} autoFocus />
             <div className="hint">
-              Cette catégorie sera ajoutée à la liste blanche : les prochains envois similaires seront publiés directement.
+              {t('admin.review.whitelistHelp')}
             </div>
           </div>
           <div className="row">
-            <button className="btn btn-ghost btn-sm" onClick={() => setApproving(false)}>Annuler</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setApproving(false)}>{t('common.cancel')}</button>
             <button className="btn btn-teal btn-sm" onClick={() => decide(item.id, 'approve', { maxQty })} disabled={!maxQty.trim()}>
-              <Icon name="check" size={15} />Approuver et promouvoir
+              <Icon name="check" size={15} />{t('admin.review.approvePromote')}
             </button>
           </div>
         </div>
@@ -535,18 +621,18 @@ function ConversationReviewCard({ item, decide }) {
   const latestReport = c.reports?.[0];
   return (
     <>
-      <span className="pill pill-danger mb"><Icon name="alert" size={13} />Conversation signalee</span>
+      <span className="pill pill-danger mb"><Icon name="alert" size={13} />{t('admin.review.flaggedConversation')}</span>
       <div className="mt"><b>{people || c.id}</b></div>
       <div className="muted mb" style={{ fontSize: 13 }}>
-        {c.context?.label || 'Conversation directe'}{c.context?.detail ? ` · ${c.context.detail}` : ''} · {c.reportCount} signalement(s)
+        {conversationContextLabel(c.context?.type, c.context?.label)}{c.context?.detail ? ` · ${c.context.detail}` : ''} · {t('admin.review.reportCount', { count: c.reportCount })}
       </div>
 
       {latestReport && (
         <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
           <Icon name="alert" size={16} />
           <span>
-            <b>Motif :</b> {reportReasonLabel(latestReport.reasonCode)} · {latestReport.reason}
-            {latestReport.comment ? <><br /><b>Commentaire :</b> {latestReport.comment}</> : null}
+            <b>{t('admin.reason')}:</b> {reportReasonLabel(latestReport.reasonCode)} · {latestReport.reason}
+            {latestReport.comment ? <><br /><b>{t('admin.comment')}:</b> {latestReport.comment}</> : null}
           </span>
         </div>
       )}
@@ -554,27 +640,27 @@ function ConversationReviewCard({ item, decide }) {
       {(c.safetyIncidents || []).length > 0 && (
         <div className="alert alert-danger" style={{ fontSize: 12.5 }}>
           <Icon name="shieldCheck" size={16} />
-          <span><b>{c.safetyIncidents.length} tentative(s) bloquee(s) :</b> {c.safetyIncidents.slice(0, 3).map((incident) => `${incident.user?.name || 'Compte'} (${incident.categories.join(', ')})`).join(' · ')}</span>
+          <span><b>{t('admin.review.blockedAttempts', { count: c.safetyIncidents.length })}:</b> {c.safetyIncidents.slice(0, 3).map((incident) => `${incident.user?.name || t('admin.account')} (${incident.categories.map(safetyCategoryLabel).join(', ')})`).join(' · ')}</span>
         </div>
       )}
 
       <div className="admin-message-review">
         {(c.messages || []).length === 0 ? (
-          <p className="muted">Aucun message recent a afficher.</p>
+          <p className="muted">{t('admin.review.noRecentMessages')}</p>
         ) : c.messages.map((message) => (
           <div className={`admin-message-line ${message.flagged || message.type === 'warning' ? 'is-warning' : ''}`} key={message.id}>
-            <small>{message.fromUser?.name || 'Systeme'} · {new Date(message.at).toLocaleString('fr-BE')}</small>
-            <p>{message.text || (message.attachments?.length ? 'Piece jointe' : 'Message sans texte')}</p>
+            <small>{message.fromUser?.name || t('admin.system')} · {new Date(message.at).toLocaleString(dateLocale())}</small>
+            <p>{message.text || (message.attachments?.length ? t('admin.attachment') : t('admin.review.messageWithoutText'))}</p>
           </div>
         ))}
       </div>
 
       <div className="row">
         <button className="btn btn-ghost btn-sm" onClick={() => decide(item.id, 'conversation_dismissed')}>
-          <Icon name="check" size={15} />Classer sans suite
+          <Icon name="check" size={15} />{t('admin.review.dismiss')}
         </button>
         <button className="btn btn-danger-ghost btn-sm" onClick={() => decide(item.id, 'conversation_watch')}>
-          <Icon name="alert" size={15} />Surveiller
+          <Icon name="alert" size={15} />{t('admin.review.watch')}
         </button>
       </div>
     </>
@@ -583,12 +669,12 @@ function ConversationReviewCard({ item, decide }) {
 
 function reportReasonLabel(code) {
   return {
-    external_payment: 'Paiement externe',
-    abuse: 'Insultes ou menace',
-    suspicious: 'Comportement suspect',
-    off_platform: 'Contact hors plateforme',
-    other: 'Autre',
-  }[code] || 'Autre';
+    external_payment: t('admin.report.externalPayment'),
+    abuse: t('admin.report.abuse'),
+    suspicious: t('admin.report.suspicious'),
+    off_platform: t('admin.report.offPlatform'),
+    other: t('common.other'),
+  }[code] || t('common.other');
 }
 
 function CategoriesPanel({ customWhitelist, reload }) {
@@ -603,14 +689,13 @@ function CategoriesPanel({ customWhitelist, reload }) {
       <div className="alert alert-teal">
         <Icon name="fileText" size={17} />
         <span>
-          Catégories promues depuis la zone grise après validation admin — publiées directement, sans repasser
-          en revue. La liste blanche de base (huile d'argan, miel, safran…) reste définie dans le code.
+          {t('admin.categories.help')}
         </span>
       </div>
       {customWhitelist.length === 0 && (
         <div className="card center empty-state">
           <Icon name="package" size={32} />
-          <p className="muted">Aucune catégorie promue pour l'instant.</p>
+          <p className="muted">{t('admin.categories.none')}</p>
         </div>
       )}
       {customWhitelist.map((c) => (
@@ -619,18 +704,18 @@ function CategoriesPanel({ customWhitelist, reload }) {
             <div className="grow">
               <b>{c.label}</b>
               <div className="muted" style={{ fontSize: 12.5 }}>
-                Max {c.maxQty} · ajoutée le {new Date(c.addedAt).toLocaleDateString('fr-BE')} (annonce {c.addedFrom})
+                {t('admin.categories.item', { max: c.maxQty, date: new Date(c.addedAt).toLocaleDateString(dateLocale()), listing: c.addedFrom })}
               </div>
             </div>
-            <button className="btn btn-danger-ghost btn-sm" onClick={() => setConfirming(c.id)}>Retirer</button>
+            <button className="btn btn-danger-ghost btn-sm" onClick={() => setConfirming(c.id)}>{t('common.remove')}</button>
           </div>
         </div>
       ))}
       {confirming && (
         <ConfirmDialog
-          title="Retirer cette catégorie ?"
-          message="Les prochains envois de ce type repasseront en revue humaine avant publication."
-          confirmLabel="Retirer" danger icon="trash"
+          title={t('admin.categories.removeTitle')}
+          message={t('admin.categories.removeMessage')}
+          confirmLabel={t('common.remove')} danger icon="trash"
           onConfirm={() => remove(confirming)}
           onClose={() => setConfirming(null)}
         />
@@ -640,13 +725,12 @@ function CategoriesPanel({ customWhitelist, reload }) {
 }
 
 // ---------- Vérification d'identité (KYC manuel) ----------
-const DT_FMT = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const KYC_FILTERS = [
-  { id: 'pending', label: 'En attente' },
-  { id: 'verified', label: 'Vérifiés' },
-  { id: 'rejected', label: 'Rejetés' },
-  { id: 'refused', label: 'Refusés' },
-  { id: 'all', label: 'Tous' },
+  { id: 'pending', key: 'admin.status.pending' },
+  { id: 'verified', key: 'admin.status.verifiedPlural' },
+  { id: 'rejected', key: 'admin.status.rejectedPlural' },
+  { id: 'refused', key: 'admin.status.refusedPlural' },
+  { id: 'all', key: 'common.all' },
 ];
 
 function KycPanel() {
@@ -671,18 +755,18 @@ function KycPanel() {
   return (
     <div>
       <div className="stat-grid mb">
-        <div className="stat"><div className="num">{s.pending ?? '…'}</div><div className="lbl">En attente</div></div>
-        <div className="stat"><div className="num" style={s.overdue > 0 ? { color: 'var(--danger)' } : {}}>{s.overdue ?? 0}</div><div className="lbl">En retard (&gt;24h)</div></div>
-        <div className="stat"><div className="num">{s.verified ?? '…'}</div><div className="lbl">Vérifiés</div></div>
-        <div className="stat"><div className="num">{s.avgReviewHours != null ? `${s.avgReviewHours} h` : '—'}</div><div className="lbl">Délai moyen</div></div>
+        <div className="stat"><div className="num">{s.pending ?? '…'}</div><div className="lbl">{t('admin.status.pending')}</div></div>
+        <div className="stat"><div className="num" style={s.overdue > 0 ? { color: 'var(--danger)' } : {}}>{s.overdue ?? 0}</div><div className="lbl">{t('admin.kyc.overdue24')}</div></div>
+        <div className="stat"><div className="num">{s.verified ?? '…'}</div><div className="lbl">{t('admin.status.verifiedPlural')}</div></div>
+        <div className="stat"><div className="num">{s.avgReviewHours != null ? `${s.avgReviewHours} h` : '—'}</div><div className="lbl">{t('admin.kyc.averageTime')}</div></div>
       </div>
 
       <input className="chat-input mb" style={{ width: '100%' }} value={q} onChange={(e) => setQ(e.target.value)}
-        placeholder="Rechercher par nom ou email…" />
+        placeholder={t('admin.kyc.search')} />
 
       <div className="kyc-filters">
         {KYC_FILTERS.map((f) => (
-          <button key={f.id} className={`kyc-filter ${filter === f.id ? 'active' : ''}`} onClick={() => setFilter(f.id)}>{f.label}</button>
+          <button key={f.id} className={`kyc-filter ${filter === f.id ? 'active' : ''}`} onClick={() => setFilter(f.id)}>{t(f.key)}</button>
         ))}
       </div>
 
@@ -690,7 +774,7 @@ function KycPanel() {
       {data?.submissions.length === 0 && (
         <div className="card center empty-state">
           <Icon name="shieldCheck" size={32} />
-          <p className="muted">Aucune demande {filter === 'pending' ? 'en attente' : 'dans cette catégorie'}.</p>
+          <p className="muted">{t(filter === 'pending' ? 'admin.kyc.nonePending' : 'admin.kyc.noneCategory')}</p>
         </div>
       )}
 
@@ -701,15 +785,15 @@ function KycPanel() {
             <div className="grow">
               <b>{sub.legalName}</b>
               <div className="muted" style={{ fontSize: 12.5 }}>
-                {sub.user?.email} · {sub.documentType === 'passport' ? 'Passeport' : "Carte d'identité"} · {sub.age} ans
+                {sub.user?.email} · {t(sub.documentType === 'passport' ? 'admin.kyc.passport' : 'admin.kyc.idCard')} · {t('admin.kyc.age', { age: sub.age })}
               </div>
               <div style={{ marginTop: 5, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <KycStatusPill status={sub.status} />
-                {sub.overdue && <span className="pill pill-danger"><Icon name="clock" size={12} />En retard</span>}
-                {sub.priorRejects > 0 && <span className="pill pill-saffron"><Icon name="alert" size={12} />{sub.priorRejects} rejet(s) avant</span>}
+                {sub.overdue && <span className="pill pill-danger"><Icon name="clock" size={12} />{t('admin.kyc.overdue')}</span>}
+                {sub.priorRejects > 0 && <span className="pill pill-saffron"><Icon name="alert" size={12} />{t('admin.kyc.previousRejects', { count: sub.priorRejects })}</span>}
               </div>
             </div>
-            <div className="muted" style={{ fontSize: 11.5, textAlign: 'right' }}>{DT_FMT.format(sub.submittedAt)}</div>
+            <div className="muted" style={{ fontSize: 11.5, textAlign: 'right' }}>{formatAdminShortDate(sub.submittedAt)}</div>
           </div>
         </div>
       ))}
@@ -719,10 +803,10 @@ function KycPanel() {
 
 function KycStatusPill({ status }) {
   const map = {
-    pending: { cls: 'pill-saffron', label: 'En attente' },
-    approved: { cls: 'pill-teal', label: 'Vérifié' },
-    rejected: { cls: 'pill-gray', label: 'Rejeté' },
-    refused: { cls: 'pill-danger', label: 'Refusé' },
+    pending: { cls: 'pill-saffron', label: t('admin.status.pending') },
+    approved: { cls: 'pill-teal', label: t('admin.status.verified') },
+    rejected: { cls: 'pill-gray', label: t('admin.status.rejected') },
+    refused: { cls: 'pill-danger', label: t('admin.status.refused') },
   }[status] || { cls: 'pill-gray', label: status };
   return <span className={`pill ${map.cls}`}>{map.label}</span>;
 }
@@ -745,14 +829,14 @@ function KycDetail({ id, onBack, onDecided }) {
     } catch (e) { setError(e.message); setBusy(false); }
   };
 
-  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
+  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('common.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
   if (!data) return <SkeletonCard lines={4} />;
   const s = data.submission;
   const done = s.status !== 'pending';
 
   return (
     <div>
-      <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />Retour à la file</button>
+      <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.kyc.backToQueue')}</button>
 
       <div className="card">
         <div className="list-row mb">
@@ -764,23 +848,23 @@ function KycDetail({ id, onBack, onDecided }) {
         </div>
 
         <div className="kyc-recap mb">
-          <div><span className="muted">Naissance</span><b>{s.birthDate} ({s.age} ans)</b></div>
-          <div><span className="muted">Document</span><b>{s.documentType === 'passport' ? 'Passeport' : "Carte d'identité"}</b></div>
-          <div><span className="muted">Soumis le</span><b>{DT_FMT.format(s.submittedAt)}</b></div>
-          <div><span className="muted">Compte créé</span><b>{s.user ? DT_FMT.format(s.user.createdAt) : '—'}</b></div>
+          <div><span className="muted">{t('admin.kyc.birth')}</span><b>{s.birthDate} ({t('admin.kyc.age', { age: s.age })})</b></div>
+          <div><span className="muted">{t('admin.document')}</span><b>{t(s.documentType === 'passport' ? 'admin.kyc.passport' : 'admin.kyc.idCard')}</b></div>
+          <div><span className="muted">{t('admin.kyc.submitted')}</span><b>{formatAdminShortDate(s.submittedAt)}</b></div>
+          <div><span className="muted">{t('admin.kyc.accountCreated')}</span><b>{s.user ? formatAdminShortDate(s.user.createdAt) : '—'}</b></div>
         </div>
 
         {s.priorRejects > 0 && (
           <div className="alert alert-warn" style={{ fontSize: 12.5 }}>
             <Icon name="alert" size={16} />
-            <span>{s.priorRejects} demande(s) précédente(s) rejetée(s) pour cet utilisateur — vigilance accrue.</span>
+            <span>{t('admin.kyc.previousWarning', { count: s.priorRejects })}</span>
           </div>
         )}
 
         <div className="kyc-review-grid">
-          <KycDoc label="Selfie" photo={s.selfiePhoto} onZoom={setZoom} selfie />
-          <KycDoc label="Recto" photo={s.idFrontPhoto} onZoom={setZoom} />
-          {s.idBackPhoto && <KycDoc label="Verso" photo={s.idBackPhoto} onZoom={setZoom} />}
+          <KycDoc label={t('admin.kyc.selfie')} photo={s.selfiePhoto} onZoom={setZoom} selfie />
+          <KycDoc label={t('admin.kyc.front')} photo={s.idFrontPhoto} onZoom={setZoom} />
+          {s.idBackPhoto && <KycDoc label={t('admin.kyc.back')} photo={s.idBackPhoto} onZoom={setZoom} />}
         </div>
 
         {error && <div className="alert alert-danger mt"><Icon name="alert" size={17} />{error}</div>}
@@ -788,11 +872,11 @@ function KycDetail({ id, onBack, onDecided }) {
         {!done && !action && (
           <div className="mt">
             <button className="btn btn-teal mb" onClick={() => decide('approve')} disabled={busy}>
-              <Icon name="check" size={18} />Approuver — identité vérifiée
+              <Icon name="check" size={18} />{t('admin.kyc.approve')}
             </button>
             <div className="row">
-              <button className="btn btn-ghost btn-sm" onClick={() => { setAction('reject'); setReason(''); }}>Rejeter (corrigible)</button>
-              <button className="btn btn-danger-ghost btn-sm" onClick={() => { setAction('refuse'); setReason(''); }}>Refuser définitivement</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setAction('reject'); setReason(''); }}>{t('admin.kyc.rejectCorrectable')}</button>
+              <button className="btn btn-danger-ghost btn-sm" onClick={() => { setAction('refuse'); setReason(''); }}>{t('admin.kyc.refusePermanent')}</button>
             </div>
           </div>
         )}
@@ -800,21 +884,21 @@ function KycDetail({ id, onBack, onDecided }) {
         {!done && action && (
           <div className="mt kyc-decision-box">
             <div className="field">
-              <label>{action === 'reject' ? 'Motif du rejet (visible par l\'utilisateur)' : 'Motif du refus définitif'}</label>
+              <label>{t(action === 'reject' ? 'admin.kyc.rejectReason' : 'admin.kyc.refuseReason')}</label>
               <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)}
-                placeholder={action === 'reject' ? 'Ex. : Photo du recto illisible, reprenez-la nette.' : 'Ex. : Document falsifié.'} autoFocus />
+                placeholder={t(action === 'reject' ? 'admin.kyc.rejectExample' : 'admin.kyc.refuseExample')} autoFocus />
             </div>
             {action === 'refuse' && (
               <div className="alert alert-danger" style={{ fontSize: 12.5 }}>
                 <Icon name="alert" size={16} />
-                <span>Le refus définitif bloque toute nouvelle tentative. Action irréversible.</span>
+                <span>{t('admin.kyc.refuseWarning')}</span>
               </div>
             )}
             <div className="row">
-              <button className="btn btn-ghost btn-sm" onClick={() => setAction(null)}>Annuler</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setAction(null)}>{t('common.cancel')}</button>
               <button className={`btn btn-sm ${action === 'refuse' ? 'btn-danger-ghost' : 'btn-primary'}`}
                 onClick={() => decide(action)} disabled={busy || reason.trim().length < 5}>
-                {busy ? <span className="spinner" /> : action === 'reject' ? 'Confirmer le rejet' : 'Confirmer le refus définitif'}
+                {busy ? <span className="spinner" /> : t(action === 'reject' ? 'admin.kyc.confirmReject' : 'admin.kyc.confirmRefuse')}
               </button>
             </div>
           </div>
@@ -823,7 +907,7 @@ function KycDetail({ id, onBack, onDecided }) {
         {done && (
           <div className={`alert ${s.status === 'approved' ? 'alert-teal' : 'alert-danger'} mt`} style={{ marginBottom: 0 }}>
             <Icon name={s.status === 'approved' ? 'check' : 'x'} size={17} />
-            <span>Décision : {s.status === 'approved' ? 'approuvé' : s.status === 'refused' ? 'refusé définitivement' : 'rejeté'}
+            <span>{t('admin.kyc.decision')}: {t(s.status === 'approved' ? 'admin.status.approved' : s.status === 'refused' ? 'admin.status.refusedPermanent' : 'admin.status.rejectedLower')}
             {s.decisionReason ? ` — ${s.decisionReason}` : ''}</span>
           </div>
         )}
@@ -831,13 +915,13 @@ function KycDetail({ id, onBack, onDecided }) {
 
       {data.history.length > 0 && (
         <div className="card">
-          <h2 style={{ marginBottom: 10 }}><Icon name="clock" size={17} />Historique des décisions</h2>
+          <h2 style={{ marginBottom: 10 }}><Icon name="clock" size={17} />{t('admin.kyc.history')}</h2>
           {data.history.map((h) => (
             <div className="kyc-history-row" key={h.id}>
               <KycStatusPill status={h.decision === 'approve' ? 'approved' : h.decision === 'refuse' ? 'refused' : 'rejected'} />
               <div className="grow">
                 <div style={{ fontSize: 12.5 }}>{h.reason || '—'}</div>
-                <div className="muted" style={{ fontSize: 11 }}>{h.adminName} · {DT_FMT.format(h.at)}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{h.adminName} · {formatAdminShortDate(h.at)}</div>
               </div>
             </div>
           ))}
@@ -846,7 +930,7 @@ function KycDetail({ id, onBack, onDecided }) {
 
       {zoom && (
         <div className="modal-backdrop" onClick={() => setZoom(null)}>
-          <img src={zoom} alt="Document" className="kyc-zoom" onClick={(e) => e.stopPropagation()} />
+          <img src={zoom} alt={t('admin.document')} className="kyc-zoom" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
@@ -862,8 +946,6 @@ function KycDoc({ label, photo, onZoom, selfie }) {
   );
 }
 
-const PCT_FMT = new Intl.NumberFormat('fr-BE', { style: 'percent', maximumFractionDigits: 1 });
-
 function KpiPanel() {
   const [d, setD] = useState(null);
 
@@ -877,15 +959,13 @@ function KpiPanel() {
       <div className="alert alert-teal">
         <Icon name="fileText" size={17} />
         <span>
-          Cibles à 6 mois post-lancement (plan de projet §7). Calculées en direct sur {totals.transactions} transaction(s)
-          et {totals.users} membre(s) — les taux se stabilisent avec le volume, à interpréter avec prudence tant que
-          l'échantillon est petit.
+          {t('admin.kpi.help', { transactions: totals.transactions, users: totals.users })}
         </span>
       </div>
 
       <KpiCard
-        title="Transactions complétées / mois" icon="repeat"
-        value={`${kpis.transactionsPerMonth.value}`} targetLabel="Cible : 150+/mois"
+        title={t('admin.kpi.transactionsMonth')} icon="repeat"
+        value={`${kpis.transactionsPerMonth.value}`} targetLabel={t('admin.kpi.targetMonthly')}
         status={kpiStatus(kpis.transactionsPerMonth)}
       >
         <div className="kpi-bars">
@@ -902,40 +982,40 @@ function KpiPanel() {
       </KpiCard>
 
       <KpiCard
-        title="Taux de litige" icon="alert"
-        value={PCT_FMT.format(kpis.disputeRate.value)} targetLabel="Cible : < 5 %"
+        title={t('admin.kpi.disputeRate')} icon="alert"
+        value={formatPercent(kpis.disputeRate.value)} targetLabel={t('admin.kpi.targetDispute')}
         status={kpiStatus(kpis.disputeRate)}
       />
 
       <KpiCard
-        title="Résolution litige < 7 jours" icon="clock"
-        value={kpis.resolutionRate.value === null ? '—' : PCT_FMT.format(kpis.resolutionRate.value)}
-        targetLabel={`Cible : > 90 % · ${kpis.resolutionRate.sampleSize} litige(s) résolu(s)`}
+        title={t('admin.kpi.resolution')} icon="clock"
+        value={kpis.resolutionRate.value === null ? '—' : formatPercent(kpis.resolutionRate.value)}
+        targetLabel={t('admin.kpi.targetResolution', { count: kpis.resolutionRate.sampleSize })}
         status={kpiStatus(kpis.resolutionRate)}
       />
 
       <KpiCard
-        title="Voyageurs récurrents (2+ transports)" icon="star"
-        value={PCT_FMT.format(kpis.recurringTravelers.value)}
-        targetLabel={`Cible : > 40 % · ${kpis.recurringTravelers.sampleSize} voyageur(s)`}
+        title={t('admin.kpi.recurring')} icon="star"
+        value={formatPercent(kpis.recurringTravelers.value)}
+        targetLabel={t('admin.kpi.targetRecurring', { count: kpis.recurringTravelers.sampleSize })}
         status={kpiStatus(kpis.recurringTravelers)}
       />
 
       <KpiCard
-        title="Désintermédiation estimée" icon="chat"
-        value={PCT_FMT.format(kpis.desintermediationRate.value)}
-        targetLabel={`Cible : < 15 % · ${kpis.desintermediationRate.sampleSize} message(s)`}
+        title={t('admin.kpi.desintermediation')} icon="chat"
+        value={formatPercent(kpis.desintermediationRate.value)}
+        targetLabel={t('admin.kpi.targetDesintermediation', { count: kpis.desintermediationRate.sampleSize })}
         status={kpiStatus(kpis.desintermediationRate)}
       />
 
       <KpiCard
-        title="Délai moyen de matching" icon="clock"
+        title={t('admin.kpi.matchTime')} icon="clock"
         value={kpis.avgMatchHours.value === null ? '—' : `${Math.round(kpis.avgMatchHours.value)} h`}
-        targetLabel="Cible : < 72 h (annonce → accord)"
+        targetLabel={t('admin.kpi.targetMatch')}
         status={kpiStatus(kpis.avgMatchHours)}
       />
 
-      <KpiCard title="NPS" icon="star" value="—" targetLabel="Cible : > 50" status="nodata">
+      <KpiCard title="NPS" icon="star" value="—" targetLabel={t('admin.kpi.targetNps')} status="nodata">
         <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>{kpis.nps.note}</p>
       </KpiCard>
     </div>
@@ -987,7 +1067,7 @@ function FraudPanel({ data: d, error, reload }) {
     return (
       <div className="alert alert-danger">
         <Icon name="alert" size={17} />{error}
-        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>Réessayer</button>
+        <button className="link-btn" style={{ marginLeft: 8 }} onClick={reload}>{t('common.retry')}</button>
       </div>
     );
   }
@@ -998,18 +1078,17 @@ function FraudPanel({ data: d, error, reload }) {
       <div className="alert alert-warn">
         <Icon name="alert" size={17} />
         <span>
-          Signaux de corrélation, pas des verdicts. Un IP partagé ou un taux d'annulation élevé appelle une revue
-          humaine — jamais une sanction automatique (PRD §5 : collusion, faux KYC, désintermédiation).
+          {t('admin.fraud.notice')}
         </span>
       </div>
 
-      <FraudSection icon="user" title="Comptes potentiellement liés" count={d.linkedAccounts.length}
-        help="Même téléphone ou même adresse IP à l'inscription — signe possible de doublons ou de complicité."
-        empty="Aucun rapprochement détecté.">
+      <FraudSection icon="user" title={t('admin.fraud.linkedTitle')} count={d.linkedAccounts.length}
+        help={t('admin.fraud.linkedHelp')}
+        empty={t('admin.fraud.linkedEmpty')}>
         {d.linkedAccounts.map((g, i) => (
           <div className="list-row" key={i} style={{ borderTop: i > 0 ? '1px solid var(--border)' : 'none', paddingTop: i > 0 ? 10 : 0, marginTop: i > 0 ? 10 : 0 }}>
             <div className="grow">
-              <span className="pill pill-gray mb" style={{ fontSize: 11 }}>{g.signal === 'phone' ? 'Téléphone' : 'IP'} : {g.value}</span>
+              <span className="pill pill-gray mb" style={{ fontSize: 11 }}>{g.signal === 'phone' ? t('admin.phone') : 'IP'} : {g.value}</span>
               <div style={{ fontSize: 13 }}>
                 {g.users.map((u) => <div key={u.id}>{u.name} — {u.email}</div>)}
               </div>
@@ -1018,62 +1097,62 @@ function FraudPanel({ data: d, error, reload }) {
         ))}
       </FraudSection>
 
-      <FraudSection icon="repeat" title="Paires expéditeur/voyageur récurrentes" count={d.repeatPairs.length}
-        help="Deux comptes qui transigent toujours ensemble — risque de fausses transactions ou de collusion sur les litiges."
-        empty="Aucune paire récurrente.">
+      <FraudSection icon="repeat" title={t('admin.fraud.pairsTitle')} count={d.repeatPairs.length}
+        help={t('admin.fraud.pairsHelp')}
+        empty={t('admin.fraud.pairsEmpty')}>
         {d.repeatPairs.map((p, i) => (
           <div className="list-row" key={i} style={{ borderTop: i > 0 ? '1px solid var(--border)' : 'none', paddingTop: i > 0 ? 10 : 0, marginTop: i > 0 ? 10 : 0 }}>
             <div className="grow" style={{ fontSize: 13 }}>
               <b>{p.users.map((u) => u.name).join(' ↔ ')}</b>
               <div className="muted" style={{ fontSize: 12 }}>
-                {p.transactionCount} transactions · {p.totalValueEur} € cumulés
-                {p.disputedCount > 0 ? ` · ${p.disputedCount} litige(s)` : ''}
+                {t('admin.fraud.transactionTotal', { count: p.transactionCount, value: p.totalValueEur })}
+                {p.disputedCount > 0 ? ` · ${t('admin.fraud.disputeCount', { count: p.disputedCount })}` : ''}
               </div>
             </div>
           </div>
         ))}
       </FraudSection>
 
-      <FraudSection icon="chat" title="Désintermédiation détectée" count={d.flaggedMessaging.length}
-        help="Utilisateurs dont des messages ont été signalés pour partage de coordonnées hors app."
-        empty="Aucun message signalé.">
+      <FraudSection icon="chat" title={t('admin.fraud.offPlatformTitle')} count={d.flaggedMessaging.length}
+        help={t('admin.fraud.offPlatformHelp')}
+        empty={t('admin.fraud.offPlatformEmpty')}>
         {d.flaggedMessaging.map((u) => (
           <div className="list-row" key={u.userId}>
             <div className="grow">{u.name}</div>
-            <span className="pill pill-danger">{u.count} message(s)</span>
+            <span className="pill pill-danger">{t('admin.fraud.messageCount', { count: u.count })}</span>
           </div>
         ))}
       </FraudSection>
 
-      <FraudSection icon="alert" title="Taux d'annulation anormal" count={d.abnormalCancel.length}
-        help="3+ transactions passées, plus de 20 % d'annulation — à confronter aux avis et litiges."
-        empty="Rien d'anormal.">
+      <FraudSection icon="alert" title={t('admin.fraud.cancelTitle')} count={d.abnormalCancel.length}
+        help={t('admin.fraud.cancelHelp')}
+        empty={t('admin.fraud.cancelEmpty')}>
         {d.abnormalCancel.map((u) => (
           <div className="list-row" key={u.id}>
-            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>({u.completed} transactions)</span></div>
-            <span className="pill pill-danger">{PCT_FMT.format(u.cancelRate)}</span>
+            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>({t('admin.fraud.transactionCount', { count: u.completed })})</span></div>
+            <span className="pill pill-danger">{formatPercent(u.cancelRate)}</span>
           </div>
         ))}
       </FraudSection>
 
-      <FraudSection icon="fileText" title="Litiges répétés" count={d.disputeProne.length}
-        help="Comptes impliqués dans 2+ litiges — utile pour repérer une source de friction récurrente."
-        empty="Aucun compte au-delà d'un litige isolé.">
+      <FraudSection icon="fileText" title={t('admin.fraud.disputesTitle')} count={d.disputeProne.length}
+        help={t('admin.fraud.disputesHelp')}
+        empty={t('admin.fraud.disputesEmpty')}>
         {d.disputeProne.map((u) => (
           <div className="list-row" key={u.userId}>
             <div className="grow">{u.name}</div>
-            <span className="pill pill-saffron">{u.disputeCount} litiges</span>
+            <span className="pill pill-saffron">{t('admin.fraud.disputeCount', { count: u.disputeCount })}</span>
           </div>
         ))}
       </FraudSection>
 
-      <FraudSection icon="shieldCheck" title="Tentatives KYC répétées" count={d.kycRepeatRejections.length}
-        help="2+ soumissions rejetées ou refusées pour le même compte — signal de faux document."
-        empty="Rien à signaler.">
+      <FraudSection icon="shieldCheck" title={t('admin.fraud.kycTitle')} count={d.kycRepeatRejections.length}
+        help={t('admin.fraud.kycHelp')}
+        empty={t('admin.fraud.kycEmpty')}>
         {d.kycRepeatRejections.map((u) => (
           <div className="list-row" key={u.userId}>
-            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>(statut actuel : {u.currentStatus})</span></div>
-            <span className="pill pill-danger">{u.rejectionCount} rejets</span>
+            <div className="grow">{u.name} <span className="muted" style={{ fontSize: 12 }}>({t('admin.fraud.currentStatus', { status: adminStatus(u.currentStatus) })})</span></div>
+            <span className="pill pill-danger">{t('admin.fraud.rejectCount', { count: u.rejectionCount })}</span>
           </div>
         ))}
       </FraudSection>

@@ -74,6 +74,26 @@ export const CUSTOMS = {
       "Produits alimentaires d'origine animale très restreints (le miel conditionné ≤ 2 kg est toléré).",
       "La valeur totale transportée par le voyageur ne doit pas dépasser la franchise.",
     ],
+    i18n: {
+      nl: {
+        label: 'Marokko → Europa (België)',
+        franchise: '430 € per reiziger (luchtvervoer)',
+        rules: [
+          'Hoeveelheden zijn beperkt tot persoonlijk gebruik — geen handelsvolumes.',
+          'Voedingsmiddelen van dierlijke oorsprong zijn sterk beperkt (verpakte honing ≤ 2 kg wordt gedoogd).',
+          'De totale waarde die de reiziger vervoert, mag de vrijstelling niet overschrijden.',
+        ],
+      },
+      ar: {
+        label: 'المغرب ← أوروبا (بلجيكا)',
+        franchise: '430 € لكل مسافر (جواً)',
+        rules: [
+          'الكميات محدودة للاستعمال الشخصي — ولا تُقبل الكميات التجارية.',
+          'المنتجات الغذائية ذات الأصل الحيواني مقيدة جداً (يُسمح بالعسل المعبأ حتى 2 كغ).',
+          'يجب ألا تتجاوز القيمة الإجمالية التي ينقلها المسافر حد الإعفاء.',
+        ],
+      },
+    },
   },
   'EU-MA': {
     label: 'Europe → Maroc',
@@ -82,8 +102,33 @@ export const CUSTOMS = {
       'Quantités usage personnel uniquement.',
       'Pas de compléments alimentaires (ONSSA) en V1.',
     ],
+    i18n: {
+      nl: {
+        label: 'Europa → Marokko',
+        franchise: '2.000 MAD (~185 €) vrijgesteld',
+        rules: [
+          'Alleen hoeveelheden voor persoonlijk gebruik.',
+          'Geen voedingssupplementen (ONSSA) in V1.',
+        ],
+      },
+      ar: {
+        label: 'أوروبا ← المغرب',
+        franchise: '2,000 درهم مغربي (~185 €) ضمن الإعفاء',
+        rules: [
+          'الكميات المخصصة للاستعمال الشخصي فقط.',
+          'لا تُقبل المكملات الغذائية (ONSSA) في الإصدار V1.',
+        ],
+      },
+    },
   },
 };
+
+export function localizeCustoms(customs, lang) {
+  return Object.fromEntries(Object.entries(customs).map(([id, corridor]) => {
+    const { i18n, ...reference } = corridor;
+    return [id, lang && lang !== 'fr' && i18n?.[lang] ? { ...reference, ...i18n[lang] } : reference];
+  }));
+}
 
 // Détection de désintermédiation (PRD §4.5)
 const LEAK_PATTERNS = [

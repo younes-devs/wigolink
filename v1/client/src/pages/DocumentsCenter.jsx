@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, getToken } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
-import { t, useLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const DOC_ICON = {
   customs: 'fileText',
@@ -120,7 +120,7 @@ function DossierCard({ dossier }) {
 
 function docLabel(doc) {
   if (doc.id === 'sealing' && doc.meta?.recordedAt) {
-    return t('docs.status.recorded', { date: new Date(doc.meta.recordedAt).toLocaleDateString() });
+    return t('docs.status.recorded', { date: new Date(doc.meta.recordedAt).toLocaleDateString(dateLocale()) });
   }
   if (doc.id === 'dispute' && doc.meta) {
     return t('docs.status.dispute', { n: doc.meta.evidenceCount });

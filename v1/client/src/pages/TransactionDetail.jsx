@@ -19,10 +19,10 @@ function sinceText(ts) {
   const s = Math.floor((Date.now() - ts) / 1000);
   if (s < 60) return t('tx.time.moments');
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min`;
+  if (m < 60) return t('time.minutes', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} h`;
-  return `${Math.floor(h / 24)} j`;
+  if (h < 24) return t('time.hours', { n: h });
+  return t('time.days', { n: Math.floor(h / 24) });
 }
 // Temps relatif (« à l'instant », « il y a 2 h »).
 function relativeTime(ts) {
@@ -421,6 +421,7 @@ function SealingVideo({ tx, reload }) {
 const recapCacheKey = (txId) => `wigofly_recap_${txId}`;
 
 function CustomsRecap({ txId, status }) {
+  const lang = useLang();
   const [recap, setRecap] = useState(null);
   const [open, setOpen] = useState(false);
   const [fromCache, setFromCache] = useState(false);
@@ -431,17 +432,18 @@ function CustomsRecap({ txId, status }) {
   // du texte dans le presse-papier — pratique pour l'envoyer au voyageur avant le vol.
   const shareRecap = async () => {
     if (!recap) return;
+    const shareTitle = t('recap.document.title');
     const text = [
-      'Récapitulatif douane Wigofly',
-      `Produit : ${recap.product} (${recap.category})`,
-      `Valeur déclarée : ${recap.valueEur} € · Poids : ${recap.weightKg} kg`,
-      `Expéditeur : ${recap.sender?.name} (identité vérifiée)`,
-      `Voyageur : ${recap.traveler?.name} (identité vérifiée)`,
-      `Franchise : ${recap.corridor.franchise}`,
-      `Transaction : ${recap.txId}`,
+      shareTitle,
+      `${t('recap.f.product')} ${recap.product} (${recap.category})`,
+      `${t('recap.f.value')} ${recap.valueEur} € · ${t('recap.f.weight')} ${recap.weightKg} kg`,
+      `${t('recap.f.sender')} ${recap.sender?.name} ${t('recap.verified')}`,
+      `${t('recap.f.traveler')} ${recap.traveler?.name} ${t('recap.verified')}`,
+      `${t('recap.f.franchise')} ${recap.corridor.franchise}`,
+      `${t('recap.f.tx')} ${recap.txId}`,
     ].join('\n');
     if (navigator.share) {
-      try { await navigator.share({ title: 'Récapitulatif douane Wigofly', text }); }
+      try { await navigator.share({ title: shareTitle, text }); }
       catch { /* partage annulé par l'utilisateur — rien à faire */ }
       return;
     }
@@ -476,40 +478,45 @@ function CustomsRecap({ txId, status }) {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
       const left = 48;
+      const right = 547;
+      const rtl = lang === 'ar';
+      const textOptions = rtl ? { align: 'right' } : undefined;
       let y = 56;
+      if (typeof doc.setR2L === 'function') doc.setR2L(rtl);
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-      doc.text('Wigofly — Récapitulatif douane', left, y); y += 22;
+      doc.text(t('recap.document.title'), rtl ? right : left, y, textOptions); y += 22;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(110);
-      doc.text(`Généré le ${new Date().toLocaleString('fr-BE')} · Transaction ${recap.txId}`, left, y); y += 28;
+      doc.text(t('recap.document.generated', { date: new Date().toLocaleString(dateLocale()), id: recap.txId }), rtl ? right : left, y, textOptions); y += 28;
       doc.setDrawColor(220); doc.line(left, y, 547, y); y += 24;
 
       const row = (label, value) => {
         doc.setTextColor(90); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-        doc.text(label, left, y);
+        doc.text(label, rtl ? right : left, y, textOptions);
         doc.setTextColor(20); doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
         const lines = doc.splitTextToSize(String(value), 380);
-        doc.text(lines, left + 150, y);
+        doc.text(lines, rtl ? right - 150 : left + 150, y, textOptions);
         y += 18 * lines.length + 6;
       };
 
-      row('Produit', `${recap.product} (${recap.category})`);
-      row('Description', recap.description || '—');
-      row('Valeur déclarée', `${recap.valueEur} €`);
-      row('Poids', `${recap.weightKg} kg`);
-      row('Expéditeur', `${recap.sender?.name} — identité vérifiée`);
-      row('Voyageur', `${recap.traveler?.name} — identité vérifiée`);
-      if (recap.sealedAt) row('Scellé le', new Date(recap.sealedAt).toLocaleString('fr-BE'));
-      row('Corridor', recap.corridor.label);
-      row('Franchise applicable', recap.corridor.franchise);
+      row(t('recap.f.product'), `${recap.product} (${recap.category})`);
+      row(t('recap.f.desc'), recap.description || '—');
+      row(t('recap.f.value'), `${recap.valueEur} €`);
+      row(t('recap.f.weight'), `${recap.weightKg} kg`);
+      row(t('recap.f.sender'), `${recap.sender?.name} — ${t('recap.verified')}`);
+      row(t('recap.f.traveler'), `${recap.traveler?.name} — ${t('recap.verified')}`);
+      if (recap.sealedAt) row(t('recap.f.sealed'), new Date(recap.sealedAt).toLocaleString(dateLocale()));
+      row(t('recap.document.corridor'), recap.corridor.label);
+      row(t('recap.document.franchise'), recap.corridor.franchise);
 
       y += 8; doc.setDrawColor(220); doc.line(left, y, 547, y); y += 20;
       doc.setFontSize(9); doc.setTextColor(130);
-      doc.text(doc.splitTextToSize(
-        "Ce document atteste d'une transaction enregistrée sur la plateforme Wigofly, avec identités vérifiées " +
-        'des deux parties et preuve vidéo de scellage. Il ne constitue pas une déclaration en douane officielle.',
-        499
-      ), left, y);
+      doc.text(
+        doc.splitTextToSize(t('recap.document.disclaimer'), 499),
+        rtl ? right : left,
+        y,
+        textOptions,
+      );
 
       doc.save(`wigofly-douane-${recap.txId}.pdf`);
     } finally {
@@ -596,7 +603,7 @@ function Chat({ tx, userId }) {
     setSending(true);
     try {
       const d = await api(`/transactions/${tx.id}/messages`, { method: 'POST', body: { text: t } });
-      setWarning(d.warning || '');
+      setWarning(d.warningKey ? t(d.warningKey) : d.warning || '');
       setText('');
       load();
     } finally {
@@ -820,7 +827,7 @@ function DisputePanel({ txId }) {
         <div className="evidence-list">
           {d.evidence.map((e, i) => (
             <div className="evidence-item" key={i}>
-              {e.photo && <img src={e.photo} alt="Preuve" />}
+              {e.photo && <img src={e.photo} alt={t('common.evidence')} />}
               {e.text && <p>{e.text}</p>}
               <span className="evidence-time">{slaFmt().format(e.at)}</span>
             </div>
@@ -832,8 +839,8 @@ function DisputePanel({ txId }) {
         <div className="mt">
           {photo && (
             <div className="photo-thumb mb">
-              <img src={photo} alt="Aperçu" />
-              <button type="button" onClick={() => setPhoto(null)} aria-label="Retirer"><Icon name="x" size={12} /></button>
+              <img src={photo} alt={t('common.preview')} />
+            <button type="button" onClick={() => setPhoto(null)} aria-label={t('common.remove')}><Icon name="x" size={12} /></button>
             </div>
           )}
           <div className="field">

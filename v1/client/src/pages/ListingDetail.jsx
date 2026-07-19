@@ -47,7 +47,7 @@ export default function ListingDetail() {
       )}
       {listing.photos?.length > 0 && (
         <div className="photo-strip">
-          {listing.photos.map((p, i) => <img key={i} src={p} alt={`Photo ${i + 1}`} />)}
+          {listing.photos.map((p, i) => <img key={i} src={p} alt={t('common.photoNumber', { n: i + 1 })} />)}
         </div>
       )}
       <div className="card">

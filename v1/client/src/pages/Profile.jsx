@@ -218,15 +218,15 @@ function MyPublishedTrips() {
     <div className="card my-trips-card">
       <div className="list-row" style={{ alignItems: 'center' }}>
         <Icon name="plane" size={17} />
-        <h2 className="grow" style={{ margin: 0 }}>Mes trajets publiés</h2>
-        <Link to="/trajets" className="btn btn-ghost btn-sm"><Icon name="plus" size={15} />Publier</Link>
+        <h2 className="grow" style={{ margin: 0 }}>{t('profile.trips.title')}</h2>
+        <Link to="/trajets" className="btn btn-ghost btn-sm"><Icon name="plus" size={15} />{t('profile.trips.publish')}</Link>
       </div>
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
-      {trips === null && <p className="muted">Chargement...</p>}
+      {trips === null && <p className="muted">{t('common.loading')}</p>}
       {trips !== null && visibleTrips.length === 0 && (
         <div className="profile-empty-inline">
-          <span>Aucun trajet publié.</span>
-          <Link to="/trajets">Publier mon trajet</Link>
+          <span>{t('profile.trips.empty')}</span>
+          <Link to="/trajets">{t('trips.publish.open')}</Link>
         </div>
       )}
       <div className="my-trip-list">
@@ -235,17 +235,17 @@ function MyPublishedTrips() {
             <form className="my-trip-edit" key={trip.id} onSubmit={saveEdit}>
               <div className="row">
                 <label className="field">
-                  <span>Depart</span>
+                  <span>{t('trips.from')}</span>
                   <input value={editForm.from} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })} />
                 </label>
                 <label className="field">
-                  <span>Arrivee</span>
+                  <span>{t('trips.to')}</span>
                   <input value={editForm.to} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })} />
                 </label>
               </div>
               <div className="row">
                 <label className="field">
-                  <span>Date</span>
+                  <span>{t('common.date')}</span>
                   <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
                 </label>
                 <label className="field">
@@ -253,25 +253,25 @@ function MyPublishedTrips() {
                   <input type="number" min="1" max="30" value={editForm.capacityKg} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} />
                 </label>
                 <label className="field">
-                  <span>Prix</span>
+                  <span>{t('trips.priceEur')}</span>
                   <input type="number" min="1" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
                 </label>
               </div>
               <label className="field">
-                <span>Description</span>
+                <span>{t('common.description')}</span>
                 <textarea rows={2} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
               </label>
               <label className="field">
-                <span>Conditions</span>
+                <span>{t('trips.conditions')}</span>
                 <textarea rows={2} value={editForm.conditions} onChange={(e) => setEditForm({ ...editForm, conditions: e.target.value })} />
               </label>
               <div className="my-trip-edit-actions">
                 <button className="btn btn-primary btn-sm" disabled={busy === trip.id || !editForm.from || !editForm.to || !editForm.date}>
                   {busy === trip.id ? <span className="spinner" /> : <Icon name="check" size={15} />}
-                  Enregistrer
+                  {t('common.save')}
                 </button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEditId(''); setEditForm(null); }}>
-                  <Icon name="x" size={15} />Annuler
+                  <Icon name="x" size={15} />{t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -280,15 +280,15 @@ function MyPublishedTrips() {
               <div className="grow">
                 <b>{trip.from} {'->'} {trip.to}</b>
                 <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
-                {trip.activeOperations > 0 && <small>{trip.activeOperations} opération(s) en cours</small>}
+                {trip.activeOperations > 0 && <small>{t('trips.active', { count: trip.activeOperations })}</small>}
               </div>
               <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
-                {trip.status === 'published' ? 'Publié' : trip.status}
+                {trip.status === 'published' ? t('profile.trips.published') : trip.status}
               </span>
-              <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title="Modifier">
+              <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('common.edit')}>
                 <Icon name="pencil" size={16} />
               </button>
-              <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title="Retirer">
+              <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('trips.remove')}>
                 {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
               </button>
             </article>
@@ -300,7 +300,7 @@ function MyPublishedTrips() {
 }
 
 function profileTripDate(value) {
-  if (!value) return 'Date à confirmer';
+  if (!value) return t('trips.date.pending');
   return new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
 }
 

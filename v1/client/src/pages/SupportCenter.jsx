@@ -4,7 +4,7 @@ import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { StatusPill } from '../components.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
-import { t, useLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const ACTION_ICON = {
   add_evidence: 'alert',
@@ -147,7 +147,7 @@ function SupportCase({ item }) {
       {item.dispute && (
         <div className="support-dispute-note">
           <Icon name="alert" size={15} />
-          <span>{t('support.case.dispute', { date: new Date(item.dispute.evidenceDeadline).toLocaleDateString() })}</span>
+          <span>{t('support.case.dispute', { date: new Date(item.dispute.evidenceDeadline).toLocaleDateString(dateLocale()) })}</span>
         </div>
       )}
     </article>

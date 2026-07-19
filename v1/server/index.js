@@ -4,7 +4,7 @@ import {
   acquireDatabaseState, createPersistentSession, databasePool, deletePersistentSession, deletePersistentSessionsForUser,
   databaseHealth, getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
 } from './store.js';
-import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, analyzeMessageSafety, localizeCategory } from './rules.js';
+import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, analyzeMessageSafety, localizeCategory, localizeCustoms } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
 import { langMiddleware } from './errors.js';
 import { renderNotification } from './notify-i18n.js';
@@ -550,6 +550,7 @@ function normalizeMessageLocation(value, conversation, now = Date.now()) {
     : 120;
   return {
     kind,
+    labelKey: label ? null : (kind === 'current' ? 'messages.location.myCurrent' : 'messages.location.meeting'),
     label: label || (kind === 'current' ? 'Position actuelle' : 'Lieu de rendez-vous'),
     city: city || null,
     latitude: hasCoordinates ? (precise ? latitude : Number(latitude.toFixed(2))) : null,
@@ -638,12 +639,17 @@ async function openSession(res, user, req, { rememberMe = false } = {}) {
 // branché). En production, il doit être envoyé par email/SMS et jamais échoir ici —
 // sinon n'importe qui connaissant un email pourrait vérifier ou réinitialiser un compte
 // qui n'est pas le sien, sans jamais avoir accès à sa boîte mail.
-const demoHintFor = (code) => (DEMO ? `Code de vérification (démo) : ${code}` : undefined);
+const demoHintFor = (code, lang = 'fr') => {
+  if (!DEMO) return undefined;
+  if (lang === 'ar') return `رمز التحقق (تجريبي): ${code}`;
+  if (lang === 'nl') return `Verificatiecode (demo): ${code}`;
+  return `Code de vérification (démo) : ${code}`;
+};
 
-async function deliverAuthCode(email, code, purpose) {
+async function deliverAuthCode(email, code, purpose, lang = 'fr') {
   if (DEMO) return;
   if (!EMAIL_READY) throw new Error('La verification par email n est pas encore configuree.');
-  await sendVerificationEmail({ to: email, code, purpose });
+  await sendVerificationEmail({ to: email, code, purpose, lang });
 }
 
 app.post('/api/auth/register', async (req, res) => {
@@ -655,14 +661,14 @@ app.post('/api/auth/register', async (req, res) => {
   const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
   const code = sixDigitCode();
   try {
-    await deliverAuthCode(user.email, code, 'verify');
+    await deliverAuthCode(user.email, code, 'verify', req.lang);
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
   db.users.push(user);
   db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: rememberMe === true };
   save();
-  res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
+  res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
 });
 
 app.post('/api/auth/verify-email', async (req, res) => {
@@ -689,7 +695,7 @@ app.post('/api/auth/resend-code', async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Compte introuvable' });
   const code = sixDigitCode();
   try {
-    await deliverAuthCode(email, code, 'verify');
+    await deliverAuthCode(email, code, 'verify', req.lang);
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
@@ -699,7 +705,7 @@ app.post('/api/auth/resend-code', async (req, res) => {
     rememberMe: db.pendingVerifications[email]?.rememberMe === true,
   };
   save();
-  res.json({ ok: true, message: 'Un nouveau code vient d etre envoye.', demoHint: demoHintFor(code) });
+  res.json({ ok: true, message: 'Un nouveau code vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -721,13 +727,13 @@ app.post('/api/auth/login', async (req, res) => {
   if (!canAccessApp(user)) {
     const code = sixDigitCode();
     try {
-      await deliverAuthCode(email, code, 'verify');
+      await deliverAuthCode(email, code, 'verify', req.lang);
     } catch (error) {
       return res.status(503).json({ error: error.message });
     }
     db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: req.body.rememberMe === true };
     save();
-    return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code) });
+    return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
   }
   await openSession(res, user, req, { rememberMe: req.body.rememberMe === true });
 });
@@ -758,7 +764,7 @@ app.post('/api/auth/forgot', async (req, res) => {
   if (user) {
     code = sixDigitCode();
     try {
-      await deliverAuthCode(email, code, 'reset');
+      await deliverAuthCode(email, code, 'reset', req.lang);
     } catch (error) {
       return res.status(503).json({ error: error.message });
     }
@@ -767,7 +773,7 @@ app.post('/api/auth/forgot', async (req, res) => {
   }
   res.json({
     ok: true,
-    demoHint: demoHintFor(code || '—'),
+    demoHint: demoHintFor(code || '—', req.lang),
   });
 });
 
@@ -960,13 +966,13 @@ app.post('/api/profile/email/change/request', auth, async (req, res) => {
   if (rateLimit(`change-email:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
   const code = sixDigitCode();
   try {
-    await deliverAuthCode(newEmail, code, 'change_email');
+    await deliverAuthCode(newEmail, code, 'change_email', req.lang);
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
   db.accountConfirmations[req.user.id] = { type: 'change_email', newEmail, code, expires: Date.now() + 15 * 60e3 };
   save();
-  res.json({ ok: true, demoHint: demoHintFor(code) });
+  res.json({ ok: true, demoHint: demoHintFor(code, req.lang) });
 });
 
 app.post('/api/profile/email/change/confirm', auth, async (req, res) => {
@@ -988,13 +994,13 @@ app.post('/api/profile/delete/request', auth, async (req, res) => {
   if (rateLimit(`delete-account:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
   const code = sixDigitCode();
   try {
-    await deliverAuthCode(req.user.email, code, 'delete_account');
+    await deliverAuthCode(req.user.email, code, 'delete_account', req.lang);
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
   db.accountConfirmations[req.user.id] = { type: 'delete_account', code, expires: Date.now() + 15 * 60e3 };
   save();
-  res.json({ ok: true, demoHint: demoHintFor(code) });
+  res.json({ ok: true, demoHint: demoHintFor(code, req.lang) });
 });
 
 app.get('/api/profile/export', auth, async (req, res) => {
@@ -1175,12 +1181,33 @@ app.get('/api/rules', (req, res) => {
   res.json({
     whitelist: combinedWhitelist().map((c) => localizeCategory(c, req.lang)),
     blacklist: BLACKLIST.map((c) => localizeCategory(c, req.lang)),
-    customs: CUSTOMS,
+    customs: localizeCustoms(CUSTOMS, req.lang),
   });
 });
 
+function localizedListingView(listing, lang = 'fr') {
+  if (!listing) return listing;
+  const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
+    || BLACKLIST.find((item) => item.id === listing.categoryId);
+  return category
+    ? { ...listing, categoryLabel: localizeCategory(category, lang).label }
+    : { ...listing };
+}
+
+function localeForLang(lang) {
+  return lang === 'nl' ? 'nl-BE' : lang === 'ar' ? 'ar-MA' : 'fr-BE';
+}
+
 // ---------- Trajets voyageur (PRD §2.1) ----------
-function complianceCenterFor(user) {
+function complianceCenterFor(user, lang = 'fr') {
+  const localizedCustoms = localizeCustoms(CUSTOMS, lang);
+  const localizedAllowed = combinedWhitelist().map((category) => localizeCategory(category, lang));
+  const localizedForbidden = BLACKLIST.map((category) => localizeCategory(category, lang));
+  const localizedCategoryLabel = (listing) => {
+    const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
+      || BLACKLIST.find((item) => item.id === listing.categoryId);
+    return category ? localizeCategory(category, lang).label : listing.categoryLabel;
+  };
   const listings = db.listings
     .filter((l) => l.senderId === user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
@@ -1206,7 +1233,7 @@ function complianceCenterFor(user) {
   const gray = items.filter((i) => i.listing.whitelistVerdict === 'gray' || i.reviewPending);
   const over = items.filter((i) => i.overFranchise);
   return {
-    corridors: Object.entries(CUSTOMS).map(([id, c]) => ({
+    corridors: Object.entries(localizedCustoms).map(([id, c]) => ({
       id,
       label: c.label,
       franchise: c.franchise,
@@ -1214,12 +1241,12 @@ function complianceCenterFor(user) {
       limitEur: id === 'MA-EU' ? 430 : 185,
     })),
     catalogue: {
-      allowed: combinedWhitelist(),
-      forbidden: BLACKLIST,
+      allowed: localizedAllowed,
+      forbidden: localizedForbidden,
       grayExamples: gray.slice(0, 4).map((i) => ({
         id: i.listing.id,
         title: i.listing.title,
-        categoryLabel: i.listing.categoryLabel,
+        categoryLabel: localizedCategoryLabel(i.listing),
         status: i.listing.status,
       })),
     },
@@ -1240,7 +1267,7 @@ function complianceCenterFor(user) {
         id: `${i.listing.id}:${i.action.id}`,
         listingId: i.listing.id,
         title: i.listing.title,
-        categoryLabel: i.listing.categoryLabel,
+        categoryLabel: localizedCategoryLabel(i.listing),
         action: i.action,
       })),
     items,
@@ -1248,7 +1275,7 @@ function complianceCenterFor(user) {
 }
 
 app.get('/api/compliance-center', auth, (req, res) => {
-  res.json({ compliance: complianceCenterFor(req.user) });
+  res.json({ compliance: complianceCenterFor(req.user, req.lang) });
 });
 
 app.get('/api/trips/mine', auth, (req, res) => {
@@ -1273,11 +1300,12 @@ app.get('/api/trips/mission', auth, (req, res) => {
     const matches = open
       .filter((l) => matchesTrip(l, trip))
       .sort((a, b) => b.travelerPay - a.travelerPay)
-      .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)) }));
+      .map((l) => ({ ...localizedListingView(l, req.lang), sender: publicUser(findUser(l.senderId)) }));
     const totalPay = matches.reduce((s, l) => s + l.travelerPay, 0);
     const totalWeight = matches.reduce((s, l) => s + l.weightKg, 0);
     const totalValue = matches.reduce((s, l) => s + l.valueEur, 0);
-    const corridor = trip.from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
+    const corridorKey = trip.from === 'Casablanca' ? 'MA-EU' : 'EU-MA';
+    const corridor = localizeCustoms(CUSTOMS, req.lang)[corridorKey];
     const customsLimit = trip.from === 'Casablanca' ? 430 : 185;
     return {
       trip,
@@ -1444,12 +1472,13 @@ function conversationParticipants(conversation, viewerId) {
 }
 
 function operationAction(tx, viewerId) {
-  if (!tx) return { actionRequired: false, actionLabel: null, actionHref: null };
+  if (!tx) return { actionRequired: false, actionKey: null, actionLabel: null, actionHref: null };
   const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
   const href = `/operations/${tx.id}`;
   if (status === 'attente_confirmation') {
     return {
       actionRequired: tx.travelerId === viewerId,
+      actionKey: tx.travelerId === viewerId ? 'messages.action.confirmTrip' : 'messages.action.waitTraveler',
       actionLabel: tx.travelerId === viewerId ? 'Confirmer le trajet' : 'En attente du voyageur',
       actionHref: href,
     };
@@ -1457,15 +1486,16 @@ function operationAction(tx, viewerId) {
   if (status === 'paiement_requis') {
     return {
       actionRequired: tx.senderId === viewerId,
+      actionKey: tx.senderId === viewerId ? 'messages.action.payContinue' : 'messages.action.paymentExpected',
       actionLabel: tx.senderId === viewerId ? 'Payer pour continuer' : 'Paiement attendu',
       actionHref: href,
     };
   }
-  if (status === 'paye') return { actionRequired: true, actionLabel: 'Organiser la remise', actionHref: href };
-  if (status === 'collecte_prevue') return { actionRequired: true, actionLabel: 'Confirmer la collecte', actionHref: href };
-  if (status === 'en_transport') return { actionRequired: true, actionLabel: 'Suivre la livraison', actionHref: href };
-  if (status === 'litige') return { actionRequired: true, actionLabel: 'Suivre le litige', actionHref: href };
-  return { actionRequired: false, actionLabel: 'Consulter le recap', actionHref: href };
+  if (status === 'paye') return { actionRequired: true, actionKey: 'messages.action.organizeHandoff', actionLabel: 'Organiser la remise', actionHref: href };
+  if (status === 'collecte_prevue') return { actionRequired: true, actionKey: 'messages.action.confirmPickup', actionLabel: 'Confirmer la collecte', actionHref: href };
+  if (status === 'en_transport') return { actionRequired: true, actionKey: 'messages.action.trackDelivery', actionLabel: 'Suivre la livraison', actionHref: href };
+  if (status === 'litige') return { actionRequired: true, actionKey: 'messages.action.trackDispute', actionLabel: 'Suivre le litige', actionHref: href };
+  return { actionRequired: false, actionKey: 'messages.action.viewRecap', actionLabel: 'Consulter le recap', actionHref: href };
 }
 
 function conversationStatus(conversation, viewerId, operation) {
@@ -1485,6 +1515,7 @@ function conversationContextSummary({ trip, operation }) {
   if (operation) {
     return {
       type: 'operation',
+      labelKey: operation.title ? null : 'messages.operation.active',
       label: operation.title || 'Operation en cours',
       detail: operation.operationStatus || operation.status || 'en cours',
       href: `/operations/${operation.id}`,
@@ -1498,7 +1529,7 @@ function conversationContextSummary({ trip, operation }) {
       href: `/trajets/${trip.id}`,
     };
   }
-  return { type: 'direct', label: 'Discussion directe', detail: null, href: null };
+  return { type: 'direct', labelKey: 'messages.status.direct', label: 'Discussion directe', detail: null, href: null };
 }
 
 function conversationView(conversation, viewerId) {
@@ -1511,6 +1542,7 @@ function conversationView(conversation, viewerId) {
   const tripUi = trip ? tripPostView(trip) : null;
   const action = operation ? operationAction(operation, viewerId) : {
     actionRequired: false,
+    actionKey: trip ? 'messages.action.viewTrip' : null,
     actionLabel: trip ? 'Voir le trajet' : null,
     actionHref: trip ? `/trajets/${trip.id}` : null,
   };
@@ -1519,6 +1551,9 @@ function conversationView(conversation, viewerId) {
   const lastMessagePreview = lastMessage?.flagged
     ? 'Message signale par securite'
     : (lastMessage?.text || (lastMessage?.location ? 'Localisation partagee' : lastMessage?.attachments?.length ? 'Photo jointe' : trip ? 'Conversation liee a un trajet' : operation ? 'Conversation liee a une operation' : 'Nouvelle conversation'));
+  const lastMessagePreviewKey = lastMessage?.flagged
+    ? 'messages.preview.flagged'
+    : (lastMessage?.text ? null : lastMessage?.location ? 'messages.preview.location' : lastMessage?.attachments?.length ? 'messages.preview.photo' : trip ? 'messages.preview.trip' : operation ? 'messages.preview.operation' : 'messages.preview.new');
   const participants = conversationParticipants(conversation, viewerId);
   const other = participants.find((user) => user.id !== viewerId) || null;
   return {
@@ -1530,6 +1565,7 @@ function conversationView(conversation, viewerId) {
     lastMessage,
     lastMessageAt,
     lastMessagePreview,
+    lastMessagePreviewKey,
     unread,
     unreadCount: unread,
     status,
@@ -1538,6 +1574,7 @@ function conversationView(conversation, viewerId) {
     blocked: (conversation.blockedBy || []).includes(viewerId),
     blockedByOther: !!other && blockedUserIds(findUser(other.id)).has(viewerId),
     actionRequired: action.actionRequired,
+    actionKey: action.actionKey,
     actionLabel: action.actionLabel,
     actionHref: action.actionHref,
     contextType: operation ? 'operation' : trip ? 'trip' : 'direct',
@@ -1632,6 +1669,7 @@ function conversationMessages(conversation) {
       txId: operation.id,
       from: null,
       text: SYSTEM_EVENT_TEXT[event.type],
+      textKey: `messages.system.${event.type}`,
       type: 'system',
       systemEvent: { type: event.type, meta: event.meta || {} },
       readBy: conversation.participantIds,
@@ -2275,6 +2313,7 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
       return res.json({
         message: existing,
         conversation: conversationView(conversation, req.user.id),
+        warningKey: existing.flagged ? 'messages.safety.keepInside' : null,
         warning: existing.flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
       });
     }
@@ -2322,6 +2361,7 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
   res.json({
     message: msg,
     conversation: conversationView(conversation, req.user.id),
+    warningKey: flagged ? 'messages.safety.keepInside' : null,
     warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
   });
 });
@@ -2374,12 +2414,18 @@ app.get('/api/listings', auth, (req, res) => {
     && t.date >= new Date().toISOString().slice(0, 10));
   const showAll = req.query.all === '1' || myTrips.length === 0;
   const listings = (showAll ? open : open.filter((l) => myTrips.some((t) => matchesTrip(l, t))))
-    .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)), matched: myTrips.some((t) => matchesTrip(l, t)) }));
+    .map((l) => ({
+      ...localizedListingView(l, req.lang),
+      sender: publicUser(findUser(l.senderId)),
+      matched: myTrips.some((t) => matchesTrip(l, t)),
+    }));
   res.json({ listings, filteredByTrip: !showAll, tripCount: myTrips.length, totalOpen: open.length });
 });
 
 app.get('/api/listings/mine', auth, (req, res) => {
-  const listings = db.listings.filter((l) => l.senderId === req.user.id);
+  const listings = db.listings
+    .filter((l) => l.senderId === req.user.id)
+    .map((listing) => localizedListingView(listing, req.lang));
   res.json({ listings });
 });
 
@@ -2672,7 +2718,7 @@ app.put('/api/listings/:id', auth, (req, res) => {
     listing.photos = photos;
   }
   save();
-  res.json({ listing });
+  res.json({ listing: localizedListingView(listing, req.lang) });
 });
 
 // Retrait d'une annonce par l'expéditeur, tant qu'aucun voyageur ne l'a acceptée.
@@ -2684,10 +2730,10 @@ app.post('/api/listings/:id/cancel', auth, (req, res) => {
     return res.status(400).json({ error: 'Cette annonce ne peut plus être retirée (déjà acceptée)' });
   listing.status = 'cancelled';
   save();
-  res.json({ listing });
+  res.json({ listing: localizedListingView(listing, req.lang) });
 });
 
-function listingPreflight(user, body) {
+function listingPreflight(user, body, lang = 'fr') {
   const {
     title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description,
     weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted,
@@ -2696,8 +2742,13 @@ function listingPreflight(user, body) {
   const checks = [];
   const warnings = [];
   const blockers = [];
-  const addCheck = (id, ok, label, severity = 'blocker', detail = null) => {
-    checks.push({ id, ok, label, severity, detail });
+  const addCheck = (id, ok, label, severity = 'blocker', detail = null, {
+    labelKey = `preflight.check.${id}`,
+    labelVars = null,
+    detailKey = null,
+    detailVars = null,
+  } = {}) => {
+    checks.push({ id, ok, label, labelKey, labelVars, severity, detail, detailKey, detailVars });
     if (!ok && severity === 'blocker') blockers.push(id);
     if (!ok && severity === 'warning') warnings.push(id);
   };
@@ -2713,35 +2764,46 @@ function listingPreflight(user, body) {
   addCheck('value', valueNum !== null, 'Valeur déclarée valide');
   addCheck('weight', weightNum !== null, 'Poids valide');
   addCheck('pay', payNum !== null, 'Rémunération voyageur valide');
-  addCheck('limit', valueNum !== null && valueNum <= user.maxValue, `Plafond compte : ${user.maxValue} €`);
+  addCheck('limit', valueNum !== null && valueNum <= user.maxValue, `Plafond compte : ${user.maxValue} €`, 'blocker', null, { labelVars: { max: user.maxValue } });
   addCheck('route', !!from && !!to && from !== to, 'Trajet cohérent');
   addCheck('dates', !!dateFrom && !!dateTo && dateFrom <= dateTo, 'Fenêtre de dates cohérente');
 
   const categoryId = rawCategoryId === 'autre' && rawCategoryLabel ? slugify(rawCategoryLabel) : rawCategoryId;
   const evalRes = categoryId ? evaluateCategoryDynamic(categoryId) : { verdict: 'gray' };
   const cat = combinedWhitelist().find((c) => c.id === categoryId);
+  const localizedCat = cat ? localizeCategory(cat, lang) : null;
+  const localizedEvaluatedCategory = evalRes.category ? localizeCategory(evalRes.category, lang) : null;
   addCheck('category', evalRes.verdict !== 'blacklisted', 'Catégorie autorisée',
     evalRes.verdict === 'blacklisted' ? 'blocker' : 'warning',
-    evalRes.category?.reason || null);
+    localizedEvaluatedCategory?.reason || null);
   if (evalRes.verdict === 'gray') {
-    addCheck('review', false, 'Revue humaine nécessaire', 'warning', 'Publication après validation admin.');
+    addCheck('review', false, 'Revue humaine nécessaire', 'warning', 'Publication après validation admin.', {
+      labelKey: 'preflight.check.review.required',
+      detailKey: 'preflight.check.review.required.detail',
+    });
   } else {
-    addCheck('review', true, 'Publication directe possible', 'warning');
+    addCheck('review', true, 'Publication directe possible', 'warning', null, { labelKey: 'preflight.check.review.direct' });
   }
 
-  const corridor = from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
+  const localizedCustoms = localizeCustoms(CUSTOMS, lang);
+  const corridor = from === 'Casablanca' ? localizedCustoms['MA-EU'] : localizedCustoms['EU-MA'];
   const customsLimit = from === 'Casablanca' ? 430 : 185;
   if (valueNum !== null && valueNum > customsLimit) {
-    addCheck('customs-value', false, `Valeur au-dessus de la franchise indicative (${customsLimit} €)`, 'warning');
+    addCheck('customs-value', false, `Valeur au-dessus de la franchise indicative (${customsLimit} €)`, 'warning', null, {
+      labelKey: 'preflight.check.customsValue.over',
+      labelVars: { limit: customsLimit },
+    });
   } else {
-    addCheck('customs-value', true, 'Valeur dans la franchise indicative', 'warning');
+    addCheck('customs-value', true, 'Valeur dans la franchise indicative', 'warning', null, { labelKey: 'preflight.check.customsValue.within' });
   }
 
   const recipient = recipientPhone ? db.users.find((u) => u.phone === recipientPhone) : null;
   if (recipientPhone && !recipient) {
-    addCheck('recipient', false, 'Destinataire non reconnu dans Wigofly', 'warning');
+    addCheck('recipient', false, 'Destinataire non reconnu dans Wigofly', 'warning', null, { labelKey: 'preflight.check.recipient.unknown' });
   } else {
-    addCheck('recipient', true, recipient ? 'Destinataire reconnu' : 'Destinataire optionnel', 'warning');
+    addCheck('recipient', true, recipient ? 'Destinataire reconnu' : 'Destinataire optionnel', 'warning', null, {
+      labelKey: recipient ? 'preflight.check.recipient.known' : 'preflight.check.recipient.optional',
+    });
   }
 
   const publishStatus = blockers.length > 0
@@ -2757,10 +2819,10 @@ function listingPreflight(user, body) {
     checks,
     category: {
       id: categoryId,
-      label: cat?.label || rawCategoryLabel || categoryId || '',
+      label: localizedCat?.label || rawCategoryLabel || categoryId || '',
       verdict: evalRes.verdict,
-      maxQty: cat?.maxQty || null,
-      reason: evalRes.category?.reason || null,
+      maxQty: localizedCat?.maxQty || null,
+      reason: localizedEvaluatedCategory?.reason || null,
     },
     customs: {
       corridor,
@@ -2777,7 +2839,7 @@ function listingPreflight(user, body) {
 }
 
 app.post('/api/listings/preflight', auth, (req, res) => {
-  res.json({ preflight: listingPreflight(req.user, req.body || {}) });
+  res.json({ preflight: listingPreflight(req.user, req.body || {}, req.lang) });
 });
 
 app.post('/api/listings', auth, (req, res) => {
@@ -2825,7 +2887,7 @@ app.post('/api/listings', auth, (req, res) => {
     repositories.reviewQueue.append({ type: 'listing', refId: listing.id });
   }
   save();
-  res.json({ listing });
+  res.json({ listing: localizedListingView(listing, req.lang) });
 });
 
 // ---------- Transactions (machine à états) ----------
@@ -3598,7 +3660,11 @@ app.post('/api/transactions/:id/messages', auth, async (req, res) => {
   const msg = await repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
   await notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
   save();
-  res.json({ message: msg, warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null });
+  res.json({
+    message: msg,
+    warningKey: flagged ? 'messages.safety.keepInside' : null,
+    warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null,
+  });
 });
 
 // ---------- Récapitulatif douane (PRD §4.1 Phase 4) ----------
@@ -3608,10 +3674,13 @@ app.get('/api/transactions/:id/customs-recap', auth, (req, res) => {
   if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
     return res.status(403).json({ error: 'Non autorisé' });
   const listing = db.listings.find((l) => l.id === t.listingId);
-  const corridor = listing.from === 'Casablanca' ? CUSTOMS['MA-EU'] : CUSTOMS['EU-MA'];
+  const customs = localizeCustoms(CUSTOMS, req.lang);
+  const corridor = listing.from === 'Casablanca' ? customs['MA-EU'] : customs['EU-MA'];
+  const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
+    || BLACKLIST.find((item) => item.id === listing.categoryId);
   res.json({
     recap: {
-      txId: t.id, product: listing.title, category: listing.categoryLabel,
+      txId: t.id, product: listing.title, category: category ? localizeCategory(category, req.lang).label : listing.categoryLabel,
       description: listing.description, valueEur: listing.valueEur, weightKg: listing.weightKg,
       sender: publicUser(findUser(t.senderId)), traveler: publicUser(findUser(t.travelerId)),
       sealedAt: t.sealingVideo?.recordedAt || null, corridor,
@@ -3920,7 +3989,7 @@ function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
       to: recipientIds.map((id) => adminCaseParticipant(findUser(id))).filter(Boolean),
       text: message.text || '', type: message.type || 'text', flagged: !!message.flagged, flagReason: message.flagReason || null,
       attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.type, size: attachment.size })),
-      location: message.location ? { label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
+      location: message.location ? { kind: message.location.kind, labelKey: message.location.labelKey, label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
       at: message.at, deletedAt: message.deletedAt || null,
     };
   });
@@ -4205,7 +4274,7 @@ app.get('/api/admin/kpis', auth, adminOnly, async (req, res) => {
   const monthly = [];
   for (let i = 5; i >= 0; i--) {
     const start = new Date(now - i * 30 * DAY);
-    const label = start.toLocaleDateString('fr-BE', { month: 'short' });
+    const label = start.toLocaleDateString(localeForLang(req.lang), { month: 'short' });
     const from = now - (i + 1) * 30 * DAY, to = now - i * 30 * DAY;
     monthly.push({ label, count: released.filter((t) => t.escrow?.releasedAt >= from && t.escrow?.releasedAt < to).length });
   }

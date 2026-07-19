@@ -4,19 +4,21 @@ import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
+import { dateLocale, t, useLang } from '../i18n.js';
 
 const STATUS_LABELS = {
-  attente_confirmation: 'Attente confirmation',
-  paiement_requis: 'Paiement requis',
-  paye: 'Paye',
-  collecte_prevue: 'Collecte prevue',
-  en_transport: 'En transport',
-  livraison_prevue: 'Livraison prevue',
-  litige: 'Litige',
-  termine: 'Termine',
+  attente_confirmation: 'operations.status.awaitingConfirmation',
+  paiement_requis: 'operations.status.paymentRequired',
+  paye: 'operations.status.paid',
+  collecte_prevue: 'operations.status.pickupPlanned',
+  en_transport: 'operations.status.inTransit',
+  livraison_prevue: 'operations.status.deliveryPlanned',
+  litige: 'operations.status.dispute',
+  termine: 'operations.status.completed',
 };
 
 export default function OperationsSimple() {
+  useLang();
   const [operations, setOperations] = useState(null);
   const [view, setView] = useState('active');
   const [busy, setBusy] = useState('');
@@ -42,20 +44,20 @@ export default function OperationsSimple() {
 
   return (
     <div className="simple-page">
-      <h1 className="page-title">En cours</h1>
-      <p className="page-sub">Toutes les operations actives, puis l'historique des demandes terminees ou annulees.</p>
+      <h1 className="page-title">{t('operations.title')}</h1>
+      <p className="page-sub">{t('operations.subtitle')}</p>
 
-      <div className="tabs operations-tabs" role="tablist" aria-label="Filtrer les operations">
-        <button type="button" className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>Actives</button>
-        <button type="button" className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>Historique</button>
+      <div className="tabs operations-tabs" role="tablist" aria-label={t('operations.filter.aria')}>
+        <button type="button" className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>{t('operations.tab.active')}</button>
+        <button type="button" className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>{t('operations.tab.history')}</button>
       </div>
 
-      {operations === null && <div className="card"><span className="spinner" /> Chargement...</div>}
+      {operations === null && <div className="card"><span className="spinner" /> {t('common.loading')}</div>}
       {operations?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="repeat" size={34} />
-          <p className="muted">{view === 'history' ? 'Aucune operation archivee.' : 'Aucune operation en cours.'}</p>
-          {view === 'active' && <Link to="/trajets" className="btn btn-primary btn-sm">Trouver un trajet</Link>}
+          <p className="muted">{t(view === 'history' ? 'operations.empty.history' : 'operations.empty.active')}</p>
+          {view === 'active' && <Link to="/trajets" className="btn btn-primary btn-sm">{t('operations.findTrip')}</Link>}
         </div>
       )}
       <div className="operation-list">
@@ -69,17 +71,17 @@ export default function OperationsSimple() {
               />
               <div className="grow">
                 <b>{operation.title}</b>
-                <span>{operation.trip ? formatDate(operation.trip.departureDate) : new Date(operation.createdAt).toLocaleDateString('fr-FR')}</span>
-                <small>{operation.price} {operation.currency || 'EUR'} - {operation.myRole === 'traveler' ? 'Voyageur' : 'Expediteur'}</small>
+                <span>{operation.trip ? formatDate(operation.trip.departureDate) : new Date(operation.createdAt).toLocaleDateString(dateLocale())}</span>
+                <small>{operation.price} {operation.currency || 'EUR'} - {t(operation.myRole === 'traveler' ? 'operations.role.traveler' : 'operations.role.sender')}</small>
                 <small>{view === 'history' ? operationHistoryLabel(operation) : operationNextAction(operation)}</small>
               </div>
             </div>
             <div className="operation-side">
-              <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] || operation.operationStatus}</span>
-              <Link to={`/operations/${operation.id}`} className="btn btn-primary btn-sm">Ouvrir</Link>
+              <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] ? t(STATUS_LABELS[operation.operationStatus]) : operation.operationStatus}</span>
+              <Link to={`/operations/${operation.id}`} className="btn btn-primary btn-sm">{t('common.open')}</Link>
               <button className="btn btn-ghost btn-sm" onClick={() => message(operation.id)} disabled={busy === operation.id}>
                 {busy === operation.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}
-                Message
+                {t('messages.title')}
               </button>
             </div>
           </article>
@@ -91,21 +93,21 @@ export default function OperationsSimple() {
 
 function operationNextAction(operation) {
   if (operation.operationStatus === 'attente_confirmation')
-    return operation.myRole === 'traveler' ? 'Action : accepter ou refuser la demande' : 'En attente de la confirmation voyageur';
+    return t(operation.myRole === 'traveler' ? 'operations.next.acceptOrReject' : 'operations.next.travelerConfirmation');
   if (operation.operationStatus === 'paiement_requis')
-    return operation.myRole === 'sender' ? 'Action : payer' : 'En attente du paiement';
-  if (operation.operationStatus === 'paye') return 'Action : confirmer le rendez-vous';
-  if (operation.operationStatus === 'collecte_prevue') return 'Action : confirmer la prise en charge';
-  if (operation.operationStatus === 'en_transport') return 'Action : confirmer la livraison';
-  if (operation.operationStatus === 'litige') return 'Action : suivre le litige';
-  return 'Aucune action requise';
+    return t(operation.myRole === 'sender' ? 'operations.next.pay' : 'operations.next.waitPayment');
+  if (operation.operationStatus === 'paye') return t('operations.next.confirmMeeting');
+  if (operation.operationStatus === 'collecte_prevue') return t('operations.next.confirmPickup');
+  if (operation.operationStatus === 'en_transport') return t('operations.next.confirmDelivery');
+  if (operation.operationStatus === 'litige') return t('operations.next.followDispute');
+  return t('operations.next.none');
 }
 
 function operationHistoryLabel(operation) {
-  if (operation.status === 'released') return 'Operation livree et cloturee';
-  if (operation.status === 'cancelled') return 'Operation annulee';
-  if (operation.status === 'refunded') return 'Operation remboursee';
-  return 'Operation archivee';
+  if (operation.status === 'released') return t('operations.history.released');
+  if (operation.status === 'cancelled') return t('operations.history.cancelled');
+  if (operation.status === 'refunded') return t('operations.history.refunded');
+  return t('operations.history.archived');
 }
 
 export { STATUS_LABELS };

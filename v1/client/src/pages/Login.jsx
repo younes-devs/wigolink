@@ -51,7 +51,7 @@ export default function Login() {
       });
       if (data.needsVerification) {
         switchMode('verify');
-        setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
+        setHint(data.message || t('auth.hint.checkEmail'));
         return;
       }
       finishAuth(data);
@@ -59,7 +59,7 @@ export default function Login() {
       if (requestError.data?.code === 'account_suspended' && requestError.data?.token) {
         setToken(requestError.data.token);
         setMode('appeal');
-        setHint(requestError.data.reason || 'Votre compte est temporairement suspendu. Expliquez votre situation a l equipe.');
+        setHint(requestError.data.reason || t('auth.appeal.suspended'));
         return;
       }
       throw requestError;
@@ -70,7 +70,7 @@ export default function Login() {
     await api('/safety/appeals', { method: 'POST', body: { reason: appealReason } });
     setToken(null);
     switchMode('login');
-    setHint('Votre recours a ete envoye. Vous recevrez une reponse apres examen.');
+    setHint(t('auth.appeal.sent'));
     setAppealReason('');
   });
 
@@ -82,7 +82,7 @@ export default function Login() {
       body: { ...form, cguAccepted, rememberMe },
     });
     switchMode('verify');
-    setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
+    setHint(data.message || t('auth.hint.checkEmail'));
   });
 
   const submitVerify = () => run(async () => {
@@ -95,13 +95,13 @@ export default function Login() {
 
   const resendCode = () => run(async () => {
     const data = await api('/auth/resend-code', { method: 'POST', body: { email: form.email } });
-    setHint(data.message || 'Consultez votre boite email pour recuperer le code.');
+    setHint(data.message || t('auth.hint.checkEmail'));
   });
 
   const submitForgot = () => run(async () => {
     const data = await api('/auth/forgot', { method: 'POST', body: { email: form.email } });
     switchMode('reset');
-    setHint(data.message || 'Si un compte correspond a cette adresse, un email vient d etre envoye.');
+    setHint(data.message || t('auth.hint.resetSent'));
   });
 
   const submitReset = () => run(async () => {
@@ -112,15 +112,15 @@ export default function Login() {
     });
     if (data.needsVerification) {
       switchMode('verify');
-      setHint(data.message || 'Verifiez votre adresse email pour acceder a l application.');
+      setHint(data.message || t('auth.hint.verifyAccess'));
       return;
     }
     finishAuth(data);
   });
 
-  const heroTitle = mode === 'appeal' ? 'Recours de securite' : t(`auth.title.${mode}`);
+  const heroTitle = mode === 'appeal' ? t('auth.appeal.title') : t(`auth.title.${mode}`);
   const heroSubtitle = mode === 'appeal'
-    ? 'Expliquez la situation a l equipe de moderation.'
+    ? t('auth.appeal.subtitle')
     : mode === 'verify'
       ? t('auth.sub.verify', { email: form.email || t('auth.sub.verify.fallback') })
       : t(`auth.sub.${mode}`);
@@ -183,7 +183,7 @@ export default function Login() {
                   type="email"
                   value={form.email}
                   onChange={(event) => set('email', event.target.value)}
-                  placeholder="vous@exemple.com"
+                  placeholder={t('auth.email.placeholder')}
                   autoComplete="email"
                   autoFocus
                 />
@@ -228,7 +228,7 @@ export default function Login() {
                   type="email"
                   value={form.email}
                   onChange={(event) => set('email', event.target.value)}
-                  placeholder="vous@exemple.com"
+                  placeholder={t('auth.email.placeholder')}
                   autoComplete="email"
                 />
               </div>
@@ -315,7 +315,7 @@ export default function Login() {
                   type="email"
                   value={form.email}
                   onChange={(event) => set('email', event.target.value)}
-                  placeholder="vous@exemple.com"
+                  placeholder={t('auth.email.placeholder')}
                   autoComplete="email"
                   autoFocus
                 />
@@ -375,21 +375,21 @@ export default function Login() {
           {mode === 'appeal' && (
             <div className="auth-form">
               <div className="field">
-                <label>Votre recours</label>
+                <label>{t('auth.appeal.label')}</label>
                 <textarea
                   value={appealReason}
                   onChange={(event) => setAppealReason(event.target.value.slice(0, 1000))}
                   rows={5}
-                  placeholder="Expliquez pourquoi la suspension devrait etre reexaminee."
+                  placeholder={t('auth.appeal.placeholder')}
                   autoFocus
                 />
               </div>
               <button className="btn btn-primary" onClick={submitAppeal} disabled={busy || appealReason.trim().length < 10}>
-                {busy ? <span className="spinner" /> : 'Envoyer mon recours'}
+                {busy ? <span className="spinner" /> : t('auth.appeal.submit')}
               </button>
               <p className="auth-switch">
                 <button className="link-btn" onClick={() => { setToken(null); switchMode('login'); }}>
-                  Retour a la connexion
+                  {t('auth.back.login')}
                 </button>
               </p>
             </div>

@@ -7,8 +7,10 @@ import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
 import { STATUS_LABELS } from './OperationsSimple.jsx';
+import { dateLocale, t, useLang } from '../i18n.js';
 
 export default function OperationDetailSimple() {
+  useLang();
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
@@ -28,7 +30,7 @@ export default function OperationDetailSimple() {
     try {
       const data = await api(`/operations/${id}/pay`, { method: 'POST' });
       setOperation(data.operation);
-      toast.success('Paiement confirmé');
+      toast.success(t('operations.toast.paymentConfirmed'));
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -65,11 +67,11 @@ export default function OperationDetailSimple() {
     try {
       const data = await api(`/operations/${id}/reject`, {
         method: 'POST',
-        body: { reason: issue || 'Demande refusee par le voyageur' },
+        body: { reason: issue || t('operations.reason.rejected') },
       });
       setOperation(data.operation);
       setIssue('');
-      toast.info('Demande refusée');
+      toast.info(t('operations.toast.rejected'));
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -82,11 +84,11 @@ export default function OperationDetailSimple() {
     try {
       const data = await api(`/operations/${id}/cancel`, {
         method: 'POST',
-        body: { reason: issue || 'Demande annulee par l expediteur' },
+        body: { reason: issue || t('operations.reason.cancelled') },
       });
       setOperation(data.operation);
       setIssue('');
-      toast.info('Demande annulee');
+      toast.info(t('operations.toast.cancelled'));
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -99,11 +101,11 @@ export default function OperationDetailSimple() {
     try {
       const data = await api(`/operations/${id}/dispute`, {
         method: 'POST',
-        body: { reason: issue || 'Problème signalé depuis En cours' },
+        body: { reason: issue || t('operations.reason.dispute') },
       });
       setOperation(data.operation);
       setIssue('');
-      toast.info('Problème signalé');
+      toast.info(t('operations.toast.dispute'));
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -119,7 +121,7 @@ export default function OperationDetailSimple() {
         method: 'POST',
         body: { targetId: other.id, stars: rating, comment: review },
       });
-      toast.success('Avis enregistré');
+      toast.success(t('operations.toast.rating'));
       setRating(0);
       setReview('');
       load();
@@ -140,7 +142,7 @@ export default function OperationDetailSimple() {
       });
       setOperation(data.operation);
       setEvidenceText('');
-      toast.success('Preuve ajoutee');
+      toast.success(t('operations.toast.evidence'));
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -148,39 +150,39 @@ export default function OperationDetailSimple() {
     }
   };
 
-  if (operation === null) return <div className="card"><span className="spinner" /> Chargement...</div>;
-  if (operation === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>Opération introuvable.</p></div>;
+  if (operation === null) return <div className="card"><span className="spinner" /> {t('common.loading')}</div>;
+  if (operation === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>{t('operations.notFound')}</p></div>;
 
   const other = operation.myRole === 'traveler' ? operation.sender : operation.traveler;
 
   return (
     <div className="simple-page">
-      <Link to="/en-cours" className="link-btn"><Icon name="arrowLeft" size={15} />Retour</Link>
+      <Link to="/en-cours" className="link-btn"><Icon name="arrowLeft" size={15} />{t('common.back')}</Link>
       <section className="card operation-detail">
         <div className="operation-detail-head">
           <div>
             <h1>{operation.title}</h1>
-            <p>{operation.trip ? formatDate(operation.trip.departureDate) : 'Date à confirmer'}</p>
+            <p>{operation.trip ? formatDate(operation.trip.departureDate) : t('trips.date.pending')}</p>
           </div>
-          <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] || operation.operationStatus}</span>
+          <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] ? t(STATUS_LABELS[operation.operationStatus]) : operation.operationStatus}</span>
         </div>
 
         <div className="operation-person">
-          <Avatar name={other?.name || 'Contact'} photo={other?.photoUrl} size={50} />
+          <Avatar name={other?.name || t('messages.contact')} photo={other?.photoUrl} size={50} />
           <div>
-            <b>{other?.name || 'Contact'}</b>
-            <span>{operation.myRole === 'traveler' ? 'Expéditeur' : 'Voyageur'}</span>
+            <b>{other?.name || t('messages.contact')}</b>
+            <span>{t(operation.myRole === 'traveler' ? 'operations.role.sender' : 'operations.role.traveler')}</span>
           </div>
         </div>
 
         <div className="trip-detail-grid">
-          <div><span>Montant</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
-          <div><span>Paiement</span><b>{paymentLabel(operation)}</b></div>
-          <div><span>Escrow</span><b>{escrowLabel(operation.escrow?.state)}</b></div>
+          <div><span>{t('operations.amount')}</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
+          <div><span>{t('operations.payment')}</span><b>{paymentLabel(operation)}</b></div>
+          <div><span>{t('operations.escrow')}</span><b>{escrowLabel(operation.escrow?.state)}</b></div>
         </div>
 
-        <section className="operation-journey" aria-label="Avancement de l operation">
-          <div className="operation-journey-head"><h2>Avancement</h2><span>{journeyStatus(operation)}</span></div>
+        <section className="operation-journey" aria-label={t('operations.progress.aria')}>
+          <div className="operation-journey-head"><h2>{t('operations.progress')}</h2><span>{journeyStatus(operation)}</span></div>
           <div className="operation-journey-steps">
             {journeySteps(operation).map((step, index) => (
               <div className={`operation-journey-step ${step.state}`} key={step.id}>
@@ -196,29 +198,29 @@ export default function OperationDetailSimple() {
             <Icon name="clock" size={17} />
             <span>
               {operation.myRole === 'traveler'
-                ? 'L’expéditeur attend votre accord avant de payer.'
-                : 'Le voyageur doit confirmer avant le paiement.'}
+                ? t('operations.awaiting.traveler')
+                : t('operations.awaiting.sender')}
             </span>
           </div>
         )}
 
         {operation.shipmentType && (
           <div className="trip-detail-grid operation-shipment-summary">
-            <div><span>Type d'envoi</span><b>{operation.shipmentType === 'document' ? 'Document' : 'Colis'}</b></div>
-            <div><span>Quantite</span><b>{operation.shipmentType === 'document' ? `${operation.documentCount || 0} document${Number(operation.documentCount) > 1 ? 's' : ''}` : `${operation.weightKg || 0} kg`}</b></div>
-            <div><span>Prix calcule</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
+            <div><span>{t('trips.request.type')}</span><b>{t(operation.shipmentType === 'document' ? 'trips.request.documentType' : 'trips.request.parcel')}</b></div>
+            <div><span>{t('operations.quantity')}</span><b>{operation.shipmentType === 'document' ? t(Number(operation.documentCount) > 1 ? 'trips.request.documents' : 'trips.request.document', { count: operation.documentCount || 0 }) : t('trips.request.weight', { weight: operation.weightKg || 0 })}</b></div>
+            <div><span>{t('trips.request.calculatedPrice')}</span><b>{operation.price} {operation.currency || 'EUR'}</b></div>
           </div>
         )}
 
         {operation.descriptionParcel && (
           <div className="trip-detail-copy">
-            <h2>{operation.shipmentType === 'document' ? 'Documents' : 'Colis'}</h2>
+            <h2>{t(operation.shipmentType === 'document' ? 'operations.documents' : 'trips.request.parcel')}</h2>
             <p>{operation.descriptionParcel}</p>
           </div>
         )}
 
         <div className="operation-checklist">
-          <h2><Icon name="check" size={17} />Checklist</h2>
+          <h2><Icon name="check" size={17} />{t('operations.checklist')}</h2>
           {operationChecklist(operation).map((item) => (
             <div className={`operation-check ${item.done ? 'done' : ''}`} key={item.label}>
               <Icon name={item.done ? 'check' : 'clock'} size={15} />
@@ -233,7 +235,7 @@ export default function OperationDetailSimple() {
               <span />
               <div>
                 <b>{event.type.replaceAll('_', ' ')}</b>
-                <small>{new Date(event.at).toLocaleString('fr-FR')}</small>
+                <small>{new Date(event.at).toLocaleString(dateLocale())}</small>
               </div>
             </div>
           ))}
@@ -243,7 +245,7 @@ export default function OperationDetailSimple() {
           {operation.myRole === 'sender' && operation.operationStatus === 'paiement_requis' && (
             <button className="btn btn-primary" onClick={pay} disabled={!!busy}>
               {busy === 'pay' ? <span className="spinner" /> : <Icon name="euro" size={17} />}
-              Payer
+              {t('operations.pay')}
             </button>
           )}
           {nextAction(operation) && (
@@ -255,74 +257,74 @@ export default function OperationDetailSimple() {
           {operation.myRole === 'traveler' && operation.operationStatus === 'attente_confirmation' && (
             <button className="btn btn-ghost" onClick={reject} disabled={!!busy}>
               {busy === 'reject' ? <span className="spinner" /> : <Icon name="x" size={17} />}
-              Refuser
+              {t('operations.reject')}
             </button>
           )}
           {operation.myRole === 'sender' && ['attente_confirmation', 'paiement_requis'].includes(operation.operationStatus) && (
             <button className="btn btn-ghost" onClick={cancel} disabled={!!busy}>
               {busy === 'cancel' ? <span className="spinner" /> : <Icon name="x" size={17} />}
-              Annuler
+              {t('common.cancel')}
             </button>
           )}
           <button className="btn btn-ghost" onClick={message} disabled={!!busy}>
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
-            Message
+            {t('messages.title')}
           </button>
         </div>
 
         {!['litige', 'termine'].includes(operation.operationStatus) && (
           <div className="operation-issue">
             <label className="field">
-              <span>Problème</span>
-              <textarea rows={2} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Expliquez rapidement le problème si vous devez ouvrir un litige." />
+              <span>{t('operations.issue')}</span>
+              <textarea rows={2} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder={t('operations.issue.placeholder')} />
             </label>
             <button className="btn btn-ghost" onClick={openDispute} disabled={!!busy}>
               {busy === 'dispute' ? <span className="spinner" /> : <Icon name="alert" size={17} />}
-              Signaler un problème
+              {t('operations.issue.report')}
             </button>
           </div>
         )}
 
         {operation.operationStatus === 'litige' && (
           <div className="operation-evidence">
-            <h2><Icon name="alert" size={17} />Preuves</h2>
+            <h2><Icon name="alert" size={17} />{t('operations.evidence')}</h2>
             {operation.dispute?.evidence?.length ? (
               <div className="evidence-list">
                 {operation.dispute.evidence.map((evidence, index) => (
                   <div className="evidence-item" key={`${evidence.at}-${index}`}>
-                    <p>{evidence.text || 'Photo ajoutee'}</p>
-                    <span className="evidence-time">{new Date(evidence.at).toLocaleString('fr-FR')}</span>
+                    <p>{evidence.text || t('operations.evidence.photo')}</p>
+                    <span className="evidence-time">{new Date(evidence.at).toLocaleString(dateLocale())}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="muted">Aucune preuve ajoutee pour le moment.</p>
+              <p className="muted">{t('operations.evidence.empty')}</p>
             )}
             <label className="field">
-              <span>Ajouter une preuve</span>
-              <textarea rows={2} value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} placeholder="Ajoutez un fait, une reference ou une explication utile au support." />
+              <span>{t('operations.evidence.add')}</span>
+              <textarea rows={2} value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} placeholder={t('operations.evidence.placeholder')} />
             </label>
             <button className="btn btn-primary btn-sm" onClick={submitEvidence} disabled={!!busy || !evidenceText.trim()}>
               {busy === 'evidence' ? <span className="spinner" /> : <Icon name="check" size={15} />}
-              Ajouter
+              {t('common.add')}
             </button>
           </div>
         )}
 
         {operation.status === 'released' && (
           <div className="operation-rating">
-            <h2><Icon name="star" size={17} />Noter {other?.name || 'ce membre'}</h2>
+            <h2><Icon name="star" size={17} />{t('operations.rating.title', { name: other?.name || t('operations.rating.member') })}</h2>
             {alreadyRated(operation, user?.id, other?.id) ? (
-              <span className="pill pill-teal"><Icon name="check" size={13} />Avis envoyé</span>
+              <span className="pill pill-teal"><Icon name="check" size={13} />{t('operations.rating.sent')}</span>
             ) : (
               <>
                 <Stars value={rating} onChange={setRating} />
                 {rating > 0 && (
                   <>
-                    <textarea rows={2} value={review} onChange={(e) => setReview(e.target.value)} maxLength={400} placeholder="Commentaire public optionnel" />
+                    <textarea rows={2} value={review} onChange={(e) => setReview(e.target.value)} maxLength={400} placeholder={t('operations.rating.placeholder')} />
                     <button className="btn btn-primary btn-sm" onClick={submitRating} disabled={busy === 'rating'}>
                       {busy === 'rating' ? <span className="spinner" /> : <Icon name="star" size={15} />}
-                      Envoyer l’avis
+                      {t('operations.rating.send')}
                     </button>
                   </>
                 )}
@@ -349,63 +351,63 @@ function operationChecklist(operation) {
     delivery: status === 'termine' && operation.status === 'released',
   };
   return [
-    { label: 'Demande creee', done: reached.request },
-    { label: 'Accord du voyageur', done: reached.traveler },
-    { label: 'Paiement securise', done: reached.payment },
-    { label: 'Colis pris en charge', done: reached.pickup },
-    { label: 'Livraison confirmee', done: reached.delivery },
+    { label: t('operations.check.request'), done: reached.request },
+    { label: t('operations.check.traveler'), done: reached.traveler },
+    { label: t('operations.check.payment'), done: reached.payment },
+    { label: t('operations.check.pickup'), done: reached.pickup },
+    { label: t('operations.check.delivery'), done: reached.delivery },
   ];
 }
 
 function nextAction(operation) {
-  if (operation.operationStatus === 'attente_confirmation' && operation.myRole === 'traveler') return 'Accepter la demande';
-  if (operation.operationStatus === 'paye') return 'Confirmer le rendez-vous';
-  if (operation.operationStatus === 'collecte_prevue') return 'Confirmer la prise en charge';
-  if (operation.operationStatus === 'en_transport') return 'Confirmer la livraison';
+  if (operation.operationStatus === 'attente_confirmation' && operation.myRole === 'traveler') return t('operations.action.accept');
+  if (operation.operationStatus === 'paye') return t('operations.action.meeting');
+  if (operation.operationStatus === 'collecte_prevue') return t('operations.action.pickup');
+  if (operation.operationStatus === 'en_transport') return t('operations.action.delivery');
   return null;
 }
 
 function confirmToast(status) {
-  if (status === 'paiement_requis') return 'Demande acceptée';
-  if (status === 'collecte_prevue') return 'Rendez-vous confirmé';
-  if (status === 'en_transport') return 'Colis en transport';
-  if (status === 'termine') return 'Opération terminée';
-  return 'Opération mise à jour';
+  if (status === 'paiement_requis') return t('operations.toast.accepted');
+  if (status === 'collecte_prevue') return t('operations.toast.meeting');
+  if (status === 'en_transport') return t('operations.toast.inTransit');
+  if (status === 'termine') return t('operations.toast.completed');
+  return t('operations.toast.updated');
 }
 
 function paymentLabel(operation) {
-  if (operation.paymentStatus === 'paid') return 'Payé';
-  if (operation.paymentStatus === 'cancelled') return 'Annulé';
-  if (operation.operationStatus === 'attente_confirmation') return 'En attente';
-  return 'À faire';
+  if (operation.paymentStatus === 'paid') return t('operations.payment.paid');
+  if (operation.paymentStatus === 'cancelled') return t('operations.payment.cancelled');
+  if (operation.operationStatus === 'attente_confirmation') return t('operations.payment.waiting');
+  return t('operations.payment.todo');
 }
 
 function escrowLabel(state) {
   const labels = {
-    pending: 'Prévu',
-    held: 'Sécurisé',
-    frozen: 'Gelé',
-    released: 'Libéré',
-    refunded: 'Remboursé',
+    pending: 'operations.escrow.pending',
+    held: 'operations.escrow.held',
+    frozen: 'operations.escrow.frozen',
+    released: 'operations.escrow.released',
+    refunded: 'operations.escrow.refunded',
   };
-  return labels[state] || 'Prévu';
+  return t(labels[state] || 'operations.escrow.pending');
 }
 
 function journeySteps(operation) {
   const status = operation.operationStatus;
   const rank = { attente_confirmation: 0, paiement_requis: 1, paye: 2, collecte_prevue: 3, en_transport: 4, termine: 5, litige: 4 }[status] ?? 0;
   const steps = [
-    { id: 'request', label: 'Demande envoyee', detail: 'Le voyageur examine votre colis.' },
-    { id: 'payment', label: 'Paiement securise', detail: 'Le montant reste protege par Wigofly.' },
-    { id: 'meeting', label: 'Rendez-vous', detail: 'Confirmez le lieu et le moment de remise.' },
-    { id: 'pickup', label: 'Prise en charge', detail: 'Le colis est remis au voyageur.' },
-    { id: 'delivery', label: 'Livraison', detail: 'La livraison libere le paiement.' },
+    { id: 'request', label: t('operations.journey.request'), detail: t('operations.journey.request.sub') },
+    { id: 'payment', label: t('operations.journey.payment'), detail: t('operations.journey.payment.sub') },
+    { id: 'meeting', label: t('operations.journey.meeting'), detail: t('operations.journey.meeting.sub') },
+    { id: 'pickup', label: t('operations.journey.pickup'), detail: t('operations.journey.pickup.sub') },
+    { id: 'delivery', label: t('operations.journey.delivery'), detail: t('operations.journey.delivery.sub') },
   ];
   return steps.map((step, index) => ({ ...step, state: index < rank ? 'done' : index === rank && status !== 'termine' ? 'current' : status === 'termine' ? 'done' : 'next' }));
 }
 
 function journeyStatus(operation) {
-  if (operation.operationStatus === 'litige') return 'Litige en cours';
-  if (operation.operationStatus === 'termine') return 'Operation terminee';
-  return nextAction(operation) || 'En attente de votre contact';
+  if (operation.operationStatus === 'litige') return t('operations.journey.dispute');
+  if (operation.operationStatus === 'termine') return t('operations.journey.completed');
+  return nextAction(operation) || t('operations.journey.waiting');
 }

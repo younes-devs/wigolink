@@ -4,7 +4,7 @@ import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
-import { t, useLang } from '../i18n.js';
+import { t, useLang, dateLocale } from '../i18n.js';
 
 const ACTIVE = ['pending', 'pending_traveler', 'countered_sender'];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +21,7 @@ function timeState(offer) {
   const hours = Math.ceil(diff / (60 * 60 * 1000));
   if (diff <= DAY_MS) return { tone: 'danger', label: t('offers.time.hours', { n: hours }) };
   if (diff <= 2 * DAY_MS) return { tone: 'warn', label: t('offers.time.days', { n: Math.ceil(diff / DAY_MS) }) };
-  return { tone: 'neutral', label: t('offers.expires', { date: new Date(offer.expiresAt).toLocaleDateString() }) };
+  return { tone: 'neutral', label: t('offers.expires', { date: new Date(offer.expiresAt).toLocaleDateString(dateLocale()) }) };
 }
 
 export default function OffersCenter() {

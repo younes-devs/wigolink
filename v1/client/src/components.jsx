@@ -10,7 +10,7 @@ import { t, useLang } from './i18n.js';
 // et on peut revenir en arrière sur une étape déjà franchie.
 export function Stepper({ labels, current, onGo }) {
   return (
-    <nav className="stepper" aria-label="Progression">
+    <nav className="stepper" aria-label={t('common.progress')}>
       {labels.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -87,11 +87,11 @@ export function BottomNav({ user }) {
     return () => { alive = false; clearInterval(interval); };
   }, [user]);
   const tabs = [
-    { to: '/trajets', icon: 'plane', label: 'Trajet' },
-    { to: '/en-cours', icon: 'repeat', label: 'En cours', badge: summary.operationsActionRequired },
-    { to: '/enregistres', icon: 'star', label: 'Enregistrés' },
-    { to: '/messages', icon: 'chat', label: 'Messagerie', badge: summary.messagesUnread },
-    { to: '/profil', icon: 'user', label: 'Profil' },
+    { to: '/trajets', icon: 'plane', label: t('nav.trips') },
+    { to: '/en-cours', icon: 'repeat', label: t('nav.transactions'), badge: summary.operationsActionRequired },
+    { to: '/enregistres', icon: 'star', label: t('saved.title') },
+    { to: '/messages', icon: 'chat', label: t('messages.title'), badge: summary.messagesUnread },
+    { to: '/profil', icon: 'user', label: t('nav.profile') },
   ];
   return (
     <nav className="bottom-nav">
@@ -119,7 +119,7 @@ export function QrBlock({ code, caption }) {
   }, [code]);
   return (
     <div className="qr-frame">
-      {dataUrl ? <img src={dataUrl} width={160} height={160} alt={`QR ${code}`} /> : <div style={{ width: 160, height: 160 }} />}
+      {dataUrl ? <img src={dataUrl} width={160} height={160} alt={t('common.qrCode', { code })} /> : <div style={{ width: 160, height: 160 }} />}
       <div className="qr-code-text">{code}</div>
       {caption && <div className="muted center">{caption}</div>}
     </div>
@@ -312,7 +312,7 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
             </div>
             <div style={{ padding: '12px 16px 16px' }}>
               <button className="btn btn-primary" onClick={shoot} disabled={!ready}>
-                <Icon name="camera" size={18} />Capturer
+                <Icon name="camera" size={18} />{t('common.capture')}
               </button>
             </div>
           </>

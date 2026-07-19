@@ -2,18 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from './api';
 import { Icon } from './Icons.jsx';
-import { t, useLang } from './i18n.js';
+import { dateLocale, t, useLang } from './i18n.js';
 
-const REL_FMT = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' });
 function relTime(at) {
+  const formatter = new Intl.RelativeTimeFormat(dateLocale(), { numeric: 'auto' });
   const mins = Math.round((at - Date.now()) / 60e3);
-  if (mins > -60) return REL_FMT.format(mins, 'minute');
+  if (mins > -60) return formatter.format(mins, 'minute');
   const hours = Math.round(mins / 60);
-  if (hours > -24) return REL_FMT.format(hours, 'hour');
-  return REL_FMT.format(Math.round(hours / 24), 'day');
+  if (hours > -24) return formatter.format(hours, 'hour');
+  return formatter.format(Math.round(hours / 24), 'day');
 }
 
 export default function Notifications() {
+  useLang();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -86,9 +87,9 @@ export default function Notifications() {
           <div className="notif-head">
             <div>
               <div className="notif-title">{t('notif.title')}</div>
-              <div className="notif-sub">{items.length} notification{items.length > 1 ? 's' : ''}</div>
+              <div className="notif-sub">{t(items.length > 1 ? 'notif.count.plural' : 'notif.count', { count: items.length })}</div>
             </div>
-            <button className="notif-close" onClick={() => setOpen(false)} aria-label="Fermer">
+            <button className="notif-close" onClick={() => setOpen(false)} aria-label={t('common.close')}>
               <Icon name="x" size={18} />
             </button>
           </div>

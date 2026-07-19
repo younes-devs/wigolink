@@ -23,6 +23,15 @@ export const LANGS = [
 let current = DICT[document.documentElement.lang] ? document.documentElement.lang : 'fr';
 const listeners = new Set();
 
+function syncDocumentLanguage() {
+  document.documentElement.lang = current;
+  document.documentElement.dir = RTL_LANGS.has(current) ? 'rtl' : 'ltr';
+  document.title = DICT[current]['app.title'];
+  document.querySelector('link[rel="manifest"]')?.setAttribute('href', `/manifest.${current}.webmanifest`);
+}
+
+syncDocumentLanguage();
+
 export function getLang() { return current; }
 
 // Locale Intl pour dates/nombres, alignée sur la langue de l'UI.
@@ -33,8 +42,7 @@ export function setLang(lang) {
   if (!DICT[lang]) return;
   current = lang;
   localStorage.setItem(KEY, lang);
-  document.documentElement.lang = lang;
-  document.documentElement.dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
+  syncDocumentLanguage();
   listeners.forEach((l) => l());
 }
 

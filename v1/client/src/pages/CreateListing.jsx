@@ -34,22 +34,6 @@ function resizeImage(file, maxPx = 720) {
   });
 }
 
-// Image de test générée (autofill)
-function placeholderPhoto(label) {
-  const c = document.createElement('canvas');
-  c.width = 480; c.height = 360;
-  const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 480, 360);
-  grad.addColorStop(0, '#e8edf5'); grad.addColorStop(1, '#d5dde9');
-  g.fillStyle = grad; g.fillRect(0, 0, 480, 360);
-  g.fillStyle = '#5f646e'; g.font = '600 26px sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(label, 240, 172);
-  g.font = '13px sans-serif';
-  g.fillText('Photo de test', 240, 205);
-  return c.toDataURL('image/jpeg', 0.8);
-}
-
 // Création de demande d'envoi — parcours ≤ 3 écrans (PRD §6 accessibilité)
 export default function CreateListing() {
   useLang();
@@ -90,25 +74,6 @@ export default function CreateListing() {
     }, 250);
     return () => clearTimeout(timer);
   }, [step, form]);
-
-  // Mode test : pré-remplit tout le formulaire avec des données plausibles.
-  const autofill = () => {
-    const picks = [
-      { categoryId: 'miel', title: 'Miel de thym pour la famille', description: 'Deux pots de miel de thym scellés (500 g chacun), achetés à la coopérative.', weightKg: 1.2, valueEur: 40, travelerPay: 12 },
-      { categoryId: 'safran', title: 'Safran de Taliouine', description: 'Boîte scellée de 20 g de safran en filaments, origine Taliouine.', weightKg: 0.1, valueEur: 60, travelerPay: 10 },
-      { categoryId: 'argan', title: "Huile d'argan cosmétique", description: "Deux flacons scellés d'huile d'argan cosmétique pressée à froid (250 ml).", weightKg: 0.8, valueEur: 35, travelerPay: 10 },
-      { categoryId: 'dattes', title: 'Dattes Medjool du bled', description: 'Trois kilos de dattes Medjool en barquettes operculées.', weightKg: 3, valueEur: 45, travelerPay: 14 },
-    ];
-    const p = picks[Math.floor(Math.random() * picks.length)];
-    const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
-    const in21 = new Date(Date.now() + 21 * 864e5).toISOString().slice(0, 10);
-    setForm((f) => ({
-      ...f, ...p, from: 'Casablanca', to: 'Bruxelles', dateFrom: in7, dateTo: in21,
-      recipientPhone: '+32470000003', customsAccepted: false,
-      photos: [placeholderPhoto(p.title)],
-    }));
-    setStep(2);
-  };
 
   if (!rules) return <SkeletonCard lines={3} />;
 
@@ -184,7 +149,7 @@ export default function CreateListing() {
             <div className="photo-picker">
               {form.photos.map((p, i) => (
                 <div key={i} className="photo-thumb">
-                  <img src={p} alt={`Photo ${i + 1}`} />
+                  <img src={p} alt={t('common.photoNumber', { n: i + 1 })} />
                   <button type="button" onClick={() => set('photos', form.photos.filter((_, j) => j !== i))} aria-label={t('common.remove')}>
                     <Icon name="x" size={12} />
                   </button>
@@ -364,8 +329,8 @@ function PreflightPanel({ preflight }) {
         {preflight.checks.map((c) => (
           <div key={c.id} className={`preflight-check ${c.ok ? 'ok' : c.severity}`}>
             <Icon name={c.ok ? 'check' : c.severity === 'warning' ? 'alert' : 'x'} size={15} />
-            <span>{c.label}</span>
-            {c.detail && <small>{c.detail}</small>}
+            <span>{c.labelKey ? t(c.labelKey, c.labelVars) : c.label}</span>
+            {(c.detailKey || c.detail) && <small>{c.detailKey ? t(c.detailKey, c.detailVars) : c.detail}</small>}
           </div>
         ))}
       </div>

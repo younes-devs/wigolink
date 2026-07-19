@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
-import { t, useLang } from '../i18n.js';
+import { dateLocale, t, useLang } from '../i18n.js';
 import { subscribeToMessageUpdates } from '../realtime.js';
 import { useToast } from '../Toast.jsx';
 
@@ -162,7 +162,7 @@ export default function MessagesSimple() {
   const remove = async (conversationId) => {
     try {
       await api(`/conversations/${conversationId}`, { method: 'DELETE' });
-      toast.success('Conversation supprimée');
+      toast.success(t('messages.toast.deleted'));
       refreshAfterMutation();
     } catch (err) {
       toast.error(err.message || t('messages.error.load'));
@@ -260,8 +260,8 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
   const [swiped, setSwiped] = useState(false);
   const unread = unreadCount(conversation);
   const status = statusLabel(conversation);
-  const context = conversation.context?.label || conversationContext(conversation);
-  const preview = conversation.lastMessagePreview || conversation.lastMessage?.text || conversationLabel(conversation);
+  const context = conversation.context?.labelKey ? t(conversation.context.labelKey) : conversation.context?.label || conversationContext(conversation);
+  const preview = conversation.lastMessagePreviewKey ? t(conversation.lastMessagePreviewKey) : conversation.lastMessagePreview || conversation.lastMessage?.text || conversationLabel(conversation);
   useDismissibleMenu(menuOpen, menuRef, () => onMenuOpenChange(false));
   const closeMenu = () => onMenuOpenChange(false);
   const runAction = async (action) => {
@@ -329,7 +329,7 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
               </button>
             )}
             <button type="button" role="menuitem" className="conversation-menu-danger" onClick={() => runAction(() => onRemove(conversation.id))}>
-              <Icon name="trash" size={15} /> Supprimer
+              <Icon name="trash" size={15} /> {t('messages.action.delete')}
             </button>
           </div>
         )}
@@ -382,8 +382,8 @@ function conversationSearchText(conversation) {
 }
 
 function statusLabel(conversation) {
-  if (conversation.status === 'waiting_user') return conversation.actionLabel || t('messages.status.actionRequired');
-  if (conversation.status === 'waiting_other') return conversation.actionLabel || t('messages.status.waiting');
+  if (conversation.status === 'waiting_user') return conversation.actionKey ? t(conversation.actionKey) : conversation.actionLabel || t('messages.status.actionRequired');
+  if (conversation.status === 'waiting_other') return conversation.actionKey ? t(conversation.actionKey) : conversation.actionLabel || t('messages.status.waiting');
   if (conversation.status === 'completed') return t('messages.status.completed');
   if (conversation.status === 'archived') return t('messages.status.archived');
   if (conversation.operation || conversation.context?.type === 'operation') return t('messages.status.operation');
@@ -399,7 +399,7 @@ function conversationLabel(conversation) {
 
 function conversationContext(conversation) {
   if (conversation.trip) return `${conversation.trip.from} -> ${conversation.trip.to}`;
-  if (conversation.operation) return conversation.operation.title || 'Operation en cours';
+  if (conversation.operation) return conversation.operation.title || t('messages.operation.active');
   return t('messages.status.direct');
 }
 
@@ -407,6 +407,6 @@ export function shortDate(value) {
   if (!value) return '';
   const d = new Date(value);
   const today = new Date().toDateString();
-  if (d.toDateString() === today) return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  if (d.toDateString() === today) return d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(dateLocale(), { day: '2-digit', month: '2-digit' });
 }
