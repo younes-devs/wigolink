@@ -19,6 +19,17 @@
   --glass-border: rgba(255, 255, 255, 0.7);
   --hairline: rgba(22, 24, 29, 0.08);
   --surface: #fff; /* fond solide : modals, panneaux, onglet actif, input focus */
+  --surface-soft: #f7f8fa;
+  --surface-raised: #fff;
+  --border: rgba(22, 24, 29, 0.14);
+  --line: rgba(22, 24, 29, 0.1);
+  --teal: #0e8a5f;
+  --neutral-fill: rgba(22, 24, 29, 0.055);
+  --neutral-fill-strong: rgba(22, 24, 29, 0.085);
+  --header-top: rgba(255, 255, 255, 0.72);
+  --header-bottom: rgba(255, 255, 255, 0.48);
+  --header-border: rgba(22, 24, 29, 0.09);
+  --header-inset: rgba(255, 255, 255, 0.58);
   --radius: 16px;
   --shadow: 0 1px 2px rgba(22, 24, 29, 0.04), 0 8px 24px rgba(22, 24, 29, 0.07);
   --shadow-lg: 0 2px 4px rgba(22, 24, 29, 0.05), 0 16px 40px rgba(22, 24, 29, 0.12);
@@ -49,6 +60,17 @@
   --glass-border: rgba(255, 255, 255, 0.09);
   --hairline: rgba(255, 255, 255, 0.1);
   --surface: #1a1f27;
+  --surface-soft: #121820;
+  --surface-raised: #202733;
+  --border: rgba(255, 255, 255, 0.16);
+  --line: rgba(255, 255, 255, 0.12);
+  --teal: #35c48c;
+  --neutral-fill: rgba(255, 255, 255, 0.07);
+  --neutral-fill-strong: rgba(255, 255, 255, 0.11);
+  --header-top: rgba(27, 33, 43, 0.92);
+  --header-bottom: rgba(17, 23, 31, 0.82);
+  --header-border: rgba(255, 255, 255, 0.12);
+  --header-inset: rgba(255, 255, 255, 0.04);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.5);
   --glass-clear: rgba(30, 35, 44, 0.4);
@@ -85,11 +107,11 @@ body {
 /* Header — barre de verre */
 .app-header {
   position: sticky; top: 0; z-index: 20;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  background: linear-gradient(180deg, var(--header-top), var(--header-bottom));
   backdrop-filter: var(--blur-strong);
   -webkit-backdrop-filter: var(--blur-strong);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: inset 0 -1px 0 rgba(22, 24, 29, 0.04);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: inset 0 -1px 0 var(--header-inset);
   padding: 16px 20px 14px;
 }
 .app-header .brand {
@@ -241,7 +263,7 @@ body {
 .pill-saffron { background: var(--amber-tint); color: var(--amber); }
 .pill-teal { background: var(--green-tint); color: var(--green); }
 .pill-danger { background: var(--danger-tint); color: var(--danger); }
-.pill-gray { background: rgba(22, 24, 29, 0.06); color: var(--ink-soft); }
+.pill-gray { background: var(--neutral-fill); color: var(--ink-soft); }
 
 /* Bottom nav — verre flottant */
 .bottom-nav {
@@ -1270,10 +1292,10 @@ body {
 }
 .auth-sep::before, .auth-sep::after { content: ''; flex: 1; height: 1px; background: var(--hairline); }
 .btn-google {
-  background: #fff; color: var(--ink); border: 1px solid var(--hairline);
+  background: #fff; color: #202124; border: 1px solid rgba(22, 24, 29, 0.18);
   box-shadow: 0 1px 2px rgba(22, 24, 29, 0.05);
 }
-.btn-google:hover { background: #fafafa; border-color: rgba(22, 24, 29, 0.18); }
+.btn-google:hover { background: #fafafa; border-color: rgba(22, 24, 29, 0.28); }
 .pwd-wrap { position: relative; }
 .pwd-wrap input { padding-right: 46px; }
 /* Edge adds its own password reveal control. The app provides one accessible toggle. */
@@ -3384,6 +3406,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   padding: 10px;
   color: var(--ink-soft);
 }
+.profile-empty-inline a { color: var(--accent); font-weight: 700; }
 .my-trip-edit {
   display: grid;
   gap: 10px;
@@ -4010,3 +4033,88 @@ body:has(.auth-page) {
 .admin-audit-change small { display: block; margin-bottom: 2px; color: var(--ink-faint); font-size: 10px; }
 .admin-audit-empty { margin: 9px 0 0; font-size: 12px; }
 @media (max-width: 600px) { .admin-audit-change { grid-template-columns: 1fr 18px 1fr; } .admin-audit-change > b { grid-column: 1 / -1; } }
+
+/* Dark-mode contrast audit: semantic surfaces must never inherit light-only fills. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(58% 40% at 10% 0%, rgba(35, 104, 214, 0.16), transparent 62%),
+    radial-gradient(45% 34% at 92% 8%, rgba(100, 74, 190, 0.12), transparent 62%),
+    radial-gradient(52% 36% at 25% 100%, rgba(24, 127, 148, 0.13), transparent 68%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1));
+}
+:root[data-theme="dark"] .bottom-nav {
+  background: linear-gradient(135deg, rgba(31, 39, 51, 0.92), rgba(17, 23, 31, 0.88));
+  border-color: var(--header-border);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .rail-card {
+  border-color: var(--glass-border);
+}
+:root[data-theme="dark"] .pill-gray,
+:root[data-theme="dark"] .chat-presence,
+:root[data-theme="dark"] .chat-day span,
+:root[data-theme="dark"] .conversation-meta i,
+:root[data-theme="dark"] .message-filters b,
+:root[data-theme="dark"] .notif-close,
+:root[data-theme="dark"] .notif-tabs,
+:root[data-theme="dark"] .geo-status,
+:root[data-theme="dark"] .tabs,
+:root[data-theme="dark"] .offer-history span,
+:root[data-theme="dark"] .stepper-dot,
+:root[data-theme="dark"] .trust-progress > div,
+:root[data-theme="dark"] .rail-progress,
+:root[data-theme="dark"] .kyc-decision-box,
+:root[data-theme="dark"] .listing-photo,
+:root[data-theme="dark"] .policy-table th {
+  background: var(--neutral-fill);
+}
+:root[data-theme="dark"] .message-search button:hover,
+:root[data-theme="dark"] .conversation-search button:hover,
+:root[data-theme="dark"] .pwd-toggle:hover,
+:root[data-theme="dark"] .notif-bell:hover,
+:root[data-theme="dark"] .notif-close:hover,
+:root[data-theme="dark"] .notif-item:hover,
+:root[data-theme="dark"] .settings-inline-row:not(.is-static):hover,
+:root[data-theme="dark"] .google-account:hover,
+:root[data-theme="dark"] .quiz-option:hover {
+  background: var(--neutral-fill-strong);
+}
+:root[data-theme="dark"] .preflight-check,
+:root[data-theme="dark"] .rail-corridor-stats > div {
+  background: var(--surface-raised);
+}
+:root[data-theme="dark"] .profile-avatar-wrap .avatar,
+:root[data-theme="dark"] .avatar-edit {
+  border-color: var(--surface);
+}
+:root[data-theme="dark"] .photo-add {
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .tl-step .dot {
+  background: var(--neutral-fill-strong);
+  border-color: var(--bg-0);
+}
+:root[data-theme="dark"] .btn-google {
+  color: #202124;
+  background: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="dark"] .btn-google:hover {
+  color: #202124;
+  background: #f5f7fa;
+}
+:root[data-theme="dark"] .btn-ghost .spinner,
+:root[data-theme="dark"] .btn-danger-ghost .spinner {
+  border-color: rgba(255, 255, 255, 0.28);
+  border-top-color: var(--ink);
+}
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
