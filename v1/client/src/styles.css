@@ -3031,8 +3031,9 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .conversation-side { align-self: center; }
   .conversation-side { padding: 10px 8px 10px 0; }
   .conversation-menu {
-    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); top: auto;
-    min-width: 0; z-index: 160; padding: 7px; border-radius: 14px;
+    position: fixed; left: 12px; right: 12px; bottom: calc(92px + env(safe-area-inset-bottom)); top: auto;
+    min-width: 0; z-index: 200; max-height: calc(100dvh - 116px); overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 7px; border-radius: 14px;
     box-shadow: 0 18px 48px rgba(4, 10, 18, 0.36);
   }
   .conversation-detail {
