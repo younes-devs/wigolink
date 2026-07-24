@@ -96,9 +96,8 @@ function operationNextAction(operation) {
     return t(operation.myRole === 'traveler' ? 'operations.next.acceptOrReject' : 'operations.next.travelerConfirmation');
   if (operation.operationStatus === 'paiement_requis')
     return t(operation.myRole === 'sender' ? 'operations.next.pay' : 'operations.next.waitPayment');
-  if (operation.operationStatus === 'paye') return t('operations.next.confirmMeeting');
-  if (operation.operationStatus === 'collecte_prevue') return t('operations.next.confirmPickup');
-  if (operation.operationStatus === 'en_transport') return t('operations.next.confirmDelivery');
+  if (operation.operationStatus === 'paye') return t(operation.myRole === 'traveler' ? 'operations.next.getPickupCode' : 'operations.next.enterPickupCode');
+  if (operation.operationStatus === 'en_transport') return t(operation.myRole === 'sender' ? 'operations.next.getDeliveryCode' : 'operations.next.enterDeliveryCode');
   if (operation.operationStatus === 'litige') return t('operations.next.followDispute');
   return t('operations.next.none');
 }

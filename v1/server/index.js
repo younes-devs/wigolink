@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'node:crypto';
 import {
   acquireDatabaseState, createPersistentSession, databasePool, deletePersistentSession, deletePersistentSessionsForUser,
   databaseHealth, getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
@@ -27,6 +28,9 @@ const SUPABASE_REALTIME_ORIGIN = SUPABASE_URL ? SUPABASE_URL.replace(/^http/, 'w
 if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
 if (IS_PRODUCTION && process.env.TEST_EMAIL_BYPASS) throw new Error('TEST_EMAIL_BYPASS ne doit jamais etre active en production.');
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
+// The database URL is server-only and already mandatory in production. A dedicated
+// OPERATION_CODE_SECRET can supersede it without making deployments brittle.
+const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigofly-local-operation-code-secret';
 app.set('trust proxy', 1);
 app.use(cors({
   origin(origin, callback) {
@@ -455,6 +459,64 @@ function broadcastPresence(userId, online) {
 
 function addEvent(tx, type, actorId, meta = {}) {
   tx.events.push({ id: newId('e'), type, actorId, meta, at: Date.now() });
+}
+
+const OPERATION_CODE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const OPERATION_CODE_MAX_ATTEMPTS = 5;
+
+function newOperationCode() {
+  return crypto.randomInt(10_000_000, 100_000_000).toString();
+}
+
+function operationCodeHash(txId, kind, code) {
+  return crypto.createHmac('sha256', OPERATION_CODE_SECRET).update(`${txId}:${kind}:${code}`).digest('hex');
+}
+
+function issueOperationCode(tx, kind, recipientId) {
+  const code = newOperationCode();
+  tx.securityCodes = tx.securityCodes || {};
+  tx.securityCodes[kind] = {
+    hash: operationCodeHash(tx.id, kind, code),
+    recipientId,
+    issuedAt: Date.now(),
+    expiresAt: Date.now() + OPERATION_CODE_TTL_MS,
+    attempts: 0,
+    lockedAt: null,
+  };
+  return code;
+}
+
+function operationCodePublicState(code) {
+  if (!code) return { issued: false, locked: false };
+  return {
+    issued: true,
+    locked: !!code.lockedAt,
+    expiresAt: code.expiresAt,
+    attemptsRemaining: Math.max(0, OPERATION_CODE_MAX_ATTEMPTS - Number(code.attempts || 0)),
+  };
+}
+
+function verifyOperationCode(tx, kind, enteredCode) {
+  const record = tx.securityCodes?.[kind];
+  if (!record) return { ok: false, error: 'Le code de securite n est pas encore disponible.', status: 400 };
+  if (record.lockedAt) return { ok: false, error: 'Ce code est verrouille apres trop de tentatives. Signalez un probleme pour continuer.', status: 429 };
+  if (record.expiresAt <= Date.now()) return { ok: false, error: 'Ce code a expire. Son titulaire doit en generer un nouveau.', status: 400 };
+
+  const candidate = String(enteredCode || '').trim();
+  const expected = Buffer.from(record.hash, 'hex');
+  const actual = Buffer.from(operationCodeHash(tx.id, kind, candidate), 'hex');
+  const matches = /^\d{8}$/.test(candidate) && expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  if (matches) return { ok: true };
+
+  record.attempts = Number(record.attempts || 0) + 1;
+  if (record.attempts >= OPERATION_CODE_MAX_ATTEMPTS) record.lockedAt = Date.now();
+  return {
+    ok: false,
+    error: record.lockedAt
+      ? 'Ce code est verrouille apres trop de tentatives. Signalez un probleme pour continuer.'
+      : 'Code invalide.',
+    status: record.lockedAt ? 429 : 400,
+  };
 }
 
 async function audit(actorId, action, targetType, targetId, meta = {}) {
@@ -1842,7 +1904,7 @@ function operationView(tx, user) {
     refunded: 'termine',
     cancelled: 'termine',
   };
-  return {
+  const view = {
     ...txView(user)(tx),
     operationStatus: tx.operationStatus || statusMap[tx.status] || 'attente_confirmation',
     title: trip ? `${trip.from} -> ${trip.to}` : listing?.title || tx.id,
@@ -1850,13 +1912,36 @@ function operationView(tx, user) {
     price: tx.price || tx.escrow?.travelerPay || listing?.travelerPay || trip?.price || 0,
     dispute: dispute ? disputeView(dispute, tx) : null,
   };
+  // Never send raw code values, hashes or attempt counters in an operation view.
+  // The holder receives a fresh code only through the protected issue endpoints.
+  delete view.pickupCode;
+  delete view.deliveryCode;
+  delete view.securityCodes;
+  const status = view.operationStatus;
+  const isTraveler = user?.id === tx.travelerId;
+  const isSender = user?.id === tx.senderId;
+  view.security = {
+    pickup: {
+      ...operationCodePublicState(tx.securityCodes?.pickup),
+      canReveal: status === 'paye' && isTraveler,
+      canEnter: status === 'paye' && isSender,
+    },
+    delivery: {
+      ...operationCodePublicState(tx.securityCodes?.delivery),
+      canReveal: status === 'en_transport' && isSender,
+      canEnter: status === 'en_transport' && isTraveler,
+    },
+  };
+  return view;
 }
 
 function operationNeedsAction(tx, userId) {
   const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
   if (status === 'attente_confirmation') return tx.travelerId === userId;
   if (status === 'paiement_requis') return tx.senderId === userId;
-  if (['paye', 'collecte_prevue', 'en_transport', 'litige'].includes(status)) return isPartyToTx(tx, userId);
+  if (status === 'paye') return tx.securityCodes?.pickup?.issuedAt ? tx.senderId === userId : tx.travelerId === userId;
+  if (status === 'en_transport') return tx.securityCodes?.delivery?.issuedAt ? tx.travelerId === userId : tx.senderId === userId;
+  if (status === 'litige') return isPartyToTx(tx, userId);
   return false;
 }
 
@@ -1970,8 +2055,7 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
     descriptionParcel,
     paymentStatus: 'pending',
     escrow: createEscrow({ travelerPay: price, commission }),
-    pickupCode: code6(),
-    deliveryCode: code6(),
+    securityCodes: {},
     sealingVideo: null,
     events: [],
     createdAt: Date.now(),
@@ -2053,15 +2137,90 @@ app.post('/api/operations/:id/pay', auth, (req, res) => {
   res.json({ operation: operationView(tx, req.user) });
 });
 
+app.post('/api/operations/:id/pickup-code', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.travelerId !== req.user.id) return res.status(403).json({ error: 'Ce code est reserve au voyageur' });
+  if (tx.operationStatus !== 'paye') return res.status(400).json({ error: 'Le code de remise est disponible apres le paiement.' });
+  const code = issueOperationCode(tx, 'pickup', req.user.id);
+  addEvent(tx, 'pickup_code_issued', req.user.id, { recipientRole: 'traveler' });
+  await audit(req.user.id, 'operation_pickup_code_issued', 'transaction', tx.id, { recipientRole: 'traveler' });
+  save();
+  res.json({ code, expiresAt: tx.securityCodes.pickup.expiresAt, operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/delivery-code', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'Ce code est reserve a l expediteur' });
+  if (tx.operationStatus !== 'en_transport') return res.status(400).json({ error: 'Le code de livraison est disponible apres la prise en charge.' });
+  const code = issueOperationCode(tx, 'delivery', req.user.id);
+  addEvent(tx, 'delivery_code_issued', req.user.id, { recipientRole: 'sender' });
+  await audit(req.user.id, 'operation_delivery_code_issued', 'transaction', tx.id, { recipientRole: 'sender' });
+  save();
+  res.json({ code, expiresAt: tx.securityCodes.delivery.expiresAt, operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/confirm-pickup', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'La remise doit etre confirmee par l expediteur' });
+  if (tx.operationStatus !== 'paye') return res.status(400).json({ error: 'La remise ne peut pas etre confirmee a cette etape.' });
+  const verification = verifyOperationCode(tx, 'pickup', req.body?.code);
+  if (!verification.ok) {
+    addEvent(tx, 'pickup_code_failed', req.user.id, { locked: verification.status === 429 });
+    await audit(req.user.id, 'operation_pickup_code_failed', 'transaction', tx.id, { locked: verification.status === 429 });
+    save();
+    return res.status(verification.status).json({ error: verification.error });
+  }
+  tx.securityCodes.pickup.verifiedAt = Date.now();
+  tx.securityCodes.pickup.verifiedBy = req.user.id;
+  tx.operationStatus = 'en_transport';
+  tx.status = 'in_transit';
+  addEvent(tx, 'pickup_code_verified', req.user.id, { proof: 'traveler_code' });
+  await audit(req.user.id, 'operation_pickup_code_verified', 'transaction', tx.id, { proof: 'traveler_code' });
+  await notify([tx.travelerId], { key: 'tx.pickedUp' }, tx.id, 'shipments', 'suivi');
+  save();
+  res.json({ operation: operationView(tx, req.user) });
+});
+
+app.post('/api/operations/:id/confirm-delivery', auth, async (req, res) => {
+  const tx = db.transactions.find((t) => t.id === req.params.id);
+  if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
+  if (tx.travelerId !== req.user.id) return res.status(403).json({ error: 'La livraison doit etre confirmee par le voyageur' });
+  if (tx.operationStatus !== 'en_transport') return res.status(400).json({ error: 'La livraison ne peut pas etre confirmee a cette etape.' });
+  const verification = verifyOperationCode(tx, 'delivery', req.body?.code);
+  if (!verification.ok) {
+    addEvent(tx, 'delivery_code_failed', req.user.id, { locked: verification.status === 429 });
+    await audit(req.user.id, 'operation_delivery_code_failed', 'transaction', tx.id, { locked: verification.status === 429 });
+    save();
+    return res.status(verification.status).json({ error: verification.error });
+  }
+  tx.securityCodes.delivery.verifiedAt = Date.now();
+  tx.securityCodes.delivery.verifiedBy = req.user.id;
+  tx.operationStatus = 'termine';
+  tx.status = 'released';
+  transitionEscrow(tx.escrow, 'released');
+  for (const uid of new Set([tx.senderId, tx.travelerId])) {
+    const member = findUser(uid);
+    if (!member) continue;
+    member.completed = (member.completed || 0) + 1;
+    member.badges = member.badges || [];
+    if (member.completed >= 5 && !member.badges.includes('voyageur-confirme')) member.badges.push('voyageur-confirme');
+  }
+  addEvent(tx, 'delivery_code_verified', req.user.id, { proof: 'sender_code', escrowReleased: true });
+  await audit(req.user.id, 'operation_delivery_code_verified', 'transaction', tx.id, { proof: 'sender_code', escrowReleased: true });
+  await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
+  save();
+  res.json({ operation: operationView(tx, req.user) });
+});
+
 app.post('/api/operations/:id/confirm', auth, async (req, res) => {
   const tx = db.transactions.find((t) => t.id === req.params.id);
   if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
   const current = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : null);
   const transitions = {
     attente_confirmation: { next: 'paiement_requis', event: 'traveler_confirmed', role: 'traveler' },
-    paye: { next: 'collecte_prevue', event: 'rendezvous_confirmed' },
-    collecte_prevue: { next: 'en_transport', event: 'pickup_confirmed', txStatus: 'in_transit' },
-    en_transport: { next: 'termine', event: 'delivery_confirmed', txStatus: 'released', escrow: 'released' },
   };
   const transition = transitions[current];
   if (!transition) return res.status(400).json({ error: 'Aucune confirmation disponible a cette etape' });
@@ -2072,17 +2231,6 @@ app.post('/api/operations/:id/confirm', auth, async (req, res) => {
   if (transition.txStatus) tx.status = transition.txStatus;
   if (transition.escrow) transitionEscrow(tx.escrow, transition.escrow);
   addEvent(tx, transition.event, req.user.id);
-
-  if (transition.next === 'termine') {
-    for (const uid of new Set([tx.senderId, tx.travelerId])) {
-      const user = findUser(uid);
-      if (!user) continue;
-      user.completed = (user.completed || 0) + 1;
-      user.badges = user.badges || [];
-      if (user.completed >= 5 && !user.badges.includes('voyageur-confirme')) user.badges.push('voyageur-confirme');
-    }
-    await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
-  }
 
   save();
   res.json({ operation: operationView(tx, req.user) });
@@ -3211,6 +3359,8 @@ function txView(user) {
       recipient: publicUser(findUser(t.recipientId)),
       listing: db.listings.find((l) => l.id === t.listingId),
     };
+    // New operation-code hashes are internal server state, never API data.
+    delete v.securityCodes;
     // Codes de validation : chacun ne voit que le code qu'il doit PRÉSENTER (PRD §3.4/5.3)
     if (user) {
       v.myRole = t.senderId === user.id ? 'sender' : t.travelerId === user.id ? 'traveler' : 'recipient';

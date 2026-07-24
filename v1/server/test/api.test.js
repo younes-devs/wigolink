@@ -2096,17 +2096,33 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   const paid = await api(`/operations/${accepted.body.operation.id}/pay`, { method: 'POST', token: fatima });
   assert.equal(paid.status, 200);
   assert.equal(paid.body.operation.operationStatus, 'paye');
+  assert.equal(paid.body.operation.pickupCode, undefined, 'un code ne fuite jamais dans la vue operation');
+  assert.equal(paid.body.operation.securityCodes, undefined, 'les hashes ne quittent jamais le serveur');
+  const genericBypass = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: fatima });
+  assert.equal(genericBypass.status, 400, 'la transition generique ne peut pas contourner le code de remise');
 
-  const rendezvous = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: fatima });
-  assert.equal(rendezvous.status, 200);
-  assert.equal(rendezvous.body.operation.operationStatus, 'collecte_prevue');
+  const pickupCodeBySender = await api(`/operations/${accepted.body.operation.id}/pickup-code`, { method: 'POST', token: fatima });
+  assert.equal(pickupCodeBySender.status, 403, 'seul le voyageur recoit le code de remise');
+  const pickupCode = await api(`/operations/${accepted.body.operation.id}/pickup-code`, { method: 'POST', token: karim });
+  assert.equal(pickupCode.status, 200, JSON.stringify(pickupCode.body));
+  assert.match(pickupCode.body.code, /^\d{8}$/);
+  assert.equal(pickupCode.body.operation.pickupCode, undefined, 'le code ne revient pas dans la ressource operation');
 
-  const pickup = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: karim });
+  const invalidPickup = await api(`/operations/${accepted.body.operation.id}/confirm-pickup`, { method: 'POST', token: fatima, body: { code: '00000000' } });
+  assert.equal(invalidPickup.status, 400, 'un faux code ne fait pas avancer la remise');
+  const stillPaid = await api(`/operations/${accepted.body.operation.id}`, { token: fatima });
+  assert.equal(stillPaid.body.operation.operationStatus, 'paye');
+  const pickup = await api(`/operations/${accepted.body.operation.id}/confirm-pickup`, { method: 'POST', token: fatima, body: { code: pickupCode.body.code } });
   assert.equal(pickup.status, 200);
   assert.equal(pickup.body.operation.operationStatus, 'en_transport');
   assert.equal(pickup.body.operation.status, 'in_transit');
 
-  const delivered = await api(`/operations/${accepted.body.operation.id}/confirm`, { method: 'POST', token: fatima });
+  const deliveryCodeByTraveler = await api(`/operations/${accepted.body.operation.id}/delivery-code`, { method: 'POST', token: karim });
+  assert.equal(deliveryCodeByTraveler.status, 403, 'seul l expediteur recoit le code de livraison');
+  const deliveryCode = await api(`/operations/${accepted.body.operation.id}/delivery-code`, { method: 'POST', token: fatima });
+  assert.equal(deliveryCode.status, 200, JSON.stringify(deliveryCode.body));
+  assert.match(deliveryCode.body.code, /^\d{8}$/);
+  const delivered = await api(`/operations/${accepted.body.operation.id}/confirm-delivery`, { method: 'POST', token: karim, body: { code: deliveryCode.body.code } });
   assert.equal(delivered.status, 200);
   assert.equal(delivered.body.operation.operationStatus, 'termine');
   assert.equal(delivered.body.operation.status, 'released');
@@ -2135,6 +2151,24 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(travelerProfile.body.user.id, detailAfterDelivery.body.operation.travelerId);
   assert.ok(Array.isArray(travelerProfile.body.trips));
   assert.equal(typeof travelerProfile.body.stats.completed, 'number');
+
+  const codeLockedOperation = await api(`/trips/${trip.id}/accept`, {
+    method: 'POST', token: fatima, body: { descriptionParcel: 'Test verrouillage code', shipmentType: 'parcel', weightKg: 1 },
+  });
+  assert.equal(codeLockedOperation.status, 200);
+  await api(`/operations/${codeLockedOperation.body.operation.id}/confirm`, { method: 'POST', token: karim });
+  await api(`/operations/${codeLockedOperation.body.operation.id}/pay`, { method: 'POST', token: fatima });
+  const protectedCode = await api(`/operations/${codeLockedOperation.body.operation.id}/pickup-code`, { method: 'POST', token: karim });
+  assert.equal(protectedCode.status, 200);
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const wrong = await api(`/operations/${codeLockedOperation.body.operation.id}/confirm-pickup`, { method: 'POST', token: fatima, body: { code: '11111111' } });
+    assert.equal(wrong.status, attempt === 5 ? 429 : 400);
+  }
+  const lockedCorrectCode = await api(`/operations/${codeLockedOperation.body.operation.id}/confirm-pickup`, { method: 'POST', token: fatima, body: { code: protectedCode.body.code } });
+  assert.equal(lockedCorrectCode.status, 429, 'un code verrouille ne peut pas etre force meme s il est ensuite connu');
+  const lockedView = await api(`/operations/${codeLockedOperation.body.operation.id}`, { token: fatima });
+  assert.equal(lockedView.body.operation.operationStatus, 'paye');
+  assert.equal(lockedView.body.operation.security.pickup.locked, true);
 
   const acceptedForDispute = await api(`/trips/${trip.id}/accept`, {
     method: 'POST',
