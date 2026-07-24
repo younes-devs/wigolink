@@ -2448,10 +2448,17 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
 
 // La suppression retire une discussion de la boite du demandeur uniquement. Les
 // messages restent disponibles pour l'autre participant et pour la moderation.
-app.delete('/api/conversations/:id', auth, (req, res) => {
+app.delete('/api/conversations/:id', auth, async (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
   if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
   conversation.deletedBy = [...new Set([...(conversation.deletedBy || []), req.user.id])];
+  await audit(req.user.id, 'conversation.delete', 'conversation', conversation.id, {
+    subjectUserId: req.user.id,
+    scope: 'inbox_only',
+    retainedForAdmin: true,
+    participantIds: conversation.participantIds,
+    messageCount: db.messages.filter((message) => message.conversationId === conversation.id).length,
+  });
   save();
   res.json({ ok: true });
 });

@@ -134,6 +134,7 @@ export default {
   'admin.audit.listingCreate': 'Zending gepubliceerd',
   'admin.audit.listingUpdate': 'Zending gewijzigd',
   'admin.audit.listingCancel': 'Zending geannuleerd',
+  'admin.audit.conversationDelete': 'Gesprek uit de berichten verwijderd',
   'admin.access.title': 'Beheerderstoegang',
   'admin.access.activeCount': '{count} actieve beheerder(s)',
   'admin.access.granted': 'Beheerderstoegang verleend',

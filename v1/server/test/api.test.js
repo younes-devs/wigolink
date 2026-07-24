@@ -1651,6 +1651,39 @@ test('audit admin : les changements de profil et de trajet gardent avant et apre
   assert.deepEqual(tripLog.meta.changes.find((change) => change.field === 'price'), { field: 'price', before: 25, after: 30 });
 });
 
+test('suppression de conversation : retire seulement la boite du membre et preserve la preuve admin', async () => {
+  const sender = await registerKycVerifiedUser(tokens.admin, 'SuppressionMessage');
+  const recipient = await registerKycVerifiedUser(tokens.admin, 'DestinataireMessage');
+  const recipientMe = await api('/me', { token: recipient.token });
+  assert.equal(recipientMe.status, 200);
+
+  const created = await api('/conversations', {
+    method: 'POST', token: sender.token, body: { userId: recipientMe.body.user.id },
+  });
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  const conversationId = created.body.conversation.id;
+  const message = await api(`/conversations/${conversationId}/messages`, {
+    method: 'POST', token: sender.token, body: { text: 'Message conserve pour le dossier admin.' },
+  });
+  assert.equal(message.status, 200, JSON.stringify(message.body));
+
+  const removed = await api(`/conversations/${conversationId}`, { method: 'DELETE', token: sender.token });
+  assert.equal(removed.status, 200, JSON.stringify(removed.body));
+  const senderInbox = await api('/conversations', { token: sender.token });
+  assert.equal(senderInbox.body.conversations.some((item) => item.id === conversationId), false);
+  const recipientConversation = await api(`/conversations/${conversationId}`, { token: recipient.token });
+  assert.equal(recipientConversation.status, 200, JSON.stringify(recipientConversation.body));
+
+  const users = await api('/admin/users', { token: tokens.admin });
+  const member = users.body.users.find((user) => user.email === sender.email);
+  const caseFile = await api(`/admin/users/${member.id}/case-file`, { token: tokens.admin });
+  assert.equal(caseFile.status, 200, JSON.stringify(caseFile.body));
+  assert.ok(caseFile.body.caseFile.messages.some((item) => item.id === message.body.message.id));
+  const deletion = caseFile.body.caseFile.auditLogs.find((log) => log.action === 'conversation.delete');
+  assert.equal(deletion.meta.retainedForAdmin, true);
+  assert.equal(deletion.meta.scope, 'inbox_only');
+});
+
 test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;

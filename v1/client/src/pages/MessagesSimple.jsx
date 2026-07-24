@@ -6,6 +6,7 @@ import { Avatar, Icon } from '../Icons.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
 import { subscribeToMessageUpdates } from '../realtime.js';
 import { useToast } from '../Toast.jsx';
+import { ConfirmDialog } from '../components.jsx';
 
 const FILTERS = [
   { id: 'all', label: 'messages.filter.all' },
@@ -40,6 +41,7 @@ export default function MessagesSimple() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = async ({ force = false } = {}) => {
     setOpenMenuId(null);
@@ -244,11 +246,19 @@ export default function MessagesSimple() {
               onRestore={restore}
               onUnread={markUnread}
               onTogglePin={togglePin}
-              onRemove={remove}
+              onRemove={setDeleteTarget}
             />
           ))}
         </div>
       </section>
+      {deleteTarget && <ConfirmDialog
+        title={t('messages.delete.confirm.title')}
+        message={t('messages.delete.confirm.body')}
+        confirmLabel={t('messages.delete.confirm.action')}
+        danger icon="trash"
+        onConfirm={() => { void remove(deleteTarget.id); setDeleteTarget(null); }}
+        onClose={() => setDeleteTarget(null)}
+      />}
 
     </div>
   );
@@ -328,7 +338,7 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
                 <Icon name="eyeOff" size={15} /> {t('messages.action.archive')}
               </button>
             )}
-            <button type="button" role="menuitem" className="conversation-menu-danger" onClick={() => runAction(() => onRemove(conversation.id))}>
+            <button type="button" role="menuitem" className="conversation-menu-danger" onClick={() => runAction(() => onRemove(conversation))}>
               <Icon name="trash" size={15} /> {t('messages.action.delete')}
             </button>
           </div>

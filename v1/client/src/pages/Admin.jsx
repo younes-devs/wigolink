@@ -263,6 +263,7 @@ function auditAction(action) {
     'listing.create': 'admin.audit.listingCreate',
     'listing.update': 'admin.audit.listingUpdate',
     'listing.cancel': 'admin.audit.listingCancel',
+    'conversation.delete': 'admin.audit.conversationDelete',
   };
   return keys[action] ? t(keys[action]) : adminStatus(action);
 }

@@ -134,6 +134,7 @@ export default {
   'admin.audit.listingCreate': 'تم نشر الإرسال',
   'admin.audit.listingUpdate': 'تم تعديل الإرسال',
   'admin.audit.listingCancel': 'تم إلغاء الإرسال',
+  'admin.audit.conversationDelete': 'تمت إزالة المحادثة من الرسائل',
   'admin.access.title': 'صلاحيات الإدارة',
   'admin.access.activeCount': '{count} مشرف نشط',
   'admin.access.granted': 'مُنحت صلاحيات الإدارة',
