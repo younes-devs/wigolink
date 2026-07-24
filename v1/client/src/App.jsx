@@ -12,6 +12,7 @@ import { t } from './i18n.js';
 const Login = lazy(() => import('./pages/Login.jsx'));
 const TripFeedSimple = lazy(() => import('./pages/TripFeedSimple.jsx'));
 const TripDetailSimple = lazy(() => import('./pages/TripDetailSimple.jsx'));
+const TripRequestSimple = lazy(() => import('./pages/TripRequestSimple.jsx'));
 const SavedTrips = lazy(() => import('./pages/SavedTrips.jsx'));
 const MessagesSimple = lazy(() => import('./pages/MessagesSimple.jsx'));
 const ConversationDetail = lazy(() => import('./pages/ConversationDetail.jsx'));
@@ -139,6 +140,7 @@ export default function App() {
                 <>
                   <Route path="/" element={<Navigate to="/trajets" replace />} />
                   <Route path="/trajets" element={<TripFeedSimple />} />
+                  <Route path="/trajets/:id/demande" element={<TripRequestSimple />} />
                   <Route path="/trajets/:id" element={<TripDetailSimple />} />
                   <Route path="/en-cours" element={<OperationsSimple />} />
                   <Route path="/operations/:id" element={<OperationDetailSimple />} />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../App.jsx';
@@ -15,13 +15,6 @@ export default function TripDetailSimple() {
   const { user } = useAuth();
   const toast = useToast();
   const [trip, setTrip] = useState(null);
-  const [parcel, setParcel] = useState('');
-  const [shipmentType, setShipmentType] = useState('parcel');
-  const [weightKg, setWeightKg] = useState('');
-  const [documentCount, setDocumentCount] = useState('1');
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
-  const reviewRef = useRef(null);
   const [busy, setBusy] = useState('');
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -33,7 +26,6 @@ export default function TripDetailSimple() {
     if (!trip) return;
     setEditForm({ from: trip.from, to: trip.to, date: trip.departureDate, capacityKg: trip.capacityKg, price: trip.price, description: trip.description, conditions: trip.conditions });
   }, [trip]);
-  useEffect(() => { if (reviewOpen) requestAnimationFrame(() => reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }, [reviewOpen]);
 
   const saveTrip = async () => {
     setBusy('save');
@@ -56,27 +48,6 @@ export default function TripDetailSimple() {
       nav(`/messages/${data.conversation.id}`);
     } catch (e) {
       toast.error(e.message);
-      setBusy('');
-    }
-  };
-
-  const accept = async () => {
-    setBusy('accept');
-    try {
-      const data = await api(`/trips/${trip.id}/accept`, {
-        method: 'POST',
-        body: {
-          descriptionParcel: parcel,
-          shipmentType,
-          weightKg: shipmentType === 'parcel' ? weightKg : undefined,
-          documentCount: shipmentType === 'document' ? documentCount : undefined,
-        },
-      });
-      toast.success(t('trips.toast.operationCreated'));
-      nav(`/operations/${data.operation.id}`);
-    } catch (e) {
-      toast.error(e.message);
-      if (e.data?.needsKyc) nav('/verification');
       setBusy('');
     }
   };
@@ -113,18 +84,6 @@ export default function TripDetailSimple() {
   if (trip === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>{t('trips.notFound')}</p></div>;
   const isOwner = user?.id === trip.traveler?.id;
   const hasActiveOperations = Number(trip.activeOperations || 0) > 0;
-  const quantity = shipmentType === 'document' ? Number(documentCount) : Number(weightKg);
-  const calculatedPrice = shipmentType === 'document'
-    ? (Number.isInteger(quantity) && quantity > 0 ? quantity * 3 : 0)
-    : (Number.isFinite(quantity) && quantity > 0
-      ? Math.round((Number(trip.price || 0) / Math.max(1, Number(trip.capacityKg || 1))) * quantity * 100) / 100
-      : 0);
-  const requestIsValid = parcel.trim().length > 0 && (shipmentType === 'document'
-    ? Number.isInteger(quantity) && quantity >= 1 && quantity <= 20
-    : Number.isFinite(quantity) && quantity > 0 && quantity <= Number(trip.capacityKg));
-  const shipmentLabel = shipmentType === 'document'
-    ? t(quantity > 1 ? 'trips.request.documents' : 'trips.request.document', { count: documentCount })
-    : t('trips.request.weight', { weight: weightKg });
 
   return (
     <div className="simple-page">
@@ -201,40 +160,6 @@ export default function TripDetailSimple() {
         )}
 
         {!isOwner && <>
-        <section className="trip-request-form" aria-label={t('trips.request.shipment')}>
-          <div className="request-kind-switch" role="group" aria-label={t('trips.request.type')}>
-            <button type="button" className={shipmentType === 'parcel' ? 'active' : ''} onClick={() => setShipmentType('parcel')}><Icon name="package" size={17} />{t('trips.request.parcel')}</button>
-            <button type="button" className={shipmentType === 'document' ? 'active' : ''} onClick={() => setShipmentType('document')}><Icon name="fileText" size={17} />{t('trips.request.documentType')}</button>
-          </div>
-
-          {shipmentType === 'parcel' ? (
-            <label className="field">
-              <span>{t('trips.request.parcelWeight')}</span>
-              <div className="price-input">
-                <input type="number" min="0.1" max={trip.capacityKg} step="0.1" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder={t('trips.request.maximum', { value: trip.capacityKg })} />
-                <b>kg</b>
-              </div>
-              <small>{t('trips.request.weightHint')}</small>
-            </label>
-          ) : (
-            <label className="field">
-              <span>{t('trips.request.documentCount')}</span>
-              <div className="price-input">
-                <input type="number" min="1" max="20" step="1" inputMode="numeric" value={documentCount} onChange={(e) => setDocumentCount(e.target.value)} />
-                <b>{t('trips.request.docs')}</b>
-              </div>
-              <small>{t('trips.request.documentHint')}</small>
-            </label>
-          )}
-
-          <label className="field">
-            <span>{t('trips.request.contents')}</span>
-            <textarea value={parcel} onChange={(e) => setParcel(e.target.value)} rows={3} placeholder={t(shipmentType === 'document' ? 'trips.request.documentPlaceholder' : 'trips.request.parcelPlaceholder')} />
-          </label>
-
-          <div className="request-price-preview"><span>{t('trips.request.calculatedPrice')}</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
-        </section>
-
         <div className="trip-detail-actions">
           <button className="btn btn-ghost" onClick={saveTrip} disabled={!!busy}>
             {busy === 'save' ? <span className="spinner" /> : <Icon name={trip.saved ? 'check' : 'star'} size={17} />}
@@ -244,31 +169,11 @@ export default function TripDetailSimple() {
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             {t('messages.title')}
           </button>
-          <button className="btn btn-primary" onClick={() => setReviewOpen(true)} disabled={!!busy || !requestIsValid}>
-            {busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}
+          <button className="btn btn-primary" onClick={() => nav(`/trajets/${trip.id}/demande`)} disabled={!!busy}>
+            <Icon name="arrowRight" size={17} />
             {t('trips.request.make')}
           </button>
         </div>
-
-        {reviewOpen && (
-          <section className="trip-request-review" ref={reviewRef} aria-label={t('trips.request.review')}>
-            <div className="trip-request-review-head">
-              <div><span>{t('trips.request.before')}</span><h2>{t('trips.request.review')}</h2></div>
-              <button type="button" className="icon-btn" onClick={() => setReviewOpen(false)} aria-label={t('common.close')}><Icon name="x" size={17} /></button>
-            </div>
-            <div className="trip-request-summary">
-              <div><span>{t('trips.trip')}</span><b>{trip.from} <Icon name="arrowRight" size={14} /> {trip.to}</b></div>
-              <div><span>{t('trips.request.shipment')}</span><b>{shipmentLabel}</b></div>
-              <div><span>{t('trips.request.calculatedPrice')}</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
-              <div><span>{t('common.description')}</span><b>{parcel}</b></div>
-            </div>
-            <label className="request-confirmation"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /><span>{t('trips.request.confirm')}</span></label>
-            <div className="trip-detail-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setReviewOpen(false)}>{t('common.edit')}</button>
-              <button type="button" className="btn btn-primary" onClick={accept} disabled={!confirmed || !!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t('trips.request.send')}</button>
-            </div>
-          </section>
-        )}
         </>}
       </section>
       {confirmRemove && <ConfirmDialog title={t('trips.remove.title')} message={t('trips.remove.message')} confirmLabel={t('trips.remove')} danger onConfirm={removeOwnTrip} onClose={() => setConfirmRemove(false)} />}
