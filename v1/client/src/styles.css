@@ -3454,30 +3454,163 @@ body:has(.auth-page) {
   height: 31px !important;
   display: block !important;
 }
-.auth-route {
-  display: grid;
-  grid-template-columns: auto minmax(54px, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+.auth-journey {
   width: 100%;
-  margin-top: 22px;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 12px;
-  font-weight: 700;
-}
-.auth-route-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  margin-top: 20px;
   color: #fff;
 }
-.auth-route-line::before,
-.auth-route-line::after {
+.auth-journey-stage {
+  --journey-flight-edge: 39px;
+  --journey-flight-shoulder: 16px;
+  --journey-flight-apex: 5px;
+  --journey-road-edge: 49px;
+  --journey-road-shoulder: 61px;
+  --journey-road-dip: 67px;
+  position: relative;
+  width: 100%;
+  height: 88px;
+  direction: ltr;
+  isolation: isolate;
+}
+.auth-journey-track {
+  position: absolute;
+  z-index: 0;
+  left: 14%;
+  right: 14%;
+  pointer-events: none;
+}
+.auth-journey-track::after {
   content: "";
-  min-width: 8px;
-  height: 1px;
-  flex: 1;
-  background: rgba(255, 255, 255, 0.42);
+  position: absolute;
+  inset: -2px 0;
+  opacity: 0.24;
+  filter: blur(3px);
+  background: inherit;
+}
+.auth-journey-track-air {
+  top: 15px;
+  height: 39px;
+  border-top: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 50% 50% 0 0;
+}
+.auth-journey-track-road {
+  top: 50px;
+  height: 17px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.44);
+  border-radius: 0 0 46% 46%;
+}
+.auth-journey-endpoint {
+  position: absolute;
+  z-index: 3;
+  top: 35px;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  width: 86px;
+  color: rgba(255, 255, 255, 0.94);
+  text-align: center;
+}
+.auth-journey-origin { left: 0; }
+.auth-journey-destination { right: 0; }
+.auth-journey-endpoint b {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-journey-pin {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(3, 43, 91, 0.28);
+  box-shadow: 0 7px 18px rgba(1, 35, 79, 0.2);
+}
+.auth-journey-pin::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(1);
+}
+.auth-journey-origin .auth-journey-pin::before {
+  animation: auth-journey-pulse-origin 8.4s ease-out infinite;
+}
+.auth-journey-destination .auth-journey-pin::before {
+  animation: auth-journey-pulse-destination 8.4s ease-out infinite;
+}
+.auth-journey-vehicle {
+  position: absolute;
+  z-index: 2;
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0868d1;
+  box-shadow: 0 8px 18px rgba(0, 34, 78, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  will-change: left, top, opacity, transform;
+}
+.auth-journey-plane {
+  left: 10%;
+  top: var(--journey-flight-edge);
+  animation: auth-plane-trip 8.4s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+}
+.auth-journey-plane .icon {
+  animation: auth-plane-heading 8.4s ease-in-out infinite;
+}
+.auth-journey-car {
+  left: 86%;
+  top: var(--journey-road-edge);
+  animation: auth-car-return 8.4s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+}
+
+@keyframes auth-plane-trip {
+  0% { left: 10%; top: var(--journey-flight-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }
+  5% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  13% { left: 27%; top: var(--journey-flight-shoulder); opacity: 1; }
+  22% { left: 50%; top: var(--journey-flight-apex); opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  31% { left: 73%; top: var(--journey-flight-shoulder); opacity: 1; }
+  39% { left: 90%; top: var(--journey-flight-edge); opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  44% { left: 90%; top: var(--journey-flight-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }
+  100% { left: 90%; top: var(--journey-flight-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }
+}
+@keyframes auth-car-return {
+  0%, 48% { left: 90%; top: var(--journey-road-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }
+  53% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  61% { left: 73%; top: var(--journey-road-shoulder); opacity: 1; }
+  69% { left: 50%; top: var(--journey-road-dip); opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  78% { left: 27%; top: var(--journey-road-shoulder); opacity: 1; }
+  86% { left: 10%; top: var(--journey-road-edge); opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  92%, 100% { left: 10%; top: var(--journey-road-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }
+}
+@keyframes auth-plane-heading {
+  0%, 5% { transform: rotate(57deg); }
+  22% { transform: rotate(43deg); }
+  39%, 100% { transform: rotate(25deg); }
+}
+@keyframes auth-journey-pulse-origin {
+  0%, 88% { opacity: 0; transform: scale(1); }
+  3%, 93% { opacity: 0.75; }
+  9%, 100% { opacity: 0; transform: scale(1.72); }
+}
+@keyframes auth-journey-pulse-destination {
+  0%, 35% { opacity: 0; transform: scale(1); }
+  40% { opacity: 0.75; }
+  47%, 100% { opacity: 0; transform: scale(1.72); }
 }
 .auth-hero-title {
   position: relative;
@@ -3692,8 +3825,28 @@ body:has(.auth-page) {
   .auth-logo {
     height: 36px !important;
   }
-  .auth-route {
-    margin-top: 72px;
+  .auth-journey {
+    margin-top: 56px;
+  }
+  .auth-journey-stage {
+    --journey-flight-edge: 47px;
+    --journey-flight-shoulder: 19px;
+    --journey-flight-apex: 6px;
+    --journey-road-edge: 57px;
+    --journey-road-shoulder: 70px;
+    --journey-road-dip: 77px;
+    height: 108px;
+  }
+  .auth-journey-track-air {
+    top: 17px;
+    height: 46px;
+  }
+  .auth-journey-track-road {
+    top: 58px;
+    height: 20px;
+  }
+  .auth-journey-endpoint {
+    top: 43px;
   }
   .auth-hero-title {
     margin-top: 30px;
@@ -3733,8 +3886,31 @@ body:has(.auth-page) {
   align-items: flex-start;
   text-align: right;
 }
-[dir="rtl"] .auth-route-line .icon {
-  transform: scaleX(-1);
+@media (max-width: 380px) {
+  .auth-journey-endpoint {
+    width: 76px;
+  }
+  .auth-journey-endpoint b {
+    font-size: 10.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-journey-plane,
+  .auth-journey-car,
+  .auth-journey-plane .icon,
+  .auth-journey-pin::before {
+    animation: none !important;
+  }
+  .auth-journey-plane {
+    left: 50%;
+    top: 8px;
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  .auth-journey-car {
+    display: none;
+  }
 }
 
 .admin-audit-log { padding: 12px; border: 1px solid var(--hairline); border-radius: 9px; background: var(--surface-soft); }

@@ -4,6 +4,7 @@ import { api, setToken } from '../api';
 import { useAuth } from '../App.jsx';
 import { Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
+import AuthJourneyLoop from '../AuthJourneyLoop.jsx';
 
 // Authentication: login, registration, email verification, password reset and appeal.
 export default function Login() {
@@ -133,11 +134,7 @@ export default function Login() {
             <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
           </a>
 
-          <div className="auth-route" aria-label="Bruxelles, Casablanca">
-            <span>Bruxelles</span>
-            <span className="auth-route-line"><Icon name="plane" size={16} /></span>
-            <span>Casablanca</span>
-          </div>
+          <AuthJourneyLoop t={t} />
 
           <h1 className="auth-hero-title">{heroTitle}</h1>
           <p className="auth-hero-sub">{heroSubtitle}</p>
