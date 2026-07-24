@@ -44,6 +44,12 @@ function getFaceLandmarker() {
   return faceLandmarkerPromise;
 }
 
+// Le modèle est préparé dès l'arrivée sur le parcours KYC. L'ouverture de la
+// caméra réutilise alors cette même instance au lieu d'attendre son chargement.
+export function warmKycFaceGuidance() {
+  return getFaceLandmarker().catch(() => null);
+}
+
 function measureLight(video, canvas) {
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context.drawImage(video, 0, 0, canvas.width, canvas.height);

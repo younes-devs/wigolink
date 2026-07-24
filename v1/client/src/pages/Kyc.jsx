@@ -7,6 +7,7 @@ import { Icon } from '../Icons.jsx';
 import { SkeletonCard } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
 import { t, useLang } from '../i18n.js';
+import { warmKycFaceGuidance } from '../kycFaceGuidance.js';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
 // Le flux est volontairement immersif pour laisser toute la place aux documents.
@@ -19,6 +20,10 @@ export default function Kyc() {
 
   const load = () => api('/me').then(setMe);
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const status = me?.kyc?.status || me?.kycStatus;
+    if (status === 'none' || status === 'rejected') void warmKycFaceGuidance();
+  }, [me]);
 
   if (!me) return <div className="kyc-page"><SkeletonCard lines={3} /></div>;
   const status = me.kyc?.status || 'none';
