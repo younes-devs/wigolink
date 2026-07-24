@@ -104,8 +104,13 @@ body {
 .header-notif { margin-inline-start: auto; } /* logique : passe à droite en LTR, à gauche en RTL */
 
 /* Content */
-/* Padding bas réduit : le contenu glisse sous la barre de verre (liquid glass) */
-.content { flex: 1; padding: 20px 16px 46px; overflow-y: auto; }
+/* Reserve la hauteur du footer mobile pour que le dernier element reste toujours accessible. */
+.content {
+  flex: 1;
+  padding: 20px 16px calc(112px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom));
+}
 .phone:has(.kyc-page) .app-header,
 .phone:has(.kyc-page) .bottom-nav,
 .phone:has(.kyc-page) .side-rail { display: none; }
@@ -2846,7 +2851,7 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 @media (min-width: 640px) {
   .phone { max-width: 620px; }
   .bottom-nav { max-width: 596px; }
-  .content { padding: 24px 24px 52px; }
+  .content { padding: 24px 24px calc(112px + env(safe-area-inset-bottom)); }
   .notif-panel { right: max(12px, calc((100vw - min(100vw, 620px)) / 2 + 24px)); }
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
   .preflight-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
