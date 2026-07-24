@@ -461,6 +461,33 @@ async function audit(actorId, action, targetType, targetId, meta = {}) {
   return repositories.auditLogs.append({ actorId, action, targetType, targetId, meta });
 }
 
+// Journal immuable des changements importants. On ne conserve jamais de mot de
+// passe, de jeton ou de contenu binaire (photos) dans ce journal.
+function auditValue(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string') return value.slice(0, 1000);
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  return null;
+}
+
+function auditChanges(before = {}, after = {}, fields = []) {
+  return fields.flatMap((field) => {
+    const previous = auditValue(before[field]);
+    const next = auditValue(after[field]);
+    return Object.is(previous, next) ? [] : [{ field, before: previous, after: next }];
+  });
+}
+
+async function auditChange({ actorId, action, targetType, targetId, subjectUserId, before, after, fields, meta = {} }) {
+  const changes = auditChanges(before, after, fields);
+  if (!changes.length && !meta.recordEmpty) return null;
+  return audit(actorId, action, targetType, targetId, {
+    ...meta,
+    subjectUserId,
+    changes,
+  });
+}
+
 // Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
 // chaîne française littérale (legacy), soit { key, params } — dans ce cas la traduction
 // se fait à la LECTURE selon la langue du lecteur (voir notify-i18n.js), pas à la création :
@@ -825,9 +852,15 @@ app.get('/api/settings', auth, (req, res) => {
   res.json({ settings: userSettings(req.user) });
 });
 
-app.post('/api/settings', auth, (req, res) => {
+app.post('/api/settings', auth, async (req, res) => {
+  const before = { ...userSettings(req.user).notifications };
   const input = req.body?.notifications || {};
   repositories.settings.updateNotifications(req.user, input);
+  await auditChange({
+    actorId: req.user.id, action: 'settings.notifications.update', targetType: 'user', targetId: req.user.id,
+    subjectUserId: req.user.id, before, after: userSettings(req.user).notifications,
+    fields: ['transactions', 'messages', 'shipments', 'reminders'],
+  });
   save();
   res.json({ settings: userSettings(req.user) });
 });
@@ -909,7 +942,8 @@ app.post('/api/kyc/submit', auth, (req, res) => {
 });
 
 // ---------- Profil ----------
-app.post('/api/profile', auth, (req, res) => {
+app.post('/api/profile', auth, async (req, res) => {
+  const before = { ...req.user };
   const { name, city, phone } = req.body;
   if (name !== undefined) {
     if (String(name).trim().length < 2) return res.status(400).json({ error: 'Nom trop court' });
@@ -917,14 +951,23 @@ app.post('/api/profile', auth, (req, res) => {
   }
   if (city !== undefined) req.user.city = String(city).trim().slice(0, 60);
   if (phone !== undefined) req.user.phone = String(phone).trim().slice(0, 20);
+  await auditChange({
+    actorId: req.user.id, action: 'profile.update', targetType: 'user', targetId: req.user.id,
+    subjectUserId: req.user.id, before, after: req.user, fields: ['name', 'city', 'phone'],
+  });
   save();
   res.json({ user: publicUser(req.user) });
 });
 
-app.post('/api/profile/photo', auth, (req, res) => {
+app.post('/api/profile/photo', auth, async (req, res) => {
+  const before = { hasPhoto: !!req.user.photoUrl };
   const { dataUrl } = req.body;
   if (dataUrl === null) {
     req.user.photoUrl = null;
+    await auditChange({
+      actorId: req.user.id, action: 'profile.photo.update', targetType: 'user', targetId: req.user.id,
+      subjectUserId: req.user.id, before, after: { hasPhoto: false }, fields: ['hasPhoto'],
+    });
     save();
     return res.json({ user: publicUser(req.user) });
   }
@@ -933,6 +976,10 @@ app.post('/api/profile/photo', auth, (req, res) => {
   if (dataUrl.length > 700 * 1024)
     return res.status(400).json({ error: 'Image trop lourde (500 Ko max après compression)' });
   req.user.photoUrl = dataUrl;
+  await auditChange({
+    actorId: req.user.id, action: 'profile.photo.update', targetType: 'user', targetId: req.user.id,
+    subjectUserId: req.user.id, before, after: { hasPhoto: true }, fields: ['hasPhoto'],
+  });
   save();
   res.json({ user: publicUser(req.user) });
 });
@@ -946,6 +993,10 @@ app.post('/api/profile/password', auth, async (req, res) => {
   if (password.length < 8) return res.status(400).json({ error: 'Mot de passe : 8 caracteres minimum' });
   req.user.passwordHash = hashPassword(password);
   await clearUserSessions(req.user.id);
+  await auditChange({
+    actorId: req.user.id, action: 'profile.password.update', targetType: 'user', targetId: req.user.id,
+    subjectUserId: req.user.id, before: {}, after: {}, fields: [], meta: { recordEmpty: true },
+  });
   save();
   res.json({ ok: true, mustRelogin: true });
 });
@@ -982,10 +1033,15 @@ app.post('/api/profile/email/change/confirm', auth, async (req, res) => {
     return res.status(400).json({ error: 'Code expire. Recommencez la demande.' });
   if (pending.code !== code) return res.status(400).json({ error: 'Code incorrect' });
   if (findByEmail(pending.newEmail)) return res.status(400).json({ error: 'Cette adresse email est deja utilisee' });
+  const previousEmail = req.user.email;
   req.user.email = pending.newEmail;
   req.user.emailVerified = true;
   delete db.accountConfirmations[req.user.id];
   await clearUserSessions(req.user.id);
+  await auditChange({
+    actorId: req.user.id, action: 'profile.email.update', targetType: 'user', targetId: req.user.id,
+    subjectUserId: req.user.id, before: { email: previousEmail }, after: req.user, fields: ['email'],
+  });
   save();
   res.json({ ok: true, mustRelogin: true });
 });
@@ -1126,6 +1182,8 @@ app.post('/api/profile/delete', auth, async (req, res) => {
   if (activeTx.length > 0)
     return res.status(400).json({ error: `Impossible : ${activeTx.length} transaction(s) encore en cours. Terminez-les d'abord.` });
 
+  const beforeDeletion = { ...req.user };
+
   // Anonymisation plutôt que suppression physique : préserve l'intégrité des transactions passées
   // (traçabilité douanière/litiges) tout en effaçant les données personnelles identifiantes.
   req.user.name = 'Compte supprimé';
@@ -1141,6 +1199,11 @@ app.post('/api/profile/delete', auth, async (req, res) => {
   // anonymisée pour l'audit de conformité, sans les photos.
   repositories.kyc.purgeSensitiveForUser(uid);
   await clearUserSessions(uid);
+  await auditChange({
+    actorId: uid, action: 'profile.delete', targetType: 'user', targetId: uid,
+    subjectUserId: uid, before: beforeDeletion, after: req.user,
+    fields: ['name', 'email', 'phone', 'city', 'provider'], meta: { recordEmpty: true },
+  });
   save();
   res.json({ ok: true });
 });
@@ -1329,7 +1392,7 @@ app.get('/api/trips/mission', auth, (req, res) => {
   });
 });
 
-app.post('/api/trips', auth, (req, res) => {
+app.post('/api/trips', auth, async (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
   const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body;
@@ -1356,11 +1419,16 @@ app.post('/api/trips', auth, (req, res) => {
     updatedAt: Date.now(),
   };
   db.trips.push(trip);
+  await auditChange({
+    actorId: req.user.id, action: 'trip.create', targetType: 'trip', targetId: trip.id,
+    subjectUserId: req.user.id, before: {}, after: trip,
+    fields: ['from', 'to', 'departureDate', 'capacityKg', 'price', 'description', 'conditions', 'status'],
+  });
   save();
   res.json({ trip: tripPostView(trip, req.user) });
 });
 
-app.patch('/api/trips/:id', auth, (req, res) => {
+app.patch('/api/trips/:id', auth, async (req, res) => {
   const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
   if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
   if ((trip.status || 'published') !== 'published')
@@ -1368,6 +1436,8 @@ app.patch('/api/trips/:id', auth, (req, res) => {
   const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
   if (activeOperations.length > 0)
     return res.status(400).json({ error: 'Impossible de modifier un trajet avec operation en cours' });
+
+  const before = { ...trip };
 
   const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body || {};
   const travelDate = date || departureDate || trip.departureDate || trip.date;
@@ -1391,19 +1461,29 @@ app.patch('/api/trips/:id', auth, (req, res) => {
   trip.conditions = String(conditions ?? trip.conditions ?? '').trim().slice(0, 500)
     || 'Petit colis propre, ferme et conforme aux regles douanieres.';
   trip.updatedAt = Date.now();
+  await auditChange({
+    actorId: req.user.id, action: 'trip.update', targetType: 'trip', targetId: trip.id,
+    subjectUserId: req.user.id, before, after: trip,
+    fields: ['from', 'to', 'departureDate', 'capacityKg', 'price', 'description', 'conditions'],
+  });
   save();
   res.json({ trip: tripPostView(trip, req.user) });
 });
 
-app.delete('/api/trips/:id', auth, (req, res) => {
+app.delete('/api/trips/:id', auth, async (req, res) => {
   const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
   if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
   const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
   if (activeOperations.length > 0)
     return res.status(400).json({ error: 'Impossible de retirer un trajet avec operation en cours' });
+  const before = { ...trip };
   trip.status = 'removed';
   trip.removedAt = Date.now();
   db.savedTrips = db.savedTrips.filter((saved) => saved.tripId !== trip.id);
+  await auditChange({
+    actorId: req.user.id, action: 'trip.remove', targetType: 'trip', targetId: trip.id,
+    subjectUserId: req.user.id, before, after: trip, fields: ['status'],
+  });
   save();
   res.json({ ok: true });
 });
@@ -2682,13 +2762,14 @@ app.post('/api/matching-offers', auth, async (req, res) => {
   res.json({ offer });
 });
 
-app.put('/api/listings/:id', auth, (req, res) => {
+app.put('/api/listings/:id', auth, async (req, res) => {
   const listing = db.listings.find((l) => l.id === req.params.id);
   if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
   if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   if (!['published', 'pending_review'].includes(listing.status))
     return res.status(400).json({ error: 'Cette annonce ne peut plus être modifiée (déjà acceptée)' });
 
+  const before = { ...listing };
   const { title, description, weightKg, valueEur, dateFrom, dateTo, travelerPay, photos } = req.body;
   if (title !== undefined) listing.title = String(title).trim().slice(0, 120);
   if (description !== undefined) listing.description = String(description).trim().slice(0, 1000);
@@ -2717,18 +2798,29 @@ app.put('/api/listings/:id', auth, (req, res) => {
       return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
     listing.photos = photos;
   }
+  await auditChange({
+    actorId: req.user.id, action: 'listing.update', targetType: 'listing', targetId: listing.id,
+    subjectUserId: req.user.id, before, after: listing,
+    fields: ['title', 'description', 'weightKg', 'valueEur', 'dateFrom', 'dateTo', 'travelerPay'],
+    meta: { photosChanged: photos !== undefined },
+  });
   save();
   res.json({ listing: localizedListingView(listing, req.lang) });
 });
 
 // Retrait d'une annonce par l'expéditeur, tant qu'aucun voyageur ne l'a acceptée.
-app.post('/api/listings/:id/cancel', auth, (req, res) => {
+app.post('/api/listings/:id/cancel', auth, async (req, res) => {
   const listing = db.listings.find((l) => l.id === req.params.id);
   if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
   if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   if (!['published', 'pending_review'].includes(listing.status))
     return res.status(400).json({ error: 'Cette annonce ne peut plus être retirée (déjà acceptée)' });
+  const before = { ...listing };
   listing.status = 'cancelled';
+  await auditChange({
+    actorId: req.user.id, action: 'listing.cancel', targetType: 'listing', targetId: listing.id,
+    subjectUserId: req.user.id, before, after: listing, fields: ['status'],
+  });
   save();
   res.json({ listing: localizedListingView(listing, req.lang) });
 });
@@ -2842,7 +2934,7 @@ app.post('/api/listings/preflight', auth, (req, res) => {
   res.json({ preflight: listingPreflight(req.user, req.body || {}, req.lang) });
 });
 
-app.post('/api/listings', auth, (req, res) => {
+app.post('/api/listings', auth, async (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
   const { title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
@@ -2886,6 +2978,12 @@ app.post('/api/listings', auth, (req, res) => {
   if (evalRes.verdict === 'gray') {
     repositories.reviewQueue.append({ type: 'listing', refId: listing.id });
   }
+  await auditChange({
+    actorId: req.user.id, action: 'listing.create', targetType: 'listing', targetId: listing.id,
+    subjectUserId: req.user.id, before: {}, after: listing,
+    fields: ['title', 'categoryLabel', 'from', 'to', 'weightKg', 'valueEur', 'dateFrom', 'dateTo', 'travelerPay', 'status'],
+    meta: { photoCount: listing.photos.length },
+  });
   save();
   res.json({ listing: localizedListingView(listing, req.lang) });
 });
@@ -3957,7 +4055,7 @@ function adminCaseParticipant(user) {
   };
 }
 
-function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
+async function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
   const conversations = db.conversations
     .filter((conversation) => conversation.participantIds.includes(user.id))
     .sort((a, b) => (b.lastMessageAt || b.createdAt || 0) - (a.lastMessageAt || a.createdAt || 0));
@@ -3979,8 +4077,7 @@ function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
       selfiePhoto: submission.selfiePhoto || null, idFrontPhoto: submission.idFrontPhoto || null, idBackPhoto: submission.idBackPhoto || null,
       documentsPurged: !submission.selfiePhoto && !submission.idFrontPhoto && !submission.idBackPhoto,
     }));
-  const auditLogs = (db.auditLogs || []).filter((entry) => entry.actorId === user.id || (entry.targetType === 'user' && entry.targetId === user.id))
-    .sort((a, b) => b.at - a.at).slice(0, 100);
+  const auditLogs = await repositories.auditLogs.listForMember(user.id, { limit: 500 });
   const messages = allMessages.slice(messageOffset, messageOffset + messageLimit).map((message) => {
     const conversation = conversationsById.get(message.conversationId);
     const recipientIds = (conversation?.participantIds || []).filter((id) => id !== message.from);
@@ -4015,12 +4112,12 @@ function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
   };
 }
 
-app.get('/api/admin/users/:id/case-file', auth, adminOnly, (req, res) => {
+app.get('/api/admin/users/:id/case-file', auth, adminOnly, async (req, res) => {
   const user = findUser(req.params.id);
   if (!user) return res.status(404).json({ error: 'Membre introuvable' });
   const offset = Math.max(0, Number(req.query.offset || 0) || 0);
   const limit = Math.max(10, Math.min(100, Number(req.query.limit || 50) || 50));
-  res.json({ caseFile: adminCaseFile(user, { messageOffset: offset, messageLimit: limit }) });
+  res.json({ caseFile: await adminCaseFile(user, { messageOffset: offset, messageLimit: limit }) });
 });
 
 app.post('/api/admin/users/:id/case-file/access', auth, adminOnly, async (req, res) => {

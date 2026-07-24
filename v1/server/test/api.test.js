@@ -1619,6 +1619,38 @@ test('gestion des roles : promotion admin protegee et dernier admin conserve', a
   assert.equal(selfDemote.status, 400);
 });
 
+test('audit admin : les changements de profil et de trajet gardent avant et apres', async () => {
+  const traveler = await registerKycVerifiedUser(tokens.admin, 'AuditHistorique');
+  const profile = await api('/profile', {
+    method: 'POST', token: traveler.token,
+    body: { name: 'Membre audite', city: 'Oujda', phone: '0600000000' },
+  });
+  assert.equal(profile.status, 200, JSON.stringify(profile.body));
+
+  const trip = await api('/trips', {
+    method: 'POST', token: traveler.token,
+    body: { from: 'Oujda', to: 'Bruxelles', date: '2099-07-18', capacityKg: 6, price: 25, description: 'Premier texte', conditions: 'Colis propre' },
+  });
+  assert.equal(trip.status, 200, JSON.stringify(trip.body));
+
+  const editedTrip = await api(`/trips/${trip.body.trip.id}`, {
+    method: 'PATCH', token: traveler.token,
+    body: { price: 30, description: 'Texte modifie' },
+  });
+  assert.equal(editedTrip.status, 200, JSON.stringify(editedTrip.body));
+
+  const users = await api('/admin/users', { token: tokens.admin });
+  const member = users.body.users.find((user) => user.email === traveler.email);
+  assert.ok(member);
+  const file = await api(`/admin/users/${member.id}/case-file`, { token: tokens.admin });
+  assert.equal(file.status, 200, JSON.stringify(file.body));
+
+  const profileLog = file.body.caseFile.auditLogs.find((log) => log.action === 'profile.update');
+  assert.equal(profileLog.meta.changes.find((change) => change.field === 'name').after, 'Membre audite');
+  const tripLog = file.body.caseFile.auditLogs.find((log) => log.action === 'trip.update');
+  assert.deepEqual(tripLog.meta.changes.find((change) => change.field === 'price'), { field: 'price', before: 25, after: 30 });
+});
+
 test('refonte simple : trajets voyageurs, enregistres, messagerie et operations', async () => {
   const fatima = tokens.fatima;
   const karim = tokens.karim;

@@ -3678,3 +3678,15 @@ body:has(.auth-page) {
 [dir="rtl"] .auth-route-line .icon {
   transform: scaleX(-1);
 }
+
+.admin-audit-log { padding: 12px; border: 1px solid var(--hairline); border-radius: 9px; background: var(--surface-soft); }
+.admin-audit-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.admin-audit-head b { display: block; }
+.admin-audit-head span { color: var(--ink-faint); font-size: 12px; }
+.admin-audit-changes { display: grid; gap: 7px; margin-top: 10px; }
+.admin-audit-change { display: grid; grid-template-columns: minmax(100px, .8fr) minmax(0, 1fr) 18px minmax(0, 1fr); align-items: center; gap: 7px; font-size: 12px; }
+.admin-audit-change > b { overflow-wrap: anywhere; }
+.admin-audit-change > span { min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface); overflow-wrap: anywhere; }
+.admin-audit-change small { display: block; margin-bottom: 2px; color: var(--ink-faint); font-size: 10px; }
+.admin-audit-empty { margin: 9px 0 0; font-size: 12px; }
+@media (max-width: 600px) { .admin-audit-change { grid-template-columns: 1fr 18px 1fr; } .admin-audit-change > b { grid-column: 1 / -1; } }

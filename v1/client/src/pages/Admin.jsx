@@ -219,9 +219,70 @@ function MemberCaseFile({ userId, onBack }) {
     <section className="card"><h2><Icon name="shieldCheck" size={18} />{t('admin.member.kycFile')}</h2>{data.kyc.length === 0 ? <p className="muted mt">{t('admin.member.noKyc')}</p> : data.kyc.map((submission) => <div className="admin-case-kyc" key={submission.id}><div className="list-row"><div className="grow"><b>{submission.legalName || t('admin.member.identityHidden')}</b><div className="muted">{submission.documentType || t('admin.document')} · {formatAdminDate(submission.submittedAt)} · {adminStatus(submission.status)}</div></div></div>{submission.documentsPurged ? <div className="alert alert-warn mt"><Icon name="lock" size={15} /><span>{t('admin.member.kycPurged')}</span></div> : <div className="kyc-review-grid mt"><KycDoc label={t('admin.kyc.selfie')} photo={submission.selfiePhoto} onZoom={setZoom} selfie /><KycDoc label={t('admin.kyc.front')} photo={submission.idFrontPhoto} onZoom={setZoom} />{submission.idBackPhoto && <KycDoc label={t('admin.kyc.back')} photo={submission.idBackPhoto} onZoom={setZoom} />}</div>}</div>)}</section>
     <section className="card"><h2><Icon name="repeat" size={18} />{t('admin.member.activity')}</h2><div className="kyc-recap mt"><div><span className="muted">{t('admin.member.trips')}</span><b>{data.trips.length}</b></div><div><span className="muted">{t('admin.member.listings')}</span><b>{data.listings.length}</b></div><div><span className="muted">{t('admin.member.operations')}</span><b>{data.transactions.length}</b></div><div><span className="muted">{t('admin.member.disputes')}</span><b>{data.disputes.length}</b></div></div><div className="list-stack mt">{data.transactions.map((transaction) => <div className="list-row" key={transaction.id}><div className="grow"><b>{transaction.id}</b><div className="muted">{adminStatus(transaction.status)} · {formatAdminDate(transaction.createdAt)}</div></div><span className="pill pill-gray">{adminStatus(transaction.escrow?.state || 'pending')}</span></div>)}</div></section>
     <section className="card"><h2><Icon name="chat" size={18} />{t('admin.member.conversations')}</h2><p className="muted mt">{t('admin.member.messageSummary', { conversations: data.conversations.length, messages: data.messagePage.total })}</p><div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b><span>{formatAdminDate(message.at)} · {adminStatus(message.type)}</span></div><div className="admin-message-route"><span>{t('admin.member.from')}: <b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b></span><span>{t('admin.member.to')}: <b>{message.to?.map((recipient) => recipient.name || recipient.id).join(', ') || t('admin.member.recipientMissing')}</b></span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.labelKey ? t(message.location.labelKey) : message.location.label || t('messages.location')} {message.location.city ? `· ${message.location.city}` : ''} · {t(message.location.precision === 'approximate' ? 'messages.location.approximate' : 'messages.location.precise')}</small>}{message.attachments?.length > 0 && <small><Icon name="image" size={13} />{message.attachments.map((attachment) => attachment.name || t('admin.image')).join(', ')}</small>}{message.flagged && <span className="pill pill-danger">{t('admin.member.flagged')}: {message.flagReason || t('admin.member.security')}</span>}</div>)}</div>{data.messagePage.hasMore && <button className="btn btn-sm mt" onClick={() => load(data.messagePage.offset + data.messagePage.limit)}>{t('admin.member.loadPrevious')}</button>}</section>
-    <section className="card"><h2><Icon name="clock" size={18} />{t('admin.member.securityHistory')}</h2><div className="list-stack mt">{data.auditLogs.length === 0 ? <p className="muted">{t('admin.member.noAudit')}</p> : data.auditLogs.map((log) => <div className="list-row" key={log.id}><div className="grow"><b>{adminStatus(log.action)}</b><div className="muted">{formatAdminDate(log.at)} · {log.actorId || t('admin.system')}</div></div></div>)}</div></section>
+    <AuditHistory logs={data.auditLogs} />
     {zoom && <div className="modal-backdrop" onClick={() => setZoom(null)}><img src={zoom} alt={t('admin.kyc.document')} className="kyc-zoom" onClick={(event) => event.stopPropagation()} /></div>}
   </div>;
+}
+
+function AuditHistory({ logs }) {
+  return <section className="card">
+    <h2><Icon name="clock" size={18} />{t('admin.member.changeHistory')}</h2>
+    <div className="list-stack mt">
+      {logs.length === 0 ? <p className="muted">{t('admin.member.noAudit')}</p> : logs.map((log) => {
+        const changes = log.meta?.changes || [];
+        return <div className="admin-audit-log" key={log.id}>
+          <div className="admin-audit-head">
+            <div><b>{auditAction(log.action)}</b><span>{formatAdminDate(log.at)} · {log.actor?.name || log.actorId || t('admin.system')}</span></div>
+            <span className="pill pill-gray">{log.targetType || 'system'}</span>
+          </div>
+          {changes.length > 0 ? <div className="admin-audit-changes">
+            {changes.map((change, index) => <div className="admin-audit-change" key={`${change.field}-${index}`}>
+              <b>{auditField(change.field)}</b>
+              <span><small>{t('admin.audit.before')}</small>{auditValue(change.before)}</span>
+              <Icon name="arrowRight" size={14} />
+              <span><small>{t('admin.audit.after')}</small>{auditValue(change.after)}</span>
+            </div>)}
+          </div> : <p className="muted admin-audit-empty">{t('admin.member.noChanges')}</p>}
+        </div>;
+      })}
+    </div>
+  </section>;
+}
+
+function auditAction(action) {
+  const keys = {
+    'profile.update': 'admin.audit.profileUpdate',
+    'profile.photo.update': 'admin.audit.profilePhotoUpdate',
+    'profile.password.update': 'admin.audit.profilePasswordUpdate',
+    'profile.email.update': 'admin.audit.profileEmailUpdate',
+    'profile.delete': 'admin.audit.profileDelete',
+    'settings.notifications.update': 'admin.audit.settingsNotificationsUpdate',
+    'trip.create': 'admin.audit.tripCreate',
+    'trip.update': 'admin.audit.tripUpdate',
+    'trip.remove': 'admin.audit.tripRemove',
+    'listing.create': 'admin.audit.listingCreate',
+    'listing.update': 'admin.audit.listingUpdate',
+    'listing.cancel': 'admin.audit.listingCancel',
+  };
+  return keys[action] ? t(keys[action]) : adminStatus(action);
+}
+
+function auditField(field) {
+  return {
+    name: 'Nom', city: 'Ville', phone: 'Telephone', email: 'E-mail', hasPhoto: 'Photo de profil',
+    transactions: 'Transactions', messages: 'Messages', shipments: 'Envois', reminders: 'Rappels',
+    from: 'Depart', to: 'Arrivee', departureDate: 'Date de depart', capacityKg: 'Capacite',
+    price: 'Prix', description: 'Description', conditions: 'Conditions', status: 'Statut',
+    title: 'Titre', categoryLabel: 'Categorie', weightKg: 'Poids', valueEur: 'Valeur declaree',
+    dateFrom: 'Date de debut', dateTo: 'Date de fin', travelerPay: 'Remuneration voyageur',
+    provider: 'Methode de connexion',
+  }[field] || field;
+}
+
+function auditValue(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+  return String(value);
 }
 
 function formatAdminDate(value) {

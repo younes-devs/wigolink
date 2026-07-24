@@ -345,6 +345,18 @@ function createAuditLogRepository({ db, save, newId, findUser, publicUser }) {
         }));
     },
 
+    listForMember(userId, { limit = 200 } = {}) {
+      const safeLimit = Math.max(1, Math.min(500, Number(limit) || 200));
+      return [...ensure()]
+        .filter((log) => log.actorId === userId || log.targetId === userId || log.meta?.subjectUserId === userId)
+        .sort((a, b) => b.at - a.at)
+        .slice(0, safeLimit)
+        .map((log) => ({
+          ...log,
+          actor: publicUser(findUser(log.actorId)) || { id: log.actorId, name: 'system' },
+        }));
+    },
+
     flush() {
       save();
     },

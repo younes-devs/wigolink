@@ -47,6 +47,19 @@ export function createPostgresAuditLogRepository({ pool, findUser, publicUser })
       return result.rows.map((row) => fromAuditRow(row, { findUser, publicUser }));
     },
 
+    async listForMember(userId, { limit = 200 } = {}) {
+      const safeLimit = Math.max(1, Math.min(500, Number(limit) || 200));
+      const result = await pool.query(
+        `select id, actor_id, action, target_type, target_id, meta, at
+         from audit_logs
+         where actor_id = $1 or target_id = $1 or meta->>'subjectUserId' = $1
+         order by at desc
+         limit $2`,
+        [userId, safeLimit]
+      );
+      return result.rows.map((row) => fromAuditRow(row, { findUser, publicUser }));
+    },
+
     flush() {},
   };
 }
