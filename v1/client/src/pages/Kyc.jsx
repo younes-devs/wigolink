@@ -218,6 +218,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
           guide={captureConfig[capturing].guide}
           stream={captureStream}
           streamError={captureError}
+          faceAssist={capturing === 'selfie'}
           onClose={closeCapture}
           onCapture={(dataUrl) => { setPhotos((p) => ({ ...p, [captureConfig[capturing].key]: dataUrl })); setCapturing(null); setCaptureStream(null); }}
         />

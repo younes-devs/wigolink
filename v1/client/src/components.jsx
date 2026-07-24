@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api } from './api';
 import { Icon } from './Icons.jsx';
+import { useKycFaceGuidance } from './kycFaceGuidance.js';
 import Notifications from './Notifications.jsx';
 import { t, useLang } from './i18n.js';
 
@@ -264,9 +265,10 @@ export async function requestCameraStream(facing) {
 // même règle anti-fraude que la vidéo de scellage). Renvoie un dataURL JPEG redimensionné.
 // `stream` doit être obtenu via requestCameraStream() au moment du clic déclencheur —
 // c'est ce qui fait apparaître automatiquement la demande d'autorisation du téléphone.
-export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError, onCapture, onClose, guide }) {
+export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError, onCapture, onClose, guide, faceAssist = false }) {
   const videoRef = useRef(null);
   const streamRef = useRef(stream || null);
+  const captureLockRef = useRef(false);
   const [error, setError] = useState(streamError || '');
   const [ready, setReady] = useState(false);
 
@@ -280,9 +282,11 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, [stream, streamError]);
 
-  const shoot = () => {
+  const shoot = useCallback(() => {
+    if (captureLockRef.current) return;
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
+    captureLockRef.current = true;
     const scale = Math.min(1, maxPx / Math.max(video.videoWidth, video.videoHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(video.videoWidth * scale);
@@ -290,7 +294,15 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
     streamRef.current?.getTracks().forEach((t) => t.stop());
     onCapture(canvas.toDataURL('image/jpeg', 0.82));
-  };
+  }, [maxPx, onCapture]);
+
+  const faceGuidance = useKycFaceGuidance({
+    videoRef,
+    active: faceAssist && ready && !error,
+    onStable: shoot,
+  });
+  const faceStatus = faceAssist ? (ready ? faceGuidance.status : 'loading') : 'idle';
+  const faceStatusReady = faceStatus === 'holdStill' || faceStatus === 'ready';
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -306,13 +318,30 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
           <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}><Icon name="alert" size={17} />{error}</div>
         ) : (
           <>
-            <div className={`capture-frame ${facing === 'user' ? 'capture-frame-selfie' : 'capture-frame-doc'}`}>
+            <div
+              className={`capture-frame ${facing === 'user' ? 'capture-frame-selfie' : 'capture-frame-doc'} ${faceAssist ? `capture-frame-assisted capture-face-${faceStatus}` : ''}`}
+            >
               <video ref={videoRef} autoPlay muted playsInline />
               <div className="capture-guide" />
+              {faceAssist && (
+                <div className={`capture-face-status capture-face-status-${faceStatus}`} aria-live="polite">
+                  <Icon name={faceStatusReady ? 'check' : faceStatus === 'loading' ? 'clock' : 'user'} size={17} />
+                  <span>{t(`kyc.face.${faceStatus}`)}</span>
+                </div>
+              )}
+              {faceAssist && (
+                <div className="capture-stability" aria-hidden="true">
+                  <span style={{ width: `${Math.round(faceGuidance.progress * 100)}%` }} />
+                </div>
+              )}
             </div>
-            <div style={{ padding: '12px 16px 16px' }}>
-              <button className="btn btn-primary" onClick={shoot} disabled={!ready}>
-                <Icon name="camera" size={18} />{t('common.capture')}
+            <div className="capture-actions">
+              <button
+                className="btn btn-primary"
+                onClick={shoot}
+                disabled={!ready || (faceAssist && !faceGuidance.canCapture)}
+              >
+                <Icon name="camera" size={18} />{t(faceAssist ? 'kyc.face.capture' : 'kyc.photo.capture')}
               </button>
             </div>
           </>
