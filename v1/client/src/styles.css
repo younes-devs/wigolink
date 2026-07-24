@@ -3008,9 +3008,6 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .trip-request-intro { margin-bottom: 14px; }
   .trip-request-intro h1 { font-size: 25px; }
   .trip-request-flow { gap: 15px; }
-  .shipment-choice-grid { grid-template-columns: 1fr; }
-  .shipment-choice { min-height: 0; }
-  .trip-request-next { width: 100%; justify-self: stretch; }
   .phone:has(.trip-owner-form) .content { padding-bottom: 118px; }
   .trip-owner-form .field { min-width: 0; margin-bottom: 0; }
   .trip-owner-route-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3384,6 +3381,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .trip-request-flow .field { margin: 0; }
 .trip-request-flow .price-input { max-width: 260px; }
 .trip-request-next { justify-self: end; min-width: 160px; }
+@media (max-width: 767px) {
+  .shipment-choice-grid { grid-template-columns: 1fr; }
+  .shipment-choice { min-height: 0; }
+  .trip-request-next { width: 100%; justify-self: stretch; }
+}
 .operation-journey { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-soft); }.operation-journey-head span { color: var(--accent); font-size: 12px; font-weight: 800; text-align: right; }.operation-journey-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }.operation-journey-step { position: relative; display: grid; gap: 7px; color: var(--ink-soft); }.operation-journey-step > span { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface); font-size: 11px; font-weight: 800; }.operation-journey-step:not(:last-child)::after { content: ""; position: absolute; top: 12px; left: 29px; right: 4px; height: 2px; background: var(--hairline); }.operation-journey-step b { display: block; color: inherit; font-size: 12px; line-height: 1.25; }.operation-journey-step small { display: block; margin-top: 2px; font-size: 10.5px; line-height: 1.32; }.operation-journey-step.done { color: var(--green); }.operation-journey-step.done > span, .operation-journey-step.current > span { border-color: transparent; background: var(--green); color: #fff; }.operation-journey-step.done::after { background: var(--green); }.operation-journey-step.current { color: var(--accent); }.operation-journey-step.current > span { background: var(--accent); }
 @keyframes operation-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 620px) { .trip-request-summary, .operation-journey-steps { grid-template-columns: 1fr; }.operation-journey-step { grid-template-columns: 26px 1fr; align-items: start; }.operation-journey-step:not(:last-child)::after { left: 12px; right: auto; top: 28px; width: 2px; height: calc(100% - 18px); }.operation-journey-step b { font-size: 13px; }.operation-journey-step small { font-size: 11.5px; } }
