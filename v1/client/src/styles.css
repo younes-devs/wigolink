@@ -3577,6 +3577,9 @@ body:has(.auth-page) {
   top: var(--journey-road-edge);
   animation: auth-car-return 8.4s cubic-bezier(0.42, 0, 0.2, 1) infinite;
 }
+.auth-journey-car .icon {
+  transform: scaleX(-1);
+}
 
 @keyframes auth-plane-trip {
   0% { left: 10%; top: var(--journey-flight-edge); opacity: 0; transform: translate(-50%, -50%) scale(0.74); }

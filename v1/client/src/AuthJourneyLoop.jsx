@@ -21,7 +21,7 @@ export default function AuthJourneyLoop({ t }) {
           <Icon name="plane" size={21} strokeWidth={2} />
         </span>
         <span className="auth-journey-vehicle auth-journey-car">
-          <Icon name="carFront" size={20} strokeWidth={2} />
+          <Icon name="car" size={21} strokeWidth={2} />
         </span>
       </div>
     </div>
