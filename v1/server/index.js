@@ -51,6 +51,7 @@ import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMemberOverviewRouter } from './routes/member-overview.js';
 import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
 import { createAdminActionsRouter } from './routes/admin-actions.js';
+import { createTransactionCommunicationsRouter } from './routes/transaction-communications.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -68,6 +69,7 @@ import { createPublicProfileService } from './services/public-profiles.js';
 import { createMemberOverviewService } from './services/member-overview.js';
 import { createGuidanceCenterService } from './services/guidance-centers.js';
 import { createAdminActionService } from './services/admin-actions.js';
+import { createTransactionCommunicationService } from './services/transaction-communications.js';
 
 const app = express();
 const {
@@ -1834,60 +1836,30 @@ app.post('/api/disputes/:id/evidence', auth, (req, res) => {
   res.json({ dispute: disputeView(d, t) });
 });
 
-// ---------- Messagerie (PRD §4.5) ----------
-app.get('/api/transactions/:id/messages', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
-  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Non autorisé' });
-  res.json({ messages: await repositories.messages.listForTransaction(req.params.id) });
-});
-
-app.post('/api/transactions/:id/messages', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
-  if (!isPartyToTx(t, req.user.id))
-    return res.status(403).json({ error: 'Non autorisé' });
-  const text = String(req.body.text || '').slice(0, 2000);
-  const safety = analyzeMessageSafety(text);
-  if (safety.blocked) {
-    const pseudoConversation = db.conversations.find((conversation) => conversation.operationId === t.id && conversation.participantIds.includes(req.user.id));
-    const attempt = registerMessageSafetyAttempt({ user: req.user, conversation: pseudoConversation, analysis: safety });
-    await audit(req.user.id, 'message.safety_blocked', 'transaction', t.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });
-    save();
-    return res.status(attempt.cooldownUntil ? 429 : 422).json(messageSafetyError({ analysis: safety, cooldownUntil: attempt.cooldownUntil }));
-  }
-  const flagged = false;
-  const msg = await repositories.messages.append({ txId: t.id, from: req.user.id, text, flagged });
-  await notify([t.senderId, t.travelerId, t.recipientId].filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, t.id, 'messages', 'messages');
-  save();
-  res.json({
-    message: msg,
-    warningKey: flagged ? 'messages.safety.keepInside' : null,
-    warning: flagged ? "⚠️ Le partage de coordonnées est contraire aux CGU. L'escrow et l'assistance ne couvrent que les échanges dans l'app." : null,
+const transactionCommunicationService =
+  createTransactionCommunicationService({
+    db,
+    isParty: isPartyToTx,
+    messagesRepository: repositories.messages,
+    analyzeSafety: analyzeMessageSafety,
+    registerSafetyAttempt: registerMessageSafetyAttempt,
+    safetyError: messageSafetyError,
+    audit,
+    save,
+    notify,
+    localizeCustoms,
+    customs: CUSTOMS,
+    combinedWhitelist,
+    blacklist: BLACKLIST,
+    localizeCategory,
+    publicUser,
+    findUser,
   });
-});
 
-// ---------- Récapitulatif douane (PRD §4.1 Phase 4) ----------
-app.get('/api/transactions/:id/customs-recap', auth, (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
-  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Non autorisé' });
-  const listing = db.listings.find((l) => l.id === t.listingId);
-  const customs = localizeCustoms(CUSTOMS, req.lang);
-  const corridor = listing.from === 'Casablanca' ? customs['MA-EU'] : customs['EU-MA'];
-  const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
-    || BLACKLIST.find((item) => item.id === listing.categoryId);
-  res.json({
-    recap: {
-      txId: t.id, product: listing.title, category: category ? localizeCategory(category, req.lang).label : listing.categoryLabel,
-      description: listing.description, valueEur: listing.valueEur, weightKg: listing.weightKg,
-      sender: publicUser(findUser(t.senderId)), traveler: publicUser(findUser(t.travelerId)),
-      sealedAt: t.sealingVideo?.recordedAt || null, corridor,
-    },
-  });
-});
+app.use('/api', createTransactionCommunicationsRouter({
+  auth,
+  transactionCommunications: transactionCommunicationService,
+}));
 
 // ---------- Back-office (PRD §4.7) ----------
 

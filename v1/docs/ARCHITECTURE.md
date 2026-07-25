@@ -887,6 +887,34 @@ le membre et la charge utile au service, puis conserve exactement le statut et
 le corps HTTP calcules. Les routes ne modifient aucun contrat de transaction et
 n'introduisent aucune decision sur le prestataire de paiement.
 
+## Backend `transaction communications`
+
+La messagerie historique rattachee directement aux transactions et le
+recapitulatif douanier sont regroupes dans :
+
+```text
+server/
+|-- routes/
+|   `-- transaction-communications.js
+`-- services/
+    `-- transaction-communications.js
+```
+
+`createTransactionCommunicationService` verifie l'appartenance a la transaction
+avant toute lecture ou ecriture. Un administrateur peut consulter les preuves,
+mais ne peut pas intervenir dans la conversation s'il n'est pas lui-meme une
+partie. La detection des coordonnees, le cooldown, l'audit, les notifications
+et la limite de 2 000 caracteres conservent leur ordre historique.
+
+Le recapitulatif douanier localise le corridor et la categorie sans exposer de
+donnees privees. Une operation creee depuis un trajet et depourvue d'annonce
+renvoie maintenant un statut 404 explicite au lieu de provoquer une erreur 500.
+Ce module ne lit ni ne modifie l'escrow et ne prend aucune decision de paiement.
+
+`createTransactionCommunicationsRouter` conserve les trois URLs existantes et
+se limite a l'authentification, au transfert des parametres et a la restitution
+du statut HTTP calcule par le service.
+
 ## Backend `relational reads`
 
 Les lectures indexees a fort trafic sont assemblees dans :
