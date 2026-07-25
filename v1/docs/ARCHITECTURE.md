@@ -629,9 +629,33 @@ l'audit conserve les participants, le nombre de messages et le drapeau
 
 `createConversationInboxRouter` expose ces operations sous les URLs existantes
 et ne contient que l'authentification et la traduction des resultats en contrats
-HTTP. La creation de conversation, le signalement, l'envoi de contenu et la
-suppression d'un message restent dans leurs chemins actuels pour etre extraits
-separement avec leurs regles de securite.
+HTTP.
+
+## Backend `conversation messages`
+
+La creation et le contenu des conversations sont regroupes dans :
+
+```text
+server/
+|-- routes/
+|   `-- conversation-messages.js
+`-- services/
+    `-- conversation-messages.js
+```
+
+`createConversationMessageService` orchestre l'ouverture directe ou liee a un
+trajet/une operation, le signalement, l'envoi et la suppression d'un message.
+Il conserve la verification des participants, le blocage mutuel, la validation
+des images et localisations, l'idempotence par `clientId`, la detection des
+coordonnees fractionnees sur dix minutes et le cooldown apres tentatives
+repetees. Une tentative interdite reste auditee et peut alimenter la file de
+moderation. Un message valide conserve l'ordre notification, sauvegarde puis
+diffusion realtime.
+
+`createConversationMessageRouter` ne connait aucune regle metier : il transmet
+le membre et la charge utile au service, puis conserve exactement le statut et
+le corps HTTP calcules. Les routes ne modifient aucun contrat de transaction et
+n'introduisent aucune decision sur le prestataire de paiement.
 
 ## Backend `relational reads`
 

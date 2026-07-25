@@ -41,6 +41,7 @@ import { createRulesRouter } from './routes/rules.js';
 import { createRealtimeRouter } from './routes/realtime.js';
 import { createRelationalReadsRouter } from './routes/relational-reads.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
+import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -48,6 +49,7 @@ import { createAccountEmailService } from './services/account-email.js';
 import { createAccountPrivacyService } from './services/account-privacy.js';
 import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
+import { createConversationMessageService } from './services/conversation-messages.js';
 
 const app = express();
 const {
@@ -1691,25 +1693,31 @@ app.post('/api/operations/:id/evidence', auth, (req, res) => {
   res.json({ operation: operationView(tx, req.user), dispute: disputeView(dispute, tx) });
 });
 
-app.post('/api/conversations', auth, (req, res) => {
-  const { tripId = null, operationId = null, userId = null } = req.body || {};
-  let otherId = userId;
-  if (tripId) {
-    const trip = db.trips.find((t) => t.id === tripId);
-    if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
-    otherId = trip.travelerId;
-  }
-  if (operationId) {
-    const tx = db.transactions.find((t) => t.id === operationId);
-    if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
-    otherId = tx.senderId === req.user.id ? tx.travelerId : tx.senderId;
-  }
-  if (!otherId || !findUser(otherId)) return res.status(400).json({ error: 'Destinataire invalide' });
-  if (otherId === req.user.id) return res.status(400).json({ error: 'Conversation invalide' });
-  const conversation = findOrCreateConversation({ participantIds: [req.user.id, otherId], tripId, operationId });
-  save();
-  res.json({ conversation: conversationView(conversation, req.user.id) });
+const conversationMessageService = createConversationMessageService({
+  db,
+  isPartyToTransaction: isPartyToTx,
+  findUser,
+  findOrCreateConversation,
+  conversationView,
+  conversationMessages,
+  areParticipantsBlocked: areConversationParticipantsBlocked,
+  normalizeLocation: normalizeMessageLocation,
+  validPhotos,
+  analyzeSafety: analyzeMessageSafety,
+  registerSafetyAttempt: registerMessageSafetyAttempt,
+  safetyError: messageSafetyError,
+  reviewQueue: repositories.reviewQueue,
+  notify,
+  audit,
+  save,
+  broadcastConversation,
+  newId,
 });
+
+app.use('/api', createConversationMessageRouter({
+  auth,
+  messages: conversationMessageService,
+}));
 
 const conversationInbox = createConversationInboxService({
   db,
@@ -1729,140 +1737,6 @@ app.use('/api', createConversationInboxRouter({
   auth,
   inbox: conversationInbox,
 }));
-
-app.post('/api/conversations/:id/report', auth, async (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const allowedReasonCodes = new Set(['external_payment', 'abuse', 'suspicious', 'off_platform', 'other']);
-  const reasonCode = String(req.body?.reasonCode || 'other').trim();
-  const safeReasonCode = allowedReasonCodes.has(reasonCode) ? reasonCode : 'other';
-  const reason = String(req.body?.reason || '').trim().slice(0, 500);
-  const comment = String(req.body?.comment || '').trim().slice(0, 500);
-  if (!reason) return res.status(400).json({ error: 'Motif requis' });
-  const report = {
-    id: newId('cr'),
-    conversationId: conversation.id,
-    reporterId: req.user.id,
-    reasonCode: safeReasonCode,
-    reason,
-    comment,
-    at: Date.now(),
-  };
-  conversation.reports = conversation.reports || [];
-  conversation.reports.push(report);
-  conversation.reportedBy = [...new Set([...(conversation.reportedBy || []), req.user.id])];
-  const alreadyQueued = repositories.reviewQueue.open()
-    .some((item) => item.type === 'conversation' && item.refId === conversation.id);
-  if (!alreadyQueued) repositories.reviewQueue.append({ type: 'conversation', refId: conversation.id });
-  await audit(req.user.id, 'conversation.report', 'conversation', conversation.id, { reason, reasonCode: safeReasonCode });
-  save();
-  res.json({ ok: true, report, conversation: conversationView(conversation, req.user.id) });
-});
-
-app.post('/api/conversations/:id/messages', auth, async (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  if (areConversationParticipantsBlocked(conversation, req.user.id)) {
-    return res.status(403).json({ code: 'conversation_blocked', error: 'Cette conversation est bloquee. Aucun nouveau message ne peut etre envoye.' });
-  }
-  if (req.user.messageSafetyBlockedUntil && req.user.messageSafetyBlockedUntil > Date.now()) {
-    return res.status(429).json(messageSafetyError({ analysis: { categories: ['repeated_attempts'], severity: 'high' }, cooldownUntil: req.user.messageSafetyBlockedUntil }));
-  }
-  const text = String(req.body?.text || '').trim().slice(0, 1000);
-  const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments.slice(0, 1) : [];
-  const now = Date.now();
-  const location = normalizeMessageLocation(req.body?.location, conversation, now);
-  if (req.body?.location && !location) return res.status(400).json({ error: 'Localisation invalide' });
-  if (!text && attachments.length === 0 && !location) return res.status(400).json({ error: 'Message vide' });
-  if (attachments.length > 0 && !validPhotos(attachments.map((a) => a?.dataUrl || a)))
-    return res.status(400).json({ error: 'Piece jointe invalide' });
-  const normalizedAttachments = attachments.map((attachment, index) => {
-    const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
-    const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-    return {
-      id: newId('att'),
-      type: 'image',
-      name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-      mime,
-      dataUrl,
-      size: dataUrl.length,
-    };
-  });
-  const clientId = String(req.body?.clientId || '').trim().slice(0, 80) || null;
-  if (clientId) {
-    const existing = db.messages.find((m) =>
-      m.conversationId === conversation.id && m.from === req.user.id && m.clientId === clientId
-    );
-    if (existing) {
-      return res.json({
-        message: existing,
-        conversation: conversationView(conversation, req.user.id),
-        warningKey: existing.flagged ? 'messages.safety.keepInside' : null,
-        warning: existing.flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
-      });
-    }
-  }
-  // Join a short, recent sequence from the same sender. This catches a number or
-  // payment handle deliberately split across several chat bubbles, while limiting
-  // the inspection to the conversation and a ten-minute coordination window.
-  const recentOutboundText = db.messages
-    .filter((message) => message.conversationId === conversation.id && message.from === req.user.id && message.at > Date.now() - 10 * 60 * 1000)
-    .slice(-4)
-    .map((message) => message.text || '')
-    .join(' ');
-  const safety = analyzeMessageSafety(`${recentOutboundText} ${text} ${location?.label || ''} ${location?.city || ''}`);
-  if (safety.blocked) {
-    const attempt = registerMessageSafetyAttempt({ user: req.user, conversation, analysis: safety });
-    await audit(req.user.id, 'message.safety_blocked', 'conversation', conversation.id, { categories: safety.categories, severity: safety.severity, highCount: attempt.highCount });
-    save();
-    return res.status(attempt.cooldownUntil ? 429 : 422).json(messageSafetyError({ analysis: safety, cooldownUntil: attempt.cooldownUntil }));
-  }
-  const flagged = false;
-  const msg = {
-    id: newId('m'),
-    clientId,
-    conversationId: conversation.id,
-    txId: conversation.operationId || null,
-    from: req.user.id,
-    text,
-    flagged,
-    flagReason: flagged ? 'contact_outside_app' : null,
-    type: location ? 'location' : normalizedAttachments.length ? 'attachment' : flagged ? 'warning' : 'text',
-    attachments: normalizedAttachments,
-    location,
-    deliveryStatus: 'sent',
-    readBy: [req.user.id],
-    at: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-  db.messages.push(msg);
-  conversation.lastMessageAt = msg.at;
-  conversation.archivedBy = (conversation.archivedBy || []).filter((id) => id !== req.user.id);
-  await notify(conversation.participantIds.filter((id) => id !== req.user.id), { key: 'chat.message', params: { name: req.user.name } }, conversation.operationId || null, 'messages', 'messages');
-  save();
-  broadcastConversation(conversation, { type: 'message', messageId: msg.id, from: req.user.id });
-  res.json({
-    message: msg,
-    conversation: conversationView(conversation, req.user.id),
-    warningKey: flagged ? 'messages.safety.keepInside' : null,
-    warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
-  });
-});
-
-app.delete('/api/conversations/:id/messages/:messageId', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const index = db.messages.findIndex((message) => message.id === req.params.messageId && message.conversationId === conversation.id);
-  if (index < 0) return res.status(404).json({ error: 'Message introuvable' });
-  if (db.messages[index].from !== req.user.id) return res.status(403).json({ error: 'Vous pouvez supprimer uniquement vos messages' });
-  db.messages.splice(index, 1);
-  const last = conversationMessages(conversation).at(-1);
-  conversation.lastMessageAt = last?.at || conversation.createdAt;
-  save();
-  broadcastConversation(conversation, { type: 'message_deleted', messageId: req.params.messageId, from: req.user.id });
-  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
-});
 
 // ---------- Annonces ----------
 // Feed filtré par trajet déclaré (PRD §2.1). ?all=1 pour tout voir.
