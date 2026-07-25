@@ -222,7 +222,7 @@ export default function CreateTrip() {
                 <label htmlFor="trip-from">{t('trips.from')}</label>
                 <div className="wizard-input-icon">
                   <Icon name="mapPin" size={18} />
-                  <input id="trip-from" autoFocus list="trip-cities" autoComplete="address-level2" value={form.from}
+                  <input id="trip-from" list="trip-cities" autoComplete="address-level2" value={form.from}
                     onChange={(event) => update('from', event.target.value)} placeholder={t('trips.wizard.route.fromPlaceholder')} />
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function CreateTrip() {
               <div className="wizard-date-icon"><Icon name="calendar" size={26} /></div>
               <div className="field">
                 <label htmlFor="trip-date">{t('trips.ticketDate')}</label>
-                <input id="trip-date" autoFocus type="date" min={today} value={form.date} onChange={(event) => update('date', event.target.value)} />
+                <input id="trip-date" type="date" min={today} value={form.date} onChange={(event) => update('date', event.target.value)} />
               </div>
               <div className="wizard-date-presets">
                 {[
@@ -294,7 +294,7 @@ export default function CreateTrip() {
               <div className="field wizard-price-field">
                 <label htmlFor="trip-price">{t('trips.proposedPrice')}</label>
                 <div className="wizard-price-input">
-                  <input id="trip-price" autoFocus type="number" min="1" inputMode="decimal" value={form.price}
+                  <input id="trip-price" type="number" min="1" inputMode="decimal" value={form.price}
                     onChange={(event) => update('price', event.target.value)} />
                   <span>EUR</span>
                 </div>
