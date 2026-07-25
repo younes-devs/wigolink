@@ -416,6 +416,7 @@ server/
 └── routes/
     ├── account.js
     ├── account-settings.js
+    ├── kyc.js
     ├── notifications.js
     ├── rules.js
     ├── system.js
@@ -455,6 +456,13 @@ profil public, email, fournisseur de connexion, téléphone, limites du compte,
 formation et état KYC. Les projections ne sont jamais appelées lorsque
 l'authentification refuse la requête.
 
+`createKycRouter` orchestre la soumission manuelle sous `/api/kyc/submit`.
+Il conserve l'ordre des garde-fous : statut du compte, validité des champs et
+photos, limite de rejets, ajout au dépôt, passage à `pending`, sauvegarde puis
+projection de la vue KYC. L'authentification, le dépôt KYC, la validation des
+images, la limite de tentatives et la projection sont injectés. Une requête
+refusée ne consulte ni ne modifie le dépôt.
+
 `createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
 dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
 les règles douanières et les fonctions de localisation sont injectées. Les
@@ -474,8 +482,15 @@ La première validation indépendante d'Express est organisée dans :
 ```text
 server/
 └── validators/
+    ├── kyc.js
     └── training.js
 ```
+
+`validateKycSubmission` contrôle le nom légal, le type de document, la majorité
+et les photos requises, puis normalise uniquement la charge utile persistable.
+`computeAge` reçoit une horloge injectable afin de tester précisément la date
+anniversaire. Le routeur conserve les textes, statuts HTTP et l'ordre historique
+des erreurs.
 
 `invalidTrainingAnswers` possède la grille historique `q1=b`, `q2=c`, `q3=a`
 et retourne les identifiants incorrects dans le même ordre. Il ne lit ni la

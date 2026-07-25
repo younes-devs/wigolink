@@ -30,6 +30,7 @@ import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
+import { createKycRouter } from './routes/kyc.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
@@ -760,56 +761,14 @@ function kycUserView(user) {
   };
 }
 
-function computeAge(birthDate) {
-  const b = new Date(birthDate);
-  if (Number.isNaN(b.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - b.getFullYear();
-  const m = now.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age -= 1;
-  return age;
-}
-
-app.post('/api/kyc/submit', auth, (req, res) => {
-  if (req.user.kycStatus === 'verified')
-    return res.status(400).json({ error: 'Votre identité est déjà vérifiée' });
-  if (req.user.kycStatus === 'pending')
-    return res.status(400).json({ error: 'Une demande est déjà en cours de vérification' });
-  if (req.user.kycStatus === 'refused')
-    return res.status(403).json({ error: 'Vérification définitivement refusée — contactez le support' });
-
-  const { legalName, birthDate, documentType, selfiePhoto, idFrontPhoto, idBackPhoto } = req.body;
-
-  if (!legalName || String(legalName).trim().length < 3)
-    return res.status(400).json({ error: 'Nom légal complet requis' });
-  if (!['id_card', 'passport'].includes(documentType))
-    return res.status(400).json({ error: 'Type de document invalide' });
-
-  const age = computeAge(birthDate);
-  if (age === null) return res.status(400).json({ error: 'Date de naissance invalide' });
-  if (age < 18) return res.status(400).json({ error: 'Vous devez avoir 18 ans ou plus' });
-
-  if (!validPhotos([selfiePhoto])) return res.status(400).json({ error: 'Selfie invalide (JPEG/PNG/WebP, 500 Ko max)' });
-  if (!validPhotos([idFrontPhoto])) return res.status(400).json({ error: 'Photo du recto invalide' });
-  if (documentType === 'id_card' && !validPhotos([idBackPhoto]))
-    return res.status(400).json({ error: 'Photo du verso invalide (obligatoire pour une carte d\'identité)' });
-
-  // Garde-fou anti-fraude : au-delà de la limite de tentatives, on refuse d'accepter
-  // une nouvelle soumission automatiquement (le compte reste 'rejected', support requis).
-  const rejectedCount = repositories.kyc.rejectedCountForUser(req.user.id);
-  if (rejectedCount >= MAX_KYC_ATTEMPTS)
-    return res.status(403).json({ error: 'Nombre maximum de tentatives atteint — contactez le support' });
-
-  repositories.kyc.appendSubmission({
-    userId: req.user.id,
-    legalName: String(legalName).trim().slice(0, 120),
-    birthDate, age, documentType,
-    selfiePhoto, idFrontPhoto, idBackPhoto: documentType === 'id_card' ? idBackPhoto : null,
-  });
-  req.user.kycStatus = 'pending';
-  save();
-  res.json({ kyc: kycUserView(req.user) });
-});
+app.use('/api/kyc', createKycRouter({
+  auth,
+  kycRepository: repositories.kyc,
+  save,
+  kycUserView,
+  validPhotos,
+  maxAttempts: MAX_KYC_ATTEMPTS,
+}));
 
 // ---------- Profil ----------
 app.post('/api/profile', auth, async (req, res) => {
