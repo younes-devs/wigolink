@@ -20,6 +20,7 @@ import {
   listRelationalConversations, relationalConversation, relationalMessageReadsEnabled,
 } from './relational-messaging.js';
 import { adminOnly } from './middleware/admin-only.js';
+import { createSecurityHeaders } from './middleware/security-headers.js';
 
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -41,18 +42,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
 }));
-app.use((req, res, next) => {
-  const requestId = req.headers['x-request-id'] || newId('req');
-  res.setHeader('X-Request-Id', requestId);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
-  // The bootstrap script in client/index.html applies theme and language before paint.
-  const realtimeConnectSrc = SUPABASE_URL ? ` ${SUPABASE_URL} ${SUPABASE_REALTIME_ORIGIN}` : '';
-  res.setHeader('Content-Security-Policy', `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'${realtimeConnectSrc}; font-src 'self' data:`);
-  next();
-});
+app.use(createSecurityHeaders({
+  newRequestId: () => newId('req'),
+  supabaseUrl: SUPABASE_URL,
+  supabaseRealtimeOrigin: SUPABASE_REALTIME_ORIGIN,
+}));
 app.use(express.json({ limit: '25mb' }));
 // i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
 app.use(langMiddleware);

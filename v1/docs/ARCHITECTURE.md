@@ -344,7 +344,8 @@ La modularisation backend commence par les contrôles d'accès autonomes :
 server/
 └── middleware/
     ├── admin-only.js
-    └── language.js
+    ├── language.js
+    └── security-headers.js
 ```
 
 `adminOnly` est importé par `server/index.js` et reste placé après `auth` sur
@@ -365,3 +366,9 @@ server/errors.js
 La sélection depuis `Accept-Language`, le repli français, les messages inconnus
 et la traduction de `body.error` et `body.message` conservent leur comportement
 existant.
+
+`security-headers.js` construit le middleware des en-têtes HTTP communs. Le
+générateur de `X-Request-Id` et les origines Supabase autorisées par la CSP sont
+injectés depuis `server/index.js`. Les politiques `nosniff`, anti-framing,
+référent, permissions navigateur et `Content-Security-Policy` restent
+strictement identiques et disposent maintenant de tests unitaires dédiés.
