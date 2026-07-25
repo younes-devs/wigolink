@@ -44,6 +44,7 @@ import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
 import { createListingsRouter } from './routes/listings.js';
+import { createMatchingOffersRouter } from './routes/matching-offers.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -54,6 +55,7 @@ import { createConversationInboxService } from './services/conversation-inbox.js
 import { createConversationMessageService } from './services/conversation-messages.js';
 import { createTripService } from './services/trips.js';
 import { createListingService } from './services/listings.js';
+import { createMatchingOfferService } from './services/matching-offers.js';
 
 const app = express();
 const {
@@ -297,10 +299,23 @@ function matchingOfferWaitingUser(offer) {
   return null;
 }
 
-const runMatchingOfferReminders = createMatchingOfferReminderJob({
+let runMatchingOfferReminders;
+const matchingOfferService = createMatchingOfferService({
   db,
-  normalizeMatchingOffers,
-  normalizeMatchingOffer,
+  matchesTrip,
+  publicUser,
+  findUser,
+  positiveNumber,
+  notify,
+  save,
+  newId,
+  runReminders: (...args) => runMatchingOfferReminders(...args),
+});
+
+runMatchingOfferReminders = createMatchingOfferReminderJob({
+  db,
+  normalizeMatchingOffers: matchingOfferService.normalizeAll,
+  normalizeMatchingOffer: matchingOfferService.normalize,
   matchingOfferWaitingUser,
   notify,
   save,
@@ -1607,6 +1622,11 @@ app.use('/api', createListingsRouter({
   listings: listingService,
 }));
 
+app.use('/api', createMatchingOffersRouter({
+  auth,
+  matchingOffers: matchingOfferService,
+}));
+
 // Modification d'une annonce tant qu'aucun voyageur ne l'a acceptée (statut 'published' ou 'pending_review').
 function shipmentActionFor(listing, tx) {
   if (listing.status === 'pending_review') return { id: 'review', priority: 'medium', href: '/envois' };
@@ -1672,192 +1692,6 @@ function shipmentCommandCenterFor(user) {
 
 app.get('/api/shipments/command-center', auth, (req, res) => {
   res.json({ commandCenter: shipmentCommandCenterFor(req.user) });
-});
-
-function senderMatchingCenterFor(user) {
-  const today = new Date().toISOString().slice(0, 10);
-  const mine = db.listings
-    .filter((l) => l.senderId === user.id && ['published', 'pending_review'].includes(l.status))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const trips = db.trips
-    .filter((t) => t.travelerId !== user.id && t.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const items = mine.map((listing) => {
-    const candidates = trips
-      .filter((trip) => matchesTrip(listing, trip))
-      .map((trip) => {
-        const traveler = findUser(trip.travelerId);
-        const capacityFit = listing.weightKg ? Math.min(100, Math.round((listing.weightKg / trip.capacityKg) * 100)) : 0;
-        const offer = (db.matchingOffers || [])
-          .filter((o) => o.listingId === listing.id && o.tripId === trip.id && o.senderId === user.id)
-          .sort((a, b) => b.createdAt - a.createdAt)[0] || null;
-        return {
-          trip,
-          traveler: publicUser(traveler),
-          score: Math.min(100, Math.max(40, 100 - capacityFit + Math.min(10, traveler?.completed || 0))),
-          capacityFit,
-          offer,
-        };
-      })
-      .sort((a, b) => b.score - a.score || a.trip.date.localeCompare(b.trip.date));
-    const action = listing.status === 'pending_review'
-      ? { id: 'wait_review', priority: 'medium', href: '/envois' }
-      : candidates.length
-        ? { id: 'contact_ready', priority: 'high', href: `/annonce/${listing.id}` }
-        : { id: 'adjust_listing', priority: 'medium', href: '/envois' };
-    return {
-      listing,
-      candidates: candidates.slice(0, 5),
-      candidateCount: candidates.length,
-      action,
-    };
-  });
-  return {
-    totals: {
-      listings: mine.length,
-      matched: items.filter((i) => i.candidateCount > 0).length,
-      candidates: items.reduce((s, i) => s + i.candidateCount, 0),
-      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
-    },
-    actions: items
-      .filter((i) => i.action.priority !== 'low')
-      .sort((a, b) => {
-        const rank = { high: 0, medium: 1, low: 2 };
-        return rank[a.action.priority] - rank[b.action.priority] || b.candidateCount - a.candidateCount;
-      })
-      .slice(0, 6)
-      .map((i) => ({
-        id: `${i.listing.id}:${i.action.id}`,
-        listingId: i.listing.id,
-        title: i.listing.title,
-        action: i.action,
-        candidateCount: i.candidateCount,
-      })),
-    items,
-  };
-}
-
-app.get('/api/sender-matching', auth, async (req, res) => {
-  await runMatchingOfferReminders({ persist: true });
-  res.json({ matching: senderMatchingCenterFor(req.user) });
-});
-
-app.get('/api/matching-offers', auth, async (req, res) => {
-  await runMatchingOfferReminders({ persist: true });
-  const offers = (db.matchingOffers || [])
-    .map(normalizeMatchingOffer)
-    .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map((o) => ({
-      ...o,
-      myRole: o.senderId === req.user.id ? 'sender' : 'traveler',
-      listing: db.listings.find((l) => l.id === o.listingId),
-      trip: db.trips.find((t) => t.id === o.tripId),
-      sender: publicUser(findUser(o.senderId)),
-      traveler: publicUser(findUser(o.travelerId)),
-    }));
-  res.json({ offers });
-});
-
-function matchingOfferSnapshot(offer) {
-  if (!offer) return '';
-  return JSON.stringify({
-    status: offer.status,
-    offeredPay: offer.offeredPay,
-    expiresAt: offer.expiresAt,
-    respondedAt: offer.respondedAt,
-    historyLength: Array.isArray(offer.history) ? offer.history.length : 0,
-  });
-}
-
-function normalizeMatchingOffers({ persist = false } = {}) {
-  let changed = false;
-  for (const offer of db.matchingOffers || []) {
-    const before = matchingOfferSnapshot(offer);
-    normalizeMatchingOffer(offer);
-    if (matchingOfferSnapshot(offer) !== before) changed = true;
-  }
-  if (changed && persist) save();
-  return changed;
-}
-
-function normalizeMatchingOfferAndSave(offer) {
-  const before = matchingOfferSnapshot(offer);
-  normalizeMatchingOffer(offer);
-  if (matchingOfferSnapshot(offer) !== before) save();
-  return offer;
-}
-
-function normalizeMatchingOffer(offer) {
-  if (!offer) return offer;
-  const now = Date.now();
-  const listing = db.listings.find((l) => l.id === offer.listingId);
-  if (!offer.offeredPay && listing) offer.offeredPay = listing.travelerPay;
-  if (!offer.expiresAt) offer.expiresAt = offer.createdAt + 72 * 36e5;
-  if (!offer.history) {
-    offer.history = [{
-      by: offer.senderId,
-      type: 'created',
-      pay: offer.offeredPay || listing?.travelerPay || 0,
-      message: offer.message || '',
-      at: offer.createdAt,
-    }];
-  }
-  if (offer.status === 'pending') offer.status = 'pending_traveler';
-  if (['pending_traveler', 'countered_sender'].includes(offer.status) && offer.expiresAt <= now) {
-    offer.status = 'expired';
-    offer.respondedAt = now;
-    if (!offer.history.some((h) => h.type === 'expired')) {
-      offer.history.push({ by: 'system', type: 'expired', pay: offer.offeredPay || 0, message: '', at: now });
-    }
-  }
-  return offer;
-}
-
-app.post('/api/matching-offers', auth, async (req, res) => {
-  normalizeMatchingOffers({ persist: true });
-  const { listingId, tripId, message = '', offeredPay, expiresInHours } = req.body || {};
-  const listing = db.listings.find((l) => l.id === listingId);
-  const trip = db.trips.find((t) => t.id === tripId);
-  if (!listing || listing.senderId !== req.user.id)
-    return res.status(404).json({ error: 'Annonce introuvable' });
-  if (listing.status !== 'published')
-    return res.status(400).json({ error: 'Cette annonce ne peut plus recevoir de proposition' });
-  if (!trip || trip.travelerId === req.user.id)
-    return res.status(400).json({ error: 'Trajet incompatible' });
-  if (!matchesTrip(listing, trip))
-    return res.status(400).json({ error: 'Ce trajet ne correspond pas aux contraintes de l annonce' });
-
-  const pay = positiveNumber(offeredPay === undefined ? listing.travelerPay : offeredPay);
-  if (pay === null) return res.status(400).json({ error: 'Montant proposé invalide' });
-
-  const existing = (db.matchingOffers || []).find((o) =>
-    o.listingId === listing.id && o.tripId === trip.id && ['pending_traveler', 'countered_sender'].includes(o.status)
-  );
-  if (existing) return res.json({ offer: existing });
-
-  const now = Date.now();
-  const rawTtl = expiresInHours === undefined ? 72 : Number(expiresInHours);
-  const ttlHours = Number.isFinite(rawTtl) ? Math.max(0, Math.min(168, rawTtl)) : 72;
-  const offer = {
-    id: newId('mo'), listingId: listing.id, tripId: trip.id,
-    senderId: req.user.id, travelerId: trip.travelerId,
-    status: 'pending_traveler',
-    offeredPay: pay,
-    message: String(message || '').trim().slice(0, 500),
-    history: [{
-      by: req.user.id,
-      type: 'offer',
-      pay,
-      message: String(message || '').trim().slice(0, 500),
-      at: now,
-    }],
-    createdAt: now, expiresAt: now + ttlHours * 36e5, respondedAt: null, txId: null,
-  };
-  db.matchingOffers.push(offer);
-  await notify([offer.travelerId], { key: 'offer.received', params: { name: req.user.name, title: listing.title } }, null, 'messages', 'matching');
-  save();
-  res.json({ offer });
 });
 
 // ---------- Transactions (machine à états) ----------
@@ -2006,7 +1840,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
     .slice(0, 5);
   const mine = db.listings.filter((l) => l.senderId === req.user.id);
   const myOffers = (db.matchingOffers || [])
-    .map(normalizeMatchingOffer)
+    .map(matchingOfferService.normalize)
     .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
     .sort((a, b) => b.createdAt - a.createdAt);
   const offerTurn = (o) =>
@@ -2133,7 +1967,7 @@ async function acceptListingWithTraveler(listing, traveler, offer = null) {
   await notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], { key: 'tx.accepted', params: { name: traveler.name, title: listing.title } }, tx.id, 'transactions', 'suivi');
   db.transactions.push(tx);
   for (const o of db.matchingOffers || []) {
-    normalizeMatchingOffer(o);
+    matchingOfferService.normalize(o);
     if (o.listingId !== listing.id) continue;
     if (offer && o.id === offer.id) {
       o.status = 'accepted';
@@ -2158,7 +1992,9 @@ app.post('/api/listings/:id/accept', auth, async (req, res) => {
 });
 
 app.post('/api/matching-offers/:id/accept', auth, async (req, res) => {
-  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
+  const offer = matchingOfferService.normalizeAndSave(
+    (db.matchingOffers || []).find((o) => o.id === req.params.id),
+  );
   if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
     return res.status(404).json({ error: 'Proposition introuvable' });
   if (!['pending_traveler', 'countered_sender'].includes(offer.status))
@@ -2175,53 +2011,6 @@ app.post('/api/matching-offers/:id/accept', auth, async (req, res) => {
   const tx = await acceptListingWithTraveler(listing, traveler, offer);
   save();
   res.json({ offer, transaction: txView(req.user)(tx) });
-});
-
-app.post('/api/matching-offers/:id/decline', auth, async (req, res) => {
-  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
-  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
-    return res.status(404).json({ error: 'Proposition introuvable' });
-  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
-    return res.status(400).json({ error: 'Cette proposition n est plus active' });
-  offer.status = 'declined';
-  offer.respondedAt = Date.now();
-  offer.history.push({ by: req.user.id, type: 'declined', pay: offer.offeredPay, message: '', at: Date.now() });
-  await notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.declined', params: { name: req.user.name } }, null, 'messages', 'matching');
-  save();
-  res.json({ offer });
-});
-
-app.post('/api/matching-offers/:id/withdraw', auth, async (req, res) => {
-  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
-  if (!offer || offer.senderId !== req.user.id)
-    return res.status(404).json({ error: 'Proposition introuvable' });
-  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
-    return res.status(400).json({ error: 'Cette proposition n est plus active' });
-  offer.status = 'withdrawn';
-  offer.respondedAt = Date.now();
-  offer.history.push({ by: req.user.id, type: 'withdrawn', pay: offer.offeredPay, message: '', at: Date.now() });
-  await notify([offer.travelerId], { key: 'offer.withdrawn', params: { name: req.user.name } }, null, 'messages', 'matching');
-  save();
-  res.json({ offer });
-});
-
-app.post('/api/matching-offers/:id/counter', auth, async (req, res) => {
-  const offer = normalizeMatchingOfferAndSave((db.matchingOffers || []).find((o) => o.id === req.params.id));
-  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
-    return res.status(404).json({ error: 'Proposition introuvable' });
-  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
-    return res.status(400).json({ error: 'Cette proposition n est plus active' });
-  const pay = positiveNumber(req.body?.offeredPay);
-  if (pay === null) return res.status(400).json({ error: 'Montant proposé invalide' });
-  const message = String(req.body?.message || '').trim().slice(0, 500);
-  offer.offeredPay = pay;
-  offer.message = message;
-  offer.status = req.user.id === offer.travelerId ? 'countered_sender' : 'pending_traveler';
-  offer.expiresAt = Date.now() + 72 * 36e5;
-  offer.history.push({ by: req.user.id, type: 'counter', pay, message, at: Date.now() });
-  await notify([req.user.id === offer.senderId ? offer.travelerId : offer.senderId], { key: 'offer.countered', params: { name: req.user.name } }, null, 'messages', 'matching');
-  save();
-  res.json({ offer });
 });
 
 // Vidéo de scellage (PRD §3.2) — caméra in-app uniquement, horodatée
@@ -2723,7 +2512,7 @@ async function adminOpsSummary() {
   const riskCount = Object.values(risk).reduce((s, n) => s + n, 0);
   const activeOfferStatuses = ['pending_traveler', 'countered_sender'];
   const offerQueue = (db.matchingOffers || [])
-    .map(normalizeMatchingOffer)
+    .map(matchingOfferService.normalize)
     .filter((o) => activeOfferStatuses.includes(o.status) || o.status === 'expired')
     .map((o) => {
       const listing = db.listings.find((l) => l.id === o.listingId);

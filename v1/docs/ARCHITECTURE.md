@@ -660,6 +660,32 @@ aucun autre champ du formulaire n'est appliqué partiellement.
 `server/index.js`, car elles créent une transaction et un séquestre. Le service
 extrait ne choisit ni n'implémente aucun prestataire de paiement.
 
+## Backend `matching offers`
+
+Les propositions entre expéditeurs et voyageurs sont regroupées dans :
+
+```text
+server/
+|-- routes/
+|   `-- matching-offers.js
+`-- services/
+    `-- matching-offers.js
+```
+
+`createMatchingOfferService` est la source unique de normalisation des anciennes
+propositions, des expirations et de leur historique. Il calcule le centre de
+matching, enrichit les offres avec leurs membres, trajets et annonces, puis
+orchestre création idempotente, refus, retrait et contre-proposition. Les droits
+des participants, la durée maximale, les notifications et l'ordre
+mutation-notification-sauvegarde restent couverts par des tests. Le job de rappel
+réutilise cette même normalisation afin d'éviter deux implémentations divergentes.
+
+`createMatchingOffersRouter` expose les lectures et décisions non financières
+sous les URLs existantes. `/api/matching-offers/:id/accept` reste volontairement
+dans `server/index.js` : cette action transforme l'offre en transaction et crée
+actuellement le séquestre. Elle continue toutefois d'utiliser la normalisation
+du service, sans choix supplémentaire de prestataire.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :
