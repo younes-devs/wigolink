@@ -607,6 +607,31 @@ traduction finale reste effectuée à la lecture. Les chaînes historiques reste
 stockées telles quelles. Le dépôt, la recherche utilisateur, la normalisation
 des préférences et le moteur de rendu sont injectés depuis `server/index.js`.
 
+## Backend `relational reads`
+
+Les lectures indexees a fort trafic sont assemblees dans :
+
+```text
+server/
+|-- middleware/
+|   `-- relational-read-auth.js
+`-- routes/
+    `-- relational-reads.js
+```
+
+`createRelationalReadAuth` authentifie le bearer avec la session persistante et
+la table relationnelle des membres. Il conserve les refus historiques pour une
+base absente, une session expiree et un email non verifie. Lorsque les lectures
+relationnelles ne sont pas activees, il passe a la route historique avec
+`next('route')` sans ouvrir de connexion SQL.
+
+`createRelationalReadsRouter` sert les trois lectures de trajets et les trois
+lectures de conversations/messages depuis les tables indexees. Les filtres,
+pagination, projection de l'apercu, statuts 404/503 et textes publics restent
+identiques. Chaque endpoint verifie encore son drapeau de migration et conserve
+le fallback vers le document historique. Les ecritures restent volontairement
+sur le chemin atomique existant pendant cette phase.
+
 ## Backend `realtime`
 
 Le temps reel backend est maintenant separe entre :
