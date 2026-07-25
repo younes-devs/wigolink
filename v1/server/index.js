@@ -28,6 +28,7 @@ import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
+import { createAccountSettingsRouter } from './routes/account-settings.js';
 
 const app = express();
 const {
@@ -787,28 +788,13 @@ app.get('/api/me', auth, (req, res) => {
   });
 });
 
-app.get('/api/settings', auth, (req, res) => {
-  res.json({ settings: userSettings(req.user) });
-});
-
-app.post('/api/settings', auth, async (req, res) => {
-  const before = { ...userSettings(req.user).notifications };
-  const input = req.body?.notifications || {};
-  repositories.settings.updateNotifications(req.user, input);
-  await auditChange({
-    actorId: req.user.id, action: 'settings.notifications.update', targetType: 'user', targetId: req.user.id,
-    subjectUserId: req.user.id, before, after: userSettings(req.user).notifications,
-    fields: ['transactions', 'messages', 'shipments', 'reminders'],
-  });
-  save();
-  res.json({ settings: userSettings(req.user) });
-});
-
-app.post('/api/onboarding/complete', auth, (req, res) => {
-  repositories.settings.markOnboardingDone(req.user);
-  save();
-  res.json({ user: publicUser(req.user), settings: userSettings(req.user) });
-});
+app.use('/api', createAccountSettingsRouter({
+  auth,
+  settings: repositories.settings,
+  auditChange,
+  publicUser,
+  save,
+}));
 
 // ---------- KYC manuel (PRD KYC) ----------
 // Statuts : none | pending | verified | rejected | refused

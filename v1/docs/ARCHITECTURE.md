@@ -414,6 +414,7 @@ publics sans logique métier :
 ```text
 server/
 └── routes/
+    ├── account-settings.js
     ├── notifications.js
     └── system.js
 ```
@@ -434,6 +435,15 @@ déclenche toujours les rappels persistants avant la requête, traduit chaque
 notification selon `req.lang` puis calcule le compteur non lu. L'écriture
 conserve l'ordre marquage puis sauvegarde. Des tests HTTP vérifient également
 qu'aucun accès au dépôt n'a lieu lorsque l'authentification refuse la requête.
+
+`createAccountSettingsRouter` regroupe la lecture et la mise à jour des
+préférences ainsi que la fin de l'onboarding. Le dépôt `settings`, l'audit, la
+projection publique du membre et la sauvegarde sont injectés. La préférence de
+sécurité reste forcée à actif par le dépôt existant. La mise à jour conserve
+l'instantané précédent, les quatre champs audités et l'ordre mise à jour, audit,
+sauvegarde. L'onboarding conserve l'ordre mutation, sauvegarde puis réponse avec
+le profil public et les paramètres normalisés. Les URLs `/api/settings` et
+`/api/onboarding/complete` ne changent pas.
 
 ## Backend `config`
 
