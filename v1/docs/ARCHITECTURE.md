@@ -48,3 +48,30 @@ que le routeur principal charge directement les modules du domaine.
 Les écrans `Profile`, `PublicProfile`, `Dashboard`, `Operations` et l'ancien feed
 restent dans leurs domaines actuels. Ils peuvent afficher des informations de
 trajet sans appartenir au domaine `trips`.
+
+## Domaine `messaging`
+
+La messagerie frontend est regroupée sans modifier ses contrats API ni son
+comportement temps réel :
+
+```text
+client/src/features/messaging/
+├── pages/
+│   ├── ConversationDetail.jsx
+│   └── MessagesSimple.jsx
+├── services/
+│   └── realtime.js
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/pages/ConversationDetail.jsx
+client/src/pages/MessagesSimple.jsx
+client/src/realtime.js
+```
+
+Le routeur principal charge directement les pages du domaine. Les endpoints,
+le cache d'inbox, le polling de secours et le canal Supabase Realtime conservent
+leur comportement existant.
