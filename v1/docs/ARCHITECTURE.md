@@ -178,3 +178,31 @@ Le chargement du modèle MediaPipe reste différé et préparé à l'entrée du
 parcours. `PhotoCapture` et `requestCameraStream` restent temporairement dans
 `components.jsx` afin de limiter cette étape. Les statuts, documents, tentatives,
 décisions admin et endpoints KYC serveur ne sont pas modifiés.
+
+## Domaine `payments`
+
+Les interfaces financières existantes sont regroupées dans :
+
+```text
+client/src/features/payments/
+├── pages/
+│   ├── FinanceCenter.jsx
+│   ├── TransactionDetail.jsx
+│   └── Transactions.jsx
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/pages/FinanceCenter.jsx
+client/src/pages/TransactionDetail.jsx
+client/src/pages/Transactions.jsx
+```
+
+Ce domaine reste volontairement neutre vis-à-vis du prestataire de paiement.
+Il affiche et orchestre uniquement les transactions et états escrow déjà
+exposés par l'API. Aucun SDK, webhook, secret, variable d'environnement ou
+contrat propre à Stripe, Mangopay ou un autre fournisseur ne doit être ajouté
+avant une décision produit explicite. La présente migration ne modifie aucun
+appel API ni aucune règle financière.
