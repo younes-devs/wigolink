@@ -22,6 +22,7 @@ import {
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { loadRuntimeConfig } from './config/runtime.js';
+import { createCorsOptions } from './config/cors-options.js';
 
 const app = express();
 const {
@@ -35,14 +36,10 @@ const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
 // OPERATION_CODE_SECRET can supersede it without making deployments brittle.
 const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigofly-local-operation-code-secret';
 app.set('trust proxy', 1);
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || !IS_PRODUCTION || APP_ORIGINS.includes(origin)) return callback(null, true);
-    return callback(new Error('Origine non autorisee'));
-  },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
-}));
+app.use(cors(createCorsOptions({
+  isProduction: IS_PRODUCTION,
+  appOrigins: APP_ORIGINS,
+})));
 app.use(createSecurityHeaders({
   newRequestId: () => newId('req'),
   supabaseUrl: SUPABASE_URL,

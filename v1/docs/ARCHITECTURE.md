@@ -380,6 +380,7 @@ La configuration générale calculée au démarrage commence à être regroupée
 ```text
 server/
 └── config/
+    ├── cors-options.js
     └── runtime.js
 ```
 
@@ -388,3 +389,9 @@ Supabase et son origine realtime. Il conserve également les refus de démarrage
 de `DEMO` et `TEST_EMAIL_BYPASS` en production. Les secrets des codes
 d'opération et toute configuration liée au paiement restent volontairement
 hors de ce module jusqu'à la décision sur le prestataire.
+
+`createCorsOptions` reçoit `isProduction` et `appOrigins` depuis la configuration
+runtime. En développement, les origines restent ouvertes. En production, seules
+les origines configurées sont acceptées, tandis que les appels serveur sans
+en-tête `Origin` restent autorisés. Les méthodes et en-têtes du préflight sont
+inchangés et couverts par des tests dédiés.
