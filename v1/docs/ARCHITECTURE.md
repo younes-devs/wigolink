@@ -486,6 +486,26 @@ sauvegarder et ne persiste que si un changement existe avec `persist=true`.
 Les appels depuis les notifications, le matching, les offres et le tableau de
 bord continuent à utiliser la même fonction créée dans `server/index.js`.
 
+## Backend `services`
+
+La première logique transverse indépendante d'Express est regroupée dans :
+
+```text
+server/
+└── services/
+    └── audit.js
+```
+
+`createAuditService` fournit l'écriture brute `audit` et le journal différentiel
+`auditChange` à partir du dépôt `auditLogs`. Le calcul des changements reste
+limité aux champs explicitement autorisés : les chaînes sont tronquées à 1000
+caractères, les valeurs vides deviennent `null` et les objets ou contenus
+binaires ne sont jamais copiés dans le journal. Un événement sans changement
+n'est écrit que lorsque `meta.recordEmpty` le demande. Les métadonnées
+`subjectUserId` et `changes` sont toujours recalculées par le service. Les appels
+existants des domaines profil, trajets, opérations, messagerie, sécurité et
+administration utilisent les mêmes fonctions assemblées dans `server/index.js`.
+
 ## Backend `config`
 
 La configuration générale calculée au démarrage commence à être regroupée dans :

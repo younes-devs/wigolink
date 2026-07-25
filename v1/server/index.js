@@ -31,6 +31,7 @@ import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
+import { createAuditService } from './services/audit.js';
 
 const app = express();
 const {
@@ -399,36 +400,11 @@ function verifyOperationCode(tx, kind, enteredCode) {
   };
 }
 
-async function audit(actorId, action, targetType, targetId, meta = {}) {
-  return repositories.auditLogs.append({ actorId, action, targetType, targetId, meta });
-}
-
-// Journal immuable des changements importants. On ne conserve jamais de mot de
-// passe, de jeton ou de contenu binaire (photos) dans ce journal.
-function auditValue(value) {
-  if (value === undefined || value === null || value === '') return null;
-  if (typeof value === 'string') return value.slice(0, 1000);
-  if (typeof value === 'number' || typeof value === 'boolean') return value;
-  return null;
-}
-
-function auditChanges(before = {}, after = {}, fields = []) {
-  return fields.flatMap((field) => {
-    const previous = auditValue(before[field]);
-    const next = auditValue(after[field]);
-    return Object.is(previous, next) ? [] : [{ field, before: previous, after: next }];
-  });
-}
-
-async function auditChange({ actorId, action, targetType, targetId, subjectUserId, before, after, fields, meta = {} }) {
-  const changes = auditChanges(before, after, fields);
-  if (!changes.length && !meta.recordEmpty) return null;
-  return audit(actorId, action, targetType, targetId, {
-    ...meta,
-    subjectUserId,
-    changes,
-  });
-}
+// Journal immuable des changements importants. Le service filtre les secrets et
+// le contenu binaire avant de deleguer l'ecriture au repository.
+const { audit, auditChange } = createAuditService({
+  auditLogs: repositories.auditLogs,
+});
 
 // Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
 // chaîne française littérale (legacy), soit { key, params } — dans ce cas la traduction
