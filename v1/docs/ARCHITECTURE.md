@@ -347,6 +347,7 @@ server/
     ├── database-availability.js
     ├── language.js
     ├── persistence-state.js
+    ├── session-auth.js
     └── security-headers.js
 ```
 
@@ -393,6 +394,17 @@ validation du verrou Postgres. Les dépendances de stockage sont injectées par
 Les chemins rapides, les réponses `503`, la libération sur fermeture de la
 requête et l'ordre de deux écritures concurrentes sont couverts par des tests
 unitaires dédiés.
+
+`session-auth.js` centralise la lecture des sessions persistantes, leur
+expiration et les gardes HTTP et temps réel. Le stockage des sessions, la
+recherche du membre, la règle d'accès après vérification email et la sauvegarde
+locale restent injectés par `server/index.js`. Les réponses historiques restent
+distinctes lorsque nécessaire : l'authentification HTTP transforme une panne de
+session en `503`, tandis que le garde temps réel conserve son token de secours
+dans la query et ses messages courts. Les comptes suspendus, inconnus ou non
+vérifiés gardent les mêmes statuts et la session d'un compte non vérifié est
+toujours invalidée. Les routes d'inscription, de connexion, de réinitialisation
+et toute intégration OAuth restent en dehors de ce middleware.
 
 ## Backend `config`
 

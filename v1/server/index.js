@@ -23,6 +23,7 @@ import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
 import { createPersistenceState } from './middleware/persistence-state.js';
+import { createSessionAuth } from './middleware/session-auth.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 
@@ -182,29 +183,20 @@ function userSettings(user) {
 // Google ne pourra etre exempte que lorsqu'un vrai flux OAuth est active.
 const canAccessApp = (user) => !!user && (user.emailVerified === true || user.provider === 'google');
 
-async function activeSession(token) {
-  const session = await getPersistentSession(token);
-  if (!session || typeof session !== 'object' || !session.userId) return null;
-  if (!Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) {
-    await deletePersistentSession(token);
-    return null;
-  }
-  return session;
-}
+const sessionAuth = createSessionAuth({
+  getPersistentSession,
+  deletePersistentSession,
+  findUser,
+  canAccessApp,
+  save,
+});
 
 async function clearUserSessions(userId) {
   await deletePersistentSessionsForUser(userId);
 }
 
-async function denyUnverifiedSession(req, res) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  await deletePersistentSession(token);
-  save();
-  return res.status(403).json({
-    needsVerification: true,
-    pendingEmail: req.user.email,
-    error: 'Verifiez votre adresse email avant d acceder a l application.',
-  });
+async function activeSession(token) {
+  return sessionAuth.activeSession(token);
 }
 
 // Seules les parties d'une transaction (ou un admin) peuvent en consulter le détail,
@@ -212,33 +204,11 @@ async function denyUnverifiedSession(req, res) {
 const isPartyToTx = (t, userId) => [t.senderId, t.travelerId, t.recipientId].includes(userId);
 
 async function auth(req, res, next) {
-  try {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  const userId = (await activeSession(token))?.userId;
-  if (!userId) return res.status(401).json({ error: 'Non authentifié' });
-  req.user = findUser(userId);
-  if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
-  if (req.user.suspendedUntil && req.user.suspendedUntil > Date.now()) {
-    return res.status(403).json({ code: 'account_suspended', error: 'Votre compte est temporairement suspendu. Vous pouvez contester cette decision depuis votre profil.' });
-  }
-  if (!canAccessApp(req.user)) return denyUnverifiedSession(req, res);
-  return next();
-  } catch (error) {
-    console.error('Echec de verification de session', error);
-    return res.status(503).json({ error: 'Service de session temporairement indisponible.' });
-  }
+  return sessionAuth.auth(req, res, next);
 }
 
 async function authRealtime(req, res, next) {
-  const token = req.headers.authorization?.replace('Bearer ', '') || String(req.query?.token || '');
-  const session = await activeSession(token);
-  const userId = session?.userId;
-  if (!userId) return res.status(401).json({ error: 'Non authentifie' });
-  req.user = findUser(session?.userId);
-  if (req.user?.suspendedUntil && req.user.suspendedUntil > Date.now()) return res.status(403).json({ code: 'account_suspended', error: 'Compte temporairement suspendu.' });
-  if (req.user && !canAccessApp(req.user)) return denyUnverifiedSession(req, res);
-  if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
-  next();
+  return sessionAuth.authRealtime(req, res, next);
 }
 
 async function relationalTripAuth(req, res, next) {
