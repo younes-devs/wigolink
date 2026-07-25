@@ -7,7 +7,7 @@ import {
 } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, analyzeMessageSafety, localizeCategory, localizeCustoms } from './rules.js';
 import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
-import { langMiddleware } from './errors.js';
+import { langMiddleware } from './middleware/language.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';

@@ -343,7 +343,8 @@ La modularisation backend commence par les contrôles d'accès autonomes :
 ```text
 server/
 └── middleware/
-    └── admin-only.js
+    ├── admin-only.js
+    └── language.js
 ```
 
 `adminOnly` est importé par `server/index.js` et reste placé après `auth` sur
@@ -352,3 +353,15 @@ chacune des 17 routes `/api/admin/*`. Il refuse les membres avec le même statut
 tests d'intégration existants sur les rôles et les endpoints administrateur.
 Cette étape ne déplace aucune route et ne modifie aucun accès à la base de
 données.
+
+`language.js` contient le middleware de détection `fr/ar/nl`, les tables de
+traduction des réponses API et `translateError`. Le serveur l'importe
+directement, tandis que le chemin historique suivant reste compatible :
+
+```text
+server/errors.js
+```
+
+La sélection depuis `Accept-Language`, le repli français, les messages inconnus
+et la traduction de `body.error` et `body.message` conservent leur comportement
+existant.
