@@ -742,8 +742,8 @@ passe et secrets de session ne sont jamais projetés.
 
 `createAdminRecordsRouter` applique systématiquement `auth`, puis `adminOnly`,
 avant d'appeler le service. Les routes extraites sont strictement en lecture.
-Les revues de fraude, arbitrages et écrans contenant des agrégats financiers
-restent dans `server/index.js`.
+Les arbitrages et écrans contenant des agrégats financiers restent dans
+`server/index.js`.
 
 ## Backend `admin actions`
 
@@ -767,8 +767,32 @@ réussite conserve audit, notification éventuelle et sauvegarde.
 `createAdminActionsRouter` applique `auth` puis `adminOnly` aux actions
 administrateur. Seul `POST /safety/appeals` utilise directement la session
 existante afin qu'un membre suspendu puisse encore exercer son recours. Les
-arbitrages de litige, remboursements, fraudes et KPI financiers restent hors de
-ce domaine.
+arbitrages de litige, remboursements et KPI financiers restent hors de ce
+domaine.
+
+## Backend `admin fraud`
+
+Les signaux de risque du back-office sont regroupés dans :
+
+```text
+server/
+|-- routes/
+|   `-- admin-fraud.js
+`-- services/
+    `-- admin-fraud.js
+```
+
+`createAdminFraudService` calcule le résumé du centre opérations et le détail
+des comptes liés, paires récurrentes, messages signalés, annulations anormales,
+litiges répétés et rejets KYC. Les participants d'un litige sont dédupliqués :
+un expéditeur qui est aussi destinataire ne produit plus deux occurrences pour
+le même dossier. Les données de membre sont projetées explicitement sans hash,
+session ni document KYC.
+
+`createAdminFraudRouter` protège `GET /admin/fraud` avec `auth`, puis
+`adminOnly`, avant toute lecture. Le montant cumulé historique des paires reste
+un indicateur en lecture seule. Ce domaine ne crée, ne libère, ne rembourse et
+n'arbitre aucun séquestre.
 
 ## Backend `public profiles`
 

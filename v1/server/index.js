@@ -52,6 +52,7 @@ import { createMemberOverviewRouter } from './routes/member-overview.js';
 import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
 import { createAdminActionsRouter } from './routes/admin-actions.js';
 import { createTransactionCommunicationsRouter } from './routes/transaction-communications.js';
+import { createAdminFraudRouter } from './routes/admin-fraud.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -70,6 +71,7 @@ import { createMemberOverviewService } from './services/member-overview.js';
 import { createGuidanceCenterService } from './services/guidance-centers.js';
 import { createAdminActionService } from './services/admin-actions.js';
 import { createTransactionCommunicationService } from './services/transaction-communications.js';
+import { createAdminFraudService } from './services/admin-fraud.js';
 
 const app = express();
 const {
@@ -1833,44 +1835,18 @@ app.use('/api', createTransactionCommunicationsRouter({
 const KYC_SLA_MS = 24 * 3600e3;
 const OFFER_WATCH_MS = 24 * 3600e3;
 
-async function adminRiskSignals() {
-  const humans = db.users.filter((u) => !u.isAdmin);
-  const groupsFor = (key) => {
-    const groups = {};
-    for (const u of humans) {
-      const v = u[key];
-      if (!v) continue;
-      (groups[v] = groups[v] || []).push(u);
-    }
-    return Object.values(groups).filter((g) => g.length > 1);
-  };
+const adminFraudService = createAdminFraudService({
+  db,
+  findUser,
+  messagesRepository: repositories.messages,
+  kycRepository: repositories.kyc,
+});
 
-  const pairMap = {};
-  for (const t of db.transactions) {
-    const ids = [t.senderId, t.travelerId].sort().join('|');
-    pairMap[ids] = pairMap[ids] || { transactionCount: 0, disputedCount: 0 };
-    pairMap[ids].transactionCount += 1;
-    if (t.status === 'disputed' || db.disputes.some((d) => d.txId === t.id)) pairMap[ids].disputedCount += 1;
-  }
-
-  const disputeCountByUser = {};
-  for (const d of db.disputes) {
-    const t = db.transactions.find((x) => x.id === d.txId);
-    if (!t) continue;
-    for (const uid of [t.senderId, t.travelerId, t.recipientId]) disputeCountByUser[uid] = (disputeCountByUser[uid] || 0) + 1;
-  }
-
-  const kycRejectionsByUser = repositories.kyc.rejectionCountsByUser();
-
-  return {
-    linkedAccounts: groupsFor('phone').length + groupsFor('registerIp').length,
-    repeatPairs: Object.values(pairMap).filter((p) => p.transactionCount >= 3).length,
-    flaggedMessaging: await repositories.messages.flaggedSenderCount(),
-    abnormalCancel: humans.filter((u) => u.completed >= 3 && u.cancelRate > 0.2).length,
-    disputeProne: Object.values(disputeCountByUser).filter((count) => count >= 2).length,
-    kycRepeatRejections: Object.values(kycRejectionsByUser).filter((count) => count >= 2).length,
-  };
-}
+app.use('/api', createAdminFraudRouter({
+  auth,
+  adminOnly,
+  adminFraud: adminFraudService,
+}));
 
 async function adminOpsSummary() {
   await runMatchingOfferReminders({ persist: true });
@@ -1886,7 +1862,7 @@ async function adminOpsSummary() {
   const escrowHeld = db.transactions
     .filter((t) => t.escrow?.state === 'held' || t.escrow?.state === 'frozen')
     .reduce((s, t) => s + t.escrow.amount, 0);
-  const risk = await adminRiskSignals();
+  const risk = await adminFraudService.summary();
   const riskCount = Object.values(risk).reduce((s, n) => s + n, 0);
   const activeOfferStatuses = ['pending_traveler', 'countered_sender'];
   const offerQueue = (db.matchingOffers || [])
@@ -2156,91 +2132,6 @@ app.get('/api/admin/kpis', auth, adminOnly, async (req, res) => {
       users: db.users.length,
     },
   });
-});
-
-// Dashboard fraude (PRD §4.7) : comptes liés, patterns anormaux, transactions atypiques.
-// Signaux, pas verdicts — un rapprochement d'IP ou un taux d'annulation élevé appelle une
-// revue humaine, jamais une sanction automatique.
-app.get('/api/admin/fraud', auth, adminOnly, async (req, res) => {
-  const humans = db.users.filter((u) => !u.isAdmin);
-
-  const groupBy = (key) => {
-    const groups = {};
-    for (const u of humans) {
-      const v = u[key];
-      if (!v) continue;
-      (groups[v] = groups[v] || []).push(u);
-    }
-    return Object.entries(groups).filter(([, list]) => list.length > 1);
-  };
-
-  const linkedAccounts = [
-    ...groupBy('phone').map(([value, list]) => ({ signal: 'phone', value, users: list })),
-    ...groupBy('registerIp').map(([value, list]) => ({ signal: 'ip', value, users: list })),
-  ].map(({ signal, value, users }) => ({
-    signal, value,
-    users: users.map((u) => ({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt })),
-  }));
-
-  // Paires expéditeur/voyageur récurrentes : signal de collusion (double validation
-  // contournée entre deux comptes qui transigent toujours ensemble — PRD §5).
-  const pairCounts = {};
-  for (const t of db.transactions) {
-    const key = [t.senderId, t.travelerId].sort().join('|');
-    (pairCounts[key] = pairCounts[key] || []).push(t);
-  }
-  const repeatPairs = Object.entries(pairCounts)
-    .filter(([, txs]) => txs.length >= 2)
-    .map(([key, txs]) => {
-      const [aId, bId] = key.split('|');
-      const disputed = txs.filter((t) => t.status === 'disputed' || db.disputes.some((d) => d.txId === t.id)).length;
-      return {
-        users: [aId, bId].map((id) => { const u = findUser(id); return u ? { id: u.id, name: u.name } : { id, name: '?' }; }),
-        transactionCount: txs.length, disputedCount: disputed,
-        totalValueEur: Math.round(txs.reduce((s, t) => s + (t.escrow?.amount || 0), 0) * 100) / 100,
-      };
-    })
-    .sort((a, b) => b.transactionCount - a.transactionCount);
-
-  // Désintermédiation : utilisateurs à l'origine de messages signalés (partage de coordonnées).
-  const flaggedByUser = {};
-  for (const m of await repositories.messages.all()) {
-    if (!m.flagged) continue;
-    (flaggedByUser[m.from] = flaggedByUser[m.from] || 0);
-    flaggedByUser[m.from] += 1;
-  }
-  const flaggedMessaging = Object.entries(flaggedByUser)
-    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', count }; })
-    .sort((a, b) => b.count - a.count);
-
-  // Annulations anormales : au moins 3 transactions passées, taux d'annulation > 20 %.
-  const abnormalCancel = humans
-    .filter((u) => u.completed >= 3 && u.cancelRate > 0.2)
-    .map((u) => ({ id: u.id, name: u.name, completed: u.completed, cancelRate: u.cancelRate }))
-    .sort((a, b) => b.cancelRate - a.cancelRate);
-
-  // Litiges répétés : un compte qui revient souvent dans des litiges (ouvreur ou partie).
-  const disputeCountByUser = {};
-  for (const d of db.disputes) {
-    const t = db.transactions.find((x) => x.id === d.txId);
-    if (!t) continue;
-    for (const uid of new Set([t.senderId, t.travelerId, t.recipientId].filter(Boolean))) {
-      disputeCountByUser[uid] = (disputeCountByUser[uid] || 0) + 1;
-    }
-  }
-  const disputeProne = Object.entries(disputeCountByUser)
-    .filter(([, count]) => count >= 2)
-    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', disputeCount: count }; })
-    .sort((a, b) => b.disputeCount - a.disputeCount);
-
-  // Faux KYC répétés : plusieurs soumissions rejetées avant, éventuellement, un refus définitif.
-  const kycRejectionsByUser = repositories.kyc.rejectionCountsByUser();
-  const kycRepeatRejections = Object.entries(kycRejectionsByUser)
-    .filter(([, count]) => count >= 2)
-    .map(([userId, count]) => { const u = findUser(userId); return { userId, name: u?.name || '?', rejectionCount: count, currentStatus: u?.kycStatus }; })
-    .sort((a, b) => b.rejectionCount - a.rejectionCount);
-
-  res.json({ linkedAccounts, repeatPairs, flaggedMessaging, abnormalCancel, disputeProne, kycRepeatRejections });
 });
 
 app.post('/api/admin/review/:id', auth, adminOnly, async (req, res) => {
