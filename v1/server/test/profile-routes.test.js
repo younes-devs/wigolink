@@ -20,6 +20,7 @@ async function requestProfile({
   verifyPassword,
   hashPassword,
   clearUserSessions,
+  accountEmail,
 }) {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
@@ -34,6 +35,7 @@ async function requestProfile({
     verifyPassword,
     hashPassword,
     clearUserSessions,
+    accountEmail,
   }));
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
@@ -319,4 +321,68 @@ test('profile password route ne modifie rien si le secret courant est faux', asy
   assert.deepEqual(response.body, {
     error: 'Mot de passe actuel incorrect',
   });
+});
+
+test('profile email routes deleguent la demande et la confirmation au service', async () => {
+  const user = { id: 'u-1', email: 'ancien@example.test' };
+  const calls = [];
+  const accountEmail = {
+    async requestChange(input) {
+      calls.push(['request', input]);
+      return { value: { ok: true, demoHint: 'code-demo' } };
+    },
+    async confirmChange(input) {
+      calls.push(['confirm', input]);
+      return { value: { ok: true, mustRelogin: true } };
+    },
+  };
+  const request = await requestProfile({
+    path: '/email/change/request',
+    body: { newEmail: 'nouveau@example.test', currentPassword: 'secret' },
+    user,
+    accountEmail,
+  });
+  const confirmation = await requestProfile({
+    path: '/email/change/confirm',
+    body: { code: '123456' },
+    user,
+    accountEmail,
+  });
+
+  assert.equal(request.status, 200);
+  assert.deepEqual(request.body, { ok: true, demoHint: 'code-demo' });
+  assert.equal(confirmation.status, 200);
+  assert.deepEqual(confirmation.body, { ok: true, mustRelogin: true });
+  assert.deepEqual(calls, [
+    ['request', {
+      user,
+      body: {
+        newEmail: 'nouveau@example.test',
+        currentPassword: 'secret',
+      },
+      lang: undefined,
+    }],
+    ['confirm', {
+      user,
+      body: { code: '123456' },
+    }],
+  ]);
+});
+
+test('profile email route transmet le statut d erreur du service', async () => {
+  const response = await requestProfile({
+    path: '/email/change/request',
+    body: { newEmail: 'invalide' },
+    accountEmail: {
+      async requestChange() {
+        return { status: 429, error: 'Trop de demandes' };
+      },
+      async confirmChange() {
+        assert.fail('la confirmation ne doit pas etre appelee');
+      },
+    },
+  });
+
+  assert.equal(response.status, 429);
+  assert.deepEqual(response.body, { error: 'Trop de demandes' });
 });

@@ -7,6 +7,7 @@
 
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
+    accountConfirmations: createAccountConfirmationRepository({ db }),
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
     customWhitelist: createCustomWhitelistRepository({ db }),
     kyc: createKycRepository({ db, newId, findUser }),
@@ -14,6 +15,28 @@ export function createRepositories({ db, save, newId, findUser, publicUser }) {
     notifications: createNotificationRepository({ db, newId }),
     reviewQueue: createReviewQueueRepository({ db, newId }),
     settings: createSettingsRepository(),
+  };
+}
+
+function createAccountConfirmationRepository({ db }) {
+  const ensure = () => {
+    db.accountConfirmations = db.accountConfirmations || {};
+    return db.accountConfirmations;
+  };
+
+  return {
+    get(userId) {
+      return ensure()[userId] || null;
+    },
+
+    set(userId, confirmation) {
+      ensure()[userId] = confirmation;
+      return confirmation;
+    },
+
+    remove(userId) {
+      delete ensure()[userId];
+    },
   };
 }
 

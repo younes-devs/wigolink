@@ -37,6 +37,7 @@ import { createRulesRouter } from './routes/rules.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
+import { createAccountEmailService } from './services/account-email.js';
 
 const app = express();
 const {
@@ -772,6 +773,21 @@ app.use('/api/kyc', createKycRouter({
 }));
 
 // ---------- Profil ----------
+const accountEmailService = createAccountEmailService({
+  confirmations: repositories.accountConfirmations,
+  normalizeEmail: normEmail,
+  emailPattern: EMAIL_RE,
+  findByEmail,
+  verifyPassword,
+  rateLimit,
+  newCode: sixDigitCode,
+  deliverCode: deliverAuthCode,
+  demoHint: demoHintFor,
+  clearUserSessions,
+  auditChange,
+  save,
+});
+
 app.use('/api/profile', createProfileRouter({
   auth,
   auditChange,
@@ -780,53 +796,13 @@ app.use('/api/profile', createProfileRouter({
   verifyPassword,
   hashPassword,
   clearUserSessions,
+  accountEmail: accountEmailService,
 }));
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
 function accountConfirmation(userId) {
-  if (!db.accountConfirmations) db.accountConfirmations = {};
-  return db.accountConfirmations[userId] || null;
+  return repositories.accountConfirmations.get(userId);
 }
-
-app.post('/api/profile/email/change/request', auth, async (req, res) => {
-  const newEmail = normEmail(req.body?.newEmail);
-  const currentPassword = String(req.body?.currentPassword || '');
-  if (!EMAIL_RE.test(newEmail)) return res.status(400).json({ error: 'Adresse email invalide' });
-  if (newEmail === req.user.email) return res.status(400).json({ error: 'Utilisez une adresse email differente' });
-  if (findByEmail(newEmail)) return res.status(400).json({ error: 'Un compte utilise deja cette adresse email' });
-  if (!req.user.passwordHash || !verifyPassword(currentPassword, req.user.passwordHash))
-    return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
-  if (rateLimit(`change-email:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
-  const code = sixDigitCode();
-  try {
-    await deliverAuthCode(newEmail, code, 'change_email', req.lang);
-  } catch (error) {
-    return res.status(503).json({ error: error.message });
-  }
-  db.accountConfirmations[req.user.id] = { type: 'change_email', newEmail, code, expires: Date.now() + 15 * 60e3 };
-  save();
-  res.json({ ok: true, demoHint: demoHintFor(code, req.lang) });
-});
-
-app.post('/api/profile/email/change/confirm', auth, async (req, res) => {
-  const pending = accountConfirmation(req.user.id);
-  const code = String(req.body?.code || '').trim();
-  if (!pending || pending.type !== 'change_email' || pending.expires < Date.now())
-    return res.status(400).json({ error: 'Code expire. Recommencez la demande.' });
-  if (pending.code !== code) return res.status(400).json({ error: 'Code incorrect' });
-  if (findByEmail(pending.newEmail)) return res.status(400).json({ error: 'Cette adresse email est deja utilisee' });
-  const previousEmail = req.user.email;
-  req.user.email = pending.newEmail;
-  req.user.emailVerified = true;
-  delete db.accountConfirmations[req.user.id];
-  await clearUserSessions(req.user.id);
-  await auditChange({
-    actorId: req.user.id, action: 'profile.email.update', targetType: 'user', targetId: req.user.id,
-    subjectUserId: req.user.id, before: { email: previousEmail }, after: req.user, fields: ['email'],
-  });
-  save();
-  res.json({ ok: true, mustRelogin: true });
-});
 
 app.post('/api/profile/delete/request', auth, async (req, res) => {
   if (rateLimit(`delete-account:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
@@ -836,7 +812,11 @@ app.post('/api/profile/delete/request', auth, async (req, res) => {
   } catch (error) {
     return res.status(503).json({ error: error.message });
   }
-  db.accountConfirmations[req.user.id] = { type: 'delete_account', code, expires: Date.now() + 15 * 60e3 };
+  repositories.accountConfirmations.set(req.user.id, {
+    type: 'delete_account',
+    code,
+    expires: Date.now() + 15 * 60e3,
+  });
   save();
   res.json({ ok: true, demoHint: demoHintFor(code, req.lang) });
 });
@@ -976,7 +956,7 @@ app.post('/api/profile/delete', auth, async (req, res) => {
   req.user.passwordHash = null;
   req.user.provider = 'deleted';
   req.user.deletedAt = Date.now();
-  delete db.accountConfirmations[uid];
+  repositories.accountConfirmations.remove(uid);
   // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
   // anonymisée pour l'audit de conformité, sans les photos.
   repositories.kyc.purgeSensitiveForUser(uid);

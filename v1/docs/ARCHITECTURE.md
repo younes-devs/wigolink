@@ -465,13 +465,13 @@ images, la limite de tentatives et la projection sont injectés. Une requête
 refusée ne consulte ni ne modifie le dépôt.
 
 `createProfileRouter` regroupe les mutations des informations publiques, de la
-photo et du mot de passe sous `/api/profile`, `/api/profile/photo` et
-`/api/profile/password`. Les données autorisées sont normalisées avant mutation;
-les propriétés sensibles ou inconnues sont ignorées. Chaque modification
-conserve le même journal d'audit. Le mot de passe courant est vérifié avant le
-nouveau, puis toutes les sessions sont invalidées avant l'audit et la
-sauvegarde. Une validation ou une authentification refusée ne produit aucun
-effet.
+photo, du mot de passe et de l'email sous `/api/profile`. Les données autorisées
+sont normalisées avant mutation; les propriétés sensibles ou inconnues sont
+ignorées. Chaque modification conserve le même journal d'audit. Le mot de passe
+courant est vérifié avant le nouveau, puis toutes les sessions sont invalidées
+avant l'audit et la sauvegarde. Le changement d'email délègue sa demande et sa
+confirmation à `createAccountEmailService`. Une validation ou une
+authentification refusée ne produit aucun effet.
 
 `createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
 dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
@@ -542,9 +542,18 @@ La première logique transverse indépendante d'Express est regroupée dans :
 ```text
 server/
 └── services/
+    ├── account-email.js
     ├── audit.js
     └── notifications.js
 ```
+
+`createAccountEmailService` orchestre le changement d'adresse sans dépendre
+d'Express. Il conserve l'ordre des contrôles, la limitation anti-abus, l'envoi
+du code avant sa persistance et la durée de quinze minutes. À la confirmation,
+l'unicité est revérifiée, toutes les sessions sont invalidées et le changement
+est audité avant sauvegarde. Le dépôt `accountConfirmations` encapsule désormais
+les opérations `get`, `set` et `remove` utilisées aussi par la suppression de
+compte; `server/index.js` n'accède plus directement à cette collection.
 
 `createAuditService` fournit l'écriture brute `audit` et le journal différentiel
 `auditChange` à partir du dépôt `auditLogs`. Le calcul des changements reste

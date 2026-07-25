@@ -13,6 +13,7 @@ export function createProfileRouter({
   verifyPassword,
   hashPassword,
   clearUserSessions,
+  accountEmail,
   validateUpdate = validateProfileUpdate,
   validatePhoto = validateProfilePhoto,
   validatePassword = validatePasswordChange,
@@ -87,6 +88,29 @@ export function createProfileRouter({
     });
     save();
     return res.json({ ok: true, mustRelogin: true });
+  });
+
+  router.post('/email/change/request', auth, async (req, res) => {
+    const result = await accountEmail.requestChange({
+      user: req.user,
+      body: req.body,
+      lang: req.lang,
+    });
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    return res.json(result.value);
+  });
+
+  router.post('/email/change/confirm', auth, async (req, res) => {
+    const result = await accountEmail.confirmChange({
+      user: req.user,
+      body: req.body,
+    });
+    if (result.error) {
+      return res.status(result.status).json({ error: result.error });
+    }
+    return res.json(result.value);
   });
 
   return router;
