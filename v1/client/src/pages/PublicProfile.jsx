@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { Stars, TrustBadge } from '../components.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
 
 const dateFmt = () => new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
@@ -71,11 +72,12 @@ export default function PublicProfile() {
       </section>
 
       <section className="card">
-        <h2><Icon name="plane" size={17} />{t('publicProfile.trips')}</h2>
+        <h2><Icon name="mapPin" size={17} />{t('publicProfile.trips')}</h2>
         {data.trips.length === 0 && <p className="muted">{t('publicProfile.noTrips')}</p>}
         <div className="public-trip-list">
           {data.trips.map((trip) => (
             <Link to={`/trajets/${trip.id}`} className="public-trip-row" key={trip.id}>
+              <TripTransportIcon mode={trip.transportMode} size={18} />
               <span className="grow">
                 <b>{trip.from} {'->'} {trip.to}</b>
                 <small>{dateFmt().format(new Date(trip.departureDate))} · {trip.price} {trip.currency} · {trip.capacityKg} kg</small>

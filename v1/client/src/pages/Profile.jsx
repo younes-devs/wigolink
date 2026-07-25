@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { TrustBadge, Stars } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
+import { TripTransportIcon, TransportModePicker } from '../TripTransport.jsx';
 import { t, useLang, dateLocale } from '../i18n.js';
 
 const memberFmt = () => new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric' });
@@ -186,6 +187,7 @@ function MyPublishedTrips() {
     setErr('');
     setEditId(trip.id);
     setEditForm({
+      transportMode: trip.transportMode || 'plane',
       from: trip.from || '',
       to: trip.to || '',
       date: (trip.departureDate || trip.date || '').slice(0, 10),
@@ -217,7 +219,7 @@ function MyPublishedTrips() {
   return (
     <div className="card my-trips-card">
       <div className="list-row" style={{ alignItems: 'center' }}>
-        <Icon name="plane" size={17} />
+        <Icon name="mapPin" size={17} />
         <h2 className="grow" style={{ margin: 0 }}>{t('profile.trips.title')}</h2>
         <Link to="/trajets" className="btn btn-ghost btn-sm"><Icon name="plus" size={15} />{t('profile.trips.publish')}</Link>
       </div>
@@ -233,6 +235,7 @@ function MyPublishedTrips() {
         {visibleTrips.slice(0, 5).map((trip) => (
           editId === trip.id ? (
             <form className="my-trip-edit" key={trip.id} onSubmit={saveEdit}>
+              <TransportModePicker value={editForm.transportMode} onChange={(transportMode) => setEditForm({ ...editForm, transportMode })} />
               <div className="row">
                 <label className="field">
                   <span>{t('trips.from')}</span>
@@ -278,7 +281,7 @@ function MyPublishedTrips() {
           ) : (
             <article className="my-trip-row" key={trip.id}>
               <div className="grow">
-                <b>{trip.from} {'->'} {trip.to}</b>
+                <b className="my-trip-route"><TripTransportIcon mode={trip.transportMode} size={16} />{trip.from} {'->'} {trip.to}</b>
                 <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
                 {trip.activeOperations > 0 && <small>{t('trips.active', { count: trip.activeOperations })}</small>}
               </div>

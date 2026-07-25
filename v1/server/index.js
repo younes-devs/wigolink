@@ -1403,6 +1403,12 @@ app.get('/api/compliance-center', auth, (req, res) => {
   res.json({ compliance: complianceCenterFor(req.user, req.lang) });
 });
 
+const TRIP_TRANSPORT_MODES = new Set(['plane', 'car']);
+
+function tripTransportMode(value) {
+  return value === 'car' ? 'car' : 'plane';
+}
+
 app.get('/api/trips/mine', auth, (req, res) => {
   const trips = db.trips
     .filter((t) => t.travelerId === req.user.id)
@@ -1457,10 +1463,12 @@ app.get('/api/trips/mission', auth, (req, res) => {
 app.post('/api/trips', auth, async (req, res) => {
   if (req.user.kycStatus !== 'verified')
     return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
-  const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body;
+  const { from, to, date, departureDate, capacityKg, price, description, conditions, transportMode = 'plane' } = req.body;
   const travelDate = date || departureDate;
   if (!from || !to || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
   if (from === to) return res.status(400).json({ error: 'Départ et arrivée identiques' });
+  if (!TRIP_TRANSPORT_MODES.has(transportMode))
+    return res.status(400).json({ error: 'Type de transport invalide' });
   if (new Date(travelDate) < new Date(new Date().toDateString()))
     return res.status(400).json({ error: 'La date est déjà passée' });
   const proposedPrice = positiveNumber(price === undefined ? 25 : price);
@@ -1471,6 +1479,7 @@ app.post('/api/trips', auth, async (req, res) => {
     to: String(to).trim().slice(0, 60),
     date: travelDate,
     departureDate: travelDate,
+    transportMode,
     price: proposedPrice,
     currency: 'EUR',
     description: String(description || 'Voyageur disponible pour transporter un colis propre et conforme.').trim().slice(0, 700),
@@ -1484,7 +1493,7 @@ app.post('/api/trips', auth, async (req, res) => {
   await auditChange({
     actorId: req.user.id, action: 'trip.create', targetType: 'trip', targetId: trip.id,
     subjectUserId: req.user.id, before: {}, after: trip,
-    fields: ['from', 'to', 'departureDate', 'capacityKg', 'price', 'description', 'conditions', 'status'],
+    fields: ['from', 'to', 'departureDate', 'transportMode', 'capacityKg', 'price', 'description', 'conditions', 'status'],
   });
   save();
   res.json({ trip: tripPostView(trip, req.user) });
@@ -1501,12 +1510,15 @@ app.patch('/api/trips/:id', auth, async (req, res) => {
 
   const before = { ...trip };
 
-  const { from, to, date, departureDate, capacityKg, price, description, conditions } = req.body || {};
+  const { from, to, date, departureDate, capacityKg, price, description, conditions, transportMode } = req.body || {};
   const travelDate = date || departureDate || trip.departureDate || trip.date;
   const nextFrom = String(from ?? trip.from).trim().slice(0, 60);
   const nextTo = String(to ?? trip.to).trim().slice(0, 60);
+  const nextTransportMode = transportMode === undefined ? tripTransportMode(trip.transportMode) : transportMode;
   if (!nextFrom || !nextTo || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
   if (nextFrom === nextTo) return res.status(400).json({ error: 'Depart et arrivee identiques' });
+  if (!TRIP_TRANSPORT_MODES.has(nextTransportMode))
+    return res.status(400).json({ error: 'Type de transport invalide' });
   if (new Date(travelDate) < new Date(new Date().toDateString()))
     return res.status(400).json({ error: 'La date est deja passee' });
   const proposedPrice = positiveNumber(price === undefined ? trip.price : price);
@@ -1516,6 +1528,7 @@ app.patch('/api/trips/:id', auth, async (req, res) => {
   trip.to = nextTo;
   trip.date = travelDate;
   trip.departureDate = travelDate;
+  trip.transportMode = nextTransportMode;
   trip.price = proposedPrice;
   trip.capacityKg = Math.max(1, Math.min(30, Number(capacityKg ?? trip.capacityKg) || 5));
   trip.description = String(description ?? trip.description ?? '').trim().slice(0, 700)
@@ -1526,7 +1539,7 @@ app.patch('/api/trips/:id', auth, async (req, res) => {
   await auditChange({
     actorId: req.user.id, action: 'trip.update', targetType: 'trip', targetId: trip.id,
     subjectUserId: req.user.id, before, after: trip,
-    fields: ['from', 'to', 'departureDate', 'capacityKg', 'price', 'description', 'conditions'],
+    fields: ['from', 'to', 'departureDate', 'transportMode', 'capacityKg', 'price', 'description', 'conditions'],
   });
   save();
   res.json({ trip: tripPostView(trip, req.user) });
@@ -1565,6 +1578,7 @@ function tripPostView(trip, user = null) {
     ...trip,
     departureDate: trip.departureDate || trip.date,
     ticketDate: trip.ticketDate || trip.date,
+    transportMode: tripTransportMode(trip.transportMode),
     price,
     currency: trip.currency || 'EUR',
     capacityKg: Number(trip.capacityKg || 0),
@@ -3635,6 +3649,7 @@ app.get('/api/users/:id', auth, (req, res) => {
       from: trip.from,
       to: trip.to,
       departureDate: trip.departureDate || trip.date,
+      transportMode: tripTransportMode(trip.transportMode),
       price: trip.price,
       currency: trip.currency || 'EUR',
       capacityKg: trip.capacityKg,

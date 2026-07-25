@@ -5,6 +5,7 @@ import { useAuth } from '../App.jsx';
 import { ConfirmDialog } from '../components.jsx';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon, TransportModePicker } from '../TripTransport.jsx';
 import { t, useLang } from '../i18n.js';
 import { formatDate } from './TripFeedSimple.jsx';
 
@@ -24,7 +25,7 @@ export default function TripDetailSimple() {
   useEffect(() => { load(); }, [id]);
   useEffect(() => {
     if (!trip) return;
-    setEditForm({ from: trip.from, to: trip.to, date: trip.departureDate, capacityKg: trip.capacityKg, price: trip.price, description: trip.description, conditions: trip.conditions });
+    setEditForm({ transportMode: trip.transportMode || 'plane', from: trip.from, to: trip.to, date: trip.departureDate, capacityKg: trip.capacityKg, price: trip.price, description: trip.description, conditions: trip.conditions });
   }, [trip]);
 
   const saveTrip = async () => {
@@ -91,7 +92,7 @@ export default function TripDetailSimple() {
       <section className="card trip-detail-card">
         <div className="trip-detail-route">
           <div><span>{t('trips.from')}</span><b>{trip.from}</b></div>
-          <Icon name="plane" size={24} />
+          <TripTransportIcon mode={trip.transportMode} size={24} />
           <div><span>{t('trips.to')}</span><b>{trip.to}</b></div>
         </div>
 
@@ -137,6 +138,7 @@ export default function TripDetailSimple() {
               </div>
             ) : editing ? (
               <form className="trip-owner-form" onSubmit={updateOwnTrip}>
+                <TransportModePicker value={editForm?.transportMode} onChange={(transportMode) => setEditForm({ ...editForm, transportMode })} />
                 <div className="row trip-owner-route-row">
                   <label className="field"><span>{t('trips.from')}</span><input value={editForm?.from || ''} onChange={(e) => setEditForm({ ...editForm, from: e.target.value })} /></label>
                   <label className="field"><span>{t('trips.to')}</span><input value={editForm?.to || ''} onChange={(e) => setEditForm({ ...editForm, to: e.target.value })} /></label>

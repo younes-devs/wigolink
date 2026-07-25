@@ -175,6 +175,7 @@ function tripView(trip) {
   return {
     ...trip,
     departureDate: trip.departureDate || trip.date,
+    transportMode: trip.transportMode === 'car' ? 'car' : 'plane',
     price: Number(trip.price ?? trip.proposedPrice ?? trip.travelerPay ?? 25),
     currency: trip.currency || 'EUR',
   };

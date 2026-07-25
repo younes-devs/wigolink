@@ -47,6 +47,7 @@ const ERRORS = {
   'Acceptation explicite des règles douanières requise': { ar: 'الموافقة الصريحة على القواعد الجمركية مطلوبة', nl: 'Uitdrukkelijke aanvaarding van de douaneregels vereist' },
   'Trajet introuvable': { ar: 'الرحلة غير موجودة', nl: 'Reis niet gevonden' },
   'Trajet, sens et date requis': { ar: 'الرحلة والاتجاه والتاريخ مطلوبة', nl: 'Reis, richting en datum vereist' },
+  'Type de transport invalide': { ar: 'نوع وسيلة النقل غير صالح', nl: 'Ongeldig vervoerstype' },
   'Départ et arrivée identiques': { ar: 'نقطتا الانطلاق والوصول متطابقتان', nl: 'Vertrek en aankomst zijn identiek' },
   'La date est déjà passée': { ar: 'التاريخ قد مضى', nl: 'De datum is al voorbij' },
 

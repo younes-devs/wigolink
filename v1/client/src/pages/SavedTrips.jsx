@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { formatDate } from './TripFeedSimple.jsx';
 import { t, useLang } from '../i18n.js';
 
@@ -49,6 +50,7 @@ export default function SavedTrips() {
         {trips?.map((trip) => (
           <article className="card saved-trip" key={trip.id}>
             <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={44} />
+            <TripTransportIcon mode={trip.transportMode} size={20} />
             <div className="grow">
               <b>{trip.from} {'->'} {trip.to}</b>
               <span>{formatDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>

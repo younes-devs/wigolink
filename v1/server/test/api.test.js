@@ -1651,6 +1651,48 @@ test('audit admin : les changements de profil et de trajet gardent avant et apre
   assert.deepEqual(tripLog.meta.changes.find((change) => change.field === 'price'), { field: 'price', before: 25, after: 30 });
 });
 
+test('trajets : prend en charge avion et voiture avec avion par defaut', async () => {
+  const traveler = await registerKycVerifiedUser(tokens.admin, 'TransportMode');
+  const carTrip = await api('/trips', {
+    method: 'POST',
+    token: traveler.token,
+    body: {
+      transportMode: 'car',
+      from: 'Bruxelles',
+      to: 'Oujda',
+      date: '2099-09-18',
+      capacityKg: 10,
+      price: 35,
+    },
+  });
+  assert.equal(carTrip.status, 200, JSON.stringify(carTrip.body));
+  assert.equal(carTrip.body.trip.transportMode, 'car');
+
+  const planeTrip = await api('/trips', {
+    method: 'POST',
+    token: traveler.token,
+    body: { from: 'Oujda', to: 'Paris', date: '2099-09-20', capacityKg: 4, price: 20 },
+  });
+  assert.equal(planeTrip.status, 200, JSON.stringify(planeTrip.body));
+  assert.equal(planeTrip.body.trip.transportMode, 'plane');
+
+  const changedToPlane = await api(`/trips/${carTrip.body.trip.id}`, {
+    method: 'PATCH',
+    token: traveler.token,
+    body: { transportMode: 'plane' },
+  });
+  assert.equal(changedToPlane.status, 200, JSON.stringify(changedToPlane.body));
+  assert.equal(changedToPlane.body.trip.transportMode, 'plane');
+
+  const invalidMode = await api(`/trips/${carTrip.body.trip.id}`, {
+    method: 'PATCH',
+    token: traveler.token,
+    body: { transportMode: 'boat' },
+  });
+  assert.equal(invalidMode.status, 400);
+  assert.match(invalidMode.body.error, /transport/i);
+});
+
 test('suppression de conversation : retire seulement la boite du membre et preserve la preuve admin', async () => {
   const sender = await registerKycVerifiedUser(tokens.admin, 'SuppressionMessage');
   const recipient = await registerKycVerifiedUser(tokens.admin, 'DestinataireMessage');

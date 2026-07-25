@@ -46,7 +46,7 @@ function seed() {
     trips: [
       {
         id: 't-1', travelerId: 'u-karim', from: 'Casablanca', to: 'Bruxelles',
-        date: new Date(now + 12 * 864e5).toISOString().slice(0, 10), capacityKg: 8,
+        date: new Date(now + 12 * 864e5).toISOString().slice(0, 10), transportMode: 'plane', capacityKg: 8,
       },
     ],
     listings: [

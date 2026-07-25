@@ -4,6 +4,7 @@ import { api } from '../api';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { StatusPill, TrustBadge } from '../components.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { t, useLang, dateLocale } from '../i18n.js';
 
 function txTarget(tx) {
@@ -129,7 +130,7 @@ export default function Dashboard() {
             <div className="dash-chip-list">
               {data.trips.map((trip) => (
                 <span key={trip.id} className="dash-trip-chip">
-                  <Icon name="plane" size={14} />
+                  <TripTransportIcon mode={trip.transportMode} size={14} />
                   {`${trip.from} -> ${trip.to}`}
                   <small>{`${dateFmt().format(new Date(trip.date))} · ${trip.capacityKg} kg`}</small>
                 </span>

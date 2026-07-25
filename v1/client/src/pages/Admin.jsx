@@ -272,7 +272,7 @@ function auditField(field) {
   return {
     name: 'Nom', city: 'Ville', phone: 'Telephone', email: 'E-mail', hasPhoto: 'Photo de profil',
     transactions: 'Transactions', messages: 'Messages', shipments: 'Envois', reminders: 'Rappels',
-    from: 'Depart', to: 'Arrivee', departureDate: 'Date de depart', capacityKg: 'Capacite',
+    from: 'Depart', to: 'Arrivee', departureDate: 'Date de depart', transportMode: 'Type de transport', capacityKg: 'Capacite',
     price: 'Prix', description: 'Description', conditions: 'Conditions', status: 'Statut',
     title: 'Titre', categoryLabel: 'Categorie', weightKg: 'Poids', valueEur: 'Valeur declaree',
     dateFrom: 'Date de debut', dateTo: 'Date de fin', travelerPay: 'Remuneration voyageur',

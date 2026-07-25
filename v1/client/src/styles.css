@@ -465,6 +465,37 @@ body {
 }
 .trip-publish-form { display: grid; gap: 12px; margin-bottom: 14px; }
 .trip-publish-form .btn { justify-self: end; }
+.transport-mode-field { min-width: 0; border: 0; padding: 0; }
+.transport-mode-field legend {
+  margin-bottom: 7px; color: var(--ink); font-size: 13px; font-weight: 700;
+}
+.transport-mode-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.transport-mode-picker > button {
+  min-width: 0; min-height: 66px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--hairline);
+  border-radius: 10px; background: var(--surface-soft); color: var(--ink); text-align: left;
+  font: inherit; cursor: pointer; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.transport-mode-picker > button:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.transport-mode-picker > button.active {
+  border-color: var(--accent); background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.transport-mode-picker > button > .icon { color: var(--accent); }
+.transport-mode-picker b, .transport-mode-picker small { display: block; }
+.transport-mode-picker b { font-size: 13.5px; }
+.transport-mode-picker small { margin-top: 2px; color: var(--ink-soft); font-size: 11px; line-height: 1.3; }
+.transport-mode-check {
+  width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--hairline);
+  border-radius: 999px; color: transparent; background: var(--surface);
+}
+.transport-mode-picker > button.active .transport-mode-check {
+  border-color: var(--accent); background: var(--accent); color: #fff;
+}
+.trip-transport-icon {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  color: var(--accent);
+}
 .trip-post-list, .saved-list, .operation-list, .conversation-list { display: grid; gap: 10px; }
 .trip-post { display: grid; gap: 14px; }
 .trip-post-route, .trip-detail-route {
@@ -474,6 +505,10 @@ body {
 .trip-post-route div:last-child, .trip-detail-route div:last-child { text-align: right; }
 .trip-post-route b, .trip-detail-route b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; color: var(--ink); }
 .trip-post-route span, .trip-detail-route span { display: block; font-size: 11.5px; color: var(--ink-soft); }
+.trip-post-route .trip-transport-icon, .trip-detail-route .trip-transport-icon {
+  width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+  background: var(--accent-tint); color: var(--accent);
+}
 .trip-post-body, .operation-main, .saved-trip, .operation-person {
   display: flex; gap: 12px; align-items: center; min-width: 0;
 }
@@ -3390,6 +3425,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.my-trip-row .my-trip-route { display: flex; align-items: center; gap: 7px; }
 .my-trip-row span,
 .my-trip-row small {
   color: var(--ink-soft);
@@ -3428,6 +3464,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 520px) {
+  .transport-mode-picker { grid-template-columns: 1fr; }
+  .transport-mode-picker > button { min-height: 60px; }
   .my-trip-row {
     grid-template-columns: 1fr;
     align-items: stretch;

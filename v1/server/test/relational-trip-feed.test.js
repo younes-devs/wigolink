@@ -40,6 +40,7 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   });
   assert.equal(result.trips[0].saved, true);
   assert.equal(result.trips[0].traveler.name, 'Karim');
+  assert.equal(result.trips[0].transportMode, 'plane');
   assert.equal(result.page.limit, 100);
   assert.equal(result.page.offset, 0);
   assert.match(calls[0].sql, /wigofly_trips/);

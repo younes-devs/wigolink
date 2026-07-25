@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../App.jsx';
 import { Icon } from '../Icons.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { t, useLang } from '../i18n.js';
 
 const DOCUMENT_PRICE_EUR = 3;
@@ -77,7 +78,7 @@ export default function TripRequestSimple() {
     <div className="simple-page trip-request-page">
       <button type="button" className="link-btn" onClick={() => nav(`/trajets/${trip.id}`)}><Icon name="arrowLeft" size={15} />{t('common.back')}</button>
       <header className="trip-request-intro">
-        <span>{trip.from} <Icon name="arrowRight" size={14} /> {trip.to}</span>
+        <span>{trip.from} <TripTransportIcon mode={trip.transportMode} size={16} /> {trip.to}</span>
         <h1>{t('trips.request.make')}</h1>
       </header>
 
@@ -147,7 +148,7 @@ export default function TripRequestSimple() {
             <div><p>{t('trips.request.before')}</p><h2 id="request-review-title">{t('trips.request.review')}</h2></div>
           </div>
           <div className="trip-request-summary">
-            <div><span>{t('trips.trip')}</span><b>{trip.from} <Icon name="arrowRight" size={14} /> {trip.to}</b></div>
+            <div><span>{t('trips.trip')}</span><b>{trip.from} <TripTransportIcon mode={trip.transportMode} size={14} /> {trip.to}</b></div>
             <div><span>{t('trips.request.shipment')}</span><b>{shipmentLabel}</b></div>
             <div><span>{t('trips.request.calculatedPrice')}</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
             <div><span>{t('common.description')}</span><b>{description}</b></div>

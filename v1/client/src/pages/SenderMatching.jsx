@@ -5,6 +5,7 @@ import { CategoryIcon, Icon } from '../Icons.jsx';
 import { TrustBadge } from '../components.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { t, useLang, getLang } from '../i18n.js';
 
 const dateFmt = () => new Intl.DateTimeFormat(getLang() === 'ar' ? 'ar-MA' : 'fr-BE', { day: 'numeric', month: 'short' });
@@ -163,7 +164,7 @@ function ListingMatches({ item, onPropose, onDecide, busyOffer, offerDurations, 
           {item.candidates.map((c) => (
             <div className="matching-candidate" key={c.trip.id}>
               <div className="matching-candidate-main">
-                <Icon name="plane" size={17} />
+                <TripTransportIcon mode={c.trip.transportMode} size={17} />
                 <div className="grow">
                   <b>{c.traveler?.name || t('matching.traveler')}</b>
                   <span>{dateFmt().format(new Date(c.trip.date))} - {c.trip.capacityKg} kg - {t('matching.fit', { n: c.capacityFit })}</span>

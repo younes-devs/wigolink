@@ -5,6 +5,7 @@ import { KycRequiredNotice, TrustBadge } from '../components.jsx';
 import { CategoryIcon, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon, TransportModePicker } from '../TripTransport.jsx';
 import { t, useLang, dateLocale } from '../i18n.js';
 
 const EMPTY_FILTERS = { category: '', minPrice: '', maxPrice: '', q: '' };
@@ -103,7 +104,7 @@ export default function Feed() {
       {/* Trajets déclarés (PRD §2.1) — la clé du matching */}
       <div className="card trip-card">
         <div className="list-row">
-          <Icon name="plane" size={18} />
+          <Icon name="mapPin" size={18} />
           <b className="grow">{t('feed.mytrips')}</b>
           <button className="btn btn-ghost btn-sm" onClick={() => setAddingTrip(!addingTrip)}>
             {addingTrip ? t('feed.declare.close') : t('feed.declare')}
@@ -113,6 +114,7 @@ export default function Feed() {
           <div className="trip-chips">
             {futureTrips.map((trip) => (
               <span key={trip.id} className="trip-chip">
+                <TripTransportIcon mode={trip.transportMode} size={14} />
                 {trip.from} → {trip.to} · {new Date(trip.date).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })} · {trip.capacityKg} kg
                 <button onClick={() => removeTrip(trip.id)} aria-label={t('common.remove')}><Icon name="x" size={12} /></button>
               </span>
@@ -322,7 +324,7 @@ function MissionPanel({ mission, onDeclare }) {
   if (!mission.missions?.length) {
     return (
       <div className="mission-panel mission-empty">
-        <Icon name="plane" size={22} />
+        <Icon name="mapPin" size={22} />
         <div className="grow">
           <b>{t('mission.empty.title')}</b>
           <span>{t('mission.empty.sub')}</span>
@@ -336,7 +338,7 @@ function MissionPanel({ mission, onDeclare }) {
     <div className="mission-panel">
       <div className="mission-head">
         <div>
-          <h2><Icon name="plane" size={17} />{t('mission.title')}</h2>
+          <h2><TripTransportIcon mode={first.trip.transportMode} size={17} />{t('mission.title')}</h2>
           <p>{t('mission.sub', { trips: mission.totals.trips, matches: mission.totals.matches })}</p>
         </div>
         <b>+{mission.totals.potentialPay} €</b>
@@ -368,7 +370,7 @@ function MissionPanel({ mission, onDeclare }) {
 
 function TripForm({ onSaved }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({ from: 'Casablanca', to: 'Bruxelles', date: '', capacityKg: 8 });
+  const [form, setForm] = useState({ transportMode: 'plane', from: 'Casablanca', to: 'Bruxelles', date: '', capacityKg: 8 });
   const [err, setErr] = useState('');
   const [needsKyc, setNeedsKyc] = useState(false);
 
@@ -387,6 +389,7 @@ function TripForm({ onSaved }) {
     <div className="mt">
       {err && <div className="alert alert-danger"><Icon name="alert" size={17} />{err}</div>}
       {needsKyc && <KycRequiredNotice />}
+      <TransportModePicker value={form.transportMode} onChange={(transportMode) => setForm({ ...form, transportMode })} />
       <div className="row">
         <div className="field">
           <label>{t('trip.direction')}</label>
@@ -396,7 +399,7 @@ function TripForm({ onSaved }) {
           </select>
         </div>
         <div className="field">
-          <label>{t('trip.flightdate')}</label>
+          <label>{t('trips.ticketDate')}</label>
           <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </div>
         <div className="field" style={{ maxWidth: 110 }}>

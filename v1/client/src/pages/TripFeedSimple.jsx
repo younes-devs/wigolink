@@ -5,6 +5,7 @@ import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
+import { TripTransportIcon, TransportModePicker, transportIconName } from '../TripTransport.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
 
 const tripOverviewCache = new Map();
@@ -149,7 +150,7 @@ export default function TripFeedSimple() {
             <article className="card trip-post" key={trip.id}>
               <div className="trip-post-route">
                 <div><b>{trip.from}</b><span>{t('trips.from')}</span></div>
-                <Icon name="plane" size={20} />
+                <TripTransportIcon mode={trip.transportMode} size={20} />
                 <div><b>{trip.to}</b><span>{t('trips.to')}</span></div>
               </div>
               <div className="trip-post-body">
@@ -183,7 +184,7 @@ export default function TripFeedSimple() {
       {trips === null && <SkeletonList count={4} />}
       {trips?.length === 0 && (
         <div className="card center empty-state">
-          <Icon name="plane" size={34} />
+          <Icon name="repeat" size={34} />
           <p className="muted">{t('trips.empty')}</p>
         </div>
       )}
@@ -195,7 +196,7 @@ export default function TripFeedSimple() {
                 <b>{trip.from}</b>
                 <span>{t('trips.from')}</span>
               </div>
-              <Icon name="plane" size={20} />
+              <TripTransportIcon mode={trip.transportMode} size={20} />
               <div>
                 <b>{trip.to}</b>
                 <span>{t('trips.to')}</span>
@@ -241,6 +242,7 @@ function TripPublishForm({ onCreated }) {
   const today = new Date().toISOString().slice(0, 10);
   const toast = useToast();
   const [form, setForm] = useState({
+    transportMode: 'plane',
     from: 'Oujda',
     to: 'Bruxelles',
     date: '',
@@ -266,6 +268,7 @@ function TripPublishForm({ onCreated }) {
 
   return (
     <form className="card trip-publish-form" onSubmit={submit}>
+      <TransportModePicker value={form.transportMode} onChange={(transportMode) => setForm({ ...form, transportMode })} />
       <div className="row trip-publish-route-row">
         <div className="field">
           <label>{t('trips.from')}</label>
@@ -299,7 +302,7 @@ function TripPublishForm({ onCreated }) {
         <textarea rows={2} value={form.conditions} onChange={(e) => setForm({ ...form, conditions: e.target.value })} />
       </div>
       <button className="btn btn-primary" disabled={busy || !form.from || !form.to || !form.date}>
-        {busy ? <span className="spinner" /> : <Icon name="plane" size={17} />}
+        {busy ? <span className="spinner" /> : <Icon name={transportIconName(form.transportMode)} size={17} />}
         {t('trips.publish.submit')}
       </button>
     </form>

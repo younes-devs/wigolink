@@ -162,6 +162,7 @@ function tripView(trip, traveler, saved, activeOperations) {
     ...trip,
     departureDate: date,
     ticketDate: trip.ticketDate || trip.date,
+    transportMode: trip.transportMode === 'car' ? 'car' : 'plane',
     price: Number(trip.price ?? trip.proposedPrice ?? trip.travelerPay ?? trip.priceEur ?? 25),
     currency: trip.currency || 'EUR',
     capacityKg: Number(trip.capacityKg || 0),
