@@ -1,10 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from '../core/api.js';
-import { Header, BottomNav } from '../components.jsx';
+import {
+  BottomNav,
+  Header,
+  Onboarding,
+  shouldOnboard,
+  SideRail,
+} from './components/index.js';
 import { ToastProvider } from '../shared/ui/Toast.jsx';
-import SideRail from '../SideRail.jsx';
-import Onboarding, { shouldOnboard } from '../Onboarding.jsx';
 import { t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
 

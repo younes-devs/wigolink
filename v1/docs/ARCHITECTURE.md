@@ -19,6 +19,11 @@ Le démarrage React, le routeur et le contexte de session sont regroupés dans :
 
 ```text
 client/src/app/
+├── components/
+│   ├── AppNavigation.jsx
+│   ├── Onboarding.jsx
+│   ├── SideRail.jsx
+│   └── index.js
 ├── App.jsx
 ├── authContext.jsx
 └── index.js
@@ -31,11 +36,23 @@ façade de compatibilité :
 client/src/App.jsx
 ```
 
+`AppNavigation` contient le header et la navigation mobile, `SideRail` le
+panneau contextuel desktop et `Onboarding` le premier parcours du membre.
+`app/App.jsx` importe ces composants depuis le barrel local. Les anciens chemins
+restent compatibles :
+
+```text
+client/src/components.jsx  # reexporte Header et BottomNav
+client/src/Onboarding.jsx
+client/src/SideRail.jsx
+```
+
 Les domaines hors paiement importent `useAuth` depuis `app/authContext.jsx`
 afin de ne plus dépendre du module du routeur. Le domaine paiement, laissé
 volontairement inchangé jusqu'au choix du prestataire, continue temporairement
 à utiliser la façade historique. Les routes, redirections, délais de session,
-écrans de chargement et règles d'onboarding ne sont pas modifiés.
+écrans de chargement, fréquence des badges de navigation et règles d'onboarding
+ne sont pas modifiés.
 
 ## Socle `core`
 
