@@ -335,3 +335,20 @@ La route frontend `/admin` ne constitue pas une autorisation : tous les
 endpoints `/api/admin/*` restent protégés côté serveur par `auth` puis
 `adminOnly`. Cette migration ne modifie ni les rôles, ni les décisions KYC, ni
 les preuves, ni les journaux d'audit.
+
+## Backend `middleware`
+
+La modularisation backend commence par les contrôles d'accès autonomes :
+
+```text
+server/
+└── middleware/
+    └── admin-only.js
+```
+
+`adminOnly` est importé par `server/index.js` et reste placé après `auth` sur
+chacune des 17 routes `/api/admin/*`. Il refuse les membres avec le même statut
+`403` et le même message qu'avant. Des tests unitaires dédiés complètent les
+tests d'intégration existants sur les rôles et les endpoints administrateur.
+Cette étape ne déplace aucune route et ne modifie aucun accès à la base de
+données.

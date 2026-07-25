@@ -19,6 +19,7 @@ import {
 import {
   listRelationalConversations, relationalConversation, relationalMessageReadsEnabled,
 } from './relational-messaging.js';
+import { adminOnly } from './middleware/admin-only.js';
 
 const app = express();
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -3959,10 +3960,6 @@ app.get('/api/transactions/:id/customs-recap', auth, (req, res) => {
 });
 
 // ---------- Back-office (PRD §4.7) ----------
-function adminOnly(req, res, next) {
-  if (!req.user.isAdmin) return res.status(403).json({ error: 'Réservé aux admins' });
-  next();
-}
 
 const KYC_SLA_MS = 24 * 3600e3;
 const OFFER_WATCH_MS = 24 * 3600e3;
