@@ -15,14 +15,18 @@ contrats API.
 
 ## Domaine `trips`
 
-Première étape réalisée :
+État actuel :
 
 ```text
 client/src/features/trips/
 ├── components/
 │   └── TripTransport.jsx
 ├── pages/
-│   └── CreateTrip.jsx
+│   ├── CreateTrip.jsx
+│   ├── SavedTrips.jsx
+│   ├── TripDetailSimple.jsx
+│   ├── TripFeedSimple.jsx
+│   └── TripRequestSimple.jsx
 └── index.js
 ```
 
@@ -31,8 +35,16 @@ Les chemins historiques restent compatibles :
 ```text
 client/src/TripTransport.jsx
 client/src/pages/CreateTrip.jsx
+client/src/pages/SavedTrips.jsx
+client/src/pages/TripDetailSimple.jsx
+client/src/pages/TripFeedSimple.jsx
+client/src/pages/TripRequestSimple.jsx
 ```
 
-Ces deux fichiers réexportent désormais l'implémentation du domaine `trips`. Les
-autres écrans peuvent donc migrer progressivement, sans changement massif des
-imports.
+Ces fichiers réexportent désormais l'implémentation du domaine `trips`. Les
+écrans qui utilisent encore les chemins historiques restent compatibles, tandis
+que le routeur principal charge directement les modules du domaine.
+
+Les écrans `Profile`, `PublicProfile`, `Dashboard`, `Operations` et l'ancien feed
+restent dans leurs domaines actuels. Ils peuvent afficher des informations de
+trajet sans appartenir au domaine `trips`.
