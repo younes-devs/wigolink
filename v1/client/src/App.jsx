@@ -17,8 +17,8 @@ const TripRequestSimple = lazy(() => import('./features/trips/pages/TripRequestS
 const SavedTrips = lazy(() => import('./features/trips/pages/SavedTrips.jsx'));
 const MessagesSimple = lazy(() => import('./features/messaging/pages/MessagesSimple.jsx'));
 const ConversationDetail = lazy(() => import('./features/messaging/pages/ConversationDetail.jsx'));
-const OperationsSimple = lazy(() => import('./pages/OperationsSimple.jsx'));
-const OperationDetailSimple = lazy(() => import('./pages/OperationDetailSimple.jsx'));
+const OperationsSimple = lazy(() => import('./features/operations/pages/OperationsSimple.jsx'));
+const OperationDetailSimple = lazy(() => import('./features/operations/pages/OperationDetailSimple.jsx'));
 const Feed = lazy(() => import('./pages/Feed.jsx'));
 const ListingDetail = lazy(() => import('./pages/ListingDetail.jsx'));
 const CreateListing = lazy(() => import('./pages/CreateListing.jsx'));

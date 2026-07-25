@@ -75,3 +75,28 @@ client/src/realtime.js
 Le routeur principal charge directement les pages du domaine. Les endpoints,
 le cache d'inbox, le polling de secours et le canal Supabase Realtime conservent
 leur comportement existant.
+
+## Domaine `operations`
+
+Le suivi frontend des opérations est regroupé dans :
+
+```text
+client/src/features/operations/
+├── pages/
+│   ├── OperationDetailSimple.jsx
+│   └── OperationsSimple.jsx
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/pages/OperationDetailSimple.jsx
+client/src/pages/OperationsSimple.jsx
+```
+
+Ce domaine couvre la liste active, l'historique, le détail et les actions de
+suivi d'une opération. Les écrans Finance, Documents, Support, Transactions et
+Paiements restent séparés : ils n'appartiennent pas à cette migration ciblée.
+Les endpoints, statuts, règles escrow, codes de remise et règles de litige ne
+sont pas modifiés.
