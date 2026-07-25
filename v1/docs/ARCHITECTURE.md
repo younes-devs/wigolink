@@ -13,6 +13,29 @@ contrats API.
 - Chaque étape doit passer le contrôle des traductions, le build de production et
   la suite de tests avant d'être intégrée.
 
+## Socle `core`
+
+Le code technique indépendant des domaines commence à être regroupé dans :
+
+```text
+client/src/core/
+├── api.js
+└── index.js
+```
+
+`core/api.js` possède l'unique état frontend du token de session et le client
+HTTP commun. Le chemin historique reste une façade de compatibilité :
+
+```text
+client/src/api.js
+```
+
+Le bootstrap `App.jsx` utilise directement le nouveau chemin. Les autres
+consommateurs migreront progressivement afin de limiter la taille de chaque
+changement. Les URLs, en-têtes, erreurs, délais de session et contrats API ne
+sont pas modifiés. Ce socle ne contient aucune intégration propre à un
+prestataire de paiement.
+
 ## Domaine `trips`
 
 État actuel :
