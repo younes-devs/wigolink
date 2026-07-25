@@ -414,6 +414,7 @@ publics sans logique métier :
 ```text
 server/
 └── routes/
+    ├── notifications.js
     └── system.js
 ```
 
@@ -424,6 +425,15 @@ conditions de disponibilité restent identiques. Le healthcheck ne révèle
 toujours aucun secret ni détail d'implémentation de la base. Des tests HTTP
 dédiés couvrent le développement local, la production prête, l'email manquant
 et la base indisponible.
+
+`createNotificationsRouter` expose la boîte de notifications et le marquage
+global comme lu sous `/api/notifications`. L'authentification, le dépôt de
+notifications, le calcul des rappels, le rendu i18n et la sauvegarde sont
+injectés depuis `server/index.js`. La lecture conserve la limite de 30 éléments,
+déclenche toujours les rappels persistants avant la requête, traduit chaque
+notification selon `req.lang` puis calcule le compteur non lu. L'écriture
+conserve l'ordre marquage puis sauvegarde. Des tests HTTP vérifient également
+qu'aucun accès au dépôt n'a lieu lorsque l'authentification refuse la requête.
 
 ## Backend `config`
 

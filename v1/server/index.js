@@ -27,6 +27,7 @@ import { createSessionAuth } from './middleware/session-auth.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 import { createSystemRouter } from './routes/system.js';
+import { createNotificationsRouter } from './routes/notifications.js';
 
 const app = express();
 const {
@@ -1147,20 +1148,13 @@ app.post('/api/profile/delete', auth, async (req, res) => {
 });
 
 // ---------- Notifications ----------
-app.get('/api/notifications', auth, async (req, res) => {
-  await runMatchingOfferReminders({ persist: true });
-  const mine = (await repositories.notifications.listForUser(req.user.id, { limit: 30 }))
-    // Traduit à la lecture selon req.lang (posé par langMiddleware) — le texte français
-    // stocké sert de repli pour les notifications persistées avant l'introduction des clés.
-    .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  res.json({ notifications: mine, unread: await repositories.notifications.unreadCount(req.user.id) });
-});
-
-app.post('/api/notifications/read', auth, async (req, res) => {
-  await repositories.notifications.markAllRead(req.user.id);
-  save();
-  res.json({ ok: true });
-});
+app.use('/api/notifications', createNotificationsRouter({
+  auth,
+  notifications: repositories.notifications,
+  runMatchingOfferReminders,
+  renderNotification,
+  save,
+}));
 
 // ---------- Formation voyageur (PRD §5.4) ----------
 const TRAINING_ANSWERS = { q1: 'b', q2: 'c', q3: 'a' };
