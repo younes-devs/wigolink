@@ -620,18 +620,25 @@ server/
 ```
 
 `createTripService` centralise la création, la modification, le retrait logique,
-la liste publique, la vue propriétaire, le détail et les trajets enregistrés.
-Il conserve les contrôles KYC, date, villes distinctes, capacité, prix et moyen
-de transport. Une modification ou un retrait reste interdit pendant une
-opération active. Les mutations gardent l'ordre historique entre audit et
-sauvegarde, et le retrait nettoie aussi les références enregistrées.
+la liste publique, la vue propriétaire, le détail, les trajets enregistrés et
+la mission du voyageur. Il conserve les contrôles KYC, date, villes distinctes,
+capacité, prix et moyen de transport. Une modification ou un retrait reste
+interdit pendant une opération active. Les mutations gardent l'ordre historique
+entre audit et sauvegarde, et le retrait nettoie aussi les références
+enregistrées.
+
+La mission rapproche uniquement les annonces publiées de tiers avec les trajets
+futurs du membre. Elle agrège poids, capacité restante, rémunération potentielle
+et valeur douanière, puis localise le corridor et les catégories dans la langue
+de la requête. La date courante est injectée dans le service afin que la règle
+d'expiration reste identique et testable.
 
 `createTripsRouter` expose les contrats HTTP existants sans règle métier. La
-route historique `/api/trips/mission` continue de recevoir les identifiants
-réservés, et `/api/trips/:id/accept` reste volontairement dans
-`server/index.js`. Cette dernière déclenche le parcours financier et ne sera
-déplacée qu'après le choix du prestataire de paiement et la validation de ses
-contraintes de séquestre.
+route `/api/trips/mission` est désormais servie avant le paramètre dynamique
+`/api/trips/:id`. La route `/api/trips/:id/accept` reste volontairement dans
+`server/index.js` : elle déclenche le parcours financier et ne sera déplacée
+qu'après le choix du prestataire de paiement et la validation de ses contraintes
+de séquestre.
 
 ## Backend `listings`
 

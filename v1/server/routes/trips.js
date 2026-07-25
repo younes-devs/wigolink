@@ -43,8 +43,12 @@ export function createTripsRouter({
     res.json(trips.overview(req.user, req.query));
   });
 
+  router.get('/trips/mission', auth, (req, res) => {
+    res.json(trips.mission(req.user, req.lang));
+  });
+
   router.get('/trips/:id', auth, (req, res, next) => {
-    if (['mine', 'mission'].includes(req.params.id)) return next();
+    if (req.params.id === 'mine') return next();
     return sendResult(
       res,
       trips.detail(req.params.id, req.user),

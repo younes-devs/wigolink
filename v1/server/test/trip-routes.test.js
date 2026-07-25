@@ -13,6 +13,10 @@ async function requestTrip({
 }) {
   const app = express();
   app.use(express.json());
+  app.use((req, _res, next) => {
+    req.lang = 'ar';
+    next();
+  });
   app.use('/api', createTripsRouter({ auth, trips }));
   if (fallback) {
     app.get(`/api${path}`, (_req, res) => {
@@ -89,21 +93,25 @@ test('trip routes transmet lecture et mutation au service', async () => {
   ]);
 });
 
-test('trip routes laisse mission au routeur historique', async () => {
-  let detailCalls = 0;
+test('trip routes transmet mission, membre et langue au service', async () => {
+  const calls = [];
   const response = await requestTrip({
     path: '/trips/mission',
     auth: authenticated,
     trips: {
-      detail() {
-        detailCalls += 1;
+      mission(user, lang) {
+        calls.push([user, lang]);
+        return {
+          missions: [],
+          totals: { trips: 0, matches: 0, potentialPay: 0 },
+        };
       },
     },
-    fallback: true,
   });
 
-  assert.deepEqual(response.body, { fallback: true });
-  assert.equal(detailCalls, 0);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.missions, []);
+  assert.deepEqual(calls, [[{ id: 'u-1' }, 'ar']]);
 });
 
 test('trip routes conserve statut service et protege avant appel', async () => {

@@ -654,51 +654,18 @@ const tripService = createTripService({
   save,
   newId,
   today: TODAY_ISO,
+  matchesTrip,
+  listingView: localizedListingView,
+  publicUser,
+  findUser,
+  localizeCustoms,
+  customs: CUSTOMS,
 });
 
 app.use('/api', createTripsRouter({
   auth,
   trips: tripService,
 }));
-
-app.get('/api/trips/mission', auth, (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const trips = db.trips
-    .filter((t) => t.travelerId === req.user.id && t.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const open = db.listings.filter((l) => l.status === 'published' && l.senderId !== req.user.id);
-  const missions = trips.map((trip) => {
-    const matches = open
-      .filter((l) => matchesTrip(l, trip))
-      .sort((a, b) => b.travelerPay - a.travelerPay)
-      .map((l) => ({ ...localizedListingView(l, req.lang), sender: publicUser(findUser(l.senderId)) }));
-    const totalPay = matches.reduce((s, l) => s + l.travelerPay, 0);
-    const totalWeight = matches.reduce((s, l) => s + l.weightKg, 0);
-    const totalValue = matches.reduce((s, l) => s + l.valueEur, 0);
-    const corridorKey = trip.from === 'Casablanca' ? 'MA-EU' : 'EU-MA';
-    const corridor = localizeCustoms(CUSTOMS, req.lang)[corridorKey];
-    const customsLimit = trip.from === 'Casablanca' ? 430 : 185;
-    return {
-      trip,
-      matchCount: matches.length,
-      totalPay,
-      totalWeight: Math.round(totalWeight * 10) / 10,
-      remainingKg: Math.max(0, Math.round((trip.capacityKg - totalWeight) * 10) / 10),
-      totalValue,
-      customs: { corridor, limitEur: customsLimit, overLimit: totalValue > customsLimit },
-      matchIds: matches.map((l) => l.id),
-      topMatches: matches.slice(0, 3),
-    };
-  });
-  res.json({
-    missions,
-    totals: {
-      trips: missions.length,
-      matches: missions.reduce((s, m) => s + m.matchCount, 0),
-      potentialPay: missions.reduce((s, m) => s + m.totalPay, 0),
-    },
-  });
-});
 
 // Compatibilité annonce ↔ trajet : même sens, fenêtre de dates qui contient la date du vol, poids ≤ capacité.
 function matchesTrip(listing, trip) {

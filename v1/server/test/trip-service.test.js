@@ -6,8 +6,8 @@ function createHarness(overrides = {}) {
   const events = [];
   let sequence = 0;
   const users = [
-    { id: 'u-1', kycStatus: 'verified' },
-    { id: 'u-2', kycStatus: 'verified' },
+    { id: 'u-1', name: 'Membre 1', kycStatus: 'verified' },
+    { id: 'u-2', name: 'Membre 2', kycStatus: 'verified' },
   ];
   const db = {
     trips: [
@@ -39,6 +39,7 @@ function createHarness(overrides = {}) {
       },
     ],
     transactions: [],
+    listings: [],
     savedTrips: [
       {
         id: 'saved-1',
@@ -95,6 +96,27 @@ function createHarness(overrides = {}) {
       return `${prefix}-${sequence}`;
     },
     today: () => '2026-07-25',
+    matchesTrip(listing, trip) {
+      return listing.from === trip.from
+        && listing.to === trip.to
+        && listing.dateFrom <= trip.date
+        && trip.date <= listing.dateTo
+        && listing.weightKg <= trip.capacityKg;
+    },
+    listingView: (listing, lang) => ({
+      ...listing,
+      categoryLabel: `${listing.categoryLabel}-${lang}`,
+    }),
+    publicUser: (user) => user && ({
+      id: user.id,
+      name: user.name,
+    }),
+    findUser: (id) => users.find((user) => user.id === id),
+    localizeCustoms: (_customs, lang) => ({
+      'MA-EU': { id: `MA-EU-${lang}` },
+      'EU-MA': { id: `EU-MA-${lang}` },
+    }),
+    customs: {},
     now: () => Date.parse('2026-07-25T12:00:00Z'),
     ...overrides,
   };
@@ -229,6 +251,71 @@ test('trip service sert feed, apercu et detail disponible', () => {
   assert.deepEqual(overview.myTrips.map(({ id }) => id), ['t-own']);
   assert.equal(service.detail('t-own', users[0]).body.trip.activeOperations, 0);
   assert.equal(service.detail('missing', users[0]).status, 404);
+});
+
+test('trip service construit une mission localisee sans annonces propres', () => {
+  const { db, service, users } = createHarness();
+  db.listings.push(
+    {
+      id: 'listing-match',
+      senderId: 'u-2',
+      status: 'published',
+      from: 'Oujda',
+      to: 'Bruxelles',
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-20',
+      travelerPay: 7,
+      weightKg: 2,
+      valueEur: 50,
+      categoryLabel: 'Document',
+    },
+    {
+      id: 'listing-other-route',
+      senderId: 'u-2',
+      status: 'published',
+      from: 'Paris',
+      to: 'Amsterdam',
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-20',
+      travelerPay: 20,
+      weightKg: 1,
+      valueEur: 10,
+      categoryLabel: 'Colis',
+    },
+    {
+      id: 'listing-own',
+      senderId: 'u-1',
+      status: 'published',
+      from: 'Oujda',
+      to: 'Bruxelles',
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-20',
+      travelerPay: 100,
+      weightKg: 1,
+      valueEur: 10,
+      categoryLabel: 'Colis',
+    },
+  );
+
+  const result = service.mission(users[0], 'nl');
+
+  assert.equal(result.totals.trips, 1);
+  assert.equal(result.totals.matches, 1);
+  assert.equal(result.totals.potentialPay, 7);
+  assert.deepEqual(result.missions[0].matchIds, ['listing-match']);
+  assert.equal(result.missions[0].remainingKg, 4);
+  assert.equal(
+    result.missions[0].topMatches[0].categoryLabel,
+    'Document-nl',
+  );
+  assert.deepEqual(
+    result.missions[0].topMatches[0].sender,
+    { id: 'u-2', name: 'Membre 2' },
+  );
+  assert.deepEqual(
+    result.missions[0].customs.corridor,
+    { id: 'EU-MA-nl' },
+  );
 });
 
 test('trip service nettoie, ajoute idempotemment et retire les favoris', () => {
