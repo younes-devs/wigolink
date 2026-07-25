@@ -9,7 +9,7 @@ import { t } from './i18n.js';
 
 // Les ecrans ne sont telecharges que lorsqu'ils sont ouverts. Cela garde la
 // connexion et le premier trajet rapides, meme avec les centres admin/PDF actifs.
-const Login = lazy(() => import('./pages/Login.jsx'));
+const Login = lazy(() => import('./features/auth/pages/Login.jsx'));
 const TripFeedSimple = lazy(() => import('./features/trips/pages/TripFeedSimple.jsx'));
 const CreateTrip = lazy(() => import('./features/trips/pages/CreateTrip.jsx'));
 const TripDetailSimple = lazy(() => import('./features/trips/pages/TripDetailSimple.jsx'));

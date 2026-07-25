@@ -127,3 +127,29 @@ Ce domaine orchestre l'affichage et les préférences du compte. L'authentificat
 le KYC, la vérification email et les règles serveur de changement d'identité ou
 de suppression restent dans leurs modules actuels. Le déplacement ne modifie
 aucun endpoint ni aucune confirmation de sécurité.
+
+## Domaine `auth`
+
+L'interface d'authentification et son composant visuel sont regroupés dans :
+
+```text
+client/src/features/auth/
+├── components/
+│   └── AuthJourneyLoop.jsx
+├── pages/
+│   └── Login.jsx
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/AuthJourneyLoop.jsx
+client/src/pages/Login.jsx
+```
+
+La page conserve les modes connexion, inscription, vérification email, mot de
+passe oublié et réinitialisation. Le contexte de session dans `App.jsx`, le
+stockage du token dans `api.js`, l'onboarding et tous les contrôles serveur
+restent à leur emplacement actuel. Aucun endpoint, délai de session ou mécanisme
+de vérification n'est modifié.
