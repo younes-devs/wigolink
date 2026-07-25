@@ -416,6 +416,7 @@ server/
 └── routes/
     ├── account-settings.js
     ├── notifications.js
+    ├── rules.js
     ├── system.js
     └── training.js
 ```
@@ -445,6 +446,13 @@ l'instantané précédent, les quatre champs audités et l'ordre mise à jour, a
 sauvegarde. L'onboarding conserve l'ordre mutation, sauvegarde puis réponse avec
 le profil public et les paramètres normalisés. Les URLs `/api/settings` et
 `/api/onboarding/complete` ne changent pas.
+
+`createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
+dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
+les règles douanières et les fonctions de localisation sont injectées. Les
+catégories autorisées ou interdites et les corridors sont rendus selon
+`req.lang`; les tables `i18n` internes ne sortent jamais de l'API et les
+catégories promues sans traduction conservent leur libellé français.
 
 `createTrainingRouter` expose `/api/training/complete`. Il conserve
 l'authentification, la mutation `trainingDone`, la sauvegarde et les réponses

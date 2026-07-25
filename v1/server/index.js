@@ -30,6 +30,7 @@ import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createTrainingRouter } from './routes/training.js';
+import { createRulesRouter } from './routes/rules.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -1095,16 +1096,13 @@ app.use('/api/training', createTrainingRouter({
 }));
 
 // ---------- Référentiels ----------
-app.get('/api/rules', (req, res) => {
-  // Labels localisés selon Accept-Language (req.lang posé par langMiddleware).
-  // Les i18n internes ne sortent pas de l'API ; les catégories promues (sans i18n)
-  // et le français restent tels quels.
-  res.json({
-    whitelist: combinedWhitelist().map((c) => localizeCategory(c, req.lang)),
-    blacklist: BLACKLIST.map((c) => localizeCategory(c, req.lang)),
-    customs: localizeCustoms(CUSTOMS, req.lang),
-  });
-});
+app.use('/api/rules', createRulesRouter({
+  getWhitelist: combinedWhitelist,
+  blacklist: BLACKLIST,
+  customs: CUSTOMS,
+  localizeCategory,
+  localizeCustoms,
+}));
 
 function localizedListingView(listing, lang = 'fr') {
   if (!listing) return listing;
