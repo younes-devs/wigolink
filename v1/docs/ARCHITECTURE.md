@@ -153,3 +153,28 @@ passe oublié et réinitialisation. Le contexte de session dans `App.jsx`, le
 stockage du token dans `api.js`, l'onboarding et tous les contrôles serveur
 restent à leur emplacement actuel. Aucun endpoint, délai de session ou mécanisme
 de vérification n'est modifié.
+
+## Domaine `kyc`
+
+La page de vérification et le moteur d'assistance faciale sont regroupés dans :
+
+```text
+client/src/features/kyc/
+├── pages/
+│   └── Kyc.jsx
+├── services/
+│   └── faceGuidance.js
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/kycFaceGuidance.js
+client/src/pages/Kyc.jsx
+```
+
+Le chargement du modèle MediaPipe reste différé et préparé à l'entrée du
+parcours. `PhotoCapture` et `requestCameraStream` restent temporairement dans
+`components.jsx` afin de limiter cette étape. Les statuts, documents, tentatives,
+décisions admin et endpoints KYC serveur ne sont pas modifiés.

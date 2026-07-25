@@ -38,7 +38,7 @@ const TrustCenter = lazy(() => import('./pages/TrustCenter.jsx'));
 const Admin = lazy(() => import('./pages/Admin.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const Terms = lazy(() => import('./pages/Terms.jsx'));
-const Kyc = lazy(() => import('./pages/Kyc.jsx'));
+const Kyc = lazy(() => import('./features/kyc/pages/Kyc.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
 
 const AuthCtx = createContext(null);
