@@ -224,6 +224,35 @@ Paiements restent séparés : ils n'appartiennent pas à cette migration ciblée
 Les endpoints, statuts, règles escrow, codes de remise et règles de litige ne
 sont pas modifiés.
 
+## Domaine `guidance`
+
+Les centres d'accompagnement visibles par le membre sont regroupés dans :
+
+```text
+client/src/features/guidance/
+├── pages/
+│   ├── ComplianceCenter.jsx
+│   ├── DocumentsCenter.jsx
+│   ├── SupportCenter.jsx
+│   └── TrustCenter.jsx
+└── index.js
+```
+
+Le routeur principal charge directement ces pages. Les chemins historiques
+restent des façades de compatibilité :
+
+```text
+client/src/pages/ComplianceCenter.jsx
+client/src/pages/DocumentsCenter.jsx
+client/src/pages/SupportCenter.jsx
+client/src/pages/TrustCenter.jsx
+```
+
+Ce domaine correspond aux lectures backend `guidance-centers` et
+`member-overview`. Il assemble conformité, documents, assistance et confiance
+sans déplacer les décisions de litige ni les mutations financières. Les URLs,
+appels API, états de chargement, exports et textes traduits sont inchangés.
+
 ## Domaine `profile`
 
 Le profil personnel, les profils publics et les paramètres du compte sont
