@@ -777,25 +777,12 @@ app.use('/api/profile', createProfileRouter({
   auditChange,
   save,
   publicUser,
+  verifyPassword,
+  hashPassword,
+  clearUserSessions,
 }));
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
-app.post('/api/profile/password', auth, async (req, res) => {
-  const currentPassword = String(req.body?.currentPassword || '');
-  const password = String(req.body?.password || '');
-  if (!req.user.passwordHash || !verifyPassword(currentPassword, req.user.passwordHash))
-    return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
-  if (password.length < 8) return res.status(400).json({ error: 'Mot de passe : 8 caracteres minimum' });
-  req.user.passwordHash = hashPassword(password);
-  await clearUserSessions(req.user.id);
-  await auditChange({
-    actorId: req.user.id, action: 'profile.password.update', targetType: 'user', targetId: req.user.id,
-    subjectUserId: req.user.id, before: {}, after: {}, fields: [], meta: { recordEmpty: true },
-  });
-  save();
-  res.json({ ok: true, mustRelogin: true });
-});
-
 function accountConfirmation(userId) {
   if (!db.accountConfirmations) db.accountConfirmations = {};
   return db.accountConfirmations[userId] || null;

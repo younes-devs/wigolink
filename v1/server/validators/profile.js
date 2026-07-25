@@ -37,3 +37,21 @@ export function validateProfilePhoto(dataUrl) {
   }
   return { value: dataUrl };
 }
+
+export function validatePasswordChange(body, {
+  passwordHash,
+  verifyPassword,
+}) {
+  const currentPassword = String(body?.currentPassword || '');
+  const password = String(body?.password || '');
+  if (!passwordHash || !verifyPassword(currentPassword, passwordHash)) {
+    return { status: 400, error: 'Mot de passe actuel incorrect' };
+  }
+  if (password.length < 8) {
+    return {
+      status: 400,
+      error: 'Mot de passe : 8 caracteres minimum',
+    };
+  }
+  return { value: { password } };
+}

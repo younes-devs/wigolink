@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  validatePasswordChange,
   validateProfilePhoto,
   validateProfileUpdate,
 } from '../validators/profile.js';
@@ -45,4 +46,49 @@ test('profile photo validator refuse le format et la taille invalides', () => {
       error: 'Image trop lourde (500 Ko max après compression)',
     },
   );
+});
+
+test('profile password validator verifie le secret courant avant la longueur', () => {
+  const verifyCalls = [];
+  const verifyPassword = (password, hash) => {
+    verifyCalls.push([password, hash]);
+    return password === 'ancien-secret' && hash === 'hash-actuel';
+  };
+
+  assert.deepEqual(validatePasswordChange({
+    currentPassword: 'incorrect',
+    password: 'court',
+  }, {
+    passwordHash: 'hash-actuel',
+    verifyPassword,
+  }), {
+    status: 400,
+    error: 'Mot de passe actuel incorrect',
+  });
+
+  assert.deepEqual(validatePasswordChange({
+    currentPassword: 'ancien-secret',
+    password: 'court',
+  }, {
+    passwordHash: 'hash-actuel',
+    verifyPassword,
+  }), {
+    status: 400,
+    error: 'Mot de passe : 8 caracteres minimum',
+  });
+
+  assert.deepEqual(validatePasswordChange({
+    currentPassword: 'ancien-secret',
+    password: 'nouveau-secret',
+  }, {
+    passwordHash: 'hash-actuel',
+    verifyPassword,
+  }), {
+    value: { password: 'nouveau-secret' },
+  });
+  assert.deepEqual(verifyCalls, [
+    ['incorrect', 'hash-actuel'],
+    ['ancien-secret', 'hash-actuel'],
+    ['ancien-secret', 'hash-actuel'],
+  ]);
 });

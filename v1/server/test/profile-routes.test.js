@@ -17,6 +17,9 @@ async function requestProfile({
   auditChange,
   save,
   publicUser,
+  verifyPassword,
+  hashPassword,
+  clearUserSessions,
 }) {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
@@ -28,6 +31,9 @@ async function requestProfile({
     auditChange,
     save,
     publicUser,
+    verifyPassword,
+    hashPassword,
+    clearUserSessions,
   }));
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
@@ -224,4 +230,93 @@ test('profile routes ne calculent rien lorsque auth refuse', async () => {
 
   assert.equal(response.status, 401);
   assert.deepEqual(response.body, { error: 'Non authentifie' });
+});
+
+test('profile password route remplace le hash et invalide les sessions avant l audit', async () => {
+  const user = { id: 'u-1', passwordHash: 'hash-actuel' };
+  const events = [];
+  let auditPayload;
+  const response = await requestProfile({
+    path: '/password',
+    body: {
+      currentPassword: 'ancien-secret',
+      password: 'nouveau-secret',
+    },
+    user,
+    verifyPassword(password, hash) {
+      events.push('verify');
+      return password === 'ancien-secret' && hash === 'hash-actuel';
+    },
+    hashPassword(password) {
+      events.push('hash');
+      assert.equal(password, 'nouveau-secret');
+      return 'nouveau-hash';
+    },
+    async clearUserSessions(userId) {
+      events.push('sessions');
+      assert.equal(userId, user.id);
+    },
+    async auditChange(payload) {
+      events.push('audit');
+      auditPayload = payload;
+    },
+    save() {
+      events.push('save');
+    },
+    publicUser() {
+      assert.fail('la route mot de passe ne projette pas le profil');
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(user.passwordHash, 'nouveau-hash');
+  assert.deepEqual(events, ['verify', 'hash', 'sessions', 'audit', 'save']);
+  assert.deepEqual(auditPayload, {
+    actorId: user.id,
+    action: 'profile.password.update',
+    targetType: 'user',
+    targetId: user.id,
+    subjectUserId: user.id,
+    before: {},
+    after: {},
+    fields: [],
+    meta: { recordEmpty: true },
+  });
+  assert.deepEqual(response.body, { ok: true, mustRelogin: true });
+});
+
+test('profile password route ne modifie rien si le secret courant est faux', async () => {
+  const user = { id: 'u-1', passwordHash: 'hash-actuel' };
+  const response = await requestProfile({
+    path: '/password',
+    body: {
+      currentPassword: 'incorrect',
+      password: 'nouveau-secret',
+    },
+    user,
+    verifyPassword() {
+      return false;
+    },
+    hashPassword() {
+      assert.fail('le nouveau secret ne doit pas etre hache');
+    },
+    clearUserSessions() {
+      assert.fail('les sessions ne doivent pas etre modifiees');
+    },
+    auditChange() {
+      assert.fail('aucun audit ne doit etre cree');
+    },
+    save() {
+      assert.fail('aucune sauvegarde ne doit avoir lieu');
+    },
+    publicUser() {
+      assert.fail('aucune projection ne doit etre calculee');
+    },
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(user.passwordHash, 'hash-actuel');
+  assert.deepEqual(response.body, {
+    error: 'Mot de passe actuel incorrect',
+  });
 });

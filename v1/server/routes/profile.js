@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  validatePasswordChange,
   validateProfilePhoto,
   validateProfileUpdate,
 } from '../validators/profile.js';
@@ -9,8 +10,12 @@ export function createProfileRouter({
   auditChange,
   save,
   publicUser,
+  verifyPassword,
+  hashPassword,
+  clearUserSessions,
   validateUpdate = validateProfileUpdate,
   validatePhoto = validateProfilePhoto,
+  validatePassword = validatePasswordChange,
 }) {
   const router = Router();
 
@@ -56,6 +61,32 @@ export function createProfileRouter({
     });
     save();
     return res.json({ user: publicUser(req.user) });
+  });
+
+  router.post('/password', auth, async (req, res) => {
+    const validation = validatePassword(req.body, {
+      passwordHash: req.user.passwordHash,
+      verifyPassword,
+    });
+    if (validation.error) {
+      return res.status(validation.status).json({ error: validation.error });
+    }
+
+    req.user.passwordHash = hashPassword(validation.value.password);
+    await clearUserSessions(req.user.id);
+    await auditChange({
+      actorId: req.user.id,
+      action: 'profile.password.update',
+      targetType: 'user',
+      targetId: req.user.id,
+      subjectUserId: req.user.id,
+      before: {},
+      after: {},
+      fields: [],
+      meta: { recordEmpty: true },
+    });
+    save();
+    return res.json({ ok: true, mustRelogin: true });
   });
 
   return router;

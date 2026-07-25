@@ -464,12 +464,14 @@ projection de la vue KYC. L'authentification, le dépôt KYC, la validation des
 images, la limite de tentatives et la projection sont injectés. Une requête
 refusée ne consulte ni ne modifie le dépôt.
 
-`createProfileRouter` regroupe les mutations des informations publiques et de
-la photo sous `/api/profile` et `/api/profile/photo`. Les données autorisées
-sont normalisées avant mutation; les propriétés sensibles ou inconnues sont
-ignorées. Chaque modification conserve le même journal d'audit et l'ordre
-audit, sauvegarde, projection publique. Une validation ou une authentification
-refusée ne produit aucun effet.
+`createProfileRouter` regroupe les mutations des informations publiques, de la
+photo et du mot de passe sous `/api/profile`, `/api/profile/photo` et
+`/api/profile/password`. Les données autorisées sont normalisées avant mutation;
+les propriétés sensibles ou inconnues sont ignorées. Chaque modification
+conserve le même journal d'audit. Le mot de passe courant est vérifié avant le
+nouveau, puis toutes les sessions sont invalidées avant l'audit et la
+sauvegarde. Une validation ou une authentification refusée ne produit aucun
+effet.
 
 `createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
 dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
@@ -504,7 +506,9 @@ des erreurs.
 `validateProfileUpdate` limite les mutations à `name`, `city` et `phone`, avec
 les mêmes nettoyages et longueurs. `validateProfilePhoto` accepte la suppression
 ou les Data URL JPEG, PNG et WebP sous la limite historique. Les erreurs visibles
-et la limite effective restent inchangées.
+et la limite effective restent inchangées. `validatePasswordChange` conserve la
+priorité de la vérification du mot de passe courant sur la règle des huit
+caractères.
 
 `invalidTrainingAnswers` possède la grille historique `q1=b`, `q2=c`, `q3=a`
 et retourne les identifiants incorrects dans le même ordre. Il ne lit ni la
