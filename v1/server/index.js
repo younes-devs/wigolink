@@ -29,6 +29,7 @@ import { createCorsOptions } from './config/cors-options.js';
 import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
+import { createTrainingRouter } from './routes/training.js';
 
 const app = express();
 const {
@@ -1143,16 +1144,10 @@ app.use('/api/notifications', createNotificationsRouter({
 }));
 
 // ---------- Formation voyageur (PRD §5.4) ----------
-const TRAINING_ANSWERS = { q1: 'b', q2: 'c', q3: 'a' };
-app.post('/api/training/complete', auth, (req, res) => {
-  const a = req.body.answers || {};
-  const wrong = Object.entries(TRAINING_ANSWERS).filter(([k, v]) => a[k] !== v).map(([k]) => k);
-  if (wrong.length > 0)
-    return res.status(400).json({ error: 'Certaines réponses sont incorrectes — relisez les règles.', wrong });
-  req.user.trainingDone = true;
-  save();
-  res.json({ ok: true });
-});
+app.use('/api/training', createTrainingRouter({
+  auth,
+  save,
+}));
 
 // ---------- Référentiels ----------
 app.get('/api/rules', (req, res) => {

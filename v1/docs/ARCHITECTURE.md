@@ -416,7 +416,8 @@ server/
 └── routes/
     ├── account-settings.js
     ├── notifications.js
-    └── system.js
+    ├── system.js
+    └── training.js
 ```
 
 `createSystemRouter` expose `/config` et `/health` sous le préfixe `/api`. Le
@@ -444,6 +445,27 @@ l'instantané précédent, les quatre champs audités et l'ordre mise à jour, a
 sauvegarde. L'onboarding conserve l'ordre mutation, sauvegarde puis réponse avec
 le profil public et les paramètres normalisés. Les URLs `/api/settings` et
 `/api/onboarding/complete` ne changent pas.
+
+`createTrainingRouter` expose `/api/training/complete`. Il conserve
+l'authentification, la mutation `trainingDone`, la sauvegarde et les réponses
+existantes. La comparaison des réponses a été déplacée dans un validateur pur
+afin que la route n'embarque plus la grille métier.
+
+## Backend `validators`
+
+La première validation indépendante d'Express est organisée dans :
+
+```text
+server/
+└── validators/
+    └── training.js
+```
+
+`invalidTrainingAnswers` possède la grille historique `q1=b`, `q2=c`, `q3=a`
+et retourne les identifiants incorrects dans le même ordre. Il ne lit ni la
+requête, ni le membre, ni la base. Les réponses complètes, partielles et vides
+sont couvertes directement, tandis que les tests HTTP vérifient qu'une tentative
+incorrecte ne modifie ni ne sauvegarde le compte.
 
 ## Backend `config`
 
