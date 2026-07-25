@@ -30,6 +30,7 @@ import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createTrainingRouter } from './routes/training.js';
+import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 
 const app = express();
 const {
@@ -456,36 +457,15 @@ function matchingOfferWaitingUser(offer) {
   return null;
 }
 
-async function runMatchingOfferReminders({ persist = false } = {}) {
-  let changed = normalizeMatchingOffers();
-  const writes = [];
-  const now = Date.now();
-  for (const offer of db.matchingOffers || []) {
-    normalizeMatchingOffer(offer);
-    const listing = db.listings.find((l) => l.id === offer.listingId);
-    const title = listing?.title || 'une proposition';
-    offer.reminders = offer.reminders || {};
-
-    if (['pending_traveler', 'countered_sender'].includes(offer.status)) {
-      const waitingUserId = matchingOfferWaitingUser(offer);
-      const expiresIn = (offer.expiresAt || 0) - now;
-      if (waitingUserId && expiresIn > 0 && expiresIn <= OFFER_REMINDER_MS && !offer.reminders.expiresSoonAt) {
-        offer.reminders.expiresSoonAt = now;
-        writes.push(notify([waitingUserId], { key: 'offer.expiring', params: { title } }, null, 'reminders', 'matching'));
-        changed = true;
-      }
-    }
-
-    if (offer.status === 'expired' && !offer.reminders.expiredAt) {
-      offer.reminders.expiredAt = now;
-      writes.push(notify([offer.senderId, offer.travelerId], { key: 'offer.expired', params: { title } }, null, 'reminders', 'matching'));
-      changed = true;
-    }
-  }
-  await Promise.all(writes);
-  if (changed && persist) save();
-  return changed;
-}
+const runMatchingOfferReminders = createMatchingOfferReminderJob({
+  db,
+  normalizeMatchingOffers,
+  normalizeMatchingOffer,
+  matchingOfferWaitingUser,
+  notify,
+  save,
+  reminderMs: OFFER_REMINDER_MS,
+});
 
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
 function validPhotos(photos) {

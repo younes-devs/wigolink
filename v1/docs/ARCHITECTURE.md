@@ -467,6 +467,25 @@ requête, ni le membre, ni la base. Les réponses complètes, partielles et vide
 sont couvertes directement, tandis que les tests HTTP vérifient qu'une tentative
 incorrecte ne modifie ni ne sauvegarde le compte.
 
+## Backend `jobs`
+
+La première orchestration réutilisée par plusieurs routes est regroupée dans :
+
+```text
+server/
+└── jobs/
+    └── matching-offer-reminders.js
+```
+
+`createMatchingOfferReminderJob` normalise les offres et produit les rappels
+avant ou après expiration. L'état, les fonctions de normalisation, la résolution
+du membre qui doit répondre, la notification, la sauvegarde, la fenêtre de six
+heures et l'horloge sont injectés. Le job reste idempotent grâce aux marqueurs
+`expiresSoonAt` et `expiredAt`, attend toutes les notifications avant de
+sauvegarder et ne persiste que si un changement existe avec `persist=true`.
+Les appels depuis les notifications, le matching, les offres et le tableau de
+bord continuent à utiliser la même fonction créée dans `server/index.js`.
+
 ## Backend `config`
 
 La configuration générale calculée au démarrage commence à être regroupée dans :
