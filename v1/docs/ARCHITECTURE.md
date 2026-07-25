@@ -633,6 +633,33 @@ réservés, et `/api/trips/:id/accept` reste volontairement dans
 déplacée qu'après le choix du prestataire de paiement et la validation de ses
 contraintes de séquestre.
 
+## Backend `listings`
+
+La publication et la gestion non financière des demandes d'envoi sont séparées
+dans :
+
+```text
+server/
+|-- routes/
+|   `-- listings.js
+`-- services/
+    `-- listings.js
+```
+
+`createListingService` centralise le feed filtré par les trajets du voyageur,
+la recherche, les annonces du membre, le précontrôle, la publication, la
+modification et le retrait. Les contrôles KYC, photos, catégorie, douane,
+plafond, poids et rémunération restent identiques. Une catégorie grise rejoint
+toujours la file de revue, et chaque création, modification ou retrait conserve
+son audit avant sauvegarde. Une modification invalide est désormais atomique :
+aucun autre champ du formulaire n'est appliqué partiellement.
+
+`createListingsRouter` conserve les URLs, les statuts et l'enveloppe
+`{ preflight }` utilisés par le frontend. Les routes
+`/api/listings/:id/accept` et `/api/matching-offers/:id/accept` restent dans
+`server/index.js`, car elles créent une transaction et un séquestre. Le service
+extrait ne choisit ni n'implémente aucun prestataire de paiement.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :

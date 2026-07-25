@@ -43,6 +43,7 @@ import { createRelationalReadsRouter } from './routes/relational-reads.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
+import { createListingsRouter } from './routes/listings.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -52,6 +53,7 @@ import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
 import { createConversationMessageService } from './services/conversation-messages.js';
 import { createTripService } from './services/trips.js';
+import { createListingService } from './services/listings.js';
 
 const app = express();
 const {
@@ -1580,44 +1582,30 @@ app.use('/api', createConversationInboxRouter({
   inbox: conversationInbox,
 }));
 
-// ---------- Annonces ----------
-// Feed filtré par trajet déclaré (PRD §2.1). ?all=1 pour tout voir.
-// Filtres optionnels : ?category=, ?minPrice=, ?maxPrice=, ?q= (titre)
-app.get('/api/listings', auth, (req, res) => {
-  let open = db.listings
-    .filter((l) => l.status === 'published' && l.senderId !== req.user.id);
-
-  const { category, minPrice, maxPrice, q } = req.query;
-  if (category) open = open.filter((l) => l.categoryId === category);
-  if (minPrice) open = open.filter((l) => l.travelerPay >= Number(minPrice));
-  if (maxPrice) open = open.filter((l) => l.travelerPay <= Number(maxPrice));
-  // Recherche élargie (PRD UI/UX U11) : titre + description + libellé de catégorie.
-  if (q) {
-    const needle = String(q).toLowerCase();
-    open = open.filter((l) =>
-      `${l.title} ${l.description || ''} ${l.categoryLabel || ''}`.toLowerCase().includes(needle));
-  }
-
-  const myTrips = db.trips.filter((t) =>
-    t.travelerId === req.user.id
-    && (t.status || 'published') === 'published'
-    && t.date >= new Date().toISOString().slice(0, 10));
-  const showAll = req.query.all === '1' || myTrips.length === 0;
-  const listings = (showAll ? open : open.filter((l) => myTrips.some((t) => matchesTrip(l, t))))
-    .map((l) => ({
-      ...localizedListingView(l, req.lang),
-      sender: publicUser(findUser(l.senderId)),
-      matched: myTrips.some((t) => matchesTrip(l, t)),
-    }));
-  res.json({ listings, filteredByTrip: !showAll, tripCount: myTrips.length, totalOpen: open.length });
+const listingService = createListingService({
+  db,
+  matchesTrip,
+  listingView: localizedListingView,
+  publicUser,
+  findUser,
+  validPhotos,
+  positiveNumber,
+  slugify,
+  evaluateCategory: evaluateCategoryDynamic,
+  combinedWhitelist,
+  localizeCategory,
+  localizeCustoms,
+  customs: CUSTOMS,
+  reviewQueue: repositories.reviewQueue,
+  auditChange,
+  save,
+  newId,
 });
 
-app.get('/api/listings/mine', auth, (req, res) => {
-  const listings = db.listings
-    .filter((l) => l.senderId === req.user.id)
-    .map((listing) => localizedListingView(listing, req.lang));
-  res.json({ listings });
-});
+app.use('/api', createListingsRouter({
+  auth,
+  listings: listingService,
+}));
 
 // Modification d'une annonce tant qu'aucun voyageur ne l'a acceptée (statut 'published' ou 'pending_review').
 function shipmentActionFor(listing, tx) {
@@ -1870,232 +1858,6 @@ app.post('/api/matching-offers', auth, async (req, res) => {
   await notify([offer.travelerId], { key: 'offer.received', params: { name: req.user.name, title: listing.title } }, null, 'messages', 'matching');
   save();
   res.json({ offer });
-});
-
-app.put('/api/listings/:id', auth, async (req, res) => {
-  const listing = db.listings.find((l) => l.id === req.params.id);
-  if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
-  if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  if (!['published', 'pending_review'].includes(listing.status))
-    return res.status(400).json({ error: 'Cette annonce ne peut plus être modifiée (déjà acceptée)' });
-
-  const before = { ...listing };
-  const { title, description, weightKg, valueEur, dateFrom, dateTo, travelerPay, photos } = req.body;
-  if (title !== undefined) listing.title = String(title).trim().slice(0, 120);
-  if (description !== undefined) listing.description = String(description).trim().slice(0, 1000);
-  if (weightKg !== undefined) {
-    const n = positiveNumber(weightKg);
-    if (n === null) return res.status(400).json({ error: 'Poids invalide' });
-    listing.weightKg = n;
-  }
-  if (valueEur !== undefined) {
-    const n = positiveNumber(valueEur);
-    if (n === null) return res.status(400).json({ error: 'Valeur déclarée invalide' });
-    if (n > req.user.maxValue)
-      return res.status(400).json({ error: `Plafond dépassé : votre compte est limité à ${req.user.maxValue} € par envoi` });
-    listing.valueEur = n;
-  }
-  if (dateFrom !== undefined) listing.dateFrom = dateFrom;
-  if (dateTo !== undefined) listing.dateTo = dateTo;
-  if (travelerPay !== undefined) {
-    const n = positiveNumber(travelerPay);
-    if (n === null) return res.status(400).json({ error: 'Rémunération voyageur invalide' });
-    listing.travelerPay = n;
-  }
-  if (photos !== undefined) {
-    if (photos.length === 0) return res.status(400).json({ error: 'Au moins une photo est obligatoire' });
-    if (!validPhotos(photos) || photos.length > 3)
-      return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
-    listing.photos = photos;
-  }
-  await auditChange({
-    actorId: req.user.id, action: 'listing.update', targetType: 'listing', targetId: listing.id,
-    subjectUserId: req.user.id, before, after: listing,
-    fields: ['title', 'description', 'weightKg', 'valueEur', 'dateFrom', 'dateTo', 'travelerPay'],
-    meta: { photosChanged: photos !== undefined },
-  });
-  save();
-  res.json({ listing: localizedListingView(listing, req.lang) });
-});
-
-// Retrait d'une annonce par l'expéditeur, tant qu'aucun voyageur ne l'a acceptée.
-app.post('/api/listings/:id/cancel', auth, async (req, res) => {
-  const listing = db.listings.find((l) => l.id === req.params.id);
-  if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
-  if (listing.senderId !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  if (!['published', 'pending_review'].includes(listing.status))
-    return res.status(400).json({ error: 'Cette annonce ne peut plus être retirée (déjà acceptée)' });
-  const before = { ...listing };
-  listing.status = 'cancelled';
-  await auditChange({
-    actorId: req.user.id, action: 'listing.cancel', targetType: 'listing', targetId: listing.id,
-    subjectUserId: req.user.id, before, after: listing, fields: ['status'],
-  });
-  save();
-  res.json({ listing: localizedListingView(listing, req.lang) });
-});
-
-function listingPreflight(user, body, lang = 'fr') {
-  const {
-    title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description,
-    weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted,
-    recipientPhone, photos,
-  } = body;
-  const checks = [];
-  const warnings = [];
-  const blockers = [];
-  const addCheck = (id, ok, label, severity = 'blocker', detail = null, {
-    labelKey = `preflight.check.${id}`,
-    labelVars = null,
-    detailKey = null,
-    detailVars = null,
-  } = {}) => {
-    checks.push({ id, ok, label, labelKey, labelVars, severity, detail, detailKey, detailVars });
-    if (!ok && severity === 'blocker') blockers.push(id);
-    if (!ok && severity === 'warning') warnings.push(id);
-  };
-
-  addCheck('kyc', user.kycStatus === 'verified', 'Identité vérifiée');
-  addCheck('required', !!title && !!rawCategoryId && !!valueEur && !!from && !!to, 'Informations essentielles complètes');
-  addCheck('photos', !!photos?.length && photos.length <= 3 && validPhotos(photos), 'Photos produit exploitables');
-  addCheck('customs', !!customsAccepted, 'Responsabilités douanières acceptées');
-
-  const valueNum = positiveNumber(valueEur);
-  const weightNum = positiveNumber(weightKg);
-  const payNum = positiveNumber(travelerPay);
-  addCheck('value', valueNum !== null, 'Valeur déclarée valide');
-  addCheck('weight', weightNum !== null, 'Poids valide');
-  addCheck('pay', payNum !== null, 'Rémunération voyageur valide');
-  addCheck('limit', valueNum !== null && valueNum <= user.maxValue, `Plafond compte : ${user.maxValue} €`, 'blocker', null, { labelVars: { max: user.maxValue } });
-  addCheck('route', !!from && !!to && from !== to, 'Trajet cohérent');
-  addCheck('dates', !!dateFrom && !!dateTo && dateFrom <= dateTo, 'Fenêtre de dates cohérente');
-
-  const categoryId = rawCategoryId === 'autre' && rawCategoryLabel ? slugify(rawCategoryLabel) : rawCategoryId;
-  const evalRes = categoryId ? evaluateCategoryDynamic(categoryId) : { verdict: 'gray' };
-  const cat = combinedWhitelist().find((c) => c.id === categoryId);
-  const localizedCat = cat ? localizeCategory(cat, lang) : null;
-  const localizedEvaluatedCategory = evalRes.category ? localizeCategory(evalRes.category, lang) : null;
-  addCheck('category', evalRes.verdict !== 'blacklisted', 'Catégorie autorisée',
-    evalRes.verdict === 'blacklisted' ? 'blocker' : 'warning',
-    localizedEvaluatedCategory?.reason || null);
-  if (evalRes.verdict === 'gray') {
-    addCheck('review', false, 'Revue humaine nécessaire', 'warning', 'Publication après validation admin.', {
-      labelKey: 'preflight.check.review.required',
-      detailKey: 'preflight.check.review.required.detail',
-    });
-  } else {
-    addCheck('review', true, 'Publication directe possible', 'warning', null, { labelKey: 'preflight.check.review.direct' });
-  }
-
-  const localizedCustoms = localizeCustoms(CUSTOMS, lang);
-  const corridor = from === 'Casablanca' ? localizedCustoms['MA-EU'] : localizedCustoms['EU-MA'];
-  const customsLimit = from === 'Casablanca' ? 430 : 185;
-  if (valueNum !== null && valueNum > customsLimit) {
-    addCheck('customs-value', false, `Valeur au-dessus de la franchise indicative (${customsLimit} €)`, 'warning', null, {
-      labelKey: 'preflight.check.customsValue.over',
-      labelVars: { limit: customsLimit },
-    });
-  } else {
-    addCheck('customs-value', true, 'Valeur dans la franchise indicative', 'warning', null, { labelKey: 'preflight.check.customsValue.within' });
-  }
-
-  const recipient = recipientPhone ? db.users.find((u) => u.phone === recipientPhone) : null;
-  if (recipientPhone && !recipient) {
-    addCheck('recipient', false, 'Destinataire non reconnu dans Wigofly', 'warning', null, { labelKey: 'preflight.check.recipient.unknown' });
-  } else {
-    addCheck('recipient', true, recipient ? 'Destinataire reconnu' : 'Destinataire optionnel', 'warning', null, {
-      labelKey: recipient ? 'preflight.check.recipient.known' : 'preflight.check.recipient.optional',
-    });
-  }
-
-  const publishStatus = blockers.length > 0
-    ? 'blocked'
-    : evalRes.verdict === 'gray'
-      ? 'pending_review'
-      : 'published';
-  return {
-    status: publishStatus,
-    canSubmit: blockers.length === 0,
-    blockers,
-    warnings,
-    checks,
-    category: {
-      id: categoryId,
-      label: localizedCat?.label || rawCategoryLabel || categoryId || '',
-      verdict: evalRes.verdict,
-      maxQty: localizedCat?.maxQty || null,
-      reason: localizedEvaluatedCategory?.reason || null,
-    },
-    customs: {
-      corridor,
-      franchiseLimitEur: customsLimit,
-      valueEur: valueNum,
-      overFranchise: valueNum !== null ? valueNum > customsLimit : false,
-    },
-    costs: payNum === null ? null : {
-      travelerPay: payNum,
-      commission: Math.round(payNum * 0.18 * 100) / 100,
-      total: Math.round(payNum * 1.18 * 100) / 100,
-    },
-  };
-}
-
-app.post('/api/listings/preflight', auth, (req, res) => {
-  res.json({ preflight: listingPreflight(req.user, req.body || {}, req.lang) });
-});
-
-app.post('/api/listings', auth, async (req, res) => {
-  if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
-  const { title, categoryId: rawCategoryId, categoryLabel: rawCategoryLabel, description, weightKg, valueEur, from, to, dateFrom, dateTo, travelerPay, customsAccepted, recipientPhone, photos } = req.body;
-  if (!title || !rawCategoryId || !valueEur || !from || !to)
-    return res.status(400).json({ error: 'Champs obligatoires manquants' });
-  // Photos obligatoires (PRD §1.1) : le voyageur doit tout voir avant d'accepter.
-  if (!photos || photos.length === 0)
-    return res.status(400).json({ error: 'Au moins une photo du produit est obligatoire' });
-  if (!validPhotos(photos) || photos.length > 3)
-    return res.status(400).json({ error: 'Photos invalides (JPEG/PNG/WebP, 3 max, 500 Ko chacune)' });
-  if (!customsAccepted)
-    return res.status(400).json({ error: 'Acceptation explicite des règles douanières requise' });
-  const valueNum = positiveNumber(valueEur);
-  const weightNum = positiveNumber(weightKg);
-  const payNum = positiveNumber(travelerPay);
-  if (valueNum === null) return res.status(400).json({ error: 'Valeur déclarée invalide' });
-  if (weightNum === null) return res.status(400).json({ error: 'Poids invalide' });
-  if (payNum === null) return res.status(400).json({ error: 'Rémunération voyageur invalide' });
-  if (valueNum > req.user.maxValue)
-    return res.status(400).json({ error: `Plafond dépassé : votre compte est limité à ${req.user.maxValue} € par envoi` });
-
-  // Catégorie "Autre" : le libellé libre saisi par l'expéditeur devient sa propre
-  // catégorie (slug dédié), évaluée pour elle-même — pas un fourre-tout partagé.
-  const categoryId = rawCategoryId === 'autre' && rawCategoryLabel ? slugify(rawCategoryLabel) : rawCategoryId;
-
-  const evalRes = evaluateCategoryDynamic(categoryId);
-  if (evalRes.verdict === 'blacklisted')
-    return res.status(400).json({ error: `Catégorie refusée : ${evalRes.category.reason}`, verdict: 'blacklisted' });
-
-  const cat = combinedWhitelist().find((c) => c.id === categoryId);
-  const recipient = recipientPhone ? db.users.find((u) => u.phone === recipientPhone) : null;
-  const listing = {
-    id: newId('l'), senderId: req.user.id, title,
-    categoryId, categoryLabel: cat ? cat.label : rawCategoryLabel || categoryId,
-    icon: cat ? cat.icon : '📦', description, photos: photos || [], weightKg: weightNum, valueEur: valueNum,
-    from, to, dateFrom, dateTo, travelerPay: payNum, commissionRate: 0.18,
-    status: evalRes.verdict === 'gray' ? 'pending_review' : 'published',
-    whitelistVerdict: evalRes.verdict, recipientId: recipient?.id || null, createdAt: Date.now(),
-  };
-  db.listings.push(listing);
-  if (evalRes.verdict === 'gray') {
-    repositories.reviewQueue.append({ type: 'listing', refId: listing.id });
-  }
-  await auditChange({
-    actorId: req.user.id, action: 'listing.create', targetType: 'listing', targetId: listing.id,
-    subjectUserId: req.user.id, before: {}, after: listing,
-    fields: ['title', 'categoryLabel', 'from', 'to', 'weightKg', 'valueEur', 'dateFrom', 'dateTo', 'travelerPay', 'status'],
-    meta: { photoCount: listing.photos.length },
-  });
-  save();
-  res.json({ listing: localizedListingView(listing, req.lang) });
 });
 
 // ---------- Transactions (machine à états) ----------
