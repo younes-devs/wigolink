@@ -372,3 +372,19 @@ générateur de `X-Request-Id` et les origines Supabase autorisées par la CSP s
 injectés depuis `server/index.js`. Les politiques `nosniff`, anti-framing,
 référent, permissions navigateur et `Content-Security-Policy` restent
 strictement identiques et disposent maintenant de tests unitaires dédiés.
+
+## Backend `config`
+
+La configuration générale calculée au démarrage commence à être regroupée dans :
+
+```text
+server/
+└── config/
+    └── runtime.js
+```
+
+`loadRuntimeConfig` normalise le mode production, la liste `APP_ORIGIN`, l'URL
+Supabase et son origine realtime. Il conserve également les refus de démarrage
+de `DEMO` et `TEST_EMAIL_BYPASS` en production. Les secrets des codes
+d'opération et toute configuration liée au paiement restent volontairement
+hors de ce module jusqu'à la décision sur le prestataire.

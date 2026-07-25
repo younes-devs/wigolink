@@ -21,14 +21,15 @@ import {
 } from './relational-messaging.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
+import { loadRuntimeConfig } from './config/runtime.js';
 
 const app = express();
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const APP_ORIGINS = String(process.env.APP_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
-const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_REALTIME_ORIGIN = SUPABASE_URL ? SUPABASE_URL.replace(/^http/, 'ws') : '';
-if (IS_PRODUCTION && process.env.DEMO === 'true') throw new Error('DEMO ne doit jamais etre active en production.');
-if (IS_PRODUCTION && process.env.TEST_EMAIL_BYPASS) throw new Error('TEST_EMAIL_BYPASS ne doit jamais etre active en production.');
+const {
+  isProduction: IS_PRODUCTION,
+  appOrigins: APP_ORIGINS,
+  supabaseUrl: SUPABASE_URL,
+  supabaseRealtimeOrigin: SUPABASE_REALTIME_ORIGIN,
+} = loadRuntimeConfig();
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
 // The database URL is server-only and already mandatory in production. A dedicated
 // OPERATION_CODE_SECRET can supersede it without making deployments brittle.
