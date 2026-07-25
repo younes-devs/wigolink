@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { TrustBadge, Stars } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { TripTransportIcon, TransportModePicker } from '../../trips/components/TripTransport.jsx';

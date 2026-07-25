@@ -13,6 +13,30 @@ contrats API.
 - Chaque étape doit passer le contrôle des traductions, le build de production et
   la suite de tests avant d'être intégrée.
 
+## Bootstrap `app`
+
+Le démarrage React, le routeur et le contexte de session sont regroupés dans :
+
+```text
+client/src/app/
+├── App.jsx
+├── authContext.jsx
+└── index.js
+```
+
+`main.jsx` charge directement `app/App.jsx`. Le chemin historique reste une
+façade de compatibilité :
+
+```text
+client/src/App.jsx
+```
+
+Les domaines hors paiement importent `useAuth` depuis `app/authContext.jsx`
+afin de ne plus dépendre du module du routeur. Le domaine paiement, laissé
+volontairement inchangé jusqu'au choix du prestataire, continue temporairement
+à utiliser la façade historique. Les routes, redirections, délais de session,
+écrans de chargement et règles d'onboarding ne sont pas modifiés.
+
 ## Socle `core`
 
 Le code technique indépendant des domaines commence à être regroupé dans :

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';

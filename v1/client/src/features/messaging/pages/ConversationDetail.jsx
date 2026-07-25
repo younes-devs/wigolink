@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 import { subscribeToMessageUpdates } from '../services/realtime.js';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { ConfirmDialog } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';

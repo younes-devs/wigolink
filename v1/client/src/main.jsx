@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+import App from './app/App.jsx';
 import { syncThemeColor } from './theme.js';
 import './styles.css';
 

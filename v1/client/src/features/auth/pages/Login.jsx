@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, setToken } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { t, useLang } from '../../../i18n.js';
 import AuthJourneyLoop from '../components/AuthJourneyLoop.jsx';

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { PhotoCapture, requestCameraStream } from '../../../components.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonCard } from '../../../Skeleton.jsx';

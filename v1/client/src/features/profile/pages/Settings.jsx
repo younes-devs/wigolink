@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../api';
-import { useAuth } from '../../../App.jsx';
+import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { getTheme, setTheme } from '../../../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../../../i18n.js';
