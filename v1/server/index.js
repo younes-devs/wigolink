@@ -42,6 +42,7 @@ import { createRealtimeRouter } from './routes/realtime.js';
 import { createRelationalReadsRouter } from './routes/relational-reads.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
+import { createTripsRouter } from './routes/trips.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -50,6 +51,7 @@ import { createAccountPrivacyService } from './services/account-privacy.js';
 import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
 import { createConversationMessageService } from './services/conversation-messages.js';
+import { createTripService } from './services/trips.js';
 
 const app = express();
 const {
@@ -774,17 +776,25 @@ function tripTransportMode(value) {
   return value === 'car' ? 'car' : 'plane';
 }
 
-app.get('/api/trips/mine', auth, (req, res) => {
-  const trips = db.trips
-    .filter((t) => t.travelerId === req.user.id)
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .map((t) => {
-      const view = tripPostView(t, req.user);
-      const operations = db.transactions.filter((tx) => tx.tripId === t.id && !CLOSED_STATUSES.includes(tx.status));
-      return { ...view, activeOperations: operations.length };
-    });
-  res.json({ trips });
+const tripService = createTripService({
+  db,
+  isClosedStatus: (status) => CLOSED_STATUSES.includes(status),
+  transportModes: TRIP_TRANSPORT_MODES,
+  normalizeTransportMode: tripTransportMode,
+  tripView: tripPostView,
+  availableTrips: availableTripPosts,
+  cleanupSavedTrips,
+  positiveNumber,
+  auditChange,
+  save,
+  newId,
+  today: TODAY_ISO,
 });
+
+app.use('/api', createTripsRouter({
+  auth,
+  trips: tripService,
+}));
 
 app.get('/api/trips/mission', auth, (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -823,109 +833,6 @@ app.get('/api/trips/mission', auth, (req, res) => {
       potentialPay: missions.reduce((s, m) => s + m.totalPay, 0),
     },
   });
-});
-
-app.post('/api/trips', auth, async (req, res) => {
-  if (req.user.kycStatus !== 'verified')
-    return res.status(403).json({ error: 'Vérification d\'identité requise', needsKyc: true });
-  const { from, to, date, departureDate, capacityKg, price, description, conditions, transportMode = 'plane' } = req.body;
-  const travelDate = date || departureDate;
-  if (!from || !to || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
-  if (from === to) return res.status(400).json({ error: 'Départ et arrivée identiques' });
-  if (!TRIP_TRANSPORT_MODES.has(transportMode))
-    return res.status(400).json({ error: 'Type de transport invalide' });
-  if (new Date(travelDate) < new Date(new Date().toDateString()))
-    return res.status(400).json({ error: 'La date est déjà passée' });
-  const proposedPrice = positiveNumber(price === undefined ? 25 : price);
-  if (proposedPrice === null) return res.status(400).json({ error: 'Prix invalide' });
-  const trip = {
-    id: newId('t'), travelerId: req.user.id,
-    from: String(from).trim().slice(0, 60),
-    to: String(to).trim().slice(0, 60),
-    date: travelDate,
-    departureDate: travelDate,
-    transportMode,
-    price: proposedPrice,
-    currency: 'EUR',
-    description: String(description || 'Voyageur disponible pour transporter un colis propre et conforme.').trim().slice(0, 700),
-    conditions: String(conditions || 'Petit colis propre, ferme et conforme aux regles douanieres.').trim().slice(0, 500),
-    status: 'published',
-    capacityKg: Math.max(1, Math.min(30, Number(capacityKg) || 5)),
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-  db.trips.push(trip);
-  await auditChange({
-    actorId: req.user.id, action: 'trip.create', targetType: 'trip', targetId: trip.id,
-    subjectUserId: req.user.id, before: {}, after: trip,
-    fields: ['from', 'to', 'departureDate', 'transportMode', 'capacityKg', 'price', 'description', 'conditions', 'status'],
-  });
-  save();
-  res.json({ trip: tripPostView(trip, req.user) });
-});
-
-app.patch('/api/trips/:id', auth, async (req, res) => {
-  const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
-  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
-  if ((trip.status || 'published') !== 'published')
-    return res.status(400).json({ error: 'Trajet indisponible' });
-  const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
-  if (activeOperations.length > 0)
-    return res.status(400).json({ error: 'Impossible de modifier un trajet avec operation en cours' });
-
-  const before = { ...trip };
-
-  const { from, to, date, departureDate, capacityKg, price, description, conditions, transportMode } = req.body || {};
-  const travelDate = date || departureDate || trip.departureDate || trip.date;
-  const nextFrom = String(from ?? trip.from).trim().slice(0, 60);
-  const nextTo = String(to ?? trip.to).trim().slice(0, 60);
-  const nextTransportMode = transportMode === undefined ? tripTransportMode(trip.transportMode) : transportMode;
-  if (!nextFrom || !nextTo || !travelDate) return res.status(400).json({ error: 'Trajet, sens et date requis' });
-  if (nextFrom === nextTo) return res.status(400).json({ error: 'Depart et arrivee identiques' });
-  if (!TRIP_TRANSPORT_MODES.has(nextTransportMode))
-    return res.status(400).json({ error: 'Type de transport invalide' });
-  if (new Date(travelDate) < new Date(new Date().toDateString()))
-    return res.status(400).json({ error: 'La date est deja passee' });
-  const proposedPrice = positiveNumber(price === undefined ? trip.price : price);
-  if (proposedPrice === null) return res.status(400).json({ error: 'Prix invalide' });
-
-  trip.from = nextFrom;
-  trip.to = nextTo;
-  trip.date = travelDate;
-  trip.departureDate = travelDate;
-  trip.transportMode = nextTransportMode;
-  trip.price = proposedPrice;
-  trip.capacityKg = Math.max(1, Math.min(30, Number(capacityKg ?? trip.capacityKg) || 5));
-  trip.description = String(description ?? trip.description ?? '').trim().slice(0, 700)
-    || 'Voyageur disponible pour transporter un colis propre et conforme.';
-  trip.conditions = String(conditions ?? trip.conditions ?? '').trim().slice(0, 500)
-    || 'Petit colis propre, ferme et conforme aux regles douanieres.';
-  trip.updatedAt = Date.now();
-  await auditChange({
-    actorId: req.user.id, action: 'trip.update', targetType: 'trip', targetId: trip.id,
-    subjectUserId: req.user.id, before, after: trip,
-    fields: ['from', 'to', 'departureDate', 'transportMode', 'capacityKg', 'price', 'description', 'conditions'],
-  });
-  save();
-  res.json({ trip: tripPostView(trip, req.user) });
-});
-
-app.delete('/api/trips/:id', auth, async (req, res) => {
-  const trip = db.trips.find((t) => t.id === req.params.id && t.travelerId === req.user.id);
-  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
-  const activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status));
-  if (activeOperations.length > 0)
-    return res.status(400).json({ error: 'Impossible de retirer un trajet avec operation en cours' });
-  const before = { ...trip };
-  trip.status = 'removed';
-  trip.removedAt = Date.now();
-  db.savedTrips = db.savedTrips.filter((saved) => saved.tripId !== trip.id);
-  await auditChange({
-    actorId: req.user.id, action: 'trip.remove', targetType: 'trip', targetId: trip.id,
-    subjectUserId: req.user.id, before, after: trip, fields: ['status'],
-  });
-  save();
-  res.json({ ok: true });
 });
 
 // Compatibilité annonce ↔ trajet : même sens, fenêtre de dates qui contient la date du vol, poids ≤ capacité.
@@ -1364,36 +1271,6 @@ app.get('/api/navigation-summary', auth, (req, res) => {
   });
 });
 
-app.get('/api/trips', auth, (req, res) => {
-  const trips = availableTripPosts(req.user, req.query);
-  res.json({ trips });
-});
-
-app.get('/api/trips/overview', auth, (req, res) => {
-  const myTrips = db.trips
-    .filter((t) => t.travelerId === req.user.id)
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .map((t) => {
-      const view = tripPostView(t, req.user);
-      const operations = db.transactions.filter((tx) => tx.tripId === t.id && !CLOSED_STATUSES.includes(tx.status));
-      return { ...view, activeOperations: operations.length };
-    });
-  const trips = availableTripPosts(req.user, { ...req.query, excludeMine: '1' });
-  res.json({ trips, myTrips });
-});
-
-app.get('/api/trips/:id', auth, (req, res, next) => {
-  if (['mine', 'mission'].includes(req.params.id)) return next();
-  const trip = db.trips.find((t) => t.id === req.params.id);
-  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
-  const view = tripPostView(trip, req.user);
-  if (view.status !== 'published' || view.departureDate < TODAY_ISO())
-    return res.status(404).json({ error: 'Trajet expiré ou indisponible' });
-  if (trip.travelerId === req.user.id)
-    view.activeOperations = db.transactions.filter((tx) => tx.tripId === trip.id && !CLOSED_STATUSES.includes(tx.status)).length;
-  res.json({ trip: view });
-});
-
 app.post('/api/trips/:id/accept', auth, async (req, res) => {
   const trip = db.trips.find((t) => t.id === req.params.id);
   if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
@@ -1447,41 +1324,6 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
   await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'messages', 'messages');
   save();
   res.json({ operation: operationView(tx, req.user), conversation: conversationView(conversation, req.user.id) });
-});
-
-app.get('/api/saved-trips', auth, (req, res) => {
-  const changed = cleanupSavedTrips();
-  if (changed) save();
-  const trips = db.savedTrips
-    .filter((s) => s.userId === req.user.id)
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map((s) => db.trips.find((t) => t.id === s.tripId))
-    .filter(Boolean)
-    .map((t) => tripPostView(t, req.user));
-  res.json({ trips });
-});
-
-app.post('/api/saved-trips/:tripId', auth, (req, res) => {
-  cleanupSavedTrips();
-  const trip = db.trips.find((t) => t.id === req.params.tripId);
-  if (!trip) return res.status(404).json({ error: 'Trajet introuvable' });
-  const view = tripPostView(trip, req.user);
-  if (view.status !== 'published' || view.departureDate < TODAY_ISO())
-    return res.status(400).json({ error: 'Trajet expiré ou indisponible' });
-  let saved = db.savedTrips.find((s) => s.userId === req.user.id && s.tripId === trip.id);
-  if (!saved) {
-    saved = { id: newId('saved'), userId: req.user.id, tripId: trip.id, createdAt: Date.now() };
-    db.savedTrips.push(saved);
-  }
-  save();
-  res.json({ trip: tripPostView(trip, req.user) });
-});
-
-app.delete('/api/saved-trips/:tripId', auth, (req, res) => {
-  const before = db.savedTrips.length;
-  db.savedTrips = db.savedTrips.filter((s) => !(s.userId === req.user.id && s.tripId === req.params.tripId));
-  if (before !== db.savedTrips.length) save();
-  res.json({ ok: true });
 });
 
 app.get('/api/operations', auth, (req, res) => {

@@ -607,6 +607,32 @@ traduction finale reste effectuée à la lecture. Les chaînes historiques reste
 stockées telles quelles. Le dépôt, la recherche utilisateur, la normalisation
 des préférences et le moteur de rendu sont injectés depuis `server/index.js`.
 
+## Backend `trips`
+
+La gestion non financière des trajets et des favoris est séparée dans :
+
+```text
+server/
+|-- routes/
+|   `-- trips.js
+`-- services/
+    `-- trips.js
+```
+
+`createTripService` centralise la création, la modification, le retrait logique,
+la liste publique, la vue propriétaire, le détail et les trajets enregistrés.
+Il conserve les contrôles KYC, date, villes distinctes, capacité, prix et moyen
+de transport. Une modification ou un retrait reste interdit pendant une
+opération active. Les mutations gardent l'ordre historique entre audit et
+sauvegarde, et le retrait nettoie aussi les références enregistrées.
+
+`createTripsRouter` expose les contrats HTTP existants sans règle métier. La
+route historique `/api/trips/mission` continue de recevoir les identifiants
+réservés, et `/api/trips/:id/accept` reste volontairement dans
+`server/index.js`. Cette dernière déclenche le parcours financier et ne sera
+déplacée qu'après le choix du prestataire de paiement et la validation de ses
+contraintes de séquestre.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :
