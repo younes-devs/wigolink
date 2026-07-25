@@ -21,6 +21,7 @@ import {
 } from './relational-messaging.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
+import { createDatabaseAvailability } from './middleware/database-availability.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 
@@ -51,12 +52,10 @@ app.use(langMiddleware);
 
 // Production never falls back to the packaged JSON data when Supabase is missing.
 // Health remains public so Vercel can show the configuration problem clearly.
-app.use((req, res, next) => {
-  if (IS_PRODUCTION && databaseHealth() === 'unavailable' && req.path !== '/api/health') {
-    return res.status(503).json({ error: 'Base de donnees indisponible. Reessayez plus tard.' });
-  }
-  return next();
-});
+app.use(createDatabaseAvailability({
+  isProduction: IS_PRODUCTION,
+  databaseHealth,
+}));
 
 const db = getDb();
 let stateQueue = Promise.resolve();

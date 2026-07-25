@@ -344,6 +344,7 @@ La modularisation backend commence par les contrôles d'accès autonomes :
 server/
 └── middleware/
     ├── admin-only.js
+    ├── database-availability.js
     ├── language.js
     └── security-headers.js
 ```
@@ -372,6 +373,14 @@ générateur de `X-Request-Id` et les origines Supabase autorisées par la CSP s
 injectés depuis `server/index.js`. Les politiques `nosniff`, anti-framing,
 référent, permissions navigateur et `Content-Security-Policy` restent
 strictement identiques et disposent maintenant de tests unitaires dédiés.
+
+`database-availability.js` construit le garde global qui empêche le serveur de
+retomber sur les données JSON en production lorsque Supabase est indisponible.
+La fonction de santé est injectée depuis `server/index.js`, `/api/health` reste
+accessible et toutes les autres routes conservent exactement la même réponse
+`503`. En développement, ce middleware ne consulte pas la santé de la base.
+Cette extraction ne déplace aucun accès aux données et ne change ni le stockage,
+ni les migrations, ni les contrats API.
 
 ## Backend `config`
 
