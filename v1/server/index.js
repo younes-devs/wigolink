@@ -46,6 +46,7 @@ import { createTripsRouter } from './routes/trips.js';
 import { createListingsRouter } from './routes/listings.js';
 import { createMatchingOffersRouter } from './routes/matching-offers.js';
 import { createOperationReadsRouter } from './routes/operation-reads.js';
+import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -58,6 +59,7 @@ import { createTripService } from './services/trips.js';
 import { createListingService } from './services/listings.js';
 import { createMatchingOfferService } from './services/matching-offers.js';
 import { createOperationReadService } from './services/operation-reads.js';
+import { createAdminRecordService } from './services/admin-records.js';
 
 const app = express();
 const {
@@ -2590,108 +2592,20 @@ app.get('/api/admin/overview', auth, adminOnly, async (req, res) => {
   });
 });
 
-// Retire une catégorie promue (repasse en zone grise pour les prochains envois).
-function adminUserView(user) {
-  if (!user) return null;
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    city: user.city,
-    isAdmin: !!user.isAdmin,
-    emailVerified: !!user.emailVerified,
-    kycStatus: user.kycStatus,
-    createdAt: user.createdAt,
-    deletedAt: user.deletedAt || null,
-    suspendedUntil: user.suspendedUntil || null,
-    suspensionReason: user.suspensionReason || null,
-    messageSafetyAttempts: (user.messageSafetyAttempts || []).filter((item) => item.at > Date.now() - MESSAGE_SAFETY_ATTEMPT_WINDOW_MS).length,
-  };
-}
-
-app.get('/api/admin/users', auth, adminOnly, (req, res) => {
-  const query = String(req.query.q || '').trim().toLowerCase();
-  const users = db.users
-    .filter((user) => !query || `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query))
-    .sort((a, b) => Number(!!b.isAdmin) - Number(!!a.isAdmin) || (b.createdAt || 0) - (a.createdAt || 0))
-    .slice(0, 100)
-    .map(adminUserView);
-  res.json({ users, adminCount: db.users.filter((user) => user.isAdmin && !user.deletedAt).length });
+const adminRecordService = createAdminRecordService({
+  db,
+  findUser,
+  kycRepository: repositories.kyc,
+  auditLogsRepository: repositories.auditLogs,
+  messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
+  kycSlaMs: KYC_SLA_MS,
 });
 
-function adminCaseParticipant(user) {
-  if (!user) return null;
-  return {
-    id: user.id, name: user.name, email: user.email, phone: user.phone || null, city: user.city || null,
-    photoUrl: user.photoUrl || null, provider: user.provider || 'email', emailVerified: !!user.emailVerified,
-    kycStatus: user.kycStatus || 'none', createdAt: user.createdAt || null, deletedAt: user.deletedAt || null,
-  };
-}
-
-async function adminCaseFile(user, { messageOffset = 0, messageLimit = 50 } = {}) {
-  const conversations = db.conversations
-    .filter((conversation) => conversation.participantIds.includes(user.id))
-    .sort((a, b) => (b.lastMessageAt || b.createdAt || 0) - (a.lastMessageAt || a.createdAt || 0));
-  const conversationIds = new Set(conversations.map((conversation) => conversation.id));
-  const conversationsById = new Map(conversations.map((conversation) => [conversation.id, conversation]));
-  const allMessages = db.messages
-    .filter((message) => conversationIds.has(message.conversationId))
-    .sort((a, b) => b.at - a.at);
-  const transactions = db.transactions
-    .filter((transaction) => [transaction.senderId, transaction.travelerId, transaction.recipientId].includes(user.id))
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const transactionIds = new Set(transactions.map((transaction) => transaction.id));
-  const kyc = repositories.kyc.listForUser(user.id)
-    .sort((a, b) => b.submittedAt - a.submittedAt)
-    .map((submission) => ({
-      id: submission.id, status: submission.status, legalName: submission.legalName, birthDate: submission.birthDate,
-      documentType: submission.documentType, submittedAt: submission.submittedAt, reviewedAt: submission.reviewedAt || null,
-      reviewedBy: submission.reviewedBy || null, decisionReason: submission.decisionReason || null,
-      selfiePhoto: submission.selfiePhoto || null, idFrontPhoto: submission.idFrontPhoto || null, idBackPhoto: submission.idBackPhoto || null,
-      documentsPurged: !submission.selfiePhoto && !submission.idFrontPhoto && !submission.idBackPhoto,
-    }));
-  const auditLogs = await repositories.auditLogs.listForMember(user.id, { limit: 500 });
-  const messages = allMessages.slice(messageOffset, messageOffset + messageLimit).map((message) => {
-    const conversation = conversationsById.get(message.conversationId);
-    const recipientIds = (conversation?.participantIds || []).filter((id) => id !== message.from);
-    return {
-      id: message.id, conversationId: message.conversationId, from: adminCaseParticipant(findUser(message.from)),
-      to: recipientIds.map((id) => adminCaseParticipant(findUser(id))).filter(Boolean),
-      text: message.text || '', type: message.type || 'text', flagged: !!message.flagged, flagReason: message.flagReason || null,
-      attachments: (message.attachments || []).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.type, size: attachment.size })),
-      location: message.location ? { kind: message.location.kind, labelKey: message.location.labelKey, label: message.location.label, city: message.location.city, precision: message.location.precision, expiresAt: message.location.expiresAt } : null,
-      at: message.at, deletedAt: message.deletedAt || null,
-    };
-  });
-  return {
-    member: { ...adminCaseParticipant(user), suspensionReason: user.suspensionReason || null, suspendedUntil: user.suspendedUntil || null },
-    kyc,
-    trips: db.trips.filter((trip) => trip.travelerId === user.id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
-    listings: db.listings.filter((listing) => listing.senderId === user.id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
-    transactions,
-    disputes: db.disputes.filter((dispute) => transactionIds.has(dispute.txId)).sort((a, b) => b.createdAt - a.createdAt),
-    conversations: conversations.map((conversation) => ({
-      id: conversation.id, createdAt: conversation.createdAt, lastMessageAt: conversation.lastMessageAt || null,
-      tripId: conversation.tripId || null, operationId: conversation.operationId || null,
-      participants: conversation.participantIds.map((id) => adminCaseParticipant(findUser(id))),
-      reports: conversation.reports || [], messageCount: allMessages.filter((message) => message.conversationId === conversation.id).length,
-    })),
-    messages,
-    messagePage: { offset: messageOffset, limit: messageLimit, total: allMessages.length, hasMore: messageOffset + messages.length < allMessages.length },
-    notifications: (db.notifications || []).filter((notification) => notification.userId === user.id).sort((a, b) => b.at - a.at).slice(0, 100),
-    safetyAppeals: (db.safetyAppeals || []).filter((appeal) => appeal.userId === user.id).sort((a, b) => b.createdAt - a.createdAt),
-    auditLogs,
-    retention: { kycImagesAvailable: kyc.some((submission) => !submission.documentsPurged), note: 'Les documents KYC peuvent etre purges a l issue de la duree de conservation applicable. La trace de decision reste auditable.' },
-  };
-}
-
-app.get('/api/admin/users/:id/case-file', auth, adminOnly, async (req, res) => {
-  const user = findUser(req.params.id);
-  if (!user) return res.status(404).json({ error: 'Membre introuvable' });
-  const offset = Math.max(0, Number(req.query.offset || 0) || 0);
-  const limit = Math.max(10, Math.min(100, Number(req.query.limit || 50) || 50));
-  res.json({ caseFile: await adminCaseFile(user, { messageOffset: offset, messageLimit: limit }) });
-});
+app.use('/api', createAdminRecordsRouter({
+  auth,
+  adminOnly,
+  adminRecords: adminRecordService,
+}));
 
 app.post('/api/admin/users/:id/case-file/access', auth, adminOnly, async (req, res) => {
   const user = findUser(req.params.id);
@@ -2715,7 +2629,12 @@ app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
   if (!becomesAdmin && target.isAdmin && activeAdmins.length <= 1) {
     return res.status(400).json({ error: 'Au moins un administrateur doit rester actif.' });
   }
-  if (!!target.isAdmin === becomesAdmin) return res.json({ user: adminUserView(target), unchanged: true });
+  if (!!target.isAdmin === becomesAdmin) {
+    return res.json({
+      user: adminRecordService.userView(target),
+      unchanged: true,
+    });
+  }
 
   target.isAdmin = becomesAdmin;
   target.roleChangedAt = Date.now();
@@ -2724,7 +2643,7 @@ app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
     email: target.email,
   });
   save();
-  res.json({ user: adminUserView(target) });
+  res.json({ user: adminRecordService.userView(target) });
 });
 
 app.post('/api/admin/users/:id/safety', auth, adminOnly, async (req, res) => {
@@ -2752,7 +2671,7 @@ app.post('/api/admin/users/:id/safety', auth, adminOnly, async (req, res) => {
   }
   await audit(req.user.id, `user.safety.${action}`, 'user', target.id, { reason, durationHours: req.body?.durationHours || null });
   save();
-  res.json({ ok: true, user: adminUserView(target) });
+  res.json({ ok: true, user: adminRecordService.userView(target) });
 });
 
 // A suspended user may still submit an appeal with their existing session token.
@@ -2772,16 +2691,6 @@ app.post('/api/safety/appeals', async (req, res) => {
   await audit(user.id, 'user.safety.appeal', 'safety_appeal', appeal.id, {});
   save();
   res.json({ ok: true, appeal });
-});
-
-app.get('/api/admin/safety', auth, adminOnly, (req, res) => {
-  const now = Date.now();
-  const riskyUsers = db.users
-    .filter((user) => !user.isAdmin && ((user.suspendedUntil && user.suspendedUntil > now) || (user.messageSafetyAttempts || []).some((item) => item.at > now - MESSAGE_SAFETY_ATTEMPT_WINDOW_MS)))
-    .map(adminUserView)
-    .sort((a, b) => Number(!!b.suspendedUntil) - Number(!!a.suspendedUntil) || b.messageSafetyAttempts - a.messageSafetyAttempts);
-  const appeals = (db.safetyAppeals || []).slice().sort((a, b) => b.createdAt - a.createdAt).map((appeal) => ({ ...appeal, user: adminUserView(findUser(appeal.userId)) }));
-  res.json({ riskyUsers, appeals });
 });
 
 app.post('/api/admin/safety/appeals/:id', auth, adminOnly, async (req, res) => {
@@ -2812,67 +2721,6 @@ app.delete('/api/admin/whitelist/:id', auth, adminOnly, async (req, res) => {
   await audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
   save();
   res.json({ ok: true });
-});
-
-app.get('/api/admin/audit-logs', auth, adminOnly, async (req, res) => {
-  res.json({ logs: await repositories.auditLogs.list({ limit: req.query.limit }) });
-});
-
-// ---------- Back-office KYC (PRD KYC §5) ----------
-// Résumé d'une soumission pour la vue liste (sans les photos — allège la charge).
-function kycSummary(s) {
-  const u = findUser(s.userId);
-  const priorRejects = repositories.kyc.rejectedCountForUser(s.userId, { before: s.submittedAt });
-  return {
-    id: s.id, userId: s.userId, submittedAt: s.submittedAt, status: s.status,
-    legalName: s.legalName, documentType: s.documentType, age: s.age,
-    reviewedBy: s.reviewedBy, reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
-    user: u ? { name: u.name, email: u.email, createdAt: u.createdAt, kycStatus: u.kycStatus } : null,
-    priorRejects,
-    overdue: s.status === 'pending' && (Date.now() - s.submittedAt) > KYC_SLA_MS,
-  };
-}
-
-// File KYC. ?status=pending|verified|rejected|refused|all (défaut: pending), ?q= recherche nom/email.
-app.get('/api/admin/kyc', auth, adminOnly, (req, res) => {
-  const filter = req.query.status || 'pending';
-  const q = String(req.query.q || '').toLowerCase().trim();
-  const list = repositories.kyc.list({ filter, q });
-  const pending = repositories.kyc.pending();
-  const reviewed = repositories.kyc.reviewed();
-  const avgReviewMs = reviewed.length
-    ? reviewed.reduce((sum, s) => sum + (s.reviewedAt - s.submittedAt), 0) / reviewed.length
-    : null;
-
-  res.json({
-    submissions: list.map(kycSummary),
-    stats: {
-      pending: pending.length,
-      overdue: pending.filter((s) => (Date.now() - s.submittedAt) > KYC_SLA_MS).length,
-      verified: db.users.filter((u) => u.kycStatus === 'verified').length,
-      avgReviewHours: avgReviewMs !== null ? Math.round(avgReviewMs / 3600e3 * 10) / 10 : null,
-    },
-  });
-});
-
-// Détail complet d'une soumission (avec photos) — réservé admin.
-app.get('/api/admin/kyc/:id', auth, adminOnly, (req, res) => {
-  const s = repositories.kyc.findSubmission(req.params.id);
-  if (!s) return res.status(404).json({ error: 'Demande introuvable' });
-  const u = findUser(s.userId);
-  const history = repositories.kyc.historyForUser(s.userId)
-    .map((d) => ({ ...d, adminName: findUser(d.adminId)?.name || d.adminId }));
-  res.json({
-    submission: {
-      ...s,
-      user: u ? {
-        name: u.name, email: u.email, createdAt: u.createdAt, kycStatus: u.kycStatus,
-        phone: u.phone, city: u.city,
-      } : null,
-      priorRejects: repositories.kyc.rejectedCountForUser(s.userId, { before: s.submittedAt }),
-    },
-    history,
-  });
 });
 
 // Décision admin : approve | reject | refuse (motif obligatoire pour reject/refuse).

@@ -712,6 +712,32 @@ de paiement, séquestre, remboursement, libération, litige et livraison restent
 dans `server/index.js` jusqu'à l'extraction séparée de leur machine à états et
 au choix du prestataire financier.
 
+## Backend `admin records`
+
+Les lectures sensibles du back-office sont regroupées dans :
+
+```text
+server/
+|-- routes/
+|   `-- admin-records.js
+`-- services/
+    `-- admin-records.js
+```
+
+`createAdminRecordService` sert la liste des membres, le dossier historique
+d'un membre, les journaux d'audit, les files KYC et le centre de sécurité. Les
+comptes supprimés restent visibles dans le dossier administrateur. Les messages
+conservent explicitement leur expéditeur, leurs destinataires, leur date de
+suppression, leurs métadonnées de pièce jointe et de localisation. Les décisions
+KYC, documents encore disponibles et événements d'audit restent associés au
+membre selon la configuration de conservation existante. Les hashes de mot de
+passe et secrets de session ne sont jamais projetés.
+
+`createAdminRecordsRouter` applique systématiquement `auth`, puis `adminOnly`,
+avant d'appeler le service. Les routes extraites sont strictement en lecture.
+Les changements de rôle, sanctions, recours, décisions KYC, revues de fraude et
+écrans contenant des agrégats financiers restent dans `server/index.js`.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :
