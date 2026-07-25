@@ -417,6 +417,7 @@ server/
     ├── account.js
     ├── account-privacy.js
     ├── account-settings.js
+    ├── auth-registration.js
     ├── kyc.js
     ├── notifications.js
     ├── profile.js
@@ -463,6 +464,14 @@ confirmation de suppression sous `/api/profile`. Il applique uniquement
 l'authentification et le contrat HTTP; les règles de confidentialité sont
 déléguées à `createAccountPrivacyService`. L'export conserve son en-tête de
 téléchargement historique.
+
+`createAuthRegistrationRouter` regroupe inscription, vérification email, renvoi
+du code et l'indisponibilité explicite de Google sous `/api/auth`. L'envoi du
+code précède toujours la création effective du compte; un échec email ne laisse
+ni membre ni vérification partielle. La préférence de session longue traverse
+l'inscription et les renvois jusqu'à l'ouverture de session. Les dépôts
+`users` et `authVerifications` encapsulent désormais l'ajout/recherche du compte
+et les codes temporaires; les durées et réponses HTTP restent inchangées.
 
 `createKycRouter` orchestre la soumission manuelle sous `/api/kyc/submit`.
 Il conserve l'ordre des garde-fous : statut du compte, validité des champs et

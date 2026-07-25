@@ -30,6 +30,7 @@ import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
 import { createAccountPrivacyRouter } from './routes/account-privacy.js';
+import { createAuthRegistrationRouter } from './routes/auth-registration.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createKycRouter } from './routes/kyc.js';
 import { createProfileRouter } from './routes/profile.js';
@@ -516,7 +517,7 @@ function positiveNumber(v, { allowZero = false } = {}) {
 
 // ---------- Auth : email + mot de passe, Google (simulé), reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
-const findByEmail = (email) => db.users.find((u) => u.email === normEmail(email));
+const findByEmail = (email) => repositories.users.findByEmail(email);
 
 function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {
   return {
@@ -572,61 +573,21 @@ async function deliverAuthCode(email, code, purpose, lang = 'fr') {
   await sendVerificationEmail({ to: email, code, purpose, lang });
 }
 
-app.post('/api/auth/register', async (req, res) => {
-  const { name, email, phone, password, cguAccepted, rememberMe } = req.body;
-  const invalid = validRegistration({ name, email, password });
-  if (invalid) return res.status(400).json({ error: invalid });
-  if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
-  if (findByEmail(email)) return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
-  const user = makeUser({ name, email, phone, provider: 'email', passwordHash: hashPassword(password), cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
-  const code = sixDigitCode();
-  try {
-    await deliverAuthCode(user.email, code, 'verify', req.lang);
-  } catch (error) {
-    return res.status(503).json({ error: error.message });
-  }
-  db.users.push(user);
-  db.pendingVerifications[user.email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: rememberMe === true };
-  save();
-  res.json({ pendingEmail: user.email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
-});
-
-app.post('/api/auth/verify-email', async (req, res) => {
-  const email = normEmail(req.body.email);
-  if (rateLimit(`verify:${email}`))
-    return res.status(429).json({ error: 'Trop de tentatives — demandez un nouveau code' });
-  const pending = db.pendingVerifications[email];
-  if (!pending || pending.expires < Date.now())
-    return res.status(400).json({ error: 'Code expiré — demandez un nouvel envoi' });
-  if (pending.code !== String(req.body.code || '').trim())
-    return res.status(400).json({ error: 'Code incorrect' });
-  const user = findByEmail(email);
-  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
-  user.emailVerified = true;
-  delete db.pendingVerifications[email];
-  await openSession(res, user, req, { rememberMe: req.body.rememberMe === true || pending.rememberMe === true });
-});
-
-app.post('/api/auth/resend-code', async (req, res) => {
-  const email = normEmail(req.body.email);
-  if (rateLimit(`resend:${email}`))
-    return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
-  const user = findByEmail(email);
-  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
-  const code = sixDigitCode();
-  try {
-    await deliverAuthCode(email, code, 'verify', req.lang);
-  } catch (error) {
-    return res.status(503).json({ error: error.message });
-  }
-  db.pendingVerifications[email] = {
-    code,
-    expires: Date.now() + 15 * 60e3,
-    rememberMe: db.pendingVerifications[email]?.rememberMe === true,
-  };
-  save();
-  res.json({ ok: true, message: 'Un nouveau code vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
-});
+app.use('/api/auth', createAuthRegistrationRouter({
+  users: repositories.users,
+  verifications: repositories.authVerifications,
+  validRegistration,
+  makeUser,
+  hashPassword,
+  clientIp,
+  newCode: sixDigitCode,
+  deliverCode: deliverAuthCode,
+  save,
+  demoHint: demoHintFor,
+  normalizeEmail: normEmail,
+  rateLimit,
+  openSession,
+}));
 
 app.post('/api/auth/login', async (req, res) => {
   const email = normEmail(req.body.email);
@@ -656,22 +617,6 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
   }
   await openSession(res, user, req, { rememberMe: req.body.rememberMe === true });
-});
-
-// OAuth Google — simulé en démo. En prod : flux OAuth 2.0 / OpenID Connect
-// (échange du "credential" Google Identity Services contre l'identité vérifiée).
-app.post('/api/auth/google', (req, res) => {
-  return res.status(410).json({ error: 'Connexion Google indisponible' });
-  /*
-  const { email, name, cguAccepted } = req.body;
-  if (!EMAIL_RE.test(email || '')) return res.status(400).json({ error: 'Email Google invalide' });
-  let user = findByEmail(email);
-  if (!user) {
-    if (!cguAccepted) return res.status(400).json({ error: 'Vous devez accepter les Conditions Générales d\'Utilisation' });
-    user = makeUser({ name: name || email.split('@')[0], email, provider: 'google', emailVerified: true, cguAcceptedAt: Date.now(), registerIp: clientIp(req) });
-    db.users.push(user);
-  }
-  openSession(res, user, req); */
 });
 
 app.post('/api/auth/forgot', async (req, res) => {

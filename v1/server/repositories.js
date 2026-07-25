@@ -8,6 +8,7 @@
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
     accountConfirmations: createAccountConfirmationRepository({ db }),
+    authVerifications: createAuthVerificationRepository({ db }),
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
     customWhitelist: createCustomWhitelistRepository({ db }),
     kyc: createKycRepository({ db, newId, findUser }),
@@ -15,6 +16,48 @@ export function createRepositories({ db, save, newId, findUser, publicUser }) {
     notifications: createNotificationRepository({ db, newId }),
     reviewQueue: createReviewQueueRepository({ db, newId }),
     settings: createSettingsRepository(),
+    users: createUserRepository({ db }),
+  };
+}
+
+function createAuthVerificationRepository({ db }) {
+  const ensure = () => {
+    db.pendingVerifications = db.pendingVerifications || {};
+    return db.pendingVerifications;
+  };
+
+  return {
+    get(email) {
+      return ensure()[email] || null;
+    },
+
+    set(email, verification) {
+      ensure()[email] = verification;
+      return verification;
+    },
+
+    remove(email) {
+      delete ensure()[email];
+    },
+  };
+}
+
+function createUserRepository({ db }) {
+  const ensure = () => {
+    db.users = db.users || [];
+    return db.users;
+  };
+
+  return {
+    append(user) {
+      ensure().push(user);
+      return user;
+    },
+
+    findByEmail(email) {
+      const normalized = String(email || '').trim().toLowerCase();
+      return ensure().find((user) => user.email === normalized) || null;
+    },
   };
 }
 
