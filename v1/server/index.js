@@ -45,6 +45,7 @@ import { createConversationMessageRouter } from './routes/conversation-messages.
 import { createTripsRouter } from './routes/trips.js';
 import { createListingsRouter } from './routes/listings.js';
 import { createMatchingOffersRouter } from './routes/matching-offers.js';
+import { createOperationReadsRouter } from './routes/operation-reads.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -56,6 +57,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createTripService } from './services/trips.js';
 import { createListingService } from './services/listings.js';
 import { createMatchingOfferService } from './services/matching-offers.js';
+import { createOperationReadService } from './services/operation-reads.js';
 
 const app = express();
 const {
@@ -1343,24 +1345,6 @@ app.post('/api/trips/:id/accept', auth, async (req, res) => {
   res.json({ operation: operationView(tx, req.user), conversation: conversationView(conversation, req.user.id) });
 });
 
-app.get('/api/operations', auth, (req, res) => {
-  const history = req.query.history === '1';
-  const operations = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
-    .filter((t) => history ? CLOSED_STATUSES.includes(t.status) : !CLOSED_STATUSES.includes(t.status))
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map((t) => operationView(t, req.user));
-  res.json({ operations });
-});
-
-app.get('/api/operations/:id', auth, (req, res) => {
-  const tx = db.transactions.find((t) => t.id === req.params.id);
-  if (!tx) return res.status(404).json({ error: 'Operation introuvable' });
-  if (!isPartyToTx(tx, req.user.id) && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Non autorisé' });
-  res.json({ operation: operationView(tx, req.user) });
-});
-
 app.post('/api/operations/:id/pay', auth, (req, res) => {
   const tx = db.transactions.find((t) => t.id === req.params.id);
   if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
@@ -1627,73 +1611,6 @@ app.use('/api', createMatchingOffersRouter({
   matchingOffers: matchingOfferService,
 }));
 
-// Modification d'une annonce tant qu'aucun voyageur ne l'a acceptée (statut 'published' ou 'pending_review').
-function shipmentActionFor(listing, tx) {
-  if (listing.status === 'pending_review') return { id: 'review', priority: 'medium', href: '/envois' };
-  if (listing.status === 'published') return { id: 'wait_traveler', priority: 'medium', href: `/annonce/${listing.id}` };
-  if (!tx) return { id: listing.status === 'cancelled' ? 'cancelled' : 'closed', priority: 'low', href: '/envois' };
-  if (tx.status === 'accepted') return { id: 'seal', priority: 'high', href: `/transactions/${tx.id}#actions` };
-  if (tx.status === 'sealed') return { id: 'handoff', priority: 'high', href: `/transactions/${tx.id}#messages` };
-  if (tx.status === 'in_transit') return { id: 'track', priority: 'medium', href: `/transactions/${tx.id}#suivi` };
-  if (tx.status === 'disputed') return { id: 'dispute', priority: 'high', href: `/transactions/${tx.id}#litige` };
-  if (tx.status === 'released') return { id: 'rate', priority: 'low', href: `/transactions/${tx.id}#actions` };
-  return { id: 'closed', priority: 'low', href: `/transactions/${tx.id}` };
-}
-
-function shipmentCommandCenterFor(user) {
-  const mine = db.listings
-    .filter((l) => l.senderId === user.id)
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const items = mine.map((listing) => {
-    const tx = db.transactions
-      .filter((t) => t.listingId === listing.id)
-      .sort((a, b) => b.createdAt - a.createdAt)[0] || null;
-    const action = shipmentActionFor(listing, tx);
-    return {
-      listing,
-      transaction: tx ? txView(user)(tx) : null,
-      action,
-      risk: {
-        customs: listing.valueEur > (listing.from === 'Casablanca' ? 430 : 185),
-        gray: listing.whitelistVerdict === 'gray',
-        disputed: tx?.status === 'disputed',
-      },
-    };
-  });
-  const actions = items
-    .filter((i) => ['high', 'medium'].includes(i.action.priority))
-    .sort((a, b) => {
-      const rank = { high: 0, medium: 1, low: 2 };
-      return rank[a.action.priority] - rank[b.action.priority] || b.listing.createdAt - a.listing.createdAt;
-    })
-    .slice(0, 5)
-    .map((i) => ({
-      id: `${i.listing.id}:${i.action.id}`,
-      listingId: i.listing.id,
-      title: i.listing.title,
-      action: i.action,
-      status: i.transaction?.status || i.listing.status,
-    }));
-  return {
-    totals: {
-      total: mine.length,
-      active: items.filter((i) => !['cancelled', 'rejected'].includes(i.listing.status)).length,
-      published: mine.filter((l) => l.status === 'published').length,
-      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
-      matched: mine.filter((l) => l.status === 'matched').length,
-      inTransit: items.filter((i) => i.transaction?.status === 'in_transit').length,
-      disputed: items.filter((i) => i.transaction?.status === 'disputed').length,
-      escrowHeld: items.reduce((sum, i) => sum + (i.transaction?.escrow?.state === 'held' ? i.transaction.escrow.amount : 0), 0),
-    },
-    actions,
-    items,
-  };
-}
-
-app.get('/api/shipments/command-center', auth, (req, res) => {
-  res.json({ commandCenter: shipmentCommandCenterFor(req.user) });
-});
-
 // ---------- Transactions (machine à états) ----------
 // accepted → sealed → in_transit → delivered → released | disputed
 const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
@@ -1892,15 +1809,6 @@ app.get('/api/dashboard', auth, async (req, res) => {
   });
 });
 
-app.get('/api/transactions', auth, (req, res) => {
-  const mine = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
-    .filter((t) => (req.query.history === '1' ? CLOSED_STATUSES.includes(t.status) : !CLOSED_STATUSES.includes(t.status)))
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map(txView(req.user));
-  res.json({ transactions: mine });
-});
-
 function txView(user) {
   return (t) => {
     const v = {
@@ -1924,13 +1832,18 @@ function txView(user) {
   };
 }
 
-app.get('/api/transactions/:id', auth, (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
-  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Non autorisé' });
-  res.json({ transaction: txView(req.user)(t) });
+const operationReadService = createOperationReadService({
+  db,
+  isClosedStatus: (status) => CLOSED_STATUSES.includes(status),
+  isParty: isPartyToTx,
+  operationView,
+  transactionView: txView,
 });
+
+app.use('/api', createOperationReadsRouter({
+  auth,
+  operationReads: operationReadService,
+}));
 
 function assertTravelerCanAccept(user, listing) {
   if (!user) return { status: 404, body: { error: 'Voyageur introuvable' } };

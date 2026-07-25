@@ -686,6 +686,32 @@ dans `server/index.js` : cette action transforme l'offre en transaction et crée
 actuellement le séquestre. Elle continue toutefois d'utiliser la normalisation
 du service, sans choix supplémentaire de prestataire.
 
+## Backend `operation reads`
+
+Les lectures utilisateur des opérations et transactions sont regroupées dans :
+
+```text
+server/
+|-- routes/
+|   `-- operation-reads.js
+`-- services/
+    `-- operation-reads.js
+```
+
+`createOperationReadService` sert les listes actives et historiques, les détails
+scopés aux parties ou à l'administration, ainsi que le centre de pilotage des
+envois. Il réutilise les projections historiques `operationView` et `txView` :
+les codes bruts, hashes et compteurs de tentative restent donc absents des
+réponses. Le centre conserve la transaction la plus récente, les priorités
+d'action, les indicateurs douaniers et les totaux existants.
+
+`createOperationReadsRouter` conserve les cinq contrats HTTP
+`/operations`, `/operations/:id`, `/transactions`, `/transactions/:id` et
+`/shipments/command-center`. Ce module est strictement en lecture. Les actions
+de paiement, séquestre, remboursement, libération, litige et livraison restent
+dans `server/index.js` jusqu'à l'extraction séparée de leur machine à états et
+au choix du prestataire financier.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :
