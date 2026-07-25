@@ -31,6 +31,7 @@ import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createKycRouter } from './routes/kyc.js';
+import { createProfileRouter } from './routes/profile.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
@@ -771,47 +772,12 @@ app.use('/api/kyc', createKycRouter({
 }));
 
 // ---------- Profil ----------
-app.post('/api/profile', auth, async (req, res) => {
-  const before = { ...req.user };
-  const { name, city, phone } = req.body;
-  if (name !== undefined) {
-    if (String(name).trim().length < 2) return res.status(400).json({ error: 'Nom trop court' });
-    req.user.name = String(name).trim().slice(0, 60);
-  }
-  if (city !== undefined) req.user.city = String(city).trim().slice(0, 60);
-  if (phone !== undefined) req.user.phone = String(phone).trim().slice(0, 20);
-  await auditChange({
-    actorId: req.user.id, action: 'profile.update', targetType: 'user', targetId: req.user.id,
-    subjectUserId: req.user.id, before, after: req.user, fields: ['name', 'city', 'phone'],
-  });
-  save();
-  res.json({ user: publicUser(req.user) });
-});
-
-app.post('/api/profile/photo', auth, async (req, res) => {
-  const before = { hasPhoto: !!req.user.photoUrl };
-  const { dataUrl } = req.body;
-  if (dataUrl === null) {
-    req.user.photoUrl = null;
-    await auditChange({
-      actorId: req.user.id, action: 'profile.photo.update', targetType: 'user', targetId: req.user.id,
-      subjectUserId: req.user.id, before, after: { hasPhoto: false }, fields: ['hasPhoto'],
-    });
-    save();
-    return res.json({ user: publicUser(req.user) });
-  }
-  if (!/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl || ''))
-    return res.status(400).json({ error: 'Format d\'image invalide (JPEG, PNG ou WebP)' });
-  if (dataUrl.length > 700 * 1024)
-    return res.status(400).json({ error: 'Image trop lourde (500 Ko max après compression)' });
-  req.user.photoUrl = dataUrl;
-  await auditChange({
-    actorId: req.user.id, action: 'profile.photo.update', targetType: 'user', targetId: req.user.id,
-    subjectUserId: req.user.id, before, after: { hasPhoto: true }, fields: ['hasPhoto'],
-  });
-  save();
-  res.json({ user: publicUser(req.user) });
-});
+app.use('/api/profile', createProfileRouter({
+  auth,
+  auditChange,
+  save,
+  publicUser,
+}));
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
 app.post('/api/profile/password', auth, async (req, res) => {

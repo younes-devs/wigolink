@@ -418,6 +418,7 @@ server/
     ├── account-settings.js
     ├── kyc.js
     ├── notifications.js
+    ├── profile.js
     ├── rules.js
     ├── system.js
     └── training.js
@@ -463,6 +464,13 @@ projection de la vue KYC. L'authentification, le dépôt KYC, la validation des
 images, la limite de tentatives et la projection sont injectés. Une requête
 refusée ne consulte ni ne modifie le dépôt.
 
+`createProfileRouter` regroupe les mutations des informations publiques et de
+la photo sous `/api/profile` et `/api/profile/photo`. Les données autorisées
+sont normalisées avant mutation; les propriétés sensibles ou inconnues sont
+ignorées. Chaque modification conserve le même journal d'audit et l'ordre
+audit, sauvegarde, projection publique. Une validation ou une authentification
+refusée ne produit aucun effet.
+
 `createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
 dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
 les règles douanières et les fonctions de localisation sont injectées. Les
@@ -483,6 +491,7 @@ La première validation indépendante d'Express est organisée dans :
 server/
 └── validators/
     ├── kyc.js
+    ├── profile.js
     └── training.js
 ```
 
@@ -491,6 +500,11 @@ et les photos requises, puis normalise uniquement la charge utile persistable.
 `computeAge` reçoit une horloge injectable afin de tester précisément la date
 anniversaire. Le routeur conserve les textes, statuts HTTP et l'ordre historique
 des erreurs.
+
+`validateProfileUpdate` limite les mutations à `name`, `city` et `phone`, avec
+les mêmes nettoyages et longueurs. `validateProfilePhoto` accepte la suppression
+ou les Data URL JPEG, PNG et WebP sous la limite historique. Les erreurs visibles
+et la limite effective restent inchangées.
 
 `invalidTrainingAnswers` possède la grille historique `q1=b`, `q2=c`, `q3=a`
 et retourne les identifiants incorrects dans le même ordre. Il ne lit ni la
