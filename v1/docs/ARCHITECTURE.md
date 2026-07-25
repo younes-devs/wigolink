@@ -788,6 +788,30 @@ protégés par `auth`. Les indicateurs de séquestre affichés dans les protecti
 restent purement informatifs : ce module ne crée, ne libère et ne rembourse
 aucun paiement.
 
+## Backend `guidance centers`
+
+Les centres Documents, Conformité et Assistance sont regroupés dans :
+
+```text
+server/
+|-- routes/
+|   `-- guidance-centers.js
+`-- services/
+    `-- guidance-centers.js
+```
+
+`createGuidanceCenterService` assemble uniquement les dossiers du membre
+authentifié. Documents indexe douane, scellage, état de séquestre, litige et
+historique KYC. Conformité localise corridors et catégories, puis priorise les
+revues et dépassements de franchise. Assistance projette les litiges et choisit
+l'action suivante selon le rôle et l'état de la transaction.
+
+`createGuidanceCentersRouter` conserve les contrats
+`GET /documents-center`, `GET /compliance-center` et `GET /support-center`.
+Chaque route applique `auth` avant le service. Les états financiers présents
+dans Documents sont en lecture seule : les mutations de séquestre, les preuves
+de litige et les décisions administrateur restent hors de ce module.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :

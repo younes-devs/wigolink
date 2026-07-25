@@ -49,6 +49,7 @@ import { createOperationReadsRouter } from './routes/operation-reads.js';
 import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMemberOverviewRouter } from './routes/member-overview.js';
+import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -64,6 +65,7 @@ import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
 import { createPublicProfileService } from './services/public-profiles.js';
 import { createMemberOverviewService } from './services/member-overview.js';
+import { createGuidanceCenterService } from './services/guidance-centers.js';
 
 const app = express();
 const {
@@ -591,93 +593,6 @@ app.use('/api/profile', createAccountPrivacyRouter({
   accountPrivacy: accountPrivacyService,
 }));
 
-function documentCenterFor(user) {
-  const uid = user.id;
-  const txs = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const dossiers = txs.map((tx) => {
-    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
-    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
-    const role = tx.senderId === uid ? 'sender' : tx.travelerId === uid ? 'traveler' : 'recipient';
-    const docs = [
-      {
-        id: 'customs',
-        status: tx.sealingVideo || ['sealed', 'in_transit', 'released', 'disputed', 'refunded'].includes(tx.status) ? 'ready' : 'pending',
-        href: `/transactions/${tx.id}#douane`,
-      },
-      {
-        id: 'sealing',
-        status: tx.sealingVideo ? 'ready' : tx.status === 'accepted' && role === 'sender' ? 'action' : 'pending',
-        href: `/transactions/${tx.id}#actions`,
-        meta: tx.sealingVideo ? {
-          recordedAt: tx.sealingVideo.recordedAt,
-          simulated: !!tx.sealingVideo.simulated,
-          hasVideo: !!tx.sealingVideo.dataUrl,
-          geo: tx.sealingVideo.geo || null,
-        } : null,
-      },
-      {
-        id: 'escrow',
-        status: tx.escrow?.state || 'pending',
-        href: `/transactions/${tx.id}#suivi`,
-        meta: tx.escrow || null,
-      },
-    ];
-    if (dispute) {
-      docs.push({
-        id: 'dispute',
-        status: dispute.status,
-        href: `/transactions/${tx.id}#litige`,
-        meta: {
-          evidenceCount: dispute.evidence?.length || 0,
-          myEvidenceCount: (dispute.evidence || []).filter((e) => e.by === uid).length,
-          evidenceDeadline: dispute.createdAt + EVIDENCE_WINDOW_MS,
-        },
-      });
-    }
-    return {
-      txId: tx.id,
-      role,
-      status: tx.status,
-      listing: listing ? {
-        id: listing.id,
-        title: listing.title,
-        from: listing.from,
-        to: listing.to,
-        valueEur: listing.valueEur,
-        categoryId: listing.categoryId,
-      } : null,
-      createdAt: tx.createdAt,
-      docs,
-    };
-  });
-  const kyc = repositories.kyc.listForUser(uid)
-    .map((s) => ({
-      id: s.id,
-      status: s.status,
-      submittedAt: s.submittedAt,
-      reviewedAt: s.reviewedAt || null,
-      documentType: s.documentType,
-      retainedByProvider: true,
-    }));
-  return {
-    totals: {
-      dossiers: dossiers.length,
-      ready: dossiers.reduce((sum, d) => sum + d.docs.filter((doc) => doc.status === 'ready' || doc.status === 'released' || doc.status === 'held').length, 0),
-      actions: dossiers.reduce((sum, d) => sum + d.docs.filter((doc) => doc.status === 'action').length, 0),
-      disputes: dossiers.filter((d) => d.docs.some((doc) => doc.id === 'dispute')).length,
-      kyc: kyc.length,
-    },
-    dossiers,
-    kyc,
-  };
-}
-
-app.get('/api/documents-center', auth, (req, res) => {
-  res.json({ documents: documentCenterFor(req.user) });
-});
-
 // ---------- Notifications ----------
 app.use('/api/notifications', createNotificationsRouter({
   auth,
@@ -716,85 +631,6 @@ function localeForLang(lang) {
 }
 
 // ---------- Trajets voyageur (PRD §2.1) ----------
-function complianceCenterFor(user, lang = 'fr') {
-  const localizedCustoms = localizeCustoms(CUSTOMS, lang);
-  const localizedAllowed = combinedWhitelist().map((category) => localizeCategory(category, lang));
-  const localizedForbidden = BLACKLIST.map((category) => localizeCategory(category, lang));
-  const localizedCategoryLabel = (listing) => {
-    const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
-      || BLACKLIST.find((item) => item.id === listing.categoryId);
-    return category ? localizeCategory(category, lang).label : listing.categoryLabel;
-  };
-  const listings = db.listings
-    .filter((l) => l.senderId === user.id)
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const reviewQueue = repositories.reviewQueue.open({ type: 'listing' });
-  const items = listings.map((listing) => {
-    const corridorKey = listing.from === 'Casablanca' ? 'MA-EU' : 'EU-MA';
-    const limitEur = corridorKey === 'MA-EU' ? 430 : 185;
-    const queueItem = reviewQueue.find((r) => r.refId === listing.id);
-    return {
-      listing,
-      corridorKey,
-      customsLimitEur: limitEur,
-      overFranchise: listing.valueEur > limitEur,
-      reviewPending: listing.status === 'pending_review',
-      queueId: queueItem?.id || null,
-      action: listing.status === 'pending_review'
-        ? { id: 'wait_review', priority: 'medium', href: '/envois' }
-        : listing.valueEur > limitEur
-          ? { id: 'customs_value', priority: 'medium', href: `/annonce/${listing.id}` }
-          : { id: 'ok', priority: 'low', href: `/annonce/${listing.id}` },
-    };
-  });
-  const gray = items.filter((i) => i.listing.whitelistVerdict === 'gray' || i.reviewPending);
-  const over = items.filter((i) => i.overFranchise);
-  return {
-    corridors: Object.entries(localizedCustoms).map(([id, c]) => ({
-      id,
-      label: c.label,
-      franchise: c.franchise,
-      rules: c.rules,
-      limitEur: id === 'MA-EU' ? 430 : 185,
-    })),
-    catalogue: {
-      allowed: localizedAllowed,
-      forbidden: localizedForbidden,
-      grayExamples: gray.slice(0, 4).map((i) => ({
-        id: i.listing.id,
-        title: i.listing.title,
-        categoryLabel: localizedCategoryLabel(i.listing),
-        status: i.listing.status,
-      })),
-    },
-    totals: {
-      listings: listings.length,
-      reviewPending: gray.length,
-      overFranchise: over.length,
-      allowedCategories: combinedWhitelist().length,
-      forbiddenCategories: BLACKLIST.length,
-    },
-    actions: [...gray, ...over]
-      .sort((a, b) => {
-        const rank = { medium: 0, low: 1 };
-        return rank[a.action.priority] - rank[b.action.priority] || b.listing.createdAt - a.listing.createdAt;
-      })
-      .slice(0, 6)
-      .map((i) => ({
-        id: `${i.listing.id}:${i.action.id}`,
-        listingId: i.listing.id,
-        title: i.listing.title,
-        categoryLabel: localizedCategoryLabel(i.listing),
-        action: i.action,
-      })),
-    items,
-  };
-}
-
-app.get('/api/compliance-center', auth, (req, res) => {
-  res.json({ compliance: complianceCenterFor(req.user, req.lang) });
-});
-
 const TRIP_TRANSPORT_MODES = new Set(['plane', 'car']);
 
 function tripTransportMode(value) {
@@ -1836,6 +1672,25 @@ function disputeView(d, t) {
   };
 }
 
+const guidanceCenterService = createGuidanceCenterService({
+  db,
+  isParty: isPartyToTx,
+  kycRepository: repositories.kyc,
+  evidenceWindowMs: EVIDENCE_WINDOW_MS,
+  localizeCustoms,
+  customs: CUSTOMS,
+  combinedWhitelist,
+  blacklist: BLACKLIST,
+  localizeCategory,
+  reviewQueue: repositories.reviewQueue,
+  disputeView,
+});
+
+app.use('/api', createGuidanceCentersRouter({
+  auth,
+  guidanceCenters: guidanceCenterService,
+}));
+
 function financeActionFor(user, tx, dispute) {
   if (dispute?.status === 'open') {
     const mine = dispute.evidence.filter((e) => e.by === user.id).length;
@@ -1925,90 +1780,6 @@ function financeCenterFor(user) {
 
 app.get('/api/finance-center', auth, (req, res) => {
   res.json({ finance: financeCenterFor(req.user) });
-});
-
-function supportActionFor(user, tx, dispute) {
-  const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
-  if (dispute?.status === 'open') {
-    const mine = (dispute.evidence || []).some((e) => e.by === user.id);
-    return {
-      id: mine ? 'follow_dispute' : 'add_evidence',
-      priority: mine ? 'medium' : 'high',
-      href: `/transactions/${tx.id}#litige`,
-    };
-  }
-  if (tx.status === 'in_transit' || tx.status === 'released') {
-    return { id: 'open_dispute', priority: 'medium', href: `/transactions/${tx.id}#actions` };
-  }
-  if (tx.status === 'accepted' && role === 'sender') {
-    return { id: 'seal_first', priority: 'high', href: `/transactions/${tx.id}#actions` };
-  }
-  if (tx.status === 'sealed') {
-    return { id: 'organize_handoff', priority: 'medium', href: `/transactions/${tx.id}#messages` };
-  }
-  return { id: 'read_rules', priority: 'low', href: '/cgu#litiges' };
-}
-
-function supportCenterFor(user) {
-  const txs = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const cases = txs.map((tx) => {
-    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
-    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
-    const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
-    const canOpenDispute = !dispute && ['in_transit', 'released'].includes(tx.status);
-    return {
-      txId: tx.id,
-      role,
-      status: tx.status,
-      listing: listing ? {
-        id: listing.id,
-        title: listing.title,
-        from: listing.from,
-        to: listing.to,
-        categoryId: listing.categoryId,
-      } : null,
-      dispute: dispute ? disputeView(dispute, tx) : null,
-      canOpenDispute,
-      action: supportActionFor(user, tx, dispute),
-    };
-  });
-  const openDisputes = cases.filter((c) => c.dispute?.status === 'open');
-  const urgent = cases
-    .filter((c) => ['high', 'medium'].includes(c.action.priority))
-    .sort((a, b) => {
-      const rank = { high: 0, medium: 1, low: 2 };
-      return rank[a.action.priority] - rank[b.action.priority];
-    })
-    .slice(0, 6)
-    .map((c) => ({
-      id: `${c.txId}:${c.action.id}`,
-      txId: c.txId,
-      title: c.listing?.title || c.txId,
-      status: c.status,
-      action: c.action,
-    }));
-  return {
-    totals: {
-      cases: cases.length,
-      openDisputes: openDisputes.length,
-      canOpenDispute: cases.filter((c) => c.canOpenDispute).length,
-      urgent: urgent.filter((a) => a.action.priority === 'high').length,
-    },
-    urgent,
-    cases,
-    guide: [
-      { id: 'stay_in_app', href: '/cgu#interdits' },
-      { id: 'inspect_before_pickup', href: '/cgu#transaction' },
-      { id: 'customs_truth', href: '/cgu#douane' },
-      { id: 'evidence_72h', href: '/cgu#litiges' },
-    ],
-  };
-}
-
-app.get('/api/support-center', auth, (req, res) => {
-  res.json({ support: supportCenterFor(req.user) });
 });
 
 app.post('/api/transactions/:id/dispute', auth, async (req, res) => {
