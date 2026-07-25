@@ -1,0 +1,28 @@
+import { Router } from 'express';
+
+export function createSystemRouter({
+  demo,
+  isProduction,
+  emailReady,
+  databaseHealth,
+  now = () => new Date(),
+}) {
+  const router = Router();
+
+  router.get('/config', (_req, res) => {
+    res.json({ demo });
+  });
+
+  router.get('/health', (_req, res) => {
+    const database = databaseHealth();
+    const ready = (!isProduction || emailReady) && database !== 'unavailable';
+    res.status(ready ? 200 : 503).json({
+      ok: ready,
+      database,
+      email: emailReady ? 'configured' : 'missing',
+      at: now().toISOString(),
+    });
+  });
+
+  return router;
+}

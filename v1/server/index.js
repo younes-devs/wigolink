@@ -26,6 +26,7 @@ import { createPersistenceState } from './middleware/persistence-state.js';
 import { createSessionAuth } from './middleware/session-auth.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
+import { createSystemRouter } from './routes/system.js';
 
 const app = express();
 const {
@@ -117,22 +118,12 @@ async function publishRealtimeUpdate(userId, payload) {
 // production, où un vrai prestataire email/SMS doit être branché à la place.
 const DEMO = process.env.DEMO === 'true';
 
-// Endpoint public : le client s'en sert pour savoir s'il doit afficher les outils de
-// démo (bascule de compte, remplissage auto). Ne révèle rien de sensible en lui-même.
-app.get('/api/config', (req, res) => res.json({ demo: DEMO }));
-
-// Used by Vercel and manual launch checks. It deliberately exposes no secret,
-// user, or database implementation detail.
-app.get('/api/health', (req, res) => {
-  const database = databaseHealth();
-  const ready = (!IS_PRODUCTION || EMAIL_READY) && database !== 'unavailable';
-  res.status(ready ? 200 : 503).json({
-    ok: ready,
-    database,
-    email: EMAIL_READY ? 'configured' : 'missing',
-    at: new Date().toISOString(),
-  });
-});
+app.use('/api', createSystemRouter({
+  demo: DEMO,
+  isProduction: IS_PRODUCTION,
+  emailReady: EMAIL_READY,
+  databaseHealth,
+}));
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
 // Les clients utilisent donc le WebSocket gere par Supabase Realtime.

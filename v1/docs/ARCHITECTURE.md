@@ -406,6 +406,25 @@ vérifiés gardent les mêmes statuts et la session d'un compte non vérifié es
 toujours invalidée. Les routes d'inscription, de connexion, de réinitialisation
 et toute intégration OAuth restent en dehors de ce middleware.
 
+## Backend `routes`
+
+L'extraction progressive des déclarations Express commence par les endpoints
+publics sans logique métier :
+
+```text
+server/
+└── routes/
+    └── system.js
+```
+
+`createSystemRouter` expose `/config` et `/health` sous le préfixe `/api`. Le
+mode démo, le mode production, la disponibilité email et la fonction de santé
+de la base sont injectés par `server/index.js`. Les URLs, statuts, corps JSON et
+conditions de disponibilité restent identiques. Le healthcheck ne révèle
+toujours aucun secret ni détail d'implémentation de la base. Des tests HTTP
+dédiés couvrent le développement local, la production prête, l'email manquant
+et la base indisponible.
+
 ## Backend `config`
 
 La configuration générale calculée au démarrage commence à être regroupée dans :
