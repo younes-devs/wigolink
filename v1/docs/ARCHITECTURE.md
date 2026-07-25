@@ -607,6 +607,33 @@ traduction finale reste effectuée à la lecture. Les chaînes historiques reste
 stockées telles quelles. Le dépôt, la recherche utilisateur, la normalisation
 des préférences et le moteur de rendu sont injectés depuis `server/index.js`.
 
+## Backend `realtime`
+
+Le temps reel backend est maintenant separe entre :
+
+```text
+server/
+|-- routes/
+|   `-- realtime.js
+`-- services/
+    `-- realtime.js
+```
+
+`createRealtimeRouter` conserve les contrats `/api/realtime` et
+`/api/realtime/session`. L'ancien flux SSE reste explicitement indisponible avec
+le statut 410. La session Supabase n'est fournie qu'apres authentification et ne
+contient que l'URL, la cle publiable et le canal propre au membre. La cle
+serveur ne traverse jamais la reponse HTTP. Sans configuration complete, le
+client recoit toujours `{ enabled: false }`.
+
+`createRealtimeService` encapsule la configuration Supabase, la creation stable
+du canal utilisateur et la diffusion des evenements de conversation. La
+publication serveur utilise seule la cle secrete et encode le nom du canal. Une
+panne reseau est absorbee afin qu'une indisponibilite Realtime ne bloque jamais
+la persistance d'un message. Les registres locaux de presence restent derriere
+la meme interface pour conserver les champs `otherOnline` et
+`otherLastSeenAt`.
+
 ## Backend `config`
 
 La configuration générale calculée au démarrage commence à être regroupée dans :

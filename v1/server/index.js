@@ -37,11 +37,13 @@ import { createKycRouter } from './routes/kyc.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
+import { createRealtimeRouter } from './routes/realtime.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
 import { createAccountPrivacyService } from './services/account-privacy.js';
+import { createRealtimeService } from './services/realtime.js';
 
 const app = express();
 const {
@@ -90,43 +92,6 @@ app.use(createPersistenceState({
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
-// Flux temps reel leger (SSE). Il reste dans le processus Express afin de fonctionner
-// aussi bien en local qu'avec un serveur Node classique, sans dependance WebSocket.
-const realtimeClients = new Map();
-const lastSeenByUser = new Map();
-
-function realtimeBroadcastConfig() {
-  const publishableKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
-  const secretKey = String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-  if (!SUPABASE_URL || !publishableKey || !secretKey) return null;
-  return { url: SUPABASE_URL, publishableKey, secretKey };
-}
-
-function ensureRealtimeChannel(user) {
-  if (!user.realtimeChannel) user.realtimeChannel = `wigofly:${newToken()}`;
-  return user.realtimeChannel;
-}
-
-async function publishRealtimeUpdate(userId, payload) {
-  const config = realtimeBroadcastConfig();
-  const user = findUser(userId);
-  if (!config || !user?.realtimeChannel) return;
-  try {
-    await fetch(`${config.url}/realtime/v1/api/broadcast/${encodeURIComponent(user.realtimeChannel)}/events/update`, {
-      method: 'POST',
-      headers: {
-        apikey: config.secretKey,
-        Authorization: `Bearer ${config.secretKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    // Realtime improves responsiveness but must never block a message or its persistence.
-    console.error('Echec de diffusion temps reel', error);
-  }
-}
-
 // Mode démo : désactivé par défaut (secure by default). Doit être explicitement activé
 // (DEMO=true) pour exposer les endpoints /api/dev/* (bascule de compte sans mot de
 // passe) et les codes de vérification en clair dans les réponses API — jamais en
@@ -139,23 +104,6 @@ app.use('/api', createSystemRouter({
   emailReady: EMAIL_READY,
   databaseHealth,
 }));
-
-// Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
-// Les clients utilisent donc le WebSocket gere par Supabase Realtime.
-app.get('/api/realtime', auth, (req, res) => {
-  res.status(410).json({ error: 'Le temps reel SSE est remplace par la synchronisation automatique.' });
-});
-
-app.post('/api/realtime/session', auth, (req, res) => {
-  const config = realtimeBroadcastConfig();
-  if (!config) return res.json({ enabled: false });
-  res.json({
-    enabled: true,
-    url: config.url,
-    publishableKey: config.publishableKey,
-    channel: ensureRealtimeChannel(req.user),
-  });
-});
 
 // ---------- Helpers ----------
 const publicUser = (u) =>
@@ -213,9 +161,20 @@ async function auth(req, res, next) {
   return sessionAuth.auth(req, res, next);
 }
 
-async function authRealtime(req, res, next) {
-  return sessionAuth.authRealtime(req, res, next);
-}
+const realtime = createRealtimeService({
+  url: SUPABASE_URL,
+  publishableKey: String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim(),
+  secretKey: String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+  newToken,
+  findUser,
+});
+
+// Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
+// Les clients utilisent donc le WebSocket gere par Supabase Realtime.
+app.use('/api/realtime', createRealtimeRouter({
+  auth,
+  realtime,
+}));
 
 async function relationalTripAuth(req, res, next) {
   if (!relationalTripReadsEnabled()) return next('route');
@@ -326,25 +285,12 @@ app.get('/api/conversations/:id/messages', relationalTripAuth, async (req, res, 
   }
 });
 
-function sendRealtime(userId, payload) {
-  for (const client of realtimeClients.get(userId) || []) {
-    client.write(`event: update\ndata: ${JSON.stringify(payload)}\n\n`);
-  }
-}
-
 function broadcastConversation(conversation, payload, exceptUserId = null) {
   for (const userId of conversation.participantIds || []) {
     if (userId !== exceptUserId) {
       const update = { conversationId: conversation.id, ...payload, at: Date.now() };
-      sendRealtime(userId, update);
-      void publishRealtimeUpdate(userId, update);
+      realtime.broadcast(userId, update);
     }
-  }
-}
-
-function broadcastPresence(userId, online) {
-  for (const conversation of db.conversations.filter((item) => item.participantIds.includes(userId))) {
-    broadcastConversation(conversation, { type: 'presence', userId, online }, userId);
   }
 }
 
@@ -1219,8 +1165,8 @@ function conversationView(conversation, viewerId) {
     ...conversation,
     participants,
     other,
-    otherOnline: !!other && realtimeClients.has(other.id),
-    otherLastSeenAt: other ? (lastSeenByUser.get(other.id) || null) : null,
+    otherOnline: !!other && realtime.isOnline(other.id),
+    otherLastSeenAt: other ? realtime.lastSeenAt(other.id) : null,
     lastMessage,
     lastMessageAt,
     lastMessagePreview,
