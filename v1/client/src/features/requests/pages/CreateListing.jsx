@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { KycRequiredNotice, Stepper } from '../../../components.jsx';
 import { Icon } from '../../../Icons.jsx';
-import { SkeletonCard } from '../../../Skeleton.jsx';
-import { useToast } from '../../../Toast.jsx';
+import { SkeletonCard } from '../../../shared/ui/Skeleton.jsx';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 import { t, useLang } from '../../../i18n.js';
 
 // Fourchette de rémunération suggérée selon le poids (PRD UI/UX U7) — repère simple

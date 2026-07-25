@@ -2,7 +2,7 @@ import { createContext, lazy, Suspense, useContext, useEffect, useState } from '
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { api, getToken, setToken } from './core/api.js';
 import { Header, BottomNav } from './components.jsx';
-import { ToastProvider } from './Toast.jsx';
+import { ToastProvider } from './shared/ui/Toast.jsx';
 import SideRail from './SideRail.jsx';
 import Onboarding, { shouldOnboard } from './Onboarding.jsx';
 import { t } from './i18n.js';

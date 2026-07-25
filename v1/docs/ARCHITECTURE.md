@@ -36,6 +36,32 @@ changement. Les URLs, en-têtes, erreurs, délais de session et contrats API ne
 sont pas modifiés. Ce socle ne contient aucune intégration propre à un
 prestataire de paiement.
 
+## Socle `shared`
+
+Les premiers composants d'interface sans responsabilité métier sont regroupés
+dans :
+
+```text
+client/src/shared/
+└── ui/
+    ├── Skeleton.jsx
+    ├── Toast.jsx
+    └── index.js
+```
+
+Les chemins historiques restent disponibles comme façades de compatibilité :
+
+```text
+client/src/Skeleton.jsx
+client/src/Toast.jsx
+```
+
+`App.jsx` et le domaine `requests` utilisent directement `shared/ui`. Les autres
+domaines migreront par étapes et continuent entre-temps à partager le même
+contexte de toast et les mêmes composants de chargement grâce aux réexports.
+Cette extraction ne modifie ni les styles, ni les durées, ni les interactions
+des notifications.
+
 ## Domaine `trips`
 
 État actuel :

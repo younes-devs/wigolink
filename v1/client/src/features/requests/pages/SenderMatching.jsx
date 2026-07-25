@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../../../api';
 import { CategoryIcon, Icon } from '../../../Icons.jsx';
 import { TrustBadge } from '../../../components.jsx';
-import { SkeletonList } from '../../../Skeleton.jsx';
-import { useToast } from '../../../Toast.jsx';
+import { SkeletonList } from '../../../shared/ui/Skeleton.jsx';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 import { TripTransportIcon } from '../../trips/components/TripTransport.jsx';
 import { t, useLang, getLang } from '../../../i18n.js';
 

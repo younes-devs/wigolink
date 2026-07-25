@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { KycRequiredNotice, TrustBadge } from '../../../components.jsx';
 import { Avatar, CategoryIcon, Icon } from '../../../Icons.jsx';
-import { SkeletonCard } from '../../../Skeleton.jsx';
+import { SkeletonCard } from '../../../shared/ui/Skeleton.jsx';
 import Training from '../../../Training.jsx';
 import { t, useLang } from '../../../i18n.js';
 

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../api';
 import { CategoryIcon, Icon } from '../../../Icons.jsx';
-import { SkeletonList } from '../../../Skeleton.jsx';
-import { useToast } from '../../../Toast.jsx';
+import { SkeletonList } from '../../../shared/ui/Skeleton.jsx';
+import { useToast } from '../../../shared/ui/Toast.jsx';
 import { t, useLang } from '../../../i18n.js';
 
 const LISTING_STATUS = {
