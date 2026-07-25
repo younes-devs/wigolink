@@ -17,6 +17,7 @@ function authRepositories(db = {}) {
     },
   });
   return {
+    resets: repositories.authResets,
     users: repositories.users,
     verifications: repositories.authVerifications,
   };
@@ -47,4 +48,20 @@ test('auth verification repository initialise, remplace et retire un code', () =
   verifications.remove('membre@example.test');
   assert.equal(verifications.get('membre@example.test'), null);
   assert.deepEqual(db.pendingVerifications, {});
+});
+
+test('auth reset repository initialise, remplace et retire un code', () => {
+  const db = {};
+  const { resets } = authRepositories(db);
+  const first = { code: '123456', expires: 1000 };
+  const second = { code: '654321', expires: 2000 };
+
+  assert.equal(resets.get('membre@example.test'), null);
+  assert.equal(resets.set('membre@example.test', first), first);
+  assert.equal(resets.get('membre@example.test'), first);
+  resets.set('membre@example.test', second);
+  assert.equal(resets.get('membre@example.test'), second);
+  resets.remove('membre@example.test');
+  assert.equal(resets.get('membre@example.test'), null);
+  assert.deepEqual(db.resets, {});
 });

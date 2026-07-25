@@ -30,6 +30,7 @@ import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
 import { createAccountPrivacyRouter } from './routes/account-privacy.js';
+import { createAuthAccessRouter } from './routes/auth-access.js';
 import { createAuthRegistrationRouter } from './routes/auth-registration.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createKycRouter } from './routes/kyc.js';
@@ -589,93 +590,27 @@ app.use('/api/auth', createAuthRegistrationRouter({
   openSession,
 }));
 
-app.post('/api/auth/login', async (req, res) => {
-  const email = normEmail(req.body.email);
-  if (rateLimit(`login:${email}`))
-    return res.status(429).json({ error: 'Trop de tentatives — réessayez dans 10 minutes' });
-  const user = findByEmail(email);
-  if (!user || !verifyPassword(req.body.password || '', user.passwordHash))
-    return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-  if (user.suspendedUntil && user.suspendedUntil > Date.now()) {
-    const token = newToken();
-    await createPersistentSession({ token, userId: user.id, expiresAt: Date.now() + SESSION_DURATION_MS });
-    return res.status(403).json({
-      code: 'account_suspended', token, suspended: true, suspendedUntil: user.suspendedUntil,
-      reason: user.suspensionReason || null,
-      error: 'Votre compte est temporairement suspendu. Vous pouvez envoyer un recours.',
-    });
-  }
-  if (!canAccessApp(user)) {
-    const code = sixDigitCode();
-    try {
-      await deliverAuthCode(email, code, 'verify', req.lang);
-    } catch (error) {
-      return res.status(503).json({ error: error.message });
-    }
-    db.pendingVerifications[email] = { code, expires: Date.now() + 15 * 60e3, rememberMe: req.body.rememberMe === true };
-    save();
-    return res.json({ needsVerification: true, pendingEmail: email, message: 'Un code de verification vient d etre envoye.', demoHint: demoHintFor(code, req.lang) });
-  }
-  await openSession(res, user, req, { rememberMe: req.body.rememberMe === true });
-});
-
-app.post('/api/auth/forgot', async (req, res) => {
-  const email = normEmail(req.body.email);
-  if (rateLimit(`forgot:${email}`))
-    return res.status(429).json({ error: 'Trop de demandes — réessayez plus tard' });
-  const user = findByEmail(email);
-  let code = null;
-  // Réponse identique que le compte existe ou non (pas d'énumération d'emails)
-  if (user) {
-    code = sixDigitCode();
-    try {
-      await deliverAuthCode(email, code, 'reset', req.lang);
-    } catch (error) {
-      return res.status(503).json({ error: error.message });
-    }
-    db.resets[email] = { code, expires: Date.now() + 15 * 60e3 };
-    save();
-  }
-  res.json({
-    ok: true,
-    demoHint: demoHintFor(code || '—', req.lang),
-  });
-});
-
-app.post('/api/auth/reset', async (req, res) => {
-  const email = normEmail(req.body.email);
-  if (rateLimit(`reset:${email}`))
-    return res.status(429).json({ error: 'Trop de tentatives — refaites une demande' });
-  const reset = db.resets[email];
-  if (!reset || reset.expires < Date.now())
-    return res.status(400).json({ error: 'Code expiré — refaites une demande' });
-  if (reset.code !== String(req.body.code || '').trim())
-    return res.status(400).json({ error: 'Code incorrect' });
-  if (!req.body.password || req.body.password.length < 8)
-    return res.status(400).json({ error: 'Mot de passe : 8 caractères minimum' });
-  const user = findByEmail(email);
-  if (!user) return res.status(404).json({ error: 'Compte introuvable' });
-  user.passwordHash = hashPassword(req.body.password);
-  delete db.resets[email];
-  // Sécurité : invalide toutes les sessions existantes du compte
-  await clearUserSessions(user.id);
-  if (!canAccessApp(user)) {
-    save();
-    return res.json({
-      needsVerification: true,
-      pendingEmail: email,
-      message: 'Mot de passe mis a jour. Verifiez maintenant votre adresse email pour acceder a l application.',
-    });
-  }
-  await openSession(res, user, req);
-});
-
-app.post('/api/auth/logout', auth, async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  await deletePersistentSession(token);
-  save();
-  res.json({ ok: true });
-});
+app.use('/api/auth', createAuthAccessRouter({
+  auth,
+  users: repositories.users,
+  verifications: repositories.authVerifications,
+  resets: repositories.authResets,
+  normalizeEmail: normEmail,
+  rateLimit,
+  verifyPassword,
+  newToken,
+  createSession: createPersistentSession,
+  sessionDurationMs: SESSION_DURATION_MS,
+  canAccessApp,
+  newCode: sixDigitCode,
+  deliverCode: deliverAuthCode,
+  save,
+  demoHint: demoHintFor,
+  hashPassword,
+  clearUserSessions,
+  openSession,
+  deleteSession: deletePersistentSession,
+}));
 
 app.use('/api', createAccountRouter({
   auth,

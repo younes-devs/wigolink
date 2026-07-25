@@ -417,6 +417,7 @@ server/
     ├── account.js
     ├── account-privacy.js
     ├── account-settings.js
+    ├── auth-access.js
     ├── auth-registration.js
     ├── kyc.js
     ├── notifications.js
@@ -472,6 +473,13 @@ ni membre ni vérification partielle. La préférence de session longue traverse
 l'inscription et les renvois jusqu'à l'ouverture de session. Les dépôts
 `users` et `authVerifications` encapsulent désormais l'ajout/recherche du compte
 et les codes temporaires; les durées et réponses HTTP restent inchangées.
+
+`createAuthAccessRouter` complète `/api/auth` avec connexion, suspension,
+mot de passe oublié, réinitialisation et déconnexion. La récupération conserve
+une réponse non énumérable pour les emails inconnus. Un reset valide consomme
+son code, invalide toutes les sessions puis reconnecte uniquement un compte
+déjà vérifié. Le dépôt `authResets` encapsule les codes temporaires et la session
+de recours d'un compte suspendu conserve sa durée historique de 24 heures.
 
 `createKycRouter` orchestre la soumission manuelle sous `/api/kyc/submit`.
 Il conserve l'ordre des garde-fous : statut du compte, validité des champs et

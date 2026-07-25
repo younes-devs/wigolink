@@ -8,6 +8,7 @@
 export function createRepositories({ db, save, newId, findUser, publicUser }) {
   return {
     accountConfirmations: createAccountConfirmationRepository({ db }),
+    authResets: createAuthResetRepository({ db }),
     authVerifications: createAuthVerificationRepository({ db }),
     auditLogs: createAuditLogRepository({ db, save, newId, findUser, publicUser }),
     customWhitelist: createCustomWhitelistRepository({ db }),
@@ -17,6 +18,28 @@ export function createRepositories({ db, save, newId, findUser, publicUser }) {
     reviewQueue: createReviewQueueRepository({ db, newId }),
     settings: createSettingsRepository(),
     users: createUserRepository({ db }),
+  };
+}
+
+function createAuthResetRepository({ db }) {
+  const ensure = () => {
+    db.resets = db.resets || {};
+    return db.resets;
+  };
+
+  return {
+    get(email) {
+      return ensure()[email] || null;
+    },
+
+    set(email, reset) {
+      ensure()[email] = reset;
+      return reset;
+    },
+
+    remove(email) {
+      delete ensure()[email];
+    },
   };
 }
 
