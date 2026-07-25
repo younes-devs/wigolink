@@ -415,6 +415,7 @@ publics sans logique métier :
 server/
 └── routes/
     ├── account.js
+    ├── account-privacy.js
     ├── account-settings.js
     ├── kyc.js
     ├── notifications.js
@@ -456,6 +457,12 @@ L'authentification, la projection publique et la vue KYC sont injectées depuis
 profil public, email, fournisseur de connexion, téléphone, limites du compte,
 formation et état KYC. Les projections ne sont jamais appelées lorsque
 l'authentification refuse la requête.
+
+`createAccountPrivacyRouter` expose la demande de suppression, l'export et la
+confirmation de suppression sous `/api/profile`. Il applique uniquement
+l'authentification et le contrat HTTP; les règles de confidentialité sont
+déléguées à `createAccountPrivacyService`. L'export conserve son en-tête de
+téléchargement historique.
 
 `createKycRouter` orchestre la soumission manuelle sous `/api/kyc/submit`.
 Il conserve l'ordre des garde-fous : statut du compte, validité des champs et
@@ -543,6 +550,7 @@ La première logique transverse indépendante d'Express est regroupée dans :
 server/
 └── services/
     ├── account-email.js
+    ├── account-privacy.js
     ├── audit.js
     └── notifications.js
 ```
@@ -554,6 +562,14 @@ l'unicité est revérifiée, toutes les sessions sont invalidées et le changeme
 est audité avant sauvegarde. Le dépôt `accountConfirmations` encapsule désormais
 les opérations `get`, `set` et `remove` utilisées aussi par la suppression de
 compte; `server/index.js` n'accède plus directement à cette collection.
+
+`createAccountPrivacyService` orchestre l'envoi du code de suppression, l'export
+scopé et l'anonymisation. L'export exclut toujours le hash et les images KYC. La
+suppression reste bloquée par une opération active; après confirmation elle
+conserve l'ordre anonymisation, retrait du code, purge sensible KYC,
+invalidation des sessions, audit puis sauvegarde. La reconnaissance des statuts
+fermés est injectée depuis la règle d'opération existante, sans dupliquer la
+logique ni modifier le paiement.
 
 `createAuditService` fournit l'écriture brute `audit` et le journal différentiel
 `auditChange` à partir du dépôt `auditLogs`. Le calcul des changements reste

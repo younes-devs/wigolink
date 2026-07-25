@@ -29,6 +29,7 @@ import { createCorsOptions } from './config/cors-options.js';
 import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
+import { createAccountPrivacyRouter } from './routes/account-privacy.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createKycRouter } from './routes/kyc.js';
 import { createProfileRouter } from './routes/profile.js';
@@ -38,6 +39,7 @@ import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
+import { createAccountPrivacyService } from './services/account-privacy.js';
 
 const app = express();
 const {
@@ -800,49 +802,25 @@ app.use('/api/profile', createProfileRouter({
 }));
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
-function accountConfirmation(userId) {
-  return repositories.accountConfirmations.get(userId);
-}
-
-app.post('/api/profile/delete/request', auth, async (req, res) => {
-  if (rateLimit(`delete-account:${req.user.id}`)) return res.status(429).json({ error: 'Trop de demandes. Reessayez plus tard.' });
-  const code = sixDigitCode();
-  try {
-    await deliverAuthCode(req.user.email, code, 'delete_account', req.lang);
-  } catch (error) {
-    return res.status(503).json({ error: error.message });
-  }
-  repositories.accountConfirmations.set(req.user.id, {
-    type: 'delete_account',
-    code,
-    expires: Date.now() + 15 * 60e3,
-  });
-  save();
-  res.json({ ok: true, demoHint: demoHintFor(code, req.lang) });
+const accountPrivacyService = createAccountPrivacyService({
+  db,
+  confirmations: repositories.accountConfirmations,
+  messages: repositories.messages,
+  kyc: repositories.kyc,
+  rateLimit,
+  newCode: sixDigitCode,
+  deliverCode: deliverAuthCode,
+  demoHint: demoHintFor,
+  isClosedStatus: (status) => CLOSED_STATUSES.includes(status),
+  clearUserSessions,
+  auditChange,
+  save,
 });
 
-app.get('/api/profile/export', auth, async (req, res) => {
-  const uid = req.user.id;
-  const { passwordHash, ...userSafe } = req.user;
-  const data = {
-    exportedAt: new Date().toISOString(),
-    user: userSafe,
-    listings: db.listings.filter((l) => l.senderId === uid),
-    trips: db.trips.filter((t) => t.travelerId === uid),
-    transactions: db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(uid)),
-    messages: await repositories.messages.listFromUser(uid),
-    disputes: db.disputes.filter((d) => d.openedBy === uid),
-    // Métadonnées KYC sans les images (données biométriques sensibles — non incluses
-    // dans l'export standard, PRD KYC §6 ; communiquées séparément sur demande justifiée).
-    kyc: repositories.kyc.listForUser(uid).map((s) => ({
-      id: s.id, submittedAt: s.submittedAt, status: s.status,
-      legalName: s.legalName, birthDate: s.birthDate, documentType: s.documentType,
-      reviewedAt: s.reviewedAt, decisionReason: s.decisionReason,
-    })),
-  };
-  res.setHeader('Content-Disposition', `attachment; filename="wigofly-donnees-${uid}.json"`);
-  res.json(data);
-});
+app.use('/api/profile', createAccountPrivacyRouter({
+  auth,
+  accountPrivacy: accountPrivacyService,
+}));
 
 function documentCenterFor(user) {
   const uid = user.id;
@@ -929,45 +907,6 @@ function documentCenterFor(user) {
 
 app.get('/api/documents-center', auth, (req, res) => {
   res.json({ documents: documentCenterFor(req.user) });
-});
-
-app.post('/api/profile/delete', auth, async (req, res) => {
-  const pending = accountConfirmation(req.user.id);
-  const code = String(req.body?.code || '').trim();
-  if (!pending || pending.type !== 'delete_account' || pending.expires < Date.now())
-    return res.status(400).json({ error: 'Code de confirmation expire. Demandez-en un nouveau.' });
-  if (pending.code !== code) return res.status(400).json({ error: 'Code de confirmation incorrect' });
-  const uid = req.user.id;
-  const activeTx = db.transactions.filter(
-    (t) => [t.senderId, t.travelerId, t.recipientId].includes(uid) && !CLOSED_STATUSES.includes(t.status)
-  );
-  if (activeTx.length > 0)
-    return res.status(400).json({ error: `Impossible : ${activeTx.length} transaction(s) encore en cours. Terminez-les d'abord.` });
-
-  const beforeDeletion = { ...req.user };
-
-  // Anonymisation plutôt que suppression physique : préserve l'intégrité des transactions passées
-  // (traçabilité douanière/litiges) tout en effaçant les données personnelles identifiantes.
-  req.user.name = 'Compte supprimé';
-  req.user.email = `deleted-${uid}@wigofly.invalid`;
-  req.user.phone = '';
-  req.user.city = '';
-  req.user.photoUrl = null;
-  req.user.passwordHash = null;
-  req.user.provider = 'deleted';
-  req.user.deletedAt = Date.now();
-  repositories.accountConfirmations.remove(uid);
-  // Purge des images KYC (données biométriques) — on conserve seulement la trace de décision
-  // anonymisée pour l'audit de conformité, sans les photos.
-  repositories.kyc.purgeSensitiveForUser(uid);
-  await clearUserSessions(uid);
-  await auditChange({
-    actorId: uid, action: 'profile.delete', targetType: 'user', targetId: uid,
-    subjectUserId: uid, before: beforeDeletion, after: req.user,
-    fields: ['name', 'email', 'phone', 'city', 'provider'], meta: { recordEmpty: true },
-  });
-  save();
-  res.json({ ok: true });
 });
 
 // ---------- Notifications ----------
