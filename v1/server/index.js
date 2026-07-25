@@ -28,6 +28,7 @@ import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 import { createSystemRouter } from './routes/system.js';
 import { createNotificationsRouter } from './routes/notifications.js';
+import { createAccountRouter } from './routes/account.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
@@ -726,14 +727,11 @@ app.post('/api/auth/logout', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/me', auth, (req, res) => {
-  res.json({
-    user: publicUser(req.user), email: req.user.email, provider: req.user.provider,
-    phone: req.user.phone, maxValue: req.user.maxValue, maxActive: req.user.maxActive,
-    trainingDone: !!req.user.trainingDone,
-    kycStatus: req.user.kycStatus, kyc: kycUserView(req.user),
-  });
-});
+app.use('/api', createAccountRouter({
+  auth,
+  publicUser,
+  kycUserView,
+}));
 
 app.use('/api', createAccountSettingsRouter({
   auth,

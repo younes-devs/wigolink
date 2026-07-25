@@ -414,6 +414,7 @@ publics sans logique métier :
 ```text
 server/
 └── routes/
+    ├── account.js
     ├── account-settings.js
     ├── notifications.js
     ├── rules.js
@@ -446,6 +447,13 @@ l'instantané précédent, les quatre champs audités et l'ordre mise à jour, a
 sauvegarde. L'onboarding conserve l'ordre mutation, sauvegarde puis réponse avec
 le profil public et les paramètres normalisés. Les URLs `/api/settings` et
 `/api/onboarding/complete` ne changent pas.
+
+`createAccountRouter` expose l'identité privée courante sous `/api/me`.
+L'authentification, la projection publique et la vue KYC sont injectées depuis
+`server/index.js`. La route reste une lecture pure et renvoie le même contrat :
+profil public, email, fournisseur de connexion, téléphone, limites du compte,
+formation et état KYC. Les projections ne sont jamais appelées lorsque
+l'authentification refuse la requête.
 
 `createRulesRouter` expose le référentiel public `/api/rules`. La whitelist
 dynamique reste calculée par le dépôt à chaque requête, tandis que la blacklist,
