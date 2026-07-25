@@ -763,6 +763,31 @@ restent refusées avant toute mutation.
 `GET /users/:id`. Les trois routes restent protégées par `auth`. Ce domaine ne
 lit ni ne modifie le séquestre et ne dépend d'aucun prestataire financier.
 
+## Backend `member overview`
+
+Les agrégats transversaux visibles par un membre sont regroupés dans :
+
+```text
+server/
+|-- routes/
+|   `-- member-overview.js
+`-- services/
+    `-- member-overview.js
+```
+
+`createMemberOverviewService` calcule le résumé de navigation, le centre de
+confiance et le dashboard. Il centralise les opérations qui demandent une
+action, les messages non lus, le score de confiance, les limites, incidents,
+prochains trajets, correspondances, offres et notifications localisées. Le
+dashboard continue d'exécuter le job idempotent de rappel avant de lire les
+offres, puis borne chaque collection comme auparavant.
+
+`createMemberOverviewRouter` conserve les contrats
+`GET /navigation-summary`, `GET /trust-center` et `GET /dashboard`, tous
+protégés par `auth`. Les indicateurs de séquestre affichés dans les protections
+restent purement informatifs : ce module ne crée, ne libère et ne rembourse
+aucun paiement.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :

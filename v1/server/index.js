@@ -48,6 +48,7 @@ import { createMatchingOffersRouter } from './routes/matching-offers.js';
 import { createOperationReadsRouter } from './routes/operation-reads.js';
 import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createPublicProfilesRouter } from './routes/public-profiles.js';
+import { createMemberOverviewRouter } from './routes/member-overview.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -62,6 +63,7 @@ import { createMatchingOfferService } from './services/matching-offers.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
 import { createPublicProfileService } from './services/public-profiles.js';
+import { createMemberOverviewService } from './services/member-overview.js';
 
 const app = express();
 const {
@@ -1244,16 +1246,6 @@ function operationView(tx, user) {
   return view;
 }
 
-function operationNeedsAction(tx, userId) {
-  const status = tx.operationStatus || (tx.status === 'accepted' ? 'paiement_requis' : tx.status);
-  if (status === 'attente_confirmation') return tx.travelerId === userId;
-  if (status === 'paiement_requis') return tx.senderId === userId;
-  if (status === 'paye') return tx.securityCodes?.pickup?.issuedAt ? tx.senderId === userId : tx.travelerId === userId;
-  if (status === 'en_transport') return tx.securityCodes?.delivery?.issuedAt ? tx.travelerId === userId : tx.senderId === userId;
-  if (status === 'litige') return isPartyToTx(tx, userId);
-  return false;
-}
-
 function unreadConversationCount(userId) {
   return db.conversations
     .filter((conversation) => conversation.participantIds.includes(userId))
@@ -1280,19 +1272,6 @@ function markConversationRead(conversationId, userId) {
   }
   return changed;
 }
-
-// ---------- Nouvelle experience simple : trajets voyageurs ----------
-app.get('/api/navigation-summary', auth, (req, res) => {
-  const operationsActionRequired = db.transactions
-    .filter((tx) => isPartyToTx(tx, req.user.id))
-    .filter((tx) => !CLOSED_STATUSES.includes(tx.status))
-    .filter((tx) => operationNeedsAction(tx, req.user.id))
-    .length;
-  res.json({
-    messagesUnread: unreadConversationCount(req.user.id),
-    operationsActionRequired,
-  });
-});
 
 app.post('/api/trips/:id/accept', auth, async (req, res) => {
   const trip = db.trips.find((t) => t.id === req.params.id);
@@ -1619,199 +1598,28 @@ app.use('/api', createMatchingOffersRouter({
 // accepted → sealed → in_transit → delivered → released | disputed
 const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
-
-async function trustCenterFor(user) {
-  const txs = db.transactions.filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id));
-  const active = txs.filter((t) => !CLOSED_STATUSES.includes(t.status));
-  const released = txs.filter((t) => t.status === 'released');
-  const cancelled = txs.filter((t) => t.status === 'cancelled' || t.status === 'refunded');
-  const disputes = db.disputes
-    .filter((d) => {
-      const tx = db.transactions.find((t) => t.id === d.txId);
-      return tx && isPartyToTx(tx, user.id);
-    })
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const openDisputes = disputes.filter((d) => d.status === 'open');
-  const flaggedMessages = await repositories.messages.flaggedFromUser(user.id);
-  const kyc = kycUserView(user);
-
-  let score = 35;
-  if (user.emailVerified) score += 8;
-  if (user.kycStatus === 'verified') score += 25;
-  else if (user.kycStatus === 'pending') score += 10;
-  score += Math.min(18, (user.completed || released.length) * 4);
-  if (user.ratingCount > 0) score += clamp(((user.rating || 0) - 3) * 5, 0, 10);
-  score -= Math.round((user.cancelRate || 0) * 35);
-  score -= Math.min(18, disputes.length * 6);
-  score -= Math.min(12, flaggedMessages.length * 4);
-  score = clamp(Math.round(score), 0, 100);
-
-  const level = score >= 85 ? 'excellent' : score >= 70 ? 'solid' : score >= 50 ? 'limited' : 'risk';
-  const actions = [];
-  if (user.kycStatus !== 'verified') {
-    actions.push({
-      id: 'verify-identity',
-      status: user.kycStatus || 'none',
-      priority: user.kycStatus === 'pending' ? 'medium' : 'high',
-      href: '/verification',
-    });
-  }
-  if ((user.ratingCount || 0) < 3) {
-    actions.push({ id: 'build-reviews', status: 'todo', priority: 'medium', href: '/trajets' });
-  }
-  if (openDisputes.length > 0) {
-    const d = openDisputes[0];
-    actions.push({ id: 'answer-dispute', status: 'urgent', priority: 'high', href: `/transactions/${d.txId}#litige` });
-  }
-  if (flaggedMessages.length > 0) {
-    actions.push({ id: 'keep-chat-in-app', status: 'warning', priority: 'medium', href: '/cgu' });
-  }
-  if (active.length >= user.maxActive) {
-    actions.push({ id: 'active-limit', status: 'locked', priority: 'medium', href: '/transactions' });
-  }
-
-  return {
-    user: publicUser(user),
-    score,
-    level,
-    stats: {
-      completed: user.completed || released.length,
-      rating: user.rating,
-      ratingCount: user.ratingCount || 0,
-      cancelRate: user.cancelRate || 0,
-      active: active.length,
-      released: released.length,
-      disputes: disputes.length,
-      openDisputes: openDisputes.length,
-      flaggedMessages: flaggedMessages.length,
-      memberSince: user.createdAt,
-    },
-    limits: {
-      maxValue: user.maxValue,
-      maxActive: user.maxActive,
-      active: active.length,
-      nextValue: user.completed >= 3 ? user.maxValue : 500,
-      nextActive: user.completed >= 3 ? user.maxActive : 3,
-      completedForUpgrade: Math.min(user.completed || 0, 3),
-      requiredForUpgrade: 3,
-    },
-    identity: {
-      emailVerified: !!user.emailVerified,
-      kycStatus: user.kycStatus || 'none',
-      kyc,
-    },
-    actions,
-    incidents: {
-      disputes: disputes.slice(0, 4).map((d) => ({
-        id: d.id,
-        txId: d.txId,
-        status: d.status,
-        reason: d.reason,
-        createdAt: d.createdAt,
-        evidenceCount: d.evidence?.length || 0,
-      })),
-      flaggedMessages: flaggedMessages.slice(-4).reverse().map((m) => ({
-        id: m.id,
-        txId: m.txId,
-        at: m.at,
-      })),
-    },
-    protections: [
-      { id: 'escrow', enabled: true },
-      { id: 'kyc', enabled: user.kycStatus === 'verified' },
-      { id: 'video', enabled: true },
-      { id: 'dispute', enabled: true },
-      { id: 'customs', enabled: true },
-    ],
-  };
-}
-
-app.get('/api/trust-center', auth, async (req, res) => {
-  res.json({ trust: await trustCenterFor(req.user) });
+const memberOverviewService = createMemberOverviewService({
+  db,
+  publicUser,
+  findUser,
+  isParty: isPartyToTx,
+  closedStatuses: CLOSED_STATUSES,
+  unreadConversationCount,
+  flaggedMessagesRepository: repositories.messages,
+  kycUserView,
+  runMatchingOfferReminders,
+  transactionView: txView,
+  matchesTrip,
+  normalizeMatchingOffer: matchingOfferService.normalize,
+  notificationsRepository: repositories.notifications,
+  renderNotification,
+  today: TODAY_ISO,
 });
 
-app.get('/api/dashboard', auth, async (req, res) => {
-  await runMatchingOfferReminders({ persist: true });
-  const today = new Date().toISOString().slice(0, 10);
-  const trips = db.trips
-    .filter((t) => t.travelerId === req.user.id && t.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 4);
-  const txs = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(req.user.id))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const activeRaw = txs.filter((t) => !CLOSED_STATUSES.includes(t.status));
-  const activeTx = activeRaw.map(txView(req.user));
-  const actions = activeTx.filter((t) => {
-    if (t.status === 'accepted') return t.myRole === 'sender';
-    if (t.status === 'sealed') return t.myRole === 'traveler';
-    if (t.status === 'in_transit') return t.myRole === 'recipient';
-    if (t.status === 'disputed') return true;
-    return false;
-  }).slice(0, 5);
-  const openListings = db.listings
-    .filter((l) => l.status === 'published' && l.senderId !== req.user.id);
-  const matches = openListings
-    .filter((l) => trips.some((tr) => matchesTrip(l, tr)))
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map((l) => ({ ...l, sender: publicUser(findUser(l.senderId)), matched: true }))
-    .slice(0, 5);
-  const mine = db.listings.filter((l) => l.senderId === req.user.id);
-  const myOffers = (db.matchingOffers || [])
-    .map(matchingOfferService.normalize)
-    .filter((o) => o.senderId === req.user.id || o.travelerId === req.user.id)
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const offerTurn = (o) =>
-    (o.status === 'pending_traveler' && o.travelerId === req.user.id)
-    || (o.status === 'countered_sender' && o.senderId === req.user.id);
-  const activeOffers = myOffers.filter((o) => ['pending_traveler', 'countered_sender'].includes(o.status));
-  const notifications = (await repositories.notifications.listForUser(req.user.id, { limit: 5 }))
-    .map((n) => ({ ...n, text: renderNotification(req.lang, n) }));
-  const unread = await repositories.notifications.unreadCount(req.user.id);
-  res.json({
-    user: publicUser(req.user),
-    trust: {
-      kycStatus: req.user.kycStatus || 'none',
-      trainingDone: !!req.user.trainingDone,
-      maxValue: req.user.maxValue,
-      maxActive: req.user.maxActive,
-      activeCount: activeRaw.length,
-      completed: req.user.completed,
-      rating: req.user.rating,
-    },
-    actions,
-    activeTx: activeTx.slice(0, 5),
-    trips,
-    matches,
-    shipments: {
-      total: mine.length,
-      published: mine.filter((l) => l.status === 'published').length,
-      pendingReview: mine.filter((l) => l.status === 'pending_review').length,
-      matched: mine.filter((l) => l.status === 'matched').length,
-    },
-    offers: {
-      active: activeOffers.length,
-      mineToAct: activeOffers.filter(offerTurn).length,
-      sent: myOffers.filter((o) => o.senderId === req.user.id).length,
-      received: myOffers.filter((o) => o.travelerId === req.user.id).length,
-      latest: activeOffers.slice(0, 3).map((o) => ({
-        id: o.id,
-        status: o.status,
-        offeredPay: o.offeredPay,
-        expiresAt: o.expiresAt,
-        myRole: o.senderId === req.user.id ? 'sender' : 'traveler',
-        waitingForMe: offerTurn(o),
-        listing: db.listings.find((l) => l.id === o.listingId),
-        other: publicUser(findUser(o.senderId === req.user.id ? o.travelerId : o.senderId)),
-      })),
-    },
-    notifications,
-    unread,
-  });
-});
+app.use('/api', createMemberOverviewRouter({
+  auth,
+  memberOverview: memberOverviewService,
+}));
 
 function txView(user) {
   return (t) => {
