@@ -1,0 +1,135 @@
+const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const RELATIONAL_TRIP_PATHS = new Set([
+  '/api/trips',
+  '/api/trips/mine',
+  '/api/trips/overview',
+]);
+const RELATIONAL_MESSAGE_PATH = /^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/;
+
+export function isRelationalTripRead(req, relationalTripReadsEnabled) {
+  return relationalTripReadsEnabled()
+    && req.method === 'GET'
+    && RELATIONAL_TRIP_PATHS.has(req.path);
+}
+
+export function isRelationalMessageRead(req, relationalMessageReadsEnabled) {
+  return relationalMessageReadsEnabled()
+    && req.method === 'GET'
+    && RELATIONAL_MESSAGE_PATH.test(req.path);
+}
+
+export function createPersistenceState({
+  db,
+  usesDatabase,
+  refreshDatabaseState,
+  acquireDatabaseState,
+  releaseDatabaseState,
+  relationalTripReadsEnabled,
+  relationalMessageReadsEnabled,
+  snapshotRelationalTripState,
+  syncRelationalTripState,
+  logger = console,
+}) {
+  let stateQueue = Promise.resolve();
+
+  return function persistenceState(req, res, next) {
+    if (!usesDatabase()) return next();
+    if (
+      isRelationalTripRead(req, relationalTripReadsEnabled)
+      || isRelationalMessageRead(req, relationalMessageReadsEnabled)
+    ) {
+      return next();
+    }
+
+    const write = !READ_METHODS.has(req.method);
+    if (!write) {
+      void refreshDatabaseState()
+        .then(() => next())
+        .catch((error) => {
+          logger.error('Echec de lecture Supabase', error);
+          res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
+        });
+      return undefined;
+    }
+
+    let releaseTurn;
+    const previousTurn = stateQueue;
+    stateQueue = new Promise((resolve) => {
+      releaseTurn = resolve;
+    });
+
+    void (async () => {
+      let lock = null;
+      let relationalSnapshot = null;
+      let settled = false;
+      const settle = async ({ commit = false, deliver = null } = {}) => {
+        if (settled) return;
+        settled = true;
+        try {
+          if (commit && relationalSnapshot) {
+            await syncRelationalTripState({
+              pool: lock.client,
+              before: relationalSnapshot,
+              after: db,
+            });
+          }
+          await releaseDatabaseState(lock, { commit });
+          if (deliver) deliver();
+        } catch (error) {
+          logger.error('Echec de persistance Supabase', error);
+          if (!res.headersSent) {
+            res.statusCode = 503;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: 'Sauvegarde temporairement indisponible. Reessayez.',
+            }));
+          }
+        } finally {
+          releaseTurn();
+        }
+      };
+
+      try {
+        await previousTurn;
+        lock = await acquireDatabaseState({ write });
+        if (relationalTripReadsEnabled() || relationalMessageReadsEnabled()) {
+          relationalSnapshot = snapshotRelationalTripState(db);
+        }
+
+        const nativeJson = res.json.bind(res);
+        const nativeSend = res.send.bind(res);
+        res.json = (body) => {
+          void settle({
+            commit: write,
+            deliver: () => {
+              res.send = nativeSend;
+              nativeJson(body);
+            },
+          });
+          return res;
+        };
+        res.send = (body) => {
+          void settle({
+            commit: write,
+            deliver: () => nativeSend(body),
+          });
+          return res;
+        };
+        res.once('close', () => {
+          void settle();
+        });
+        next();
+      } catch (error) {
+        logger.error('Echec de lecture Supabase', error);
+        await settle();
+        if (!res.headersSent) {
+          res.status(503).json({
+            error: 'Base de donnees temporairement indisponible.',
+          });
+        }
+      }
+    })();
+
+    return undefined;
+  };
+}

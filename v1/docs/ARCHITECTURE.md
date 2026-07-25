@@ -346,6 +346,7 @@ server/
     ├── admin-only.js
     ├── database-availability.js
     ├── language.js
+    ├── persistence-state.js
     └── security-headers.js
 ```
 
@@ -381,6 +382,17 @@ accessible et toutes les autres routes conservent exactement la même réponse
 `503`. En développement, ce middleware ne consulte pas la santé de la base.
 Cette extraction ne déplace aucun accès aux données et ne change ni le stockage,
 ni les migrations, ni les contrats API.
+
+`persistence-state.js` orchestre le rafraîchissement du document global et la
+file des écritures Supabase. Les lectures relationnelles de trajets et de
+messagerie continuent à contourner ce document, les autres lectures utilisent
+le même cache court et les écritures restent strictement sérialisées. Une
+réponse d'écriture n'est livrée qu'après synchronisation relationnelle et
+validation du verrou Postgres. Les dépendances de stockage sont injectées par
+`server/index.js`; le middleware ne crée ni connexion ni dépôt de données.
+Les chemins rapides, les réponses `503`, la libération sur fermeture de la
+requête et l'ordre de deux écritures concurrentes sont couverts par des tests
+unitaires dédiés.
 
 ## Backend `config`
 

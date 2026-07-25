@@ -22,6 +22,7 @@ import {
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
+import { createPersistenceState } from './middleware/persistence-state.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 
@@ -58,98 +59,20 @@ app.use(createDatabaseAvailability({
 }));
 
 const db = getDb();
-let stateQueue = Promise.resolve();
-
-function isRelationalTripRead(req) {
-  return relationalTripReadsEnabled()
-    && req.method === 'GET'
-    && (req.path === '/api/trips' || req.path === '/api/trips/mine' || req.path === '/api/trips/overview');
-}
-
-function isRelationalMessageRead(req) {
-  return relationalMessageReadsEnabled()
-    && req.method === 'GET'
-    && (/^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/.test(req.path));
-}
 
 // Les lectures reutilisent un cache tres court par fonction Vercel. Seules les
 // ecritures prennent le verrou Postgres et attendent la validation avant reponse.
-app.use((req, res, next) => {
-  if (!usesDatabase()) return next();
-  if (isRelationalTripRead(req) || isRelationalMessageRead(req)) return next();
-
-  const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
-  if (!write) {
-    void refreshDatabaseState()
-      .then(() => next())
-      .catch((error) => {
-        console.error('Echec de lecture Supabase', error);
-        res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
-      });
-    return;
-  }
-
-  let releaseTurn;
-  const previousTurn = stateQueue;
-  stateQueue = new Promise((resolve) => { releaseTurn = resolve; });
-
-  void (async () => {
-    let lock = null;
-    let relationalSnapshot = null;
-    let settled = false;
-    const settle = async ({ commit = false, deliver = null } = {}) => {
-      if (settled) return;
-      settled = true;
-      try {
-        if (commit && relationalSnapshot) {
-          await syncRelationalTripState({ pool: lock.client, before: relationalSnapshot, after: db });
-        }
-        await releaseDatabaseState(lock, { commit });
-        if (deliver) deliver();
-      } catch (error) {
-        console.error('Echec de persistance Supabase', error);
-        if (!res.headersSent) {
-          res.statusCode = 503;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Sauvegarde temporairement indisponible. Reessayez.' }));
-        }
-      } finally {
-        releaseTurn();
-      }
-    };
-
-    try {
-      await previousTurn;
-      lock = await acquireDatabaseState({ write });
-      if (relationalTripReadsEnabled() || relationalMessageReadsEnabled()) {
-        relationalSnapshot = snapshotRelationalTripState(db);
-      }
-
-      const nativeJson = res.json.bind(res);
-      const nativeSend = res.send.bind(res);
-      res.json = (body) => {
-        void settle({
-          commit: write,
-          deliver: () => {
-            res.send = nativeSend;
-            nativeJson(body);
-          },
-        });
-        return res;
-      };
-      res.send = (body) => {
-        void settle({ commit: write, deliver: () => nativeSend(body) });
-        return res;
-      };
-      res.once('close', () => { void settle(); });
-      next();
-    } catch (error) {
-      console.error('Echec de lecture Supabase', error);
-      await settle();
-      if (!res.headersSent) res.status(503).json({ error: 'Base de donnees temporairement indisponible.' });
-    }
-  })();
-});
+app.use(createPersistenceState({
+  db,
+  usesDatabase,
+  refreshDatabaseState,
+  acquireDatabaseState,
+  releaseDatabaseState,
+  relationalTripReadsEnabled,
+  relationalMessageReadsEnabled,
+  snapshotRelationalTripState,
+  syncRelationalTripState,
+}));
 // Flux temps reel leger (SSE). Il reste dans le processus Express afin de fonctionner
 // aussi bien en local qu'avec un serveur Node classique, sans dependance WebSocket.
 const realtimeClients = new Map();
