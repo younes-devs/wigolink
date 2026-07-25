@@ -735,8 +735,33 @@ passe et secrets de session ne sont jamais projetés.
 
 `createAdminRecordsRouter` applique systématiquement `auth`, puis `adminOnly`,
 avant d'appeler le service. Les routes extraites sont strictement en lecture.
-Les changements de rôle, sanctions, recours, décisions KYC, revues de fraude et
-écrans contenant des agrégats financiers restent dans `server/index.js`.
+Les revues de fraude, arbitrages et écrans contenant des agrégats financiers
+restent dans `server/index.js`.
+
+## Backend `admin actions`
+
+Les mutations administratives non financières sont regroupées dans :
+
+```text
+server/
+|-- routes/
+|   `-- admin-actions.js
+`-- services/
+    `-- admin-actions.js
+```
+
+`createAdminActionService` orchestre la journalisation d'accès aux dossiers,
+les changements de rôle, avertissements et suspensions, les recours, le retrait
+d'une catégorie personnalisée et les décisions KYC. Il protège
+l'auto-destitution, le dernier administrateur actif, les sanctions contre un
+administrateur, les recours en double et la limite de rejets KYC. Chaque
+réussite conserve audit, notification éventuelle et sauvegarde.
+
+`createAdminActionsRouter` applique `auth` puis `adminOnly` aux actions
+administrateur. Seul `POST /safety/appeals` utilise directement la session
+existante afin qu'un membre suspendu puisse encore exercer son recours. Les
+arbitrages de litige, remboursements, fraudes et KPI financiers restent hors de
+ce domaine.
 
 ## Backend `public profiles`
 

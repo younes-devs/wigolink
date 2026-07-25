@@ -50,6 +50,7 @@ import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMemberOverviewRouter } from './routes/member-overview.js';
 import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
+import { createAdminActionsRouter } from './routes/admin-actions.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -66,6 +67,7 @@ import { createAdminRecordService } from './services/admin-records.js';
 import { createPublicProfileService } from './services/public-profiles.js';
 import { createMemberOverviewService } from './services/member-overview.js';
 import { createGuidanceCenterService } from './services/guidance-centers.js';
+import { createAdminActionService } from './services/admin-actions.js';
 
 const app = express();
 const {
@@ -2129,175 +2131,26 @@ app.use('/api', createAdminRecordsRouter({
   adminRecords: adminRecordService,
 }));
 
-app.post('/api/admin/users/:id/case-file/access', auth, adminOnly, async (req, res) => {
-  const user = findUser(req.params.id);
-  if (!user) return res.status(404).json({ error: 'Membre introuvable' });
-  await audit(req.user.id, 'admin.member_case.view', 'user', user.id, { section: String(req.body?.section || 'overview').slice(0, 40) });
-  save();
-  res.json({ ok: true });
+const adminActionService = createAdminActionService({
+  db,
+  findUser,
+  activeSession,
+  userView: adminRecordService.userView,
+  reviewQueue: repositories.reviewQueue,
+  customWhitelist: repositories.customWhitelist,
+  kycRepository: repositories.kyc,
+  maxKycAttempts: MAX_KYC_ATTEMPTS,
+  notify,
+  audit,
+  save,
+  newId,
 });
 
-app.post('/api/admin/users/:id/role', auth, adminOnly, async (req, res) => {
-  const target = findUser(req.params.id);
-  if (!target || target.deletedAt) return res.status(404).json({ error: 'Compte introuvable' });
-  const role = String(req.body?.role || '').toLowerCase();
-  if (!['admin', 'member'].includes(role)) return res.status(400).json({ error: 'Role invalide' });
-
-  const becomesAdmin = role === 'admin';
-  if (!becomesAdmin && target.id === req.user.id) {
-    return res.status(400).json({ error: 'Vous ne pouvez pas retirer votre propre acces administrateur.' });
-  }
-  const activeAdmins = db.users.filter((user) => user.isAdmin && !user.deletedAt);
-  if (!becomesAdmin && target.isAdmin && activeAdmins.length <= 1) {
-    return res.status(400).json({ error: 'Au moins un administrateur doit rester actif.' });
-  }
-  if (!!target.isAdmin === becomesAdmin) {
-    return res.json({
-      user: adminRecordService.userView(target),
-      unchanged: true,
-    });
-  }
-
-  target.isAdmin = becomesAdmin;
-  target.roleChangedAt = Date.now();
-  target.roleChangedBy = req.user.id;
-  await audit(req.user.id, becomesAdmin ? 'role.admin.grant' : 'role.admin.revoke', 'user', target.id, {
-    email: target.email,
-  });
-  save();
-  res.json({ user: adminRecordService.userView(target) });
-});
-
-app.post('/api/admin/users/:id/safety', auth, adminOnly, async (req, res) => {
-  const target = findUser(req.params.id);
-  if (!target || target.deletedAt) return res.status(404).json({ error: 'Compte introuvable' });
-  if (target.isAdmin) return res.status(400).json({ error: 'Un administrateur ne peut pas etre sanctionne depuis cet ecran.' });
-  const action = String(req.body?.action || '').trim();
-  const reason = String(req.body?.reason || '').trim().slice(0, 500);
-  if (!['warn', 'suspend', 'restore'].includes(action)) return res.status(400).json({ error: 'Action invalide' });
-  if (action !== 'restore' && reason.length < 5) return res.status(400).json({ error: 'Motif obligatoire (5 caracteres minimum)' });
-  if (action === 'suspend') {
-    const durationHours = Math.max(1, Math.min(24 * 30, Number(req.body?.durationHours || 24)));
-    target.suspendedUntil = Date.now() + durationHours * 3600e3;
-    target.suspensionReason = reason;
-    target.suspendedAt = Date.now();
-    target.suspendedBy = req.user.id;
-  } else if (action === 'restore') {
-    target.suspendedUntil = null;
-    target.suspensionReason = null;
-    target.restoredAt = Date.now();
-    target.restoredBy = req.user.id;
-  } else {
-    target.lastSafetyWarningAt = Date.now();
-    target.lastSafetyWarningReason = reason;
-  }
-  await audit(req.user.id, `user.safety.${action}`, 'user', target.id, { reason, durationHours: req.body?.durationHours || null });
-  save();
-  res.json({ ok: true, user: adminRecordService.userView(target) });
-});
-
-// A suspended user may still submit an appeal with their existing session token.
-app.post('/api/safety/appeals', async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  const session = await activeSession(token);
-  const user = session ? findUser(session.userId) : null;
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
-  const reason = String(req.body?.reason || '').trim().slice(0, 1000);
-  if (reason.length < 10) return res.status(400).json({ error: 'Expliquez votre recours en au moins 10 caracteres.' });
-  db.safetyAppeals = db.safetyAppeals || [];
-  const existing = db.safetyAppeals.find((appeal) => appeal.userId === user.id && appeal.status === 'open');
-  if (existing) return res.status(409).json({ error: 'Un recours est deja en cours de traitement.' });
-  const appeal = { id: newId('appeal'), userId: user.id, reason, status: 'open', createdAt: Date.now() };
-  db.safetyAppeals.push(appeal);
-  repositories.reviewQueue.append({ type: 'safety_appeal', refId: appeal.id });
-  await audit(user.id, 'user.safety.appeal', 'safety_appeal', appeal.id, {});
-  save();
-  res.json({ ok: true, appeal });
-});
-
-app.post('/api/admin/safety/appeals/:id', auth, adminOnly, async (req, res) => {
-  const appeal = (db.safetyAppeals || []).find((item) => item.id === req.params.id);
-  if (!appeal || appeal.status !== 'open') return res.status(404).json({ error: 'Recours introuvable' });
-  const decision = String(req.body?.decision || 'reject');
-  if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'Decision invalide' });
-  appeal.status = decision === 'approve' ? 'accepted' : 'rejected';
-  appeal.reviewedAt = Date.now();
-  appeal.reviewedBy = req.user.id;
-  appeal.decisionReason = String(req.body?.reason || '').trim().slice(0, 500) || null;
-  const user = findUser(appeal.userId);
-  if (decision === 'approve' && user) {
-    user.suspendedUntil = null;
-    user.suspensionReason = null;
-    user.messageSafetyBlockedUntil = null;
-  }
-  const queueItem = repositories.reviewQueue.open().find((item) => item.type === 'safety_appeal' && item.refId === appeal.id);
-  if (queueItem) repositories.reviewQueue.close(queueItem, decision);
-  await audit(req.user.id, `user.safety.appeal.${decision}`, 'safety_appeal', appeal.id, { userId: appeal.userId });
-  save();
-  res.json({ ok: true, appeal });
-});
-
-app.delete('/api/admin/whitelist/:id', auth, adminOnly, async (req, res) => {
-  const removed = repositories.customWhitelist.remove(req.params.id);
-  if (!removed) return res.status(404).json({ error: 'Catégorie introuvable' });
-  await audit(req.user.id, 'custom_whitelist.remove', 'custom_whitelist', removed.id, { label: removed.label });
-  save();
-  res.json({ ok: true });
-});
-
-// Décision admin : approve | reject | refuse (motif obligatoire pour reject/refuse).
-app.post('/api/admin/kyc/:id/decide', auth, adminOnly, async (req, res) => {
-  const s = repositories.kyc.findSubmission(req.params.id);
-  if (!s) return res.status(404).json({ error: 'Demande introuvable' });
-  if (s.status !== 'pending') return res.status(400).json({ error: 'Cette demande a déjà été traitée' });
-
-  const { decision, reason } = req.body; // approve | reject | refuse
-  if (!['approve', 'reject', 'refuse'].includes(decision))
-    return res.status(400).json({ error: 'Décision invalide' });
-  if (['reject', 'refuse'].includes(decision) && (!reason || String(reason).trim().length < 5))
-    return res.status(400).json({ error: 'Motif obligatoire (5 caractères minimum)' });
-
-  const user = findUser(s.userId);
-  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
-
-  const cleanReason = reason ? String(reason).trim().slice(0, 500) : null;
-  s.reviewedBy = req.user.id;
-  s.reviewedAt = Date.now();
-  s.decisionReason = cleanReason;
-
-  if (decision === 'approve') {
-    s.status = 'approved';
-    user.kycStatus = 'verified';
-    await notify([user.id], { key: 'kyc.verified' }, null, 'security');
-  } else if (decision === 'reject') {
-    s.status = 'rejected';
-    const rejectedCount = repositories.kyc.rejectedCountForUser(user.id);
-    // Passage automatique en refus définitif au-delà de la limite (PRD §7).
-    if (rejectedCount >= MAX_KYC_ATTEMPTS) {
-      user.kycStatus = 'refused';
-      await notify([user.id], { key: 'kyc.refusedFinal' }, null, 'security');
-    } else {
-      user.kycStatus = 'rejected';
-      await notify([user.id], { key: 'kyc.rejected', params: { reason: cleanReason } }, null, 'security');
-    }
-  } else { // refuse
-    s.status = 'refused';
-    user.kycStatus = 'refused';
-    await notify([user.id], { key: 'kyc.refused', params: { reason: cleanReason } }, null, 'security');
-  }
-
-  repositories.kyc.appendDecision({
-    submissionId: s.id, userId: user.id, adminId: req.user.id,
-    decision, reason: cleanReason,
-  });
-  await audit(req.user.id, `kyc.${decision}`, 'kyc_submission', s.id, {
-    userId: user.id,
-    status: user.kycStatus,
-    reason: cleanReason,
-  });
-  save();
-  res.json({ ok: true, status: user.kycStatus });
-});
+app.use('/api', createAdminActionsRouter({
+  auth,
+  adminOnly,
+  adminActions: adminActionService,
+}));
 
 // KPIs de suivi (PRD §8, plan de projet §7) — instrumentés dès la V1, pas après coup.
 app.get('/api/admin/kpis', auth, adminOnly, async (req, res) => {
