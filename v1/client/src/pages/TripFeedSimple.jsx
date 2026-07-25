@@ -5,7 +5,7 @@ import { api } from '../api';
 import { Avatar, Icon } from '../Icons.jsx';
 import { SkeletonList } from '../Skeleton.jsx';
 import { useToast } from '../Toast.jsx';
-import { TripTransportIcon, TransportModePicker, transportIconName } from '../TripTransport.jsx';
+import { TripTransportIcon } from '../TripTransport.jsx';
 import { dateLocale, t, useLang } from '../i18n.js';
 
 const tripOverviewCache = new Map();
@@ -20,7 +20,6 @@ export default function TripFeedSimple() {
   const [filters, setFilters] = useState(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
-  const [publishing, setPublishing] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -83,14 +82,10 @@ export default function TripFeedSimple() {
           <h1 className="page-title">{t('trips.title')}</h1>
           <p className="page-sub">{t('trips.subtitle')}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setPublishing(!publishing)}>
-          <Icon name={publishing ? 'x' : 'plus'} size={15} />{publishing ? t('common.close') : t('trips.publish.open')}
-        </button>
+        <Link className="btn btn-primary btn-sm" to="/trajets/nouveau">
+          <Icon name="plus" size={15} />{t('trips.publish.open')}
+        </Link>
       </div>
-
-      {publishing && (
-        <TripPublishForm onCreated={() => { setPublishing(false); toast.success(t('trips.toast.published')); tripOverviewCache.clear(); load({ force: true }); }} />
-      )}
 
       <section className="trip-search-controls" aria-label={t('trips.search.aria')}>
         <button className="trip-search-row" type="button" onClick={() => { setDraftFilters({ ...filters }); setFiltersOpen(true); }} aria-label={t('trips.search.filter.aria')}>
@@ -235,78 +230,6 @@ export default function TripFeedSimple() {
 
 function advancedFilterCount(filters) {
   return ['from', 'to', 'date', 'maxPrice', 'capacityKg'].filter((key) => !!filters[key]).length;
-}
-
-function TripPublishForm({ onCreated }) {
-  useLang();
-  const today = new Date().toISOString().slice(0, 10);
-  const toast = useToast();
-  const [form, setForm] = useState({
-    transportMode: 'plane',
-    from: 'Oujda',
-    to: 'Bruxelles',
-    date: '',
-    capacityKg: 6,
-    price: 25,
-    description: t('trips.publish.description.default'),
-    conditions: t('trips.publish.conditions.default'),
-  });
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api('/trips', { method: 'POST', body: form });
-      onCreated();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form className="card trip-publish-form" onSubmit={submit}>
-      <TransportModePicker value={form.transportMode} onChange={(transportMode) => setForm({ ...form, transportMode })} />
-      <div className="row trip-publish-route-row">
-        <div className="field">
-          <label>{t('trips.from')}</label>
-          <input value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>{t('trips.to')}</label>
-          <input value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
-        </div>
-      </div>
-      <div className="row trip-publish-details-row">
-        <div className="field">
-          <label>{t('trips.ticketDate')}</label>
-          <input type="date" min={today} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>{t('trips.capacityKg')}</label>
-          <input type="number" min="1" max="30" value={form.capacityKg} onChange={(e) => setForm({ ...form, capacityKg: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>{t('trips.proposedPrice')}</label>
-          <input type="number" min="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-        </div>
-      </div>
-      <div className="field">
-        <label>{t('common.description')}</label>
-        <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-      </div>
-      <div className="field">
-        <label>{t('trips.conditions')}</label>
-        <textarea rows={2} value={form.conditions} onChange={(e) => setForm({ ...form, conditions: e.target.value })} />
-      </div>
-      <button className="btn btn-primary" disabled={busy || !form.from || !form.to || !form.date}>
-        {busy ? <span className="spinner" /> : <Icon name={transportIconName(form.transportMode)} size={17} />}
-        {t('trips.publish.submit')}
-      </button>
-    </form>
-  );
 }
 
 export function formatDate(value) {
