@@ -100,3 +100,30 @@ suivi d'une opération. Les écrans Finance, Documents, Support, Transactions et
 Paiements restent séparés : ils n'appartiennent pas à cette migration ciblée.
 Les endpoints, statuts, règles escrow, codes de remise et règles de litige ne
 sont pas modifiés.
+
+## Domaine `profile`
+
+Le profil personnel, les profils publics et les paramètres du compte sont
+regroupés dans :
+
+```text
+client/src/features/profile/
+├── pages/
+│   ├── Profile.jsx
+│   ├── PublicProfile.jsx
+│   └── Settings.jsx
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/pages/Profile.jsx
+client/src/pages/PublicProfile.jsx
+client/src/pages/Settings.jsx
+```
+
+Ce domaine orchestre l'affichage et les préférences du compte. L'authentification,
+le KYC, la vérification email et les règles serveur de changement d'identité ou
+de suppression restent dans leurs modules actuels. Le déplacement ne modifie
+aucun endpoint ni aucune confirmation de sécurité.
