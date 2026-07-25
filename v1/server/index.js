@@ -47,6 +47,7 @@ import { createListingsRouter } from './routes/listings.js';
 import { createMatchingOffersRouter } from './routes/matching-offers.js';
 import { createOperationReadsRouter } from './routes/operation-reads.js';
 import { createAdminRecordsRouter } from './routes/admin-records.js';
+import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -60,6 +61,7 @@ import { createListingService } from './services/listings.js';
 import { createMatchingOfferService } from './services/matching-offers.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
+import { createPublicProfileService } from './services/public-profiles.js';
 
 const app = express();
 const {
@@ -1999,79 +2001,20 @@ app.post('/api/transactions/:id/confirm-delivery', auth, async (req, res) => {
   res.json({ transaction: txView(req.user)(t) });
 });
 
-// Notation mutuelle (PRD §5.5)
-app.post('/api/transactions/:id/rate', auth, (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || t.status !== 'released') return res.status(400).json({ error: 'Notation après livraison uniquement' });
-  const { targetId, stars } = req.body;
-  const target = findUser(targetId);
-  if (!target || ![t.senderId, t.travelerId, t.recipientId].includes(targetId))
-    return res.status(400).json({ error: 'Cible invalide' });
-  const n = Number(stars);
-  if (!Number.isInteger(n) || n < 1 || n > 5) return res.status(400).json({ error: 'Note invalide (1 à 5)' });
-  t.ratings = t.ratings || [];
-  if (t.ratings.some((r) => r.by === req.user.id && r.target === targetId))
-    return res.status(400).json({ error: 'Déjà noté' });
-  const comment = String(req.body.comment || '').trim().slice(0, 400);
-  // Un avis est visible de tout utilisateur connecté (bien plus exposé qu'un message de
-  // chat privé) — contrairement au chat, qui avertit mais laisse passer, on rejette ici
-  // plutôt que d'exposer publiquement une coordonnée de contact (PRD §4.5).
-  if (comment && detectLeak(comment))
-    return res.status(400).json({ error: "L'avis ne peut pas contenir de coordonnées de contact (téléphone, email, WhatsApp…)" });
-  t.ratings.push({ by: req.user.id, target: targetId, stars: n, comment: comment || null, at: Date.now() });
-  const prev = (target.rating || 0) * target.ratingCount;
-  target.ratingCount += 1;
-  target.rating = Math.round(((prev + n) / target.ratingCount) * 10) / 10;
-  addEvent(t, 'rated', req.user.id, { target: targetId, stars: n });
-  save();
-  res.json({ ok: true });
+const publicProfileService = createPublicProfileService({
+  db,
+  findUser,
+  publicUser,
+  normalizeTransportMode: tripTransportMode,
+  detectLeak,
+  addEvent,
+  save,
 });
 
-// Avis reçus par un utilisateur — agrège les notations de toutes ses transactions livrées.
-// Public au sens "connecté" (pas de données sensibles : prénom initiale, note, commentaire).
-app.get('/api/users/:id/reviews', auth, (req, res) => {
-  const target = findUser(req.params.id);
-  if (!target) return res.status(404).json({ error: 'Introuvable' });
-  const reviews = [];
-  for (const t of db.transactions) {
-    for (const r of t.ratings || []) {
-      if (r.target !== req.params.id) continue;
-      const author = findUser(r.by);
-      reviews.push({ stars: r.stars, comment: r.comment || null, at: r.at, authorName: author?.name || 'Membre Wigofly' });
-    }
-  }
-  reviews.sort((a, b) => b.at - a.at);
-  res.json({ reviews, rating: target.rating, ratingCount: target.ratingCount });
-});
-
-app.get('/api/users/:id', auth, (req, res) => {
-  const target = findUser(req.params.id);
-  if (!target) return res.status(404).json({ error: 'Introuvable' });
-  const trips = db.trips
-    .filter((trip) => trip.travelerId === target.id && (trip.status || 'published') === 'published')
-    .sort((a, b) => String(a.departureDate || a.date).localeCompare(String(b.departureDate || b.date)))
-    .slice(0, 4)
-    .map((trip) => ({
-      id: trip.id,
-      from: trip.from,
-      to: trip.to,
-      departureDate: trip.departureDate || trip.date,
-      transportMode: tripTransportMode(trip.transportMode),
-      price: trip.price,
-      currency: trip.currency || 'EUR',
-      capacityKg: trip.capacityKg,
-    }));
-  res.json({
-    user: publicUser(target),
-    trips,
-    stats: {
-      completed: target.completed || 0,
-      rating: target.rating,
-      ratingCount: target.ratingCount || 0,
-      cancelRate: target.cancelRate || 0,
-    },
-  });
-});
+app.use('/api', createPublicProfilesRouter({
+  auth,
+  publicProfiles: publicProfileService,
+}));
 
 // ---------- Litiges (PRD §3 Phase 6, §4.6) ----------
 const EVIDENCE_WINDOW_MS = 72 * 3600e3; // 72h pour soumettre des preuves (PRD §3 Phase 6)

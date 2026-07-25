@@ -738,6 +738,31 @@ avant d'appeler le service. Les routes extraites sont strictement en lecture.
 Les changements de rôle, sanctions, recours, décisions KYC, revues de fraude et
 écrans contenant des agrégats financiers restent dans `server/index.js`.
 
+## Backend `public profiles`
+
+Les profils publics authentifiés et les avis sont regroupés dans :
+
+```text
+server/
+|-- routes/
+|   `-- public-profiles.js
+`-- services/
+    `-- public-profiles.js
+```
+
+`createPublicProfileService` assemble la projection publique d'un membre, ses
+quatre prochains trajets publiés et les avis reçus. La notation reste possible
+uniquement après une livraison terminée, entre deux participants distincts de
+la transaction. Un tiers connaissant l'identifiant de la transaction ne peut
+plus déposer une note, et un membre ne peut plus se noter lui-même. Les notes
+dupliquées, valeurs hors limites et coordonnées de contact dans les commentaires
+restent refusées avant toute mutation.
+
+`createPublicProfilesRouter` conserve les contrats
+`POST /transactions/:id/rate`, `GET /users/:id/reviews` et
+`GET /users/:id`. Les trois routes restent protégées par `auth`. Ce domaine ne
+lit ni ne modifie le séquestre et ne dépend d'aucun prestataire financier.
+
 ## Backend `conversation inbox`
 
 La gestion non financiere de la boite de messagerie est separee dans :
