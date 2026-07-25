@@ -35,7 +35,7 @@ const Profile = lazy(() => import('./features/profile/pages/Profile.jsx'));
 const PublicProfile = lazy(() => import('./features/profile/pages/PublicProfile.jsx'));
 const Settings = lazy(() => import('./features/profile/pages/Settings.jsx'));
 const TrustCenter = lazy(() => import('./pages/TrustCenter.jsx'));
-const Admin = lazy(() => import('./pages/Admin.jsx'));
+const Admin = lazy(() => import('./features/admin/pages/Admin.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const Terms = lazy(() => import('./pages/Terms.jsx'));
 const Kyc = lazy(() => import('./features/kyc/pages/Kyc.jsx'));

@@ -206,3 +206,26 @@ exposés par l'API. Aucun SDK, webhook, secret, variable d'environnement ou
 contrat propre à Stripe, Mangopay ou un autre fournisseur ne doit être ajouté
 avant une décision produit explicite. La présente migration ne modifie aucun
 appel API ni aucune règle financière.
+
+## Domaine `admin`
+
+L'interface du back-office est regroupée dans :
+
+```text
+client/src/features/admin/
+├── pages/
+│   └── Admin.jsx
+└── index.js
+```
+
+L'ancien chemin reste disponible comme façade de compatibilité :
+
+```text
+client/src/pages/Admin.jsx
+```
+
+Les traductions du back-office restent dans `client/src/locales/admin.*.js`.
+La route frontend `/admin` ne constitue pas une autorisation : tous les
+endpoints `/api/admin/*` restent protégés côté serveur par `auth` puis
+`adminOnly`. Cette migration ne modifie ni les rôles, ni les décisions KYC, ni
+les preuves, ni les journaux d'audit.
