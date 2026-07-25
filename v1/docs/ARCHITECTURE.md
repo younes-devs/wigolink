@@ -49,6 +49,39 @@ Les écrans `Profile`, `PublicProfile`, `Dashboard`, `Operations` et l'ancien fe
 restent dans leurs domaines actuels. Ils peuvent afficher des informations de
 trajet sans appartenir au domaine `trips`.
 
+## Domaine `requests`
+
+Les demandes d'envoi et leur mise en relation avec les voyageurs sont
+regroupées dans :
+
+```text
+client/src/features/requests/
+├── pages/
+│   ├── CreateListing.jsx
+│   ├── ListingDetail.jsx
+│   ├── MyShipments.jsx
+│   ├── OffersCenter.jsx
+│   └── SenderMatching.jsx
+└── index.js
+```
+
+Les anciens chemins restent disponibles comme façades de compatibilité :
+
+```text
+client/src/pages/CreateListing.jsx
+client/src/pages/ListingDetail.jsx
+client/src/pages/MyShipments.jsx
+client/src/pages/OffersCenter.jsx
+client/src/pages/SenderMatching.jsx
+```
+
+Ce domaine couvre la publication et la gestion d'une demande d'envoi, le
+matching avec les voyageurs et les propositions associées. `TripRequestSimple`
+reste dans `trips`, car il appartient au parcours d'acceptation d'un trajet.
+L'ancien `Feed.jsx`, qui mélange annonces, trajets et offres, reste temporairement
+à son emplacement historique. Aucun endpoint de listing, matching ou shipment,
+aucun contrat API et aucune règle de paiement ne sont modifiés.
+
 ## Domaine `messaging`
 
 La messagerie frontend est regroupée sans modifier ses contrats API ni son
