@@ -607,6 +607,32 @@ traduction finale reste effectuée à la lecture. Les chaînes historiques reste
 stockées telles quelles. Le dépôt, la recherche utilisateur, la normalisation
 des préférences et le moteur de rendu sont injectés depuis `server/index.js`.
 
+## Backend `conversation inbox`
+
+La gestion non financiere de la boite de messagerie est separee dans :
+
+```text
+server/
+|-- routes/
+|   `-- conversation-inbox.js
+`-- services/
+    `-- conversation-inbox.js
+```
+
+`createConversationInboxService` centralise la liste filtree, la recherche, les
+lectures, les compteurs non lus, la saisie, l'archivage, l'epinglage et le
+blocage. Les mutations conservent l'ordre historique entre modification,
+sauvegarde, diffusion realtime et audit. La suppression d'une conversation
+reste limitee a la boite du membre : les messages ne sont pas effaces et
+l'audit conserve les participants, le nombre de messages et le drapeau
+`retainedForAdmin`.
+
+`createConversationInboxRouter` expose ces operations sous les URLs existantes
+et ne contient que l'authentification et la traduction des resultats en contrats
+HTTP. La creation de conversation, le signalement, l'envoi de contenu et la
+suppression d'un message restent dans leurs chemins actuels pour etre extraits
+separement avec leurs regles de securite.
+
 ## Backend `relational reads`
 
 Les lectures indexees a fort trafic sont assemblees dans :

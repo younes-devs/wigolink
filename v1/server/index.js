@@ -40,12 +40,14 @@ import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
 import { createRealtimeRouter } from './routes/realtime.js';
 import { createRelationalReadsRouter } from './routes/relational-reads.js';
+import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
 import { createAccountPrivacyService } from './services/account-privacy.js';
 import { createRealtimeService } from './services/realtime.js';
+import { createConversationInboxService } from './services/conversation-inbox.js';
 
 const app = express();
 const {
@@ -1709,105 +1711,24 @@ app.post('/api/conversations', auth, (req, res) => {
   res.json({ conversation: conversationView(conversation, req.user.id) });
 });
 
-app.get('/api/conversations', auth, (req, res) => {
-  const filter = String(req.query.filter || 'all');
-  const q = String(req.query.q || '').trim().toLowerCase();
-  const conversations = db.conversations
-    .filter((c) => c.participantIds.includes(req.user.id))
-    .filter((c) => !(c.deletedBy || []).includes(req.user.id))
-    .map((c) => conversationView(c, req.user.id))
-    .filter((c) => req.query.includeArchived === '1' || filter === 'archived' || !c.archived)
-    .filter((c) => {
-      if (filter === 'unread') return c.unreadCount > 0;
-      if (filter === 'action') return c.actionRequired;
-      if (filter === 'pinned') return c.pinned;
-      if (filter === 'active') return ['active', 'waiting_user', 'waiting_other'].includes(c.status);
-      if (filter === 'done') return c.status === 'completed' || c.status === 'archived';
-      if (filter === 'archived') return c.archived;
-      return true;
-    })
-    .filter((c) => !q || `${c.other?.name || ''} ${c.lastMessagePreview || ''} ${c.context?.label || ''} ${c.context?.detail || ''}`.toLowerCase().includes(q))
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt));
-  res.json({ conversations });
+const conversationInbox = createConversationInboxService({
+  db,
+  conversationView,
+  conversationMessagesPage,
+  markConversationRead,
+  unreadConversationCount,
+  broadcastConversation,
+  blockedUserIds,
+  findUser,
+  publicUser,
+  audit,
+  save,
 });
 
-app.get('/api/conversations/:id', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id) && !(c.deletedBy || []).includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  res.json({ conversation: conversationView(conversation, req.user.id) });
-});
-
-app.get('/api/conversations/:id/messages', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id) && !(c.deletedBy || []).includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const { messages, page } = conversationMessagesPage(conversation, req.query);
-  if (markConversationRead(conversation.id, req.user.id)) save();
-  res.json({ conversation: conversationView(conversation, req.user.id), messages, page });
-});
-
-app.post('/api/conversations/:id/read', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const changed = markConversationRead(conversation.id, req.user.id);
-  if (changed) {
-    save();
-    broadcastConversation(conversation, { type: 'read', userId: req.user.id });
-  }
-  res.json({
-    ok: true,
-    message: 'Si un compte correspond a cette adresse, un email vient d etre envoye.',
-    conversation: conversationView(conversation, req.user.id),
-    messagesUnread: unreadConversationCount(req.user.id),
-  });
-});
-
-app.post('/api/conversations/:id/typing', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  broadcastConversation(conversation, { type: 'typing', userId: req.user.id, active: req.body?.active === true }, req.user.id);
-  res.json({ ok: true });
-});
-
-app.post('/api/conversations/:id/unread', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const lastOther = db.messages
-    .filter((m) => m.conversationId === conversation.id && m.from !== req.user.id)
-    .sort((a, b) => b.at - a.at)[0];
-  if (lastOther) {
-    lastOther.readBy = (lastOther.readBy || []).filter((id) => id !== req.user.id);
-    save();
-  }
-  res.json({
-    ok: true,
-    conversation: conversationView(conversation, req.user.id),
-    messagesUnread: unreadConversationCount(req.user.id),
-  });
-});
-
-app.post('/api/conversations/:id/archive', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const archived = req.body?.archived !== false;
-  const archivedBy = new Set(conversation.archivedBy || []);
-  if (archived) archivedBy.add(req.user.id);
-  else archivedBy.delete(req.user.id);
-  conversation.archivedBy = [...archivedBy];
-  save();
-  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
-});
-
-app.post('/api/conversations/:id/pin', auth, (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const pinned = req.body?.pinned !== false;
-  const pinnedBy = new Set(conversation.pinnedBy || []);
-  if (pinned) pinnedBy.add(req.user.id);
-  else pinnedBy.delete(req.user.id);
-  conversation.pinnedBy = [...pinnedBy];
-  save();
-  res.json({ ok: true, conversation: conversationView(conversation, req.user.id) });
-});
+app.use('/api', createConversationInboxRouter({
+  auth,
+  inbox: conversationInbox,
+}));
 
 app.post('/api/conversations/:id/report', auth, async (req, res) => {
   const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
@@ -1836,46 +1757,6 @@ app.post('/api/conversations/:id/report', auth, async (req, res) => {
   await audit(req.user.id, 'conversation.report', 'conversation', conversation.id, { reason, reasonCode: safeReasonCode });
   save();
   res.json({ ok: true, report, conversation: conversationView(conversation, req.user.id) });
-});
-
-app.post('/api/conversations/:id/block', auth, async (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  const otherId = conversation.participantIds.find((id) => id !== req.user.id);
-  if (!otherId) return res.status(400).json({ error: 'Participant introuvable' });
-  const blocked = req.body?.blocked !== false;
-  const ids = blockedUserIds(req.user);
-  if (blocked) ids.add(otherId); else ids.delete(otherId);
-  req.user.blockedUserIds = [...ids];
-  conversation.blockedBy = blocked
-    ? [...new Set([...(conversation.blockedBy || []), req.user.id])]
-    : (conversation.blockedBy || []).filter((id) => id !== req.user.id);
-  await audit(req.user.id, blocked ? 'conversation.block' : 'conversation.unblock', 'conversation', conversation.id, { otherId });
-  save();
-  res.json({ ok: true, blocked, conversation: conversationView(conversation, req.user.id) });
-});
-
-app.get('/api/blocked-users', auth, (req, res) => {
-  const users = [...blockedUserIds(req.user)]
-    .map((id) => publicUser(findUser(id)))
-    .filter(Boolean);
-  res.json({ users });
-});
-
-app.post('/api/blocked-users/:id/unblock', auth, async (req, res) => {
-  const otherId = req.params.id;
-  const ids = blockedUserIds(req.user);
-  if (!ids.has(otherId)) return res.status(404).json({ error: 'Compte bloque introuvable' });
-  ids.delete(otherId);
-  req.user.blockedUserIds = [...ids];
-  for (const conversation of db.conversations) {
-    if (conversation.participantIds?.includes(req.user.id) && conversation.participantIds?.includes(otherId)) {
-      conversation.blockedBy = (conversation.blockedBy || []).filter((id) => id !== req.user.id);
-    }
-  }
-  await audit(req.user.id, 'user.unblock', 'user', otherId, {});
-  save();
-  res.json({ ok: true });
 });
 
 app.post('/api/conversations/:id/messages', auth, async (req, res) => {
@@ -1967,23 +1848,6 @@ app.post('/api/conversations/:id/messages', auth, async (req, res) => {
     warningKey: flagged ? 'messages.safety.keepInside' : null,
     warning: flagged ? "Gardez les echanges et le paiement dans Wigofly pour rester protege." : null,
   });
-});
-
-// La suppression retire une discussion de la boite du demandeur uniquement. Les
-// messages restent disponibles pour l'autre participant et pour la moderation.
-app.delete('/api/conversations/:id', auth, async (req, res) => {
-  const conversation = db.conversations.find((c) => c.id === req.params.id && c.participantIds.includes(req.user.id));
-  if (!conversation) return res.status(404).json({ error: 'Conversation introuvable' });
-  conversation.deletedBy = [...new Set([...(conversation.deletedBy || []), req.user.id])];
-  await audit(req.user.id, 'conversation.delete', 'conversation', conversation.id, {
-    subjectUserId: req.user.id,
-    scope: 'inbox_only',
-    retainedForAdmin: true,
-    participantIds: conversation.participantIds,
-    messageCount: db.messages.filter((message) => message.conversationId === conversation.id).length,
-  });
-  save();
-  res.json({ ok: true });
 });
 
 app.delete('/api/conversations/:id/messages/:messageId', auth, (req, res) => {
