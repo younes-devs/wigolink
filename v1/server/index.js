@@ -32,6 +32,7 @@ import { createAccountSettingsRouter } from './routes/account-settings.js';
 import { createTrainingRouter } from './routes/training.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
+import { createNotificationService } from './services/notifications.js';
 
 const app = express();
 const {
@@ -406,26 +407,14 @@ const { audit, auditChange } = createAuditService({
   auditLogs: repositories.auditLogs,
 });
 
-// Notifications in-app aux transitions d'état (PRD §4.5). `textOrKey` accepte soit une
-// chaîne française littérale (legacy), soit { key, params } — dans ce cas la traduction
-// se fait à la LECTURE selon la langue du lecteur (voir notify-i18n.js), pas à la création :
-// une notification est persistée une fois mais peut être lue par un compte qui a changé de
-// langue, ou par un admin dans une autre langue que le destinataire.
-async function notify(userIds, textOrKey, txId = null, type = 'transactions', section = null) {
-  const isKeyed = textOrKey && typeof textOrKey === 'object';
-  const writes = [];
-  for (const uid of new Set(userIds.filter(Boolean))) {
-    const user = findUser(uid);
-    const kind = DEFAULT_NOTIFICATION_SETTINGS[type] === undefined ? 'transactions' : type;
-    const prefs = user ? userSettings(user).notifications : DEFAULT_NOTIFICATION_SETTINGS;
-    if (kind !== 'security' && prefs[kind] === false) continue;
-    const payload = isKeyed
-      ? { key: textOrKey.key, params: textOrKey.params || {}, text: renderNotification('fr', textOrKey) }
-      : { text: textOrKey };
-    writes.push(repositories.notifications.append({ userId: uid, txId, type: kind, section, ...payload }));
-  }
-  return Promise.all(writes);
-}
+// Les cles i18n sont persistees une fois puis rendues dans la langue du lecteur.
+const notify = createNotificationService({
+  notifications: repositories.notifications,
+  findUser,
+  getUserSettings: userSettings,
+  defaultSettings: DEFAULT_NOTIFICATION_SETTINGS,
+  renderNotification,
+});
 
 function matchingOfferWaitingUser(offer) {
   if (offer.status === 'pending_traveler') return offer.travelerId;

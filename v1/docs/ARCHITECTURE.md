@@ -493,7 +493,8 @@ La première logique transverse indépendante d'Express est regroupée dans :
 ```text
 server/
 └── services/
-    └── audit.js
+    ├── audit.js
+    └── notifications.js
 ```
 
 `createAuditService` fournit l'écriture brute `audit` et le journal différentiel
@@ -505,6 +506,15 @@ n'est écrit que lorsque `meta.recordEmpty` le demande. Les métadonnées
 `subjectUserId` et `changes` sont toujours recalculées par le service. Les appels
 existants des domaines profil, trajets, opérations, messagerie, sécurité et
 administration utilisent les mêmes fonctions assemblées dans `server/index.js`.
+
+`createNotificationService` centralise la création des notifications utilisée
+par les domaines métier et les jobs. Il dédoublonne les destinataires, applique
+leurs préférences, interdit la désactivation effective des alertes `security` et
+replie un type inconnu sur `transactions`. Une notification à clé conserve sa
+clé et ses paramètres, avec un texte français servant uniquement de repli; la
+traduction finale reste effectuée à la lecture. Les chaînes historiques restent
+stockées telles quelles. Le dépôt, la recherche utilisateur, la normalisation
+des préférences et le moteur de rendu sont injectés depuis `server/index.js`.
 
 ## Backend `config`
 
