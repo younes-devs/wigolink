@@ -25,7 +25,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 8. Avant de basculer les routes relationnelles, lancer `npm run migrate:relational:plan`, puis `npm run migrate:relational` depuis un environnement ayant `DATABASE_URL`. La migration est idempotente et peut etre relancee sans doublons.
 9. Apres avoir verifie les comptes importes dans Supabase, definir `RELATIONAL_TRIP_READS=true` dans Vercel. Le flux de recherche et "Mes trajets" utilisera alors les tables indexees et paginees; ne l'activer qu'apres l'import.
 10. Definir ensuite `RELATIONAL_MESSAGE_READS=true` dans Vercel. La liste des conversations et les pages de messages seront alors lues depuis les tables indexees `wigofly_conversations` et `messages`. Les ecritures continuent de se synchroniser dans la meme transaction que l'etat historique.
-10. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
+11. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
 
@@ -36,3 +36,9 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 ## Base de donnees
 
 La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de transaction, notifications et journal d'audit sont des tables PostgreSQL indexees, donc elles ne chargent plus le document JSON global a chaque consultation. Le schema comprend aussi les tables relationnelles indexees pour utilisateurs, trajets, annonces, operations, favoris, conversations, litiges, KYC et offres de matching. La migration idempotente `npm run migrate:relational` recopie les donnees existantes vers ces tables avant le basculement progressif des routes. Le fichier `server/data.json` reste reserve au developpement local.
+
+## Medias de messagerie
+
+Les photos de conversation sont stockees dans un bucket Supabase prive au lieu d'etre repetees en base64 dans chaque reponse JSON. Renseigner `SUPABASE_URL` et `SUPABASE_SECRET_KEY`; le serveur cree au premier envoi le bucket `wigofly-message-media`, ou le nom defini par `SUPABASE_MESSAGE_MEDIA_BUCKET`. Le navigateur ne recoit jamais la cle ni le chemin interne: il charge le fichier via une route API authentifiee, avec un cache prive de 24 heures.
+
+Les anciennes images inline restent compatibles. L'API les sert par la meme route authentifiee sans les inclure dans la liste des conversations ou des messages.
