@@ -1882,6 +1882,8 @@ test('refonte simple : trajets voyageurs, enregistres, messagerie et operations'
   assert.equal(attached.body.message.type, 'attachment');
   assert.equal(attached.body.message.attachments.length, 1);
   assert.equal(attached.body.message.attachments[0].type, 'image');
+  assert.equal(attached.body.message.attachments[0].dataUrl, undefined);
+  assert.match(attached.body.message.attachments[0].url, /\/attachments\//);
 
   const located = await api(`/conversations/${conversation.body.conversation.id}/messages`, {
     method: 'POST',

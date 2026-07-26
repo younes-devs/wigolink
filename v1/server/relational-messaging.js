@@ -82,12 +82,17 @@ export async function relationalConversation({ pool, user, id, query = {}, today
 export async function relationalConversationMessages({ pool, conversationId, query = {} }) {
   const limit = boundedLimit(query.limit || 50);
   const before = positiveTimestamp(query.before);
+  const after = positiveTimestamp(query.after);
   const q = String(query.q || '').trim();
   const params = [conversationId];
   const where = ['m.conversation_id = $1'];
   if (before) {
     params.push(before);
     where.push(`extract(epoch from m.at) * 1000 < $${params.length}`);
+  }
+  if (after) {
+    params.push(after);
+    where.push(`extract(epoch from m.at) * 1000 > $${params.length}`);
   }
   if (q) {
     params.push(`%${q}%`);
@@ -97,20 +102,21 @@ export async function relationalConversationMessages({ pool, conversationId, que
   const result = await pool.query(
     `select m.data from public.messages m
      where ${where.join(' and ')}
-     order by m.at desc
+     order by m.at ${after ? 'asc' : 'desc'}
      limit $${params.length}`,
     params
   );
   const hasMore = result.rows.length > limit;
-  const newestFirst = result.rows.slice(0, limit).map((row) => messageView(row.data));
-  const messages = newestFirst.reverse();
+  const selected = result.rows.slice(0, limit).map((row) => messageView(row.data));
+  const messages = after ? selected : selected.reverse();
   return {
     messages,
     page: {
       limit,
       total: null,
       hasMore,
-      nextBefore: hasMore ? messages[0]?.at || null : null,
+      nextBefore: !after && hasMore ? messages[0]?.at || null : null,
+      nextAfter: after && hasMore ? messages.at(-1)?.at || null : null,
       q,
     },
   };
@@ -191,6 +197,13 @@ function messageView(message) {
   if (!message) return null;
   return {
     ...message,
+    attachments: (message.attachments || []).map((attachment) => {
+      const { dataUrl, storagePath, ...safe } = attachment;
+      return {
+        ...safe,
+        url: safe.url || `/conversations/${message.conversationId}/messages/${message.id}/attachments/${attachment.id}`,
+      };
+    }),
     type: message.type || (message.flagged ? 'warning' : 'text'),
     deliveryStatus: message.deliveryStatus || 'sent',
     createdAt: message.createdAt || message.at,

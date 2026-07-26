@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../../api';
@@ -10,17 +10,41 @@ import { dateLocale, t, useLang } from '../../../i18n.js';
 
 const tripOverviewCache = new Map();
 const TRIP_OVERVIEW_CACHE_MS = 30_000;
+const TRIP_SESSION_PREFIX = 'wigofly:trips:';
+
+function readTripCache(query) {
+  const memory = tripOverviewCache.get(query);
+  if (memory) return memory;
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(`${TRIP_SESSION_PREFIX}${query}`));
+    if (stored) tripOverviewCache.set(query, stored);
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+function writeTripCache(query, value) {
+  tripOverviewCache.set(query, value);
+  try {
+    sessionStorage.setItem(`${TRIP_SESSION_PREFIX}${query}`, JSON.stringify(value));
+  } catch {
+    // The in-memory cache remains available when browser storage is full.
+  }
+}
 
 export default function TripFeedSimple() {
   useLang();
-  const [trips, setTrips] = useState(() => tripOverviewCache.get('')?.trips || null);
-  const [myTrips, setMyTrips] = useState(() => tripOverviewCache.get('')?.myTrips || null);
+  const [trips, setTrips] = useState(() => readTripCache('')?.trips || null);
+  const [myTrips, setMyTrips] = useState(() => readTripCache('')?.myTrips || null);
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '' };
   const [filters, setFilters] = useState(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
   const toast = useToast();
+  const requestRef = useRef(0);
+  const deferredFilters = useDeferredValue(filters);
 
   useEffect(() => {
     if (!filtersOpen) return undefined;
@@ -33,15 +57,16 @@ export default function TripFeedSimple() {
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(filters)) {
+    for (const [key, value] of Object.entries(deferredFilters)) {
       if (value) params.set(key, value);
     }
     return params.toString();
-  }, [filters]);
+  }, [deferredFilters]);
 
   const load = async ({ force = false } = {}) => {
     const params = new URLSearchParams(query);
-    const cached = tripOverviewCache.get(query);
+    const requestId = ++requestRef.current;
+    const cached = readTripCache(query);
     if (cached) {
       setTrips(cached.trips);
       setMyTrips(cached.myTrips);
@@ -49,8 +74,9 @@ export default function TripFeedSimple() {
     }
     try {
       const data = await api(`/trips/overview?${params.toString()}`);
+      if (requestId !== requestRef.current) return;
       const next = { trips: data.trips, myTrips: data.myTrips, at: Date.now() };
-      tripOverviewCache.set(query, next);
+      writeTripCache(query, next);
       setTrips(next.trips);
       setMyTrips(next.myTrips);
     } catch {
@@ -69,6 +95,10 @@ export default function TripFeedSimple() {
       else await api(`/saved-trips/${trip.id}`, { method: 'POST' });
       toast.success(trip.saved ? t('trips.toast.unsaved') : t('trips.toast.saved'));
       tripOverviewCache.clear();
+      for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+        const key = sessionStorage.key(index);
+        if (key?.startsWith(TRIP_SESSION_PREFIX)) sessionStorage.removeItem(key);
+      }
       load({ force: true });
     } catch (e) {
       toast.error(e.message);

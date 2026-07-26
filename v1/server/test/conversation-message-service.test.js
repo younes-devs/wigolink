@@ -316,6 +316,26 @@ test('conversation messages normalise une image puis notifie, sauvegarde et diff
     'save',
     'broadcast',
   ]);
+
+  assert.equal(result.body.message.attachments[0].dataUrl, undefined);
+  const media = await service.attachment(
+    'conv-1',
+    result.body.message.id,
+    result.body.message.attachments[0].id,
+    users[1].id,
+  );
+  assert.equal(media.status, 200);
+  assert.equal(media.contentType, 'image/png');
+  assert.equal(Buffer.isBuffer(media.body), true);
+  assert.equal(
+    (await service.attachment(
+      'conv-1',
+      result.body.message.id,
+      result.body.message.attachments[0].id,
+      'u-outsider',
+    )).status,
+    404,
+  );
 });
 
 test('conversation messages autorise uniquement l auteur a supprimer son message', () => {

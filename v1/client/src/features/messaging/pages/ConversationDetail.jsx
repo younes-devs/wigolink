@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../../../api';
+import { api, apiBlob } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
 import { markInboxConversationRead, shortDate } from './MessagesSimple.jsx';
+import { readThreadCache, writeThreadCache } from '../services/messageCache.js';
 
 const REPORT_REASONS = ['external_payment', 'abuse', 'suspicious', 'off_platform', 'other'];
 const threadCacheByKey = new Map();
@@ -72,6 +73,12 @@ export default function ConversationDetail() {
   const typingTimerRef = useRef(null);
   const lastTypingRef = useRef(0);
   const messageNodesRef = useRef(new Map());
+  const realtimeConnectedRef = useRef(false);
+
+  const cacheThread = (value) => {
+    threadCacheByKey.set(threadCacheKey(user.id, id), value);
+    writeThreadCache(user.id, id, value);
+  };
 
   const markConversationRead = () => api(`/conversations/${id}/read`, { method: 'POST' })
     .then((read) => {
@@ -103,7 +110,7 @@ export default function ConversationDetail() {
       setOtherOnline(!!data.conversation?.otherOnline);
       setMessages(incoming);
       setMessagePage(data.page || null);
-      threadCacheByKey.set(threadCacheKey(user.id, id), {
+      cacheThread({
         conversation: data.conversation,
         messages: incoming,
         page: data.page || null,
@@ -119,10 +126,48 @@ export default function ConversationDetail() {
     });
   };
 
+  const loadNewer = async () => {
+    const latestAt = latestMessageAtRef.current;
+    if (!latestAt) return load(true);
+    try {
+      const params = new URLSearchParams({
+        limit: '50',
+        after: String(Math.max(0, latestAt - 1)),
+      });
+      const data = await api(`/conversations/${id}/messages?${params.toString()}`);
+      const incoming = data.messages || [];
+      const receivedCount = incoming.filter((message) =>
+        message.at > latestAt && message.from !== user.id
+      ).length;
+      const nextLatestAt = Math.max(latestAt, latestMessageAt(incoming));
+      latestMessageAtRef.current = nextLatestAt;
+      setConversation(data.conversation);
+      setOtherOnline(!!data.conversation?.otherOnline);
+      setMessages((current) => {
+        const merged = mergeMessages(current, incoming);
+        cacheThread({
+          conversation: data.conversation,
+          messages: merged,
+          page: messagePage,
+          latestAt: nextLatestAt,
+          at: Date.now(),
+        });
+        return merged;
+      });
+      if (receivedCount > 0 && !nearBottomRef.current) {
+        setNewMessageCount((count) => count + receivedCount);
+      }
+      setError('');
+    } catch {
+      if (!realtimeConnectedRef.current) void load(true);
+    }
+  };
+
   useEffect(() => {
     const cached = threadCacheByKey.get(threadCacheKey(user.id, id));
     setConversation(null);
     setMessages([]);
+    setMessagePage(null);
     setNewMessageCount(0);
     latestMessageAtRef.current = 0;
     nearBottomRef.current = true;
@@ -144,23 +189,38 @@ export default function ConversationDetail() {
     setReportReason('');
     setMessageQuery('');
     setText(sessionStorage.getItem(`draft:${id}`) || '');
-    if (cached) {
-      setConversation(cached.conversation);
-      setMessages(cached.messages);
-      setMessagePage(cached.page);
-      latestMessageAtRef.current = cached.latestAt || latestMessageAt(cached.messages);
-      setOtherOnline(!!cached.conversation?.otherOnline);
-      if (Date.now() - cached.at < THREAD_CACHE_MS) {
+    const restoreCache = (stored) => {
+      if (!stored) return false;
+      threadCacheByKey.set(threadCacheKey(user.id, id), stored);
+      setConversation(stored.conversation);
+      setMessages(stored.messages || []);
+      setMessagePage(stored.page);
+      latestMessageAtRef.current = stored.latestAt || latestMessageAt(stored.messages || []);
+      setOtherOnline(!!stored.conversation?.otherOnline);
+      if (Date.now() - stored.at < THREAD_CACHE_MS) {
         void markConversationRead();
-        return;
+        return true;
       }
+      return false;
+    };
+    if (cached) {
+      if (restoreCache(cached)) return;
+      load();
+      return;
     }
-    load();
+    let cancelled = false;
+    void readThreadCache(user.id, id).then((stored) => {
+      if (cancelled) return;
+      if (!restoreCache(stored)) void load();
+    });
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') load(true);
+      if (!realtimeConnectedRef.current && document.visibilityState === 'visible') {
+        loadNewer();
+      }
     }, 4_000);
     return () => {
       clearInterval(interval);
@@ -173,9 +233,24 @@ export default function ConversationDetail() {
     let unsubscribe = () => {};
     let cancelled = false;
     void import('../services/realtime.js')
-      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(user.id, (update) => {
-        if (update.conversationId === id && document.visibilityState === 'visible') void load(true);
-      }))
+      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(
+        user.id,
+        (update) => {
+          if (update.conversationId !== id || document.visibilityState !== 'visible') return;
+          if (update.type === 'message_deleted' && update.messageId) {
+            setMessages((current) => current.filter((message) => message.id !== update.messageId));
+            return;
+          }
+          if (update.type === 'typing' && update.userId !== user.id) {
+            setOtherTyping(!!update.active);
+            return;
+          }
+          void loadNewer();
+        },
+        (status) => {
+          realtimeConnectedRef.current = status === 'connected';
+        }
+      ))
       .then((dispose) => {
         if (cancelled) dispose();
         else unsubscribe = dispose;
@@ -183,7 +258,20 @@ export default function ConversationDetail() {
       .catch(() => {});
     return () => {
       cancelled = true;
+      realtimeConnectedRef.current = false;
       unsubscribe();
+    };
+  }, [id, user.id]);
+
+  useEffect(() => {
+    const refreshVisibleThread = () => {
+      if (document.visibilityState === 'visible') void loadNewer();
+    };
+    document.addEventListener('visibilitychange', refreshVisibleThread);
+    window.addEventListener('focus', refreshVisibleThread);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshVisibleThread);
+      window.removeEventListener('focus', refreshVisibleThread);
     };
   }, [id, user.id]);
 
@@ -305,7 +393,24 @@ export default function ConversationDetail() {
       });
       if (data.warningKey || data.warning) toast.info(data.warningKey ? t(data.warningKey) : data.warning);
       api(`/conversations/${id}/typing`, { method: 'POST', body: { active: false } }).catch(() => {});
-      await load(true);
+      const delivered = data.message;
+      const nextLatestAt = Math.max(latestMessageAtRef.current, delivered?.at || 0);
+      latestMessageAtRef.current = nextLatestAt;
+      setConversation(data.conversation);
+      setMessages((current) => {
+        const withoutOptimistic = current.filter((message) =>
+          message.id !== clientId && message.clientId !== clientId
+        );
+        const merged = mergeMessages(withoutOptimistic, delivered ? [delivered] : []);
+        cacheThread({
+          conversation: data.conversation,
+          messages: merged,
+          page: messagePage,
+          latestAt: nextLatestAt,
+          at: Date.now(),
+        });
+        return merged;
+      });
     } catch (err) {
       if (err.data?.code === 'message_safety_blocked' || err.data?.code === 'message_safety_cooldown') {
         setMessages((current) => current.filter((message) => message.id !== clientId));
@@ -842,9 +947,11 @@ function MessageGroup({ group, userId, conversation, query, onPreview, onSelect,
             {message.attachments?.length > 0 && (
               <div className="message-attachments">
                 {message.attachments.map((attachment) => (
-                  <button type="button" key={attachment.id || attachment.dataUrl} onClick={() => onPreview(attachment)} aria-label={t('messages.attachment.enlarge')}>
-                    <img src={attachment.dataUrl} alt={attachment.name || t('messages.attachment.preview')} />
-                  </button>
+                  <AuthenticatedMessageImage
+                    key={attachment.id || attachment.url || attachment.dataUrl}
+                    attachment={attachment}
+                    onPreview={onPreview}
+                  />
                 ))}
               </div>
             )}
@@ -871,6 +978,41 @@ function DeliveryState({ message }) {
   return <Icon name="checkCheck" className={read ? 'is-read' : ''} size={14} />;
 }
 
+function AuthenticatedMessageImage({ attachment, onPreview }) {
+  const [objectUrl, setObjectUrl] = useState(null);
+  const source = attachment.dataUrl || objectUrl;
+
+  useEffect(() => {
+    if (!attachment.url) return undefined;
+    let cancelled = false;
+    let createdUrl = null;
+    void apiBlob(attachment.url)
+      .then((blob) => {
+        if (cancelled) return;
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [attachment.url]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => source && onPreview({ ...attachment, objectUrl: source })}
+      aria-label={t('messages.attachment.enlarge')}
+      disabled={!source}
+    >
+      {source
+        ? <img src={source} alt={attachment.name || t('messages.attachment.preview')} loading="lazy" decoding="async" />
+        : <span className="spinner" />}
+    </button>
+  );
+}
+
 function ImagePreview({ image, onClose }) {
   useEffect(() => {
     const close = (event) => { if (event.key === 'Escape') onClose(); };
@@ -879,7 +1021,7 @@ function ImagePreview({ image, onClose }) {
   }, [onClose]);
   return <div className="image-lightbox" role="dialog" aria-modal="true" onClick={onClose}>
     <button type="button" className="icon-btn" aria-label={t('common.close')} onClick={onClose}><Icon name="x" size={20} /></button>
-    <img src={image.dataUrl} alt={image.name || t('messages.attachment.preview')} onClick={(event) => event.stopPropagation()} />
+    <img src={image.objectUrl || image.dataUrl} alt={image.name || t('messages.attachment.preview')} onClick={(event) => event.stopPropagation()} />
   </div>;
 }
 
@@ -982,6 +1124,19 @@ function groupMessages(messages, userId) {
 
 function latestMessageAt(messages) {
   return messages.reduce((latest, message) => Math.max(latest, Number(message.at || 0)), 0);
+}
+
+function mergeMessages(current, incoming) {
+  const merged = [];
+  for (const message of [...current, ...incoming]) {
+    const index = merged.findIndex((existing) =>
+      existing.id === message.id
+      || (message.clientId && existing.clientId === message.clientId)
+    );
+    if (index >= 0) merged[index] = message;
+    else merged.push(message);
+  }
+  return merged.sort((a, b) => Number(a.at || 0) - Number(b.at || 0));
 }
 
 function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }

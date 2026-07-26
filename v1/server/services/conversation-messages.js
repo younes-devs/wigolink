@@ -24,6 +24,7 @@ export function createConversationMessageService({
   audit,
   save,
   broadcastConversation,
+  messageMedia = null,
   newId,
   now = Date.now,
 }) {
@@ -40,12 +41,25 @@ export function createConversationMessageService({
 
   function messageResponse(message, conversation, userId) {
     return {
-      message,
+      message: clientMessage(message),
       conversation: conversationView(conversation, userId),
       warningKey: message.flagged ? 'messages.safety.keepInside' : null,
       warning: message.flagged
         ? 'Gardez les echanges et le paiement dans Wigofly pour rester protege.'
         : null,
+    };
+  }
+
+  function clientMessage(message) {
+    return {
+      ...message,
+      attachments: (message.attachments || []).map((attachment) => {
+        const { dataUrl, storagePath, ...safe } = attachment;
+        return {
+          ...safe,
+          url: safe.url || `/conversations/${message.conversationId}/messages/${message.id}/attachments/${attachment.id}`,
+        };
+      }),
     };
   }
 
@@ -196,20 +210,46 @@ export function createConversationMessageService({
       return response(400, { error: 'Piece jointe invalide' });
     }
 
-    const normalizedAttachments = attachments.map((attachment, index) => {
+    const messageId = newId('m');
+    let normalizedAttachments;
+    try {
+      normalizedAttachments = await Promise.all(attachments.map(async (attachment, index) => {
       const dataUrl = typeof attachment === 'string'
         ? attachment
         : attachment.dataUrl;
       const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
+      const attachmentId = newId('att');
+      const stored = messageMedia?.enabled
+        ? await messageMedia.storeDataUrl({
+          conversationId: conversation.id,
+          attachmentId,
+          dataUrl,
+        })
+        : null;
       return {
-        id: newId('att'),
+        id: attachmentId,
         type: 'image',
         name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-        mime,
-        dataUrl,
-        size: dataUrl.length,
+        mime: stored?.mime || mime,
+        ...(stored
+          ? {
+            storagePath: stored.storagePath,
+            url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
+            size: stored.size,
+          }
+          : {
+            dataUrl,
+            url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
+            size: dataUrl.length,
+          }),
       };
-    });
+      }));
+    } catch {
+      return response(503, {
+        code: 'message_media_unavailable',
+        error: 'Impossible de stocker cette image pour le moment. Reessayez.',
+      });
+    }
     const clientId = String(body.clientId || '').trim().slice(0, 80) || null;
 
     if (clientId) {
@@ -267,7 +307,7 @@ export function createConversationMessageService({
     }
 
     const message = {
-      id: newId('m'),
+      id: messageId,
       clientId,
       conversationId: conversation.id,
       txId: conversation.operationId || null,
@@ -350,7 +390,29 @@ export function createConversationMessageService({
     });
   }
 
+  async function attachment(conversationId, messageId, attachmentId, userId) {
+    const conversation = findConversation(conversationId, userId);
+    if (!conversation) return { status: 404 };
+    const message = db.messages.find((item) =>
+      item.id === messageId && item.conversationId === conversationId
+    );
+    const media = message?.attachments?.find((item) => item.id === attachmentId);
+    if (!media) return { status: 404 };
+    if (media.dataUrl) {
+      const match = media.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return { status: 404 };
+      return {
+        status: 200,
+        body: Buffer.from(match[2], 'base64'),
+        contentType: match[1],
+      };
+    }
+    const downloaded = await messageMedia?.download(media.storagePath);
+    return downloaded || { status: 503 };
+  }
+
   return {
+    attachment,
     createConversation,
     deleteMessage,
     reportConversation,

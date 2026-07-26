@@ -61,6 +61,7 @@ import { createAccountPrivacyService } from './services/account-privacy.js';
 import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
 import { createConversationMessageService } from './services/conversation-messages.js';
+import { createMessageMediaService } from './services/message-media.js';
 import { createTripService } from './services/trips.js';
 import { createListingService } from './services/listings.js';
 import { createMatchingOfferService } from './services/matching-offers.js';
@@ -796,7 +797,7 @@ function conversationContextSummary({ trip, operation }) {
 
 function conversationView(conversation, viewerId) {
   const messages = db.messages.filter((m) => m.conversationId === conversation.id).sort((a, b) => a.at - b.at);
-  const lastMessage = messages[messages.length - 1] || null;
+  const lastMessage = clientMessageView(messages[messages.length - 1] || null);
   const unread = messages.filter((m) => m.from !== viewerId && !(m.readBy || []).includes(viewerId)).length;
   const trip = conversation.tripId ? db.trips.find((t) => t.id === conversation.tripId) : null;
   const operation = conversation.operationId ? db.transactions.find((t) => t.id === conversation.operationId) : null;
@@ -916,7 +917,7 @@ function conversationMessages(conversation) {
   const userMessages = db.messages
     .filter((m) => m.conversationId === conversation.id)
     .map((m) => ({
-      ...m,
+      ...clientMessageView(m),
       type: m.type || (m.flagged ? 'warning' : 'text'),
       deliveryStatus: m.deliveryStatus || 'sent',
       createdAt: m.createdAt || m.at,
@@ -943,6 +944,20 @@ function conversationMessages(conversation) {
   return [...systemMessages, ...userMessages].sort((a, b) => a.at - b.at);
 }
 
+function clientMessageView(message) {
+  if (!message) return null;
+  return {
+    ...message,
+    attachments: (message.attachments || []).map((attachment) => {
+      const { dataUrl, storagePath, ...safe } = attachment;
+      return {
+        ...safe,
+        url: safe.url || `/conversations/${message.conversationId}/messages/${message.id}/attachments/${attachment.id}`,
+      };
+    }),
+  };
+}
+
 function conversationMessagesPage(conversation, query = {}) {
   let messages = conversationMessages(conversation);
   const q = String(query.q || '').trim().toLowerCase();
@@ -953,18 +968,25 @@ function conversationMessagesPage(conversation, query = {}) {
   }
   const before = Number(query.before || 0);
   if (before > 0) messages = messages.filter((message) => message.at < before);
+  const after = Number(query.after || 0);
+  if (after > 0) messages = messages.filter((message) => message.at > after);
   const requestedLimit = Number(query.limit || 0);
   const limit = requestedLimit > 0 ? Math.max(1, Math.min(100, requestedLimit)) : 0;
   const total = messages.length;
-  if (limit > 0 && messages.length > limit) messages = messages.slice(-limit);
-  const nextBefore = limit > 0 && total > messages.length ? messages[0]?.at || null : null;
+  if (limit > 0 && messages.length > limit) {
+    messages = after > 0 ? messages.slice(0, limit) : messages.slice(-limit);
+  }
+  const hasMore = limit > 0 && total > messages.length;
+  const nextBefore = !after && hasMore ? messages[0]?.at || null : null;
+  const nextAfter = after && hasMore ? messages.at(-1)?.at || null : null;
   return {
     messages,
     page: {
       limit: limit || null,
       total,
-      hasMore: !!nextBefore,
+      hasMore,
       nextBefore,
+      nextAfter,
       q,
     },
   };
@@ -1346,6 +1368,11 @@ const conversationMessageService = createConversationMessageService({
   audit,
   save,
   broadcastConversation,
+  messageMedia: createMessageMediaService({
+    url: SUPABASE_URL,
+    secretKey: String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+    bucket: String(process.env.SUPABASE_MESSAGE_MEDIA_BUCKET || 'wigofly-message-media').trim(),
+  }),
   newId,
 });
 

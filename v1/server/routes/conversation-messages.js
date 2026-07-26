@@ -52,5 +52,27 @@ export function createConversationMessageRouter({
     ),
   );
 
+  router.get(
+    '/conversations/:id/messages/:messageId/attachments/:attachmentId',
+    auth,
+    async (req, res) => {
+      const result = await messages.attachment(
+        req.params.id,
+        req.params.messageId,
+        req.params.attachmentId,
+        req.user.id,
+      );
+      if (result.status !== 200) {
+        return res.status(result.status || 404).json({
+          error: result.status === 503 ? 'Media temporairement indisponible' : 'Media introuvable',
+        });
+      }
+      res.setHeader('Content-Type', result.contentType);
+      res.setHeader('Cache-Control', 'private, max-age=86400, immutable');
+      if (result.etag) res.setHeader('ETag', result.etag);
+      return res.send(result.body);
+    },
+  );
+
   return router;
 }

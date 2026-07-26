@@ -40,3 +40,21 @@ export async function api(path, opts = {}) {
   }
   return data;
 }
+
+export async function apiBlob(path) {
+  let response;
+  try {
+    response = await fetch(`${apiBase}${path}`, {
+      headers: {
+        'Accept-Language': document.documentElement.lang || 'fr',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch {
+    throw new Error(t('api.error.network'));
+  }
+  if (!response.ok) {
+    throw new Error(t('api.error.status', { status: response.status }));
+  }
+  return response.blob();
+}

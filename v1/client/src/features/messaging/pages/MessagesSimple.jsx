@@ -6,6 +6,7 @@ import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
 import { ConfirmDialog } from '../../../components.jsx';
+import { readInboxCache, writeInboxCache } from '../services/messageCache.js';
 
 const FILTERS = [
   { id: 'all', label: 'messages.filter.all' },
@@ -28,7 +29,9 @@ export function markInboxConversationRead(userId, conversationId, conversation =
     if (item.id !== conversationId) return item;
     return { ...item, ...(conversation || {}), unread: 0, unreadCount: 0 };
   });
-  inboxCacheByUser.set(userId, { ...cached, conversations });
+  const next = { ...cached, conversations };
+  inboxCacheByUser.set(userId, next);
+  writeInboxCache(userId, next);
 }
 
 export default function MessagesSimple() {
@@ -41,6 +44,7 @@ export default function MessagesSimple() {
   const [filter, setFilter] = useState('all');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const realtimeConnectedRef = useRef(false);
 
   const load = async ({ force = false } = {}) => {
     setOpenMenuId(null);
@@ -54,6 +58,7 @@ export default function MessagesSimple() {
       const data = await api('/conversations?includeArchived=1');
       const next = { conversations: data.conversations || [], at: Date.now() };
       inboxCacheByUser.set(user?.id, next);
+      writeInboxCache(user?.id, next);
       setConversations(next.conversations);
     } catch (err) {
       setError(err.message || t('messages.error.load'));
@@ -61,11 +66,53 @@ export default function MessagesSimple() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const refreshConversation = async (conversationId) => {
+    if (!conversationId) return load({ force: true });
+    try {
+      const data = await api(`/conversations/${conversationId}`);
+      const nextConversation = data.conversation;
+      setConversations((current) => {
+        const list = current || [];
+        const next = [
+          nextConversation,
+          ...list.filter((item) => item.id !== conversationId),
+        ].sort((a, b) =>
+          Number(b.pinned) - Number(a.pinned)
+          || Number(b.lastMessageAt || b.createdAt) - Number(a.lastMessageAt || a.createdAt)
+        );
+        const cached = { conversations: next, at: Date.now() };
+        inboxCacheByUser.set(user?.id, cached);
+        writeInboxCache(user?.id, cached);
+        return next;
+      });
+    } catch {
+      void load({ force: true });
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const memory = inboxCacheByUser.get(user?.id);
+    if (memory) {
+      void load();
+      return () => { cancelled = true; };
+    }
+    void readInboxCache(user?.id).then((cached) => {
+      if (cancelled) return;
+      if (cached) {
+        inboxCacheByUser.set(user?.id, cached);
+        setConversations(cached.conversations || []);
+      }
+      void load();
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') load({ force: true });
+      if (!realtimeConnectedRef.current && document.visibilityState === 'visible') {
+        load({ force: true });
+      }
     }, 12_000);
     return () => clearInterval(interval);
   }, []);
@@ -74,9 +121,17 @@ export default function MessagesSimple() {
     let unsubscribe = () => {};
     let cancelled = false;
     void import('../services/realtime.js')
-      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(user?.id, () => {
-        if (document.visibilityState === 'visible') void load({ force: true });
-      }))
+      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(
+        user?.id,
+        (update) => {
+          if (document.visibilityState === 'visible') {
+            void refreshConversation(update.conversationId);
+          }
+        },
+        (status) => {
+          realtimeConnectedRef.current = status === 'connected';
+        }
+      ))
       .then((dispose) => {
         if (cancelled) dispose();
         else unsubscribe = dispose;
@@ -84,9 +139,22 @@ export default function MessagesSimple() {
       .catch(() => {});
     return () => {
       cancelled = true;
+      realtimeConnectedRef.current = false;
       unsubscribe();
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    const refreshVisibleInbox = () => {
+      if (document.visibilityState === 'visible') void load({ force: true });
+    };
+    document.addEventListener('visibilitychange', refreshVisibleInbox);
+    window.addEventListener('focus', refreshVisibleInbox);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshVisibleInbox);
+      window.removeEventListener('focus', refreshVisibleInbox);
+    };
+  }, []);
 
   const counts = useMemo(() => {
     const list = conversations || [];

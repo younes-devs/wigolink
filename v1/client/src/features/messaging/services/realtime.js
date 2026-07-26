@@ -13,11 +13,17 @@ async function realtimeSession(userId) {
   return config;
 }
 
-export async function subscribeToMessageUpdates(userId, onUpdate) {
-  if (!userId) return () => {};
+export async function subscribeToMessageUpdates(userId, onUpdate, onStatus = () => {}) {
+  if (!userId) {
+    onStatus('fallback');
+    return () => {};
+  }
   try {
     const config = await realtimeSession(userId);
-    if (!config.enabled || !config.url || !config.publishableKey || !config.channel) return () => {};
+    if (!config.enabled || !config.url || !config.publishableKey || !config.channel) {
+      onStatus('fallback');
+      return () => {};
+    }
     const key = `${config.url}:${config.publishableKey}`;
     if (!client || clientKey !== key) {
       client?.removeAllChannels();
@@ -29,10 +35,15 @@ export async function subscribeToMessageUpdates(userId, onUpdate) {
     const channel = client
       .channel(config.channel, { config: { broadcast: { self: false, ack: false } } })
       .on('broadcast', { event: 'update' }, ({ payload }) => onUpdate(payload || {}));
-    channel.subscribe();
-    return () => { client?.removeChannel(channel); };
+    channel.subscribe((status) => {
+      onStatus(status === 'SUBSCRIBED' ? 'connected' : 'fallback');
+    });
+    return () => {
+      onStatus('closed');
+      client?.removeChannel(channel);
+    };
   } catch {
-    // Polling remains the resilient fallback when Supabase Realtime is unavailable.
+    onStatus('fallback');
     return () => {};
   }
 }

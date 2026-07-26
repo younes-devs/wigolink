@@ -98,7 +98,7 @@ export function Avatar({ name = '?', photo = null, size = 44 }) {
   if (photo) {
     return (
       <span className="avatar" style={{ width: size, height: size, overflow: 'hidden' }}>
-        <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={photo} alt={name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </span>
     );
   }

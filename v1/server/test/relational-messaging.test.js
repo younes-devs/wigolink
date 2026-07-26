@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  listRelationalConversations, relationalConversation, relationalMessageReadsEnabled,
+  listRelationalConversations, relationalConversation, relationalConversationMessages,
+  relationalMessageReadsEnabled,
 } from '../relational-messaging.js';
 
 const row = {
@@ -51,4 +52,26 @@ test('messagerie relationnelle : charge une page de messages sans le document gl
   assert.equal(data.messages[0].id, 'm-1');
   assert.equal(data.messages[1].id, 'm-2');
   assert.match(calls[1].sql, /conversation_id/);
+});
+
+test('messagerie relationnelle : synchronise uniquement les messages plus recents', async () => {
+  const calls = [];
+  const data = await relationalConversationMessages({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return {
+          rows: [
+            { data: { id: 'm-3', conversationId: 'conv-1', at: 301, text: 'Nouveau' } },
+          ],
+        };
+      },
+    },
+    conversationId: 'conv-1',
+    query: { after: 300, limit: 50 },
+  });
+  assert.deepEqual(data.messages.map(({ id }) => id), ['m-3']);
+  assert.match(calls[0].sql, /> \$2/);
+  assert.match(calls[0].sql, /order by m.at asc/);
+  assert.deepEqual(calls[0].params, ['conv-1', 300, 51]);
 });
