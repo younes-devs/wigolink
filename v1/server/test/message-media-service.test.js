@@ -11,27 +11,34 @@ test('message media reste inactif sans configuration serveur', async () => {
 
 test('message media cree un bucket prive puis stocke et relit une image', async () => {
   const calls = [];
-  const fetchImpl = async (url, options = {}) => {
-    calls.push({ url, options });
-    if (url.endsWith('/storage/v1/bucket/media')) {
-      return new Response('', { status: 404 });
-    }
-    if (url.endsWith('/storage/v1/bucket')) {
-      return new Response('{}', { status: 200 });
-    }
-    if (url.includes('/storage/v1/object/authenticated/')) {
-      return new Response(Buffer.from('image-bytes'), {
-        status: 200,
-        headers: { 'content-type': 'image/png', etag: '"media-1"' },
-      });
-    }
-    return new Response('{}', { status: 200 });
+  const storageClient = {
+    async getBucket(name) {
+      calls.push(['getBucket', name]);
+      return { data: null, error: { statusCode: 404, message: 'Bucket not found' } };
+    },
+    async createBucket(name, options) {
+      calls.push(['createBucket', name, options]);
+      return { data: { name }, error: null };
+    },
+    from(name) {
+      return {
+        async upload(path, body, options) {
+          calls.push(['upload', name, path, body, options]);
+          return { data: { path }, error: null };
+        },
+        async download(path) {
+          calls.push(['download', name, path]);
+          return {
+            data: new Blob([Buffer.from('image-bytes')], { type: 'image/png' }),
+            error: null,
+          };
+        },
+      };
+    },
   };
   const service = createMessageMediaService({
-    url: 'https://project.supabase.co',
-    secretKey: 'secret',
     bucket: 'media',
-    fetchImpl,
+    storageClient,
   });
 
   const stored = await service.storeDataUrl({
@@ -44,13 +51,17 @@ test('message media cree un bucket prive puis stocke et relit une image', async 
     mime: 'image/png',
     size: 5,
   });
-  assert.equal(calls[1].options.body.includes('"public":false'), true);
-  assert.equal(calls[2].options.headers.authorization, 'Bearer secret');
-  assert.equal(Buffer.isBuffer(calls[2].options.body), true);
+  assert.deepEqual(calls[1], ['createBucket', 'media', {
+    public: false,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    fileSizeLimit: 700 * 1024,
+  }]);
+  assert.equal(calls[2][0], 'upload');
+  assert.equal(Buffer.isBuffer(calls[2][3]), true);
 
   const downloaded = await service.download(stored.storagePath);
   assert.equal(downloaded.status, 200);
   assert.equal(downloaded.contentType, 'image/png');
-  assert.equal(downloaded.etag, '"media-1"');
+  assert.equal(downloaded.etag, null);
   assert.equal(downloaded.body.toString(), 'image-bytes');
 });

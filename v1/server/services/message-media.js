@@ -1,50 +1,37 @@
+import { createClient } from '@supabase/supabase-js';
+
 const DEFAULT_BUCKET = 'wigofly-message-media';
 
 export function createMessageMediaService({
   url,
   secretKey,
   bucket = DEFAULT_BUCKET,
-  fetchImpl = fetch,
+  storageClient = null,
 }) {
   const baseUrl = String(url || '').replace(/\/$/, '');
   const key = String(secretKey || '').trim();
-  const enabled = !!(baseUrl && key);
+  const enabled = !!(storageClient || (baseUrl && key));
+  const storage = storageClient || (enabled
+    ? createClient(baseUrl, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }).storage
+    : null);
   let bucketPromise = null;
-
-  const headers = () => ({
-    apikey: key,
-    authorization: `Bearer ${key}`,
-  });
 
   async function ensureBucket() {
     if (!enabled) return false;
     if (!bucketPromise) {
       bucketPromise = (async () => {
-        const current = await fetchImpl(
-          `${baseUrl}/storage/v1/bucket/${encodeURIComponent(bucket)}`,
-          { headers: headers() },
-        );
-        if (current.ok) return true;
-        if (current.status !== 404) {
-          throw new Error(`Stockage media indisponible (${current.status})`);
-        }
-        const created = await fetchImpl(`${baseUrl}/storage/v1/bucket`, {
-          method: 'POST',
-          headers: {
-            ...headers(),
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: bucket,
-            name: bucket,
-            public: false,
-            file_size_limit: 700 * 1024,
-            allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp'],
-          }),
+        const { error: lookupError } = await storage.getBucket(bucket);
+        if (!lookupError) return true;
+        if (!isMissingBucket(lookupError)) throw lookupError;
+
+        const { error: createError } = await storage.createBucket(bucket, {
+          public: false,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          fileSizeLimit: 700 * 1024,
         });
-        if (!created.ok && created.status !== 409) {
-          throw new Error(`Creation du stockage media impossible (${created.status})`);
-        }
+        if (createError && !isDuplicateBucket(createError)) throw createError;
         return true;
       })().catch((error) => {
         bucketPromise = null;
@@ -63,36 +50,26 @@ export function createMessageMediaService({
     const extension = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
     const bytes = Buffer.from(match[2], 'base64');
     const storagePath = `conversations/${safeSegment(conversationId)}/${safeSegment(attachmentId)}.${extension}`;
-    const upload = await fetchImpl(
-      `${baseUrl}/storage/v1/object/${encodePath(bucket, storagePath)}`,
-      {
-        method: 'POST',
-        headers: {
-          ...headers(),
-          'content-type': mime,
-          'x-upsert': 'false',
-        },
-        body: bytes,
-      },
-    );
-    if (!upload.ok) {
-      throw new Error(`Envoi du media impossible (${upload.status})`);
-    }
+    const { error } = await storage.from(bucket).upload(storagePath, bytes, {
+      cacheControl: '86400',
+      contentType: mime,
+      upsert: false,
+    });
+    if (error) throw error;
     return { storagePath, mime, size: bytes.length };
   }
 
   async function download(storagePath) {
     if (!enabled || !storagePath) return null;
-    const result = await fetchImpl(
-      `${baseUrl}/storage/v1/object/authenticated/${encodePath(bucket, storagePath)}`,
-      { headers: headers() },
-    );
-    if (!result.ok) return { status: result.status };
+    const { data, error } = await storage.from(bucket).download(storagePath);
+    if (error || !data) {
+      return { status: Number(error?.statusCode || error?.status || 404) };
+    }
     return {
       status: 200,
-      body: Buffer.from(await result.arrayBuffer()),
-      contentType: result.headers.get('content-type') || 'application/octet-stream',
-      etag: result.headers.get('etag') || null,
+      body: Buffer.from(await data.arrayBuffer()),
+      contentType: data.type || 'application/octet-stream',
+      etag: null,
     };
   }
 
@@ -107,8 +84,17 @@ function safeSegment(value) {
   return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
 }
 
-function encodePath(bucket, storagePath) {
-  return [bucket, ...String(storagePath).split('/')]
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
+function errorText(error) {
+  return `${error?.name || ''} ${error?.message || ''} ${error?.error || ''}`.toLowerCase();
+}
+
+function isMissingBucket(error) {
+  return Number(error?.statusCode || error?.status) === 404
+    || errorText(error).includes('not found');
+}
+
+function isDuplicateBucket(error) {
+  return Number(error?.statusCode || error?.status) === 409
+    || errorText(error).includes('already exists')
+    || errorText(error).includes('duplicate');
 }

@@ -25,6 +25,7 @@ export function createConversationMessageService({
   save,
   broadcastConversation,
   messageMedia = null,
+  logger = console,
   newId,
   now = Date.now,
 }) {
@@ -244,10 +245,26 @@ export function createConversationMessageService({
           }),
       };
       }));
-    } catch {
-      return response(503, {
-        code: 'message_media_unavailable',
-        error: 'Impossible de stocker cette image pour le moment. Reessayez.',
+    } catch (error) {
+      logger.error('message_media_store_failed', {
+        name: error?.name || 'Error',
+        message: String(error?.message || 'unknown').slice(0, 200),
+      });
+      normalizedAttachments = attachments.map((attachment, index) => {
+        const dataUrl = typeof attachment === 'string'
+          ? attachment
+          : attachment.dataUrl;
+        const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
+        const attachmentId = newId('att');
+        return {
+          id: attachmentId,
+          type: 'image',
+          name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
+          mime,
+          dataUrl,
+          url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
+          size: dataUrl.length,
+        };
       });
     }
     const clientId = String(body.clientId || '').trim().slice(0, 80) || null;
