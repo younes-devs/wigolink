@@ -4,7 +4,6 @@ import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
-import { subscribeToMessageUpdates } from '../services/realtime.js';
 import { useToast } from '../../../Toast.jsx';
 import { ConfirmDialog } from '../../../components.jsx';
 
@@ -74,12 +73,15 @@ export default function MessagesSimple() {
   useEffect(() => {
     let unsubscribe = () => {};
     let cancelled = false;
-    void subscribeToMessageUpdates(user?.id, () => {
-      if (document.visibilityState === 'visible') void load({ force: true });
-    }).then((dispose) => {
-      if (cancelled) dispose();
-      else unsubscribe = dispose;
-    });
+    void import('../services/realtime.js')
+      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(user?.id, () => {
+        if (document.visibilityState === 'visible') void load({ force: true });
+      }))
+      .then((dispose) => {
+        if (cancelled) dispose();
+        else unsubscribe = dispose;
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
       unsubscribe();

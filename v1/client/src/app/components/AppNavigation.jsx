@@ -5,6 +5,10 @@ import { Icon } from '../../Icons.jsx';
 import Notifications from '../../Notifications.jsx';
 import { t, useLang } from '../../i18n.js';
 import useAdaptiveBottomNav from '../hooks/useAdaptiveBottomNav.js';
+import {
+  preloadPrimaryRoute,
+  preloadPrimaryRoutes,
+} from '../primaryRouteLoaders.js';
 
 export function Header({ user }) {
   useLang();
@@ -56,6 +60,17 @@ export function BottomNav({ user }) {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    const preload = () => { void preloadPrimaryRoutes(); };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 2_000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(preload, 1_200);
+    return () => window.clearTimeout(id);
+  }, [user]);
+
   const tabs = [
     { to: '/trajets', icon: 'plane', label: t('nav.trips') },
     {
@@ -88,6 +103,8 @@ export function BottomNav({ user }) {
           end={tab.to === '/trajets'}
           className={({ isActive }) => (isActive ? 'active' : '')}
           aria-label={tab.label}
+          onPointerEnter={() => { void preloadPrimaryRoute(tab.to); }}
+          onTouchStart={() => { void preloadPrimaryRoute(tab.to); }}
         >
           <span className="nav-icon-wrap">
             <Icon name={tab.icon} size={21} />

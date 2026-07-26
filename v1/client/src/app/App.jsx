@@ -11,20 +11,27 @@ import {
 import { ToastProvider } from '../shared/ui/Toast.jsx';
 import { t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
+import {
+  loadMessagesRoute,
+  loadOperationsRoute,
+  loadProfileRoute,
+  loadSavedTripsRoute,
+  loadTripsRoute,
+} from './primaryRouteLoaders.js';
 
 export { useAuth } from './authContext.jsx';
 
 // Les ecrans ne sont telecharges que lorsqu'ils sont ouverts. Cela garde la
 // connexion et le premier trajet rapides, meme avec les centres admin/PDF actifs.
 const Login = lazy(() => import('../features/auth/pages/Login.jsx'));
-const TripFeedSimple = lazy(() => import('../features/trips/pages/TripFeedSimple.jsx'));
+const TripFeedSimple = lazy(loadTripsRoute);
 const CreateTrip = lazy(() => import('../features/trips/pages/CreateTrip.jsx'));
 const TripDetailSimple = lazy(() => import('../features/trips/pages/TripDetailSimple.jsx'));
 const TripRequestSimple = lazy(() => import('../features/trips/pages/TripRequestSimple.jsx'));
-const SavedTrips = lazy(() => import('../features/trips/pages/SavedTrips.jsx'));
-const MessagesSimple = lazy(() => import('../features/messaging/pages/MessagesSimple.jsx'));
+const SavedTrips = lazy(loadSavedTripsRoute);
+const MessagesSimple = lazy(loadMessagesRoute);
 const ConversationDetail = lazy(() => import('../features/messaging/pages/ConversationDetail.jsx'));
-const OperationsSimple = lazy(() => import('../features/operations/pages/OperationsSimple.jsx'));
+const OperationsSimple = lazy(loadOperationsRoute);
 const OperationDetailSimple = lazy(() => import('../features/operations/pages/OperationDetailSimple.jsx'));
 const Feed = lazy(() => import('../pages/Feed.jsx'));
 const ListingDetail = lazy(() => import('../features/requests/pages/ListingDetail.jsx'));
@@ -38,7 +45,7 @@ const SupportCenter = lazy(() => import('../features/guidance/pages/SupportCente
 const ComplianceCenter = lazy(() => import('../features/guidance/pages/ComplianceCenter.jsx'));
 const SenderMatching = lazy(() => import('../features/requests/pages/SenderMatching.jsx'));
 const OffersCenter = lazy(() => import('../features/requests/pages/OffersCenter.jsx'));
-const Profile = lazy(() => import('../features/profile/pages/Profile.jsx'));
+const Profile = lazy(loadProfileRoute);
 const PublicProfile = lazy(() => import('../features/profile/pages/PublicProfile.jsx'));
 const Settings = lazy(() => import('../features/profile/pages/Settings.jsx'));
 const TrustCenter = lazy(() => import('../features/guidance/pages/TrustCenter.jsx'));
