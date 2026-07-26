@@ -1,5 +1,3 @@
-import admin from './admin.nl.js';
-
 // Dictionnaire néerlandais (belge — public flamand/bruxellois, suivi U14 « NL ensuite »).
 // Toute clé manquante retombe sur le français (voir i18n.js).
 export default {
@@ -1501,5 +1499,4 @@ export default {
   'rail.arbitration.1': 'Toestand wijkt af van de verzegelingsvideo: verantwoordelijkheid van de reiziger.',
   'rail.arbitration.2': 'Conform de video maar niet de advertentie: verantwoordelijkheid van de verzender.',
   'rail.arbitration.3': 'Eerste antwoord binnen 24 uur, oplossing binnen 7 dagen.',
-  ...admin,
 };

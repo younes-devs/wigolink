@@ -1,5 +1,3 @@
-import admin from './admin.ar.js';
-
 // Dictionnaire arabe (arabe standard moderne, terminologie courante au Maroc).
 // Toute clé manquante retombe sur le français (voir i18n.js).
 export default {
@@ -1515,5 +1513,4 @@ export default {
   'err.pwd.mismatch': 'كلمتا المرور غير متطابقتين',
   'err.cgu.required': 'يجب الموافقة على شروط الاستخدام العامة',
   'err.image.unreadable': 'تعذّرت قراءة الصورة',
-  ...admin,
 };

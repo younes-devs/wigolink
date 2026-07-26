@@ -1,5 +1,3 @@
-import admin from './admin.fr.js';
-
 // Dictionnaire français — langue de référence. Toute clé absente d'une autre langue
 // retombe sur celle-ci (voir i18n.js).
 export default {
@@ -1515,5 +1513,4 @@ export default {
   'err.pwd.mismatch': 'Les mots de passe ne correspondent pas',
   'err.cgu.required': "Vous devez accepter les Conditions Générales d'Utilisation",
   'err.image.unreadable': 'Image illisible',
-  ...admin,
 };

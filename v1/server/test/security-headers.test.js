@@ -30,7 +30,7 @@ function runMiddleware({
     nextCalled = true;
   });
 
-  return { headers, generatorCalls, nextCalled };
+  return { headers, generatorCalls, nextCalled, req };
 }
 
 test('security headers réutilise le request-id fourni', () => {
@@ -39,6 +39,7 @@ test('security headers réutilise le request-id fourni', () => {
   assert.equal(result.nextCalled, true);
   assert.equal(result.generatorCalls, 0);
   assert.equal(result.headers['X-Request-Id'], 'req-upstream');
+  assert.equal(result.req.requestId, 'req-upstream');
   assert.equal(result.headers['X-Content-Type-Options'], 'nosniff');
   assert.equal(result.headers['X-Frame-Options'], 'DENY');
   assert.equal(result.headers['Referrer-Policy'], 'strict-origin-when-cross-origin');

@@ -7,10 +7,17 @@
 // la langue de leur création.
 import { useSyncExternalStore } from 'react';
 import fr from './locales/fr.js';
-import ar from './locales/ar.js';
-import nl from './locales/nl.js';
 
-const DICT = { fr, ar, nl };
+const DICT = { fr };
+const LOCALE_LOADERS = {
+  ar: () => import('./locales/ar.js'),
+  nl: () => import('./locales/nl.js'),
+};
+const ADMIN_LOADERS = {
+  fr: () => import('./locales/admin.fr.js'),
+  ar: () => import('./locales/admin.ar.js'),
+  nl: () => import('./locales/admin.nl.js'),
+};
 const RTL_LANGS = new Set(['ar']);
 const KEY = 'wigofly_lang';
 
@@ -20,17 +27,46 @@ export const LANGS = [
   { code: 'nl', label: 'Nederlands' },
 ];
 
-let current = DICT[document.documentElement.lang] ? document.documentElement.lang : 'fr';
+let current = ['fr', 'ar', 'nl'].includes(document.documentElement.lang)
+  ? document.documentElement.lang
+  : 'fr';
+let adminTranslationsRequested = false;
 const listeners = new Set();
 
 function syncDocumentLanguage() {
   document.documentElement.lang = current;
   document.documentElement.dir = RTL_LANGS.has(current) ? 'rtl' : 'ltr';
-  document.title = DICT[current]['app.title'];
+  document.title = DICT[current]?.['app.title'] || DICT.fr['app.title'];
   document.querySelector('link[rel="manifest"]')?.setAttribute('href', `/manifest.${current}.webmanifest`);
 }
 
-syncDocumentLanguage();
+async function loadLanguage(lang) {
+  if (!DICT[lang]) {
+    const module = await LOCALE_LOADERS[lang]?.();
+    if (module?.default) DICT[lang] = module.default;
+  }
+  return DICT[lang];
+}
+
+async function loadAdminLanguage(lang) {
+  await loadLanguage(lang);
+  const module = await ADMIN_LOADERS[lang]?.();
+  if (module?.default) Object.assign(DICT[lang], module.default);
+}
+
+export async function initializeI18n() {
+  await loadLanguage(current);
+  syncDocumentLanguage();
+}
+
+export async function loadAdminTranslations() {
+  adminTranslationsRequested = true;
+  await Promise.all([
+    loadAdminLanguage('fr'),
+    current === 'fr' ? Promise.resolve() : loadAdminLanguage(current),
+  ]);
+  listeners.forEach((listener) => listener());
+}
 
 export function getLang() { return current; }
 
@@ -38,12 +74,15 @@ export function getLang() { return current; }
 const DATE_LOCALES = { fr: 'fr-BE', ar: 'ar-MA', nl: 'nl-BE' };
 export function dateLocale() { return DATE_LOCALES[current] || 'fr-BE'; }
 
-export function setLang(lang) {
-  if (!DICT[lang]) return;
+export async function setLang(lang) {
+  if (!['fr', 'ar', 'nl'].includes(lang)) return false;
+  await loadLanguage(lang);
+  if (adminTranslationsRequested) await loadAdminLanguage(lang);
   current = lang;
   localStorage.setItem(KEY, lang);
   syncDocumentLanguage();
   listeners.forEach((l) => l());
+  return true;
 }
 
 export function t(key, vars) {

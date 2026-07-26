@@ -4,11 +4,17 @@ import { pathToFileURL } from 'node:url';
 import { ERRORS, PATTERNS } from '../server/errors.js';
 import { TEMPLATES } from '../server/notify-i18n.js';
 import { CUSTOMS } from '../server/rules.js';
-import fr from '../client/src/locales/fr.js';
-import nl from '../client/src/locales/nl.js';
-import ar from '../client/src/locales/ar.js';
+import baseFr from '../client/src/locales/fr.js';
+import baseNl from '../client/src/locales/nl.js';
+import baseAr from '../client/src/locales/ar.js';
+import adminFr from '../client/src/locales/admin.fr.js';
+import adminNl from '../client/src/locales/admin.nl.js';
+import adminAr from '../client/src/locales/admin.ar.js';
 
 const root = path.resolve(import.meta.dirname, '..');
+const fr = { ...baseFr, ...adminFr };
+const nl = { ...baseNl, ...adminNl };
+const ar = { ...baseAr, ...adminAr };
 const dictionaries = { fr, nl, ar };
 const failures = [];
 

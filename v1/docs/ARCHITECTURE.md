@@ -1044,6 +1044,35 @@ la persistance d'un message. Les registres locaux de presence restent derriere
 la meme interface pour conserver les champs `otherOnline` et
 `otherLastSeenAt`.
 
+## Exploitation et performance
+
+Les routes d'observabilite et de maintenance sont separees dans :
+
+```text
+server/
+|-- observability.js
+`-- routes/
+    |-- maintenance.js
+    `-- observability.js
+```
+
+L'observabilite produit des journaux JSON avec identifiant de requete et
+conserve des metriques glissantes de latence et d'erreur. Leur lecture est
+reservee aux administrateurs. La maintenance des images de messagerie remplace
+les anciennes pieces jointes inline par le stockage objet configure, sans
+supprimer l'historique du message.
+
+Les lectures relationnelles peuvent etre verifiees avec
+`npm run migrate:relational:verify`. Le test de charge HTTP est disponible avec
+`npm run load:test` et le controle des dependances de production avec
+`npm run audit:production`. Les procedures de deploiement et d'incident sont
+detaillees dans `docs/OPERATIONS.md`.
+
+Le CSS source est decoupe par surface dans `client/src/styles/`, puis importe
+dans son ordre historique par `client/src/styles.css`. Les dictionnaires arabe,
+neerlandais et administrateur sont charges dynamiquement afin d'alleger le
+premier affichage sans modifier les cles de traduction.
+
 ## Backend `config`
 
 La configuration générale calculée au démarrage commence à être regroupée dans :

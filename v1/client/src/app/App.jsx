@@ -9,7 +9,7 @@ import {
   SideRail,
 } from './components/index.js';
 import { ToastProvider } from '../shared/ui/Toast.jsx';
-import { t } from '../i18n.js';
+import { loadAdminTranslations, t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
 import {
   loadMessagesRoute,
@@ -49,7 +49,10 @@ const Profile = lazy(loadProfileRoute);
 const PublicProfile = lazy(() => import('../features/profile/pages/PublicProfile.jsx'));
 const Settings = lazy(() => import('../features/profile/pages/Settings.jsx'));
 const TrustCenter = lazy(() => import('../features/guidance/pages/TrustCenter.jsx'));
-const Admin = lazy(() => import('../features/admin/pages/Admin.jsx'));
+const Admin = lazy(async () => {
+  await loadAdminTranslations();
+  return import('../features/admin/pages/Admin.jsx');
+});
 const PrivacyPolicy = lazy(() => import('../pages/PrivacyPolicy.jsx'));
 const Terms = lazy(() => import('../pages/Terms.jsx'));
 const Kyc = lazy(() => import('../features/kyc/pages/Kyc.jsx'));

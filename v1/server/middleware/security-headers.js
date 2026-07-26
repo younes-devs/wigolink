@@ -10,6 +10,7 @@ export function createSecurityHeaders({
 
   return function securityHeaders(req, res, next) {
     const requestId = req.headers['x-request-id'] || newRequestId();
+    req.requestId = String(requestId);
     res.setHeader('X-Request-Id', requestId);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');

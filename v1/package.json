@@ -14,7 +14,11 @@
     "migrate:postgres": "node server/migrate-json-postgres-cli.js --write",
     "migrate:supabase": "node server/migrate-supabase-state-cli.js",
     "migrate:relational:plan": "node server/migrate-relational-state-cli.js",
-    "migrate:relational": "node server/migrate-relational-state-cli.js --write"
+    "migrate:relational": "node server/migrate-relational-state-cli.js --write",
+    "migrate:relational:verify": "node server/verify-relational-state-cli.js",
+    "migrate:message-media": "node server/migrate-message-media-cli.js",
+    "load:test": "node scripts/load-test.mjs",
+    "audit:production": "node scripts/audit-production.mjs"
   },
   "keywords": [],
   "author": "",
@@ -26,17 +30,19 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.35",
-    "@supabase/supabase-js": "^2.110.7",
-    "@vitejs/plugin-react": "^6.0.3",
-    "concurrently": "^10.0.3",
+    "@supabase/supabase-js": "^2.110.8",
     "cors": "^2.8.6",
     "express": "^4.22.2",
     "jspdf": "^4.2.1",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1",
-    "vite": "^8.1.4"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
+    "concurrently": "^10.0.4",
+    "vite": "^8.1.5"
   }
 }

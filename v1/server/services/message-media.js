@@ -41,7 +41,7 @@ export function createMessageMediaService({
     return bucketPromise;
   }
 
-  async function storeDataUrl({ conversationId, attachmentId, dataUrl }) {
+  async function storeDataUrl({ conversationId, attachmentId, dataUrl, upsert = false }) {
     if (!enabled) return null;
     await ensureBucket();
     const match = String(dataUrl || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
@@ -53,7 +53,7 @@ export function createMessageMediaService({
     const { error } = await storage.from(bucket).upload(storagePath, bytes, {
       cacheControl: '86400',
       contentType: mime,
-      upsert: false,
+      upsert,
     });
     if (error) throw error;
     return { storagePath, mime, size: bytes.length };
