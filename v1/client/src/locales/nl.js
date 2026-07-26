@@ -4,6 +4,7 @@ import admin from './admin.nl.js';
 // Toute clé manquante retombe sur le français (voir i18n.js).
 export default {
   // Navigation & coquille
+  'nav.main': 'Hoofdnavigatie',
   'nav.trips': 'Reizen',
   'nav.shipments': 'Mijn zendingen',
   'nav.transactions': 'Lopend',

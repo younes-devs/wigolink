@@ -5,6 +5,7 @@ import admin from './admin.fr.js';
 export default {
   // Navigation & coquille
   'nav.home': 'Accueil',
+  'nav.main': 'Navigation principale',
   'nav.trips': 'Trajets',
   'nav.shipments': 'Mes envois',
   'nav.transactions': 'En cours',

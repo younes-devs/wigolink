@@ -4,6 +4,7 @@ import { api } from '../../core/api.js';
 import { Icon } from '../../Icons.jsx';
 import Notifications from '../../Notifications.jsx';
 import { t, useLang } from '../../i18n.js';
+import useAdaptiveBottomNav from '../hooks/useAdaptiveBottomNav.js';
 
 export function Header({ user }) {
   useLang();
@@ -31,6 +32,7 @@ export function Header({ user }) {
 
 export function BottomNav({ user }) {
   useLang();
+  const { compact, expand } = useAdaptiveBottomNav();
   const [summary, setSummary] = useState({
     messagesUnread: 0,
     operationsActionRequired: 0,
@@ -73,13 +75,19 @@ export function BottomNav({ user }) {
   ];
 
   return (
-    <nav className="bottom-nav">
+    <nav
+      className={`bottom-nav${compact ? ' bottom-nav-compact' : ''}`}
+      data-state={compact ? 'compact' : 'normal'}
+      aria-label={t('nav.main')}
+      onFocusCapture={() => expand()}
+    >
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/trajets'}
           className={({ isActive }) => (isActive ? 'active' : '')}
+          aria-label={tab.label}
         >
           <span className="nav-icon-wrap">
             <Icon name={tab.icon} size={21} />
@@ -89,7 +97,7 @@ export function BottomNav({ user }) {
               </span>
             )}
           </span>
-          {tab.label}
+          <span className="bottom-nav-label">{tab.label}</span>
         </NavLink>
       ))}
     </nav>

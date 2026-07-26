@@ -5,6 +5,7 @@ import admin from './admin.ar.js';
 export default {
   // Navigation & coquille
   'nav.home': 'الرئيسية',
+  'nav.main': 'التنقل الرئيسي',
   'nav.trips': 'الرحلات',
   'nav.shipments': 'شحناتي',
   'nav.transactions': 'الجارية',
