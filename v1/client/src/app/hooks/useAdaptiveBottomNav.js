@@ -35,16 +35,41 @@ function isInteractionBlocked() {
   );
 }
 
+function readScrollMetrics(content, source) {
+  if (source === 'content') {
+    return {
+      scrollTop: content.scrollTop,
+      scrollHeight: content.scrollHeight,
+      clientHeight: content.clientHeight,
+    };
+  }
+
+  const scroller = document.scrollingElement || document.documentElement;
+  return {
+    scrollTop: scroller.scrollTop,
+    scrollHeight: scroller.scrollHeight,
+    clientHeight: window.innerHeight,
+  };
+}
+
+function initialScrollSource(content) {
+  return content.scrollHeight - content.clientHeight > 1 ? 'content' : 'window';
+}
+
 export default function useAdaptiveBottomNav() {
   const { pathname } = useLocation();
   const [compact, setCompact] = useState(false);
   const intentRef = useRef(createBottomNavIntent());
   const idleTimerRef = useRef();
   const frameRef = useRef();
+  const scrollSourceRef = useRef('window');
 
   const expand = useCallback((scrollTop) => {
     const content = document.querySelector('.content');
-    const nextTop = scrollTop ?? content?.scrollTop ?? 0;
+    const metrics = content
+      ? readScrollMetrics(content, scrollSourceRef.current)
+      : { scrollTop: 0 };
+    const nextTop = scrollTop ?? metrics.scrollTop;
     intentRef.current = createBottomNavIntent(nextTop);
     setCompact(false);
     window.clearTimeout(idleTimerRef.current);
@@ -57,11 +82,12 @@ export default function useAdaptiveBottomNav() {
     const mobileQuery = window.matchMedia(
       `(max-width: ${ADAPTIVE_BOTTOM_NAV.mobileMaxWidthPx}px)`,
     );
+    scrollSourceRef.current = initialScrollSource(content);
 
     const scheduleIdleExpansion = () => {
       window.clearTimeout(idleTimerRef.current);
       idleTimerRef.current = window.setTimeout(
-        () => expand(content.scrollTop),
+        () => expand(),
         ADAPTIVE_BOTTOM_NAV.idleExpandMs,
       );
     };
@@ -69,17 +95,14 @@ export default function useAdaptiveBottomNav() {
     const evaluate = () => {
       frameRef.current = undefined;
       if (!mobileQuery.matches) {
-        expand(content.scrollTop);
+        expand();
         return;
       }
 
+      const metrics = readScrollMetrics(content, scrollSourceRef.current);
       const nextIntent = updateBottomNavIntent(
         intentRef.current,
-        {
-          scrollTop: content.scrollTop,
-          scrollHeight: content.scrollHeight,
-          clientHeight: content.clientHeight,
-        },
+        metrics,
         { blocked: isInteractionBlocked() },
       );
       intentRef.current = nextIntent;
@@ -94,27 +117,37 @@ export default function useAdaptiveBottomNav() {
       }
     };
 
-    const onScroll = () => {
+    const onContentScroll = () => {
+      scrollSourceRef.current = 'content';
+      scheduleEvaluation();
+      scheduleIdleExpansion();
+    };
+
+    const onWindowScroll = () => {
+      scrollSourceRef.current = 'window';
       scheduleEvaluation();
       scheduleIdleExpansion();
     };
 
     const onViewportChange = () => {
       if (isInteractionBlocked() || !mobileQuery.matches) {
-        expand(content.scrollTop);
+        expand();
       } else {
         scheduleEvaluation();
       }
     };
 
     const mutationObserver = new MutationObserver(() => {
-      if (isInteractionBlocked()) expand(content.scrollTop);
+      if (isInteractionBlocked()) expand();
     });
     const resizeObserver = new ResizeObserver(scheduleEvaluation);
 
-    intentRef.current = createBottomNavIntent(content.scrollTop);
+    intentRef.current = createBottomNavIntent(
+      readScrollMetrics(content, scrollSourceRef.current).scrollTop,
+    );
     setCompact(false);
-    content.addEventListener('scroll', onScroll, { passive: true });
+    content.addEventListener('scroll', onContentScroll, { passive: true });
+    window.addEventListener('scroll', onWindowScroll, { passive: true });
     mobileQuery.addEventListener('change', onViewportChange);
     window.visualViewport?.addEventListener('resize', onViewportChange);
     document.addEventListener('focusin', onViewportChange);
@@ -125,7 +158,8 @@ export default function useAdaptiveBottomNav() {
     resizeObserver.observe(content);
 
     return () => {
-      content.removeEventListener('scroll', onScroll);
+      content.removeEventListener('scroll', onContentScroll);
+      window.removeEventListener('scroll', onWindowScroll);
       mobileQuery.removeEventListener('change', onViewportChange);
       window.visualViewport?.removeEventListener('resize', onViewportChange);
       document.removeEventListener('focusin', onViewportChange);
