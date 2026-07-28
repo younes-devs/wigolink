@@ -23,12 +23,14 @@ export async function listRelationalConversations({ pool, user, query = {}, toda
      left join lateral (
        select m.data from public.messages m
        where m.conversation_id = c.id
+         and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
        order by m.at desc
        limit 1
      ) last_message on true
      left join lateral (
        select count(*)::int as count from public.messages m
        where m.conversation_id = c.id
+         and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
          and m.from_id <> $1
          and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
      ) unread on true
@@ -60,11 +62,16 @@ export async function relationalConversation({ pool, user, id, query = {}, today
      left join public.wigofly_trips trip on trip.id = c.data->>'tripId'
      left join public.wigofly_transactions operation on operation.id = c.data->>'operationId'
      left join lateral (
-       select m.data from public.messages m where m.conversation_id = c.id order by m.at desc limit 1
+       select m.data from public.messages m
+       where m.conversation_id = c.id
+         and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
+       order by m.at desc limit 1
      ) last_message on true
      left join lateral (
        select count(*)::int as count from public.messages m
-       where m.conversation_id = c.id and m.from_id <> $1
+       where m.conversation_id = c.id
+         and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
+         and m.from_id <> $1
          and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
      ) unread on true
      where c.id = $2 and c.data->'participantIds' ? $1
@@ -85,7 +92,10 @@ export async function relationalConversationMessages({ pool, conversationId, que
   const after = positiveTimestamp(query.after);
   const q = String(query.q || '').trim();
   const params = [conversationId];
-  const where = ['m.conversation_id = $1'];
+  const where = [
+    'm.conversation_id = $1',
+    "coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false",
+  ];
   if (before) {
     params.push(before);
     where.push(`extract(epoch from m.at) * 1000 < $${params.length}`);
@@ -119,6 +129,45 @@ export async function relationalConversationMessages({ pool, conversationId, que
       nextAfter: after && hasMore ? messages.at(-1)?.at || null : null,
       q,
     },
+  };
+}
+
+export async function relationalAdminMessageArchive({
+  pool,
+  userId,
+  offset = 0,
+  limit = 50,
+}) {
+  const safeOffset = boundedOffset(offset);
+  const safeLimit = boundedLimit(limit);
+  const conversationsResult = await pool.query(
+    `select c.data as conversation, count(m.id)::int as message_count
+     from public.wigofly_conversations c
+     left join public.messages m on m.conversation_id = c.id
+     where c.data->'participantIds' ? $1
+     group by c.id, c.data, c.created_at
+     order by coalesce(
+       (c.data->>'lastMessageAt')::bigint,
+       extract(epoch from c.created_at) * 1000
+     ) desc`,
+    [userId],
+  );
+  const messagesResult = await pool.query(
+    `select m.data, count(*) over()::int as total
+     from public.messages m
+     join public.wigofly_conversations c on c.id = m.conversation_id
+     where c.data->'participantIds' ? $1
+     order by m.at desc
+     limit $2 offset $3`,
+    [userId, safeLimit, safeOffset],
+  );
+  return {
+    conversations: conversationsResult.rows.map((row) => ({
+      ...(row.conversation || {}),
+      messageCount: Number(row.message_count || 0),
+    })),
+    messages: messagesResult.rows.map((row) => row.data),
+    total: Number(messagesResult.rows[0]?.total || 0),
   };
 }
 

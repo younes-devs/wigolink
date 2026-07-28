@@ -73,10 +73,18 @@ export function createMessageMediaService({
     };
   }
 
+  async function remove(storagePath) {
+    if (!enabled || !storagePath) return false;
+    const { error } = await storage.from(bucket).remove([storagePath]);
+    if (error) throw error;
+    return true;
+  }
+
   return {
     enabled,
     storeDataUrl,
     download,
+    remove,
   };
 }
 

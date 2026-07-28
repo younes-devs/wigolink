@@ -203,9 +203,26 @@ create index if not exists wigofly_runtime_records_expiry_idx on public.wigofly_
 create index if not exists wigofly_runtime_records_kind_expiry_idx on public.wigofly_runtime_records (kind, expires_at) where expires_at is not null;
 
 alter table public.messages add column if not exists conversation_id text;
+alter table public.messages add column if not exists client_id text;
 alter table public.messages add column if not exists data jsonb not null default '{}'::jsonb;
 alter table public.messages alter column tx_id drop not null;
 create index if not exists messages_conversation_at_idx on public.messages (conversation_id, at);
+update public.messages current
+set client_id = nullif(current.data->>'clientId', '')
+where current.client_id is null
+  and nullif(current.data->>'clientId', '') is not null
+  and not exists (
+    select 1
+    from public.messages duplicate
+    where duplicate.id <> current.id
+      and duplicate.conversation_id = current.conversation_id
+      and duplicate.from_id = current.from_id
+      and nullif(duplicate.data->>'clientId', '') = nullif(current.data->>'clientId', '')
+      and duplicate.id < current.id
+  );
+create unique index if not exists messages_client_id_unique_idx
+  on public.messages (conversation_id, from_id, client_id)
+  where client_id is not null;
 
 revoke all on table public.wigofly_users, public.wigofly_trips, public.wigofly_listings,
   public.wigofly_transactions, public.wigofly_matching_offers, public.wigofly_saved_trips,

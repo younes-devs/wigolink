@@ -32,6 +32,13 @@ complete que l'etat source ou un message rattache a une conversation absente.
 `RELATIONAL_TRIP_READS` et `RELATIONAL_MESSAGE_READS` ne doivent valoir `true`
 qu'apres ce controle.
 
+`RELATIONAL_MESSAGE_WRITES` doit rester `false` tant que la colonne
+`messages.client_id`, l'index `messages_client_id_unique_idx` et les lectures
+relationnelles ne sont pas verifies. Une fois actif, surveiller les erreurs
+`relational_message_write_failed` et `relational_conversation_*_failed` dans
+Vercel Logs. Le retour arriere consiste uniquement a remettre ce drapeau a
+`false`; les lignes deja ecrites restent lisibles et conservees.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

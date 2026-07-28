@@ -5,6 +5,8 @@ const RELATIONAL_TRIP_PATHS = new Set([
   '/api/trips/overview',
 ]);
 const RELATIONAL_MESSAGE_PATH = /^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/;
+const RELATIONAL_MESSAGE_WRITE_PATH = /^\/api\/conversations\/[^/]+(?:\/messages(?:\/[^/]+)?|\/(?:read|unread|archive|pin|typing))?$/;
+const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[^/]+\/attachments\/[^/]+$/;
 
 export function isRelationalTripRead(req, relationalTripReadsEnabled) {
   return relationalTripReadsEnabled()
@@ -15,7 +17,16 @@ export function isRelationalTripRead(req, relationalTripReadsEnabled) {
 export function isRelationalMessageRead(req, relationalMessageReadsEnabled) {
   return relationalMessageReadsEnabled()
     && req.method === 'GET'
-    && RELATIONAL_MESSAGE_PATH.test(req.path);
+    && (
+      RELATIONAL_MESSAGE_PATH.test(req.path)
+      || RELATIONAL_MESSAGE_MEDIA_PATH.test(req.path)
+    );
+}
+
+export function isRelationalMessageWrite(req, relationalMessageWritesEnabled) {
+  return relationalMessageWritesEnabled()
+    && ['POST', 'DELETE'].includes(req.method)
+    && RELATIONAL_MESSAGE_WRITE_PATH.test(req.path);
 }
 
 export function createPersistenceState({
@@ -26,6 +37,7 @@ export function createPersistenceState({
   releaseDatabaseState,
   relationalTripReadsEnabled,
   relationalMessageReadsEnabled,
+  relationalMessageWritesEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -37,6 +49,7 @@ export function createPersistenceState({
     if (
       isRelationalTripRead(req, relationalTripReadsEnabled)
       || isRelationalMessageRead(req, relationalMessageReadsEnabled)
+      || isRelationalMessageWrite(req, relationalMessageWritesEnabled)
     ) {
       return next();
     }

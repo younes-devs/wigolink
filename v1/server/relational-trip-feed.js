@@ -49,10 +49,19 @@ export async function syncRelationalTripState({ pool, before, after }) {
     for (const [id, entity] of current) {
       const serialized = JSON.stringify(entity);
       if (previous.get(id) === serialized) continue;
+      const conflictUpdate = table === 'wigofly_conversations'
+        ? `data = excluded.data || jsonb_build_object(
+             'lastMessageAt', coalesce(wigofly_conversations.data->'lastMessageAt', excluded.data->'lastMessageAt'),
+             'archivedBy', coalesce(wigofly_conversations.data->'archivedBy', excluded.data->'archivedBy', '[]'::jsonb),
+             'pinnedBy', coalesce(wigofly_conversations.data->'pinnedBy', excluded.data->'pinnedBy', '[]'::jsonb),
+             'deletedBy', coalesce(wigofly_conversations.data->'deletedBy', excluded.data->'deletedBy', '[]'::jsonb),
+             'safetyIncidents', coalesce(wigofly_conversations.data->'safetyIncidents', excluded.data->'safetyIncidents', '[]'::jsonb)
+           ), updated_at = now()`
+        : 'data = excluded.data, updated_at = now()';
       await pool.query(
         `insert into public.${table} (id, data, created_at, updated_at)
          values ($1, $2::jsonb, coalesce(to_timestamp($3 / 1000.0), now()), now())
-         on conflict (id) do update set data = excluded.data, updated_at = now()`,
+         on conflict (id) do update set ${conflictUpdate}`,
         [id, serialized, entityTimestamp(entity)]
       );
     }
@@ -73,16 +82,17 @@ async function syncMessages({ pool, before = new Map(), after = [] }) {
     const serialized = JSON.stringify(message);
     if (before.get(id) === serialized) continue;
     await pool.query(
-      `insert into public.messages (id, tx_id, conversation_id, from_id, text, flagged, at, data)
-       values ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0), $8::jsonb)
+      `insert into public.messages (id, tx_id, conversation_id, from_id, client_id, text, flagged, at, data)
+       values ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0), $9::jsonb)
        on conflict (id) do update set tx_id = excluded.tx_id, conversation_id = excluded.conversation_id,
-         from_id = excluded.from_id, text = excluded.text, flagged = excluded.flagged,
+         from_id = excluded.from_id, client_id = excluded.client_id, text = excluded.text, flagged = excluded.flagged,
          at = excluded.at, data = excluded.data`,
       [
         id,
         message.txId || null,
         message.conversationId || null,
         message.from || null,
+        message.clientId || null,
         message.text || '',
         !!message.flagged,
         entityTimestamp(message),

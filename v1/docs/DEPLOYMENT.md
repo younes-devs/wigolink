@@ -25,9 +25,12 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 8. Avant de basculer les routes relationnelles, lancer `npm run migrate:relational:plan`, puis `npm run migrate:relational` depuis un environnement ayant `DATABASE_URL`. La migration est idempotente et peut etre relancee sans doublons.
 9. Apres avoir verifie les comptes importes dans Supabase, definir `RELATIONAL_TRIP_READS=true` dans Vercel. Le flux de recherche et "Mes trajets" utilisera alors les tables indexees et paginees; ne l'activer qu'apres l'import.
 10. Definir ensuite `RELATIONAL_MESSAGE_READS=true` dans Vercel. La liste des conversations et les pages de messages seront alors lues depuis les tables indexees `wigofly_conversations` et `messages`. Les ecritures continuent de se synchroniser dans la meme transaction que l'etat historique.
-11. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
-12. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
-13. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, simulation de paiement et messagerie depuis le domaine final.
+11. Apres avoir applique la colonne `messages.client_id`, son index unique et verifie les lectures admin, definir `RELATIONAL_MESSAGE_WRITES=true`. Les envois, suppressions visuelles, recus de lecture, archives et epingles sont alors ecrits directement par conversation, sans verrouiller `wigofly_app_state`.
+12. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
+13. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
+14. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, simulation de paiement et messagerie depuis le domaine final.
+
+La suppression d'un message en mode relationnel est logique: le membre ne le voit plus, mais le contenu et les medias restent conserves dans la table et dans le bucket prive pour le dossier admin et les obligations de preuve.
 
 ## Gate de securite
 

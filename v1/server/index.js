@@ -25,8 +25,13 @@ import {
   snapshotRelationalTripState, syncRelationalTripState,
 } from './relational-trip-feed.js';
 import {
-  listRelationalConversations, relationalConversation, relationalMessageReadsEnabled,
+  listRelationalConversations, relationalAdminMessageArchive,
+  relationalConversation, relationalMessageReadsEnabled,
 } from './relational-messaging.js';
+import {
+  createRelationalMessageWriter,
+  relationalMessageWritesEnabled,
+} from './relational-message-writes.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
@@ -51,6 +56,7 @@ import { createTrainingRouter } from './routes/training.js';
 import { createRulesRouter } from './routes/rules.js';
 import { createRealtimeRouter } from './routes/realtime.js';
 import { createRelationalReadsRouter } from './routes/relational-reads.js';
+import { createRelationalMessageWriteRouter } from './routes/relational-message-writes.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
@@ -161,6 +167,7 @@ app.use(createPersistenceState({
   releaseDatabaseState,
   relationalTripReadsEnabled,
   relationalMessageReadsEnabled,
+  relationalMessageWritesEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -271,6 +278,13 @@ app.use('/api/realtime', createRealtimeRouter({
 
 const relationalReadAuth = createRelationalReadAuth({
   enabled: relationalTripReadsEnabled,
+  getPool: databasePool,
+  findUserFromSession: relationalUserFromSession,
+  getSession: activeSession,
+  canAccessApp,
+});
+const relationalMessageWriteAuth = createRelationalReadAuth({
+  enabled: relationalMessageWritesEnabled,
   getPool: databasePool,
   findUserFromSession: relationalUserFromSession,
   getSession: activeSession,
@@ -602,6 +616,43 @@ const {
   newId,
 });
 
+const relationalMessageWriter = createRelationalMessageWriter({
+  getPool: databasePool,
+  getConversation: relationalConversation,
+  validPhotos,
+  analyzeSafety: analyzeMessageSafety,
+  safetyError: messageSafetyError,
+  messageMedia,
+  allowInlineMediaFallback: !IS_PRODUCTION,
+  async notificationFor(userId, senderName, client) {
+    const result = await client.query(
+      'select data from public.wigofly_users where id = $1',
+      [userId],
+    );
+    const recipient = result.rows[0]?.data;
+    const enabled = recipient?.settings?.notifications?.messages
+      ?? DEFAULT_NOTIFICATION_SETTINGS.messages;
+    if (!enabled) return null;
+    const keyed = {
+      key: 'chat.message',
+      params: { name: senderName },
+    };
+    return {
+      ...keyed,
+      text: renderNotification('fr', keyed),
+    };
+  },
+  broadcastConversation,
+  newId,
+});
+
+app.use('/api', createRelationalMessageWriteRouter({
+  auth: relationalMessageWriteAuth,
+  enabled: relationalMessageWritesEnabled,
+  writer: relationalMessageWriter,
+  today: TODAY_ISO,
+}));
+
 const tripService = createTripService({
   db,
   isClosedStatus: (status) => CLOSED_STATUSES.includes(status),
@@ -834,6 +885,14 @@ const adminRecordService = createAdminRecordService({
   auditLogsRepository: repositories.auditLogs,
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
   kycSlaMs: KYC_SLA_MS,
+  loadMessageArchive: relationalMessageWritesEnabled()
+    ? ({ userId, offset, limit }) => relationalAdminMessageArchive({
+      pool: databasePool(),
+      userId,
+      offset,
+      limit,
+    })
+    : null,
 });
 
 app.use('/api', createAdminRecordsRouter({

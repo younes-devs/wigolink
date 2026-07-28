@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   listRelationalConversations, relationalConversation, relationalConversationMessages,
-  relationalMessageReadsEnabled,
+  relationalAdminMessageArchive, relationalMessageReadsEnabled,
 } from '../relational-messaging.js';
 
 const row = {
@@ -74,4 +74,43 @@ test('messagerie relationnelle : synchronise uniquement les messages plus recent
   assert.match(calls[0].sql, /> \$2/);
   assert.match(calls[0].sql, /order by m.at asc/);
   assert.deepEqual(calls[0].params, ['conv-1', 300, 51]);
+});
+
+test('messagerie relationnelle : archive admin inclut les messages masques et leurs totaux', async () => {
+  const calls = [];
+  const pool = {
+    query(sql, params) {
+      calls.push({ sql, params });
+      if (calls.length === 1) {
+        return {
+          rows: [{
+            conversation: row.conversation,
+            message_count: 3,
+          }],
+        };
+      }
+      return {
+        rows: [{
+          data: {
+            id: 'm-deleted',
+            conversationId: 'conv-1',
+            hiddenForParticipants: true,
+            deletedAt: 500,
+          },
+          total: 3,
+        }],
+      };
+    },
+  };
+  const archive = await relationalAdminMessageArchive({
+    pool,
+    userId: 'u-1',
+    offset: 0,
+    limit: 50,
+  });
+
+  assert.equal(archive.conversations[0].messageCount, 3);
+  assert.equal(archive.messages[0].hiddenForParticipants, true);
+  assert.equal(archive.total, 3);
+  assert.match(calls[1].sql, /count\(\*\) over\(\)/);
 });

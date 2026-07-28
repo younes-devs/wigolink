@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createPersistenceState,
   isRelationalMessageRead,
+  isRelationalMessageWrite,
   isRelationalTripRead,
 } from '../middleware/persistence-state.js';
 
@@ -106,6 +107,27 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     isRelationalMessageRead({ method: 'GET', path: '/api/conversations/c-1/delete' }, enabled),
     false,
   );
+  assert.equal(
+    isRelationalMessageWrite({
+      method: 'POST',
+      path: '/api/conversations/c-1/messages',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalMessageWrite({
+      method: 'DELETE',
+      path: '/api/conversations/c-1/messages/m-1',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalMessageWrite({
+      method: 'POST',
+      path: '/api/conversations/c-1/archive',
+    }, enabled),
+    true,
+  );
 });
 
 test('persistence state laisse passer le stockage local immediatement', () => {
@@ -134,6 +156,31 @@ test('persistence state contourne le document global pour les lectures relationn
   });
   middleware(
     { method: 'GET', path: '/api/conversations/c-1/messages' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+
+  assert.equal(nextCalls, 2);
+  assert.deepEqual(events, []);
+});
+
+test('persistence state contourne le document global pour les ecritures de messages relationnelles', () => {
+  let nextCalls = 0;
+  const { events, middleware } = createMiddleware({
+    relationalMessageWritesEnabled: () => true,
+  });
+
+  middleware(
+    { method: 'POST', path: '/api/conversations/c-1/messages' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+  middleware(
+    { method: 'DELETE', path: '/api/conversations/c-1/messages/m-1' },
     createResponse(events),
     () => {
       nextCalls += 1;

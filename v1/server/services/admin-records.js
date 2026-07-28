@@ -6,6 +6,7 @@ export function createAdminRecordService({
   auditLogsRepository,
   messageSafetyWindowMs,
   kycSlaMs,
+  loadMessageArchive = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -79,15 +80,23 @@ export function createAdminRecordService({
     user,
     { messageOffset = 0, messageLimit = 50 } = {},
   ) {
-    const conversations = db.conversations
-      .filter(
-        (conversation) => conversation.participantIds.includes(user.id),
-      )
-      .sort(
-        (a, b) =>
-          (b.lastMessageAt || b.createdAt || 0)
-          - (a.lastMessageAt || a.createdAt || 0),
-      );
+    const relationalArchive = loadMessageArchive
+      ? await loadMessageArchive({
+        userId: user.id,
+        offset: messageOffset,
+        limit: messageLimit,
+      })
+      : null;
+    const conversations = relationalArchive?.conversations
+      || db.conversations
+        .filter(
+          (conversation) => conversation.participantIds.includes(user.id),
+        )
+        .sort(
+          (a, b) =>
+            (b.lastMessageAt || b.createdAt || 0)
+            - (a.lastMessageAt || a.createdAt || 0),
+        );
     const conversationIds = new Set(
       conversations.map((conversation) => conversation.id),
     );
@@ -97,11 +106,13 @@ export function createAdminRecordService({
         conversation,
       ]),
     );
-    const allMessages = db.messages
-      .filter(
-        (message) => conversationIds.has(message.conversationId),
-      )
-      .sort((a, b) => b.at - a.at);
+    const allMessages = relationalArchive?.messages
+      || db.messages
+        .filter(
+          (message) => conversationIds.has(message.conversationId),
+        )
+        .sort((a, b) => b.at - a.at);
+    const messageTotal = relationalArchive?.total ?? allMessages.length;
     const transactions = db.transactions
       .filter(
         (transaction) => [
@@ -141,8 +152,11 @@ export function createAdminRecordService({
       user.id,
       { limit: 500 },
     );
-    const messages = allMessages
-      .slice(messageOffset, messageOffset + messageLimit)
+    const messages = (
+      relationalArchive
+        ? allMessages
+        : allMessages.slice(messageOffset, messageOffset + messageLimit)
+    )
       .map((message) => {
         const conversation = conversationsById.get(
           message.conversationId,
@@ -213,16 +227,17 @@ export function createAdminRecordService({
         participants: conversation.participantIds
           .map((id) => caseParticipant(findUser(id))),
         reports: conversation.reports || [],
-        messageCount: allMessages.filter(
-          (message) => message.conversationId === conversation.id,
-        ).length,
+        messageCount: conversation.messageCount
+          ?? allMessages.filter(
+            (message) => message.conversationId === conversation.id,
+          ).length,
       })),
       messages,
       messagePage: {
         offset: messageOffset,
         limit: messageLimit,
-        total: allMessages.length,
-        hasMore: messageOffset + messages.length < allMessages.length,
+        total: messageTotal,
+        hasMore: messageOffset + messages.length < messageTotal,
       },
       notifications: (db.notifications || [])
         .filter((notification) => notification.userId === user.id)

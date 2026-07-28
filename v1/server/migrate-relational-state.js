@@ -75,11 +75,13 @@ export async function migrateStateToRelational({ state, pool, dryRun = true }) {
   for (const message of Array.isArray(state.messages) ? state.messages : []) {
     if (!message?.id) continue;
     await pool.query(
-      `insert into public.messages (id, tx_id, conversation_id, from_id, text, flagged, at, data)
-       values ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0), $8::jsonb)
+      `insert into public.messages (id, tx_id, conversation_id, from_id, client_id, text, flagged, at, data)
+       values ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0), $9::jsonb)
        on conflict (id) do update set tx_id = excluded.tx_id, conversation_id = excluded.conversation_id,
-         from_id = excluded.from_id, text = excluded.text, flagged = excluded.flagged, at = excluded.at, data = excluded.data`,
-      [message.id, message.txId || null, message.conversationId || null, message.from || null, message.text || '', !!message.flagged, timestampFor(message), JSON.stringify(message)]
+         from_id = excluded.from_id, client_id = excluded.client_id, text = excluded.text,
+         flagged = excluded.flagged, at = excluded.at, data = excluded.data`,
+      [message.id, message.txId || null, message.conversationId || null, message.from || null,
+        message.clientId || null, message.text || '', !!message.flagged, timestampFor(message), JSON.stringify(message)]
     );
     inserted.messages += 1;
   }
