@@ -110,6 +110,22 @@ for (const key of literalKeys) {
   }
 }
 
+// Public screens must not depend on dictionaries loaded only after entering /admin.
+const publicClientFiles = clientFiles.filter((file) => !file.includes(`${path.sep}features${path.sep}admin${path.sep}`));
+const publicSource = publicClientFiles
+  .map((file) => fs.readFileSync(file, 'utf8'))
+  .join('\n');
+const serverPublicKeys = [...fs.readFileSync(path.join(root, 'server/index.js'), 'utf8')
+  .matchAll(/\b(?:actionKey|warningKey)\s*:\s*['"]([^'"]+)['"]/g)]
+  .map((match) => match[1]);
+const publicKeys = new Set(serverPublicKeys);
+for (const match of publicSource.matchAll(/\bt\(\s*['"]([^'"]+)['"]/g)) publicKeys.add(match[1]);
+for (const key of publicKeys) {
+  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr })) {
+    if (!(key in dict)) fail(`${lang}: public key available only in the admin module: ${key}`);
+  }
+}
+
 const allowedVisible = [
   /^Wigofly$/,
   /^Casablanca$/,
@@ -252,7 +268,7 @@ for (const [key, template] of Object.entries(TEMPLATES)) {
 const systemBlock = serverSource.match(/const SYSTEM_EVENT_TEXT = \{([\s\S]*?)\n\};/)?.[1] || '';
 for (const match of systemBlock.matchAll(/^\s*([a-z_]+)\s*:/gm)) {
   const key = `messages.system.${match[1]}`;
-  for (const [lang, dict] of Object.entries(dictionaries)) {
+  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr })) {
     if (!(key in dict)) fail(`${lang}: événement système sans traduction: ${key}`);
   }
 }
