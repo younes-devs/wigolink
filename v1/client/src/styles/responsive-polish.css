@@ -935,7 +935,7 @@ body:has(.auth-page) {
 }
 .auth-mode-switch button {
   min-width: 0;
-  border: 0;
+  border: 2px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: var(--ink-soft);
@@ -943,11 +943,21 @@ body:has(.auth-page) {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 .auth-mode-switch button.active {
+  border-color: var(--accent);
+  background: rgba(15, 111, 235, 0.09);
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(15, 111, 235, 0.14);
+}
+.auth-mode-switch button:not(.active):hover {
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 1px 4px rgba(22, 24, 29, 0.1);
+}
+.auth-mode-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .auth-panel > .alert {
   margin-bottom: 16px;
@@ -1276,4 +1286,3 @@ body:has(.auth-page) {
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.34);
 }
-
