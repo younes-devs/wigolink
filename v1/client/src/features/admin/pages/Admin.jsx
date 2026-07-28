@@ -3,7 +3,7 @@ import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonList, SkeletonStatGrid } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
-import { dateLocale, t, useLang } from '../../../i18n.js';
+import { t, useLang } from '../../../i18n.js';
 import {
   AccessPanel, CategoriesPanel, ConversationReviewCard, FraudPanel, KpiPanel, KycPanel,
   ListingReviewCard, MembersPanel, OpsPanel, SafetyPanel,

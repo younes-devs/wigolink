@@ -130,17 +130,6 @@ export function localizeCustoms(customs, lang) {
   }));
 }
 
-// Détection de désintermédiation (PRD §4.5)
-const LEAK_PATTERNS = [
-  /\b0[567]\d{8}\b/, // numéros FR/BE/MA
-  /\+\d{9,}/,
-  /\b\d{2}[ .-]\d{2}[ .-]\d{2}[ .-]\d{2}[ .-]\d{2}\b/,
-  /whats?app/i,
-  /t[ée]l[ée]phone|appelle[- ]moi|mon num/i,
-  /[\w.+-]+@[\w-]+\.[a-z]{2,}/i,
-  /hors app|en dehors de l'app/i,
-];
-
 // This runs on the server. Normalization catches punctuation, accents, Arabic
 // digits and simple obfuscation before a message is persisted.
 const EXTERNAL_CONTACT = [

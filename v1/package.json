@@ -4,10 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test server/test/*.test.js",
+    "test": "node --test --test-concurrency=1 server/test/*.test.js",
     "check:i18n": "node scripts/check-i18n.mjs",
     "dev": "concurrently -n api,web -c yellow,cyan \"node server/index.js\" \"vite client --port 5173\"",
     "build": "vite build client",
+    "lint": "eslint client/src server scripts",
     "start": "node server/index.js",
     "api": "node server/index.js",
     "migrate:plan": "node server/migrate-json-postgres-cli.js",
@@ -41,8 +42,11 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^6.0.4",
     "concurrently": "^10.0.4",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
     "vite": "^8.1.5"
   }
 }

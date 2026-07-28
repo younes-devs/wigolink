@@ -1,0 +1,75 @@
+/* Dark-mode contrast audit: semantic surfaces must never inherit light-only fills. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(58% 40% at 10% 0%, rgba(35, 104, 214, 0.16), transparent 62%),
+    radial-gradient(45% 34% at 92% 8%, rgba(100, 74, 190, 0.12), transparent 62%),
+    radial-gradient(52% 36% at 25% 100%, rgba(24, 127, 148, 0.13), transparent 68%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1));
+}
+:root[data-theme="dark"] .bottom-nav {
+  background: linear-gradient(135deg, rgba(31, 39, 51, 0.92), rgba(17, 23, 31, 0.88));
+  border-color: var(--header-border);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+:root[data-theme="dark"] .card {
+  border-color: var(--glass-border);
+}
+:root[data-theme="dark"] .pill-gray,
+:root[data-theme="dark"] .chat-presence,
+:root[data-theme="dark"] .chat-day span,
+:root[data-theme="dark"] .conversation-meta i,
+:root[data-theme="dark"] .message-filters b,
+:root[data-theme="dark"] .notif-close,
+:root[data-theme="dark"] .notif-tabs,
+:root[data-theme="dark"] .geo-status,
+:root[data-theme="dark"] .tabs,
+:root[data-theme="dark"] .stepper-dot,
+:root[data-theme="dark"] .kyc-decision-box,
+:root[data-theme="dark"] .policy-table th {
+  background: var(--neutral-fill);
+}
+:root[data-theme="dark"] .message-search button:hover,
+:root[data-theme="dark"] .conversation-search button:hover,
+:root[data-theme="dark"] .pwd-toggle:hover,
+:root[data-theme="dark"] .notif-bell:hover,
+:root[data-theme="dark"] .notif-close:hover,
+:root[data-theme="dark"] .notif-item:hover,
+:root[data-theme="dark"] .settings-inline-row:not(.is-static):hover,
+:root[data-theme="dark"] .google-account:hover,
+:root[data-theme="dark"] .quiz-option:hover {
+  background: var(--neutral-fill-strong);
+}
+:root[data-theme="dark"] .profile-avatar-wrap .avatar,
+:root[data-theme="dark"] .avatar-edit {
+  border-color: var(--surface);
+}
+:root[data-theme="dark"] .photo-add {
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .tl-step .dot {
+  background: var(--neutral-fill-strong);
+  border-color: var(--bg-0);
+}
+:root[data-theme="dark"] .btn-google {
+  color: #202124;
+  background: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="dark"] .btn-google:hover {
+  color: #202124;
+  background: #f5f7fa;
+}
+:root[data-theme="dark"] .btn-ghost .spinner,
+:root[data-theme="dark"] .btn-danger-ghost .spinner {
+  border-color: rgba(255, 255, 255, 0.28);
+  border-top-color: var(--ink);
+}
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
+}

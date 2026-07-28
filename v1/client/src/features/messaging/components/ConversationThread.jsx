@@ -64,7 +64,7 @@ export function MessageGroup({ group, userId, conversation, query, onPreview, on
                 ))}
               </div>
             )}
-            {message.location && <LocationMessage location={message.location} mine={mine} />}
+            {message.location && <LocationMessage location={message.location} />}
             {message.text && <p><HighlightedText text={message.text} query={query} /></p>}
             <span className="message-status"><time>{shortDate(message.at)}</time>{mine && <DeliveryState message={message} />}</span>
           </div>
@@ -174,7 +174,7 @@ export function LocationShareSheet({ step, draft, busy, error, onClose, onCurren
   );
 }
 
-function LocationMessage({ location, mine }) {
+function LocationMessage({ location }) {
   const expired = location.expiresAt && Number(location.expiresAt) <= Date.now();
   const query = location.latitude !== null && location.longitude !== null
     ? `${location.latitude},${location.longitude}`

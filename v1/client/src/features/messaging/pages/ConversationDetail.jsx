@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, apiBlob } from '../../../api';
+import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
-import { Avatar, Icon } from '../../../Icons.jsx';
-import { dateLocale, t, useLang } from '../../../i18n.js';
+import { Icon } from '../../../Icons.jsx';
+import { t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
-import { markInboxConversationRead, shortDate } from './MessagesSimple.jsx';
+import { markInboxConversationRead } from './MessagesSimple.jsx';
 import { readThreadCache, writeThreadCache } from '../services/messageCache.js';
+import { ConversationChrome } from '../components/ConversationChrome.jsx';
+import { ConversationComposer } from '../components/ConversationComposer.jsx';
+import { ConversationMessages } from '../components/ConversationMessages.jsx';
 import {
-  ConversationContext, ConversationSkeleton, ImagePreview, LocationShareSheet, MessageActions,
-  MessageGroup, contextLabel, groupMessages, latestMessageAt, mergeMessages, resizeImage,
-  suggestions, useDismissibleMenu,
+  ConversationSkeleton, contextLabel, groupMessages, latestMessageAt, mergeMessages, resizeImage,
+  useDismissibleMenu,
 } from '../components/ConversationThread.jsx';
 
-const REPORT_REASONS = ['external_payment', 'abuse', 'suspicious', 'off_platform', 'other'];
 const threadCacheByKey = new Map();
 const THREAD_CACHE_MS = 15_000;
 
@@ -474,18 +475,6 @@ export default function ConversationDetail() {
     }
   };
 
-  const togglePin = async () => {
-    try {
-      const data = await api(`/conversations/${id}/pin`, { method: 'POST', body: { pinned: !conversation.pinned } });
-      setConversation(data.conversation);
-      toast.success(data.conversation.pinned ? t('messages.toast.pinned') : t('messages.toast.unpinned'));
-    } catch (err) {
-      toast.error(err.message || t('messages.error.load'));
-    } finally {
-      setMenuOpen(false);
-    }
-  };
-
   const toggleArchive = async (archived) => {
     try {
       const data = await api(`/conversations/${id}/archive`, { method: 'POST', body: { archived } });
@@ -507,17 +496,6 @@ export default function ConversationDetail() {
       toast.success(nextBlocked ? t('messages.toast.blocked') : t('messages.toast.unblocked'));
     } catch (err) {
       toast.error(err.message || t('common.action.error'));
-    } finally {
-      setMenuOpen(false);
-    }
-  };
-
-  const markUnread = async () => {
-    try {
-      await api(`/conversations/${id}/unread`, { method: 'POST' });
-      toast.success(t('messages.toast.markedUnread'));
-    } catch (err) {
-      toast.error(err.message || t('messages.error.load'));
     } finally {
       setMenuOpen(false);
     }
@@ -627,276 +605,92 @@ export default function ConversationDetail() {
 
   return (
     <div className="conversation-detail">
-      <header className="conversation-header">
-        <Link to="/messages" className="icon-btn conversation-back" aria-label={t('messages.back')}><Icon name="arrowLeft" size={18} /></Link>
-        {profileHref ? (
-          <Link to={profileHref} className="conversation-contact" aria-label={t('messages.action.viewProfile')}>
-            <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
-            <div className="grow conversation-title">
-              <b>{conversation.other?.name || t('messages.contact')}</b>
-              <span>{headerMeta}</span>
-            </div>
-          </Link>
-        ) : (
-          <div className="conversation-contact">
-            <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={44} />
-            <div className="grow conversation-title">
-              <b>{conversation.other?.name || t('messages.contact')}</b>
-              <span>{headerMeta}</span>
-            </div>
-          </div>
-        )}
-        <div className="conversation-actions" ref={menuRef}>
-          {conversation.actionHref && <Link to={conversation.actionHref} className="btn btn-sm">{conversation.actionKey ? t(conversation.actionKey) : conversation.actionLabel || t('messages.action.view')}</Link>}
-          <button
-            className="icon-btn"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setMenuOpen((value) => !value);
-            }}
-            aria-label={t('messages.action.openMenu')}
-            aria-expanded={menuOpen}
-          >
-            <Icon name="moreVertical" size={17} />
-          </button>
-          {menuOpen && (
-            <div className="conversation-header-menu" role="menu">
-              <button type="button" role="menuitem" onClick={() => { setSearchOpen((value) => !value); setMenuOpen(false); }}>
-                <Icon name="search" size={15} /> {t('messages.action.searchInConversation')}
-              </button>
-              {conversation.actionHref && (
-                <Link to={conversation.actionHref} role="menuitem" onClick={() => setMenuOpen(false)}>
-                  <Icon name={conversation.contextType === 'trip' ? 'plane' : 'repeat'} size={15} /> {conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}
-                </Link>
-              )}
-              <button type="button" role="menuitem" onClick={() => { setReportOpen(true); setMenuOpen(false); }}>
-                <Icon name="alert" size={15} /> {t('messages.action.report')}
-              </button>
-              <button type="button" role="menuitem" className={conversation.blocked ? '' : 'conversation-menu-danger'} onClick={toggleBlock}>
-                <Icon name={conversation.blocked ? 'eye' : 'lock'} size={15} /> {conversation.blocked ? t('messages.action.unblock') : t('messages.action.block')}
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {!conversationOpen && (
-        <div className="conversation-closed-banner">
-          <Icon name="lock" size={15} />
-          <span>{conversation.status === 'archived' ? t('messages.closed.archived') : t('messages.closed.completed')}</span>
-          {conversation.status === 'archived'
-            ? <button type="button" onClick={() => toggleArchive(false)}>{t('messages.action.restore')}</button>
-            : conversation.actionHref && <Link to={conversation.actionHref}>{t('messages.action.view')}</Link>}
-        </div>
-      )}
-
-      {!isOnline && conversationOpen && (
-        <div className="conversation-offline-banner">
-          <Icon name="info" size={15} />
-          <span>{t('messages.offline.banner')}</span>
-        </div>
-      )}
-
-      {hasSafetyWarning && (
-        <div className="conversation-safety-banner">
-          <Icon name="shieldCheck" size={16} />
-          <span>{t('messages.safety.banner')}</span>
-          <button type="button" onClick={() => setReportOpen(true)}>{t('messages.action.report')}</button>
-        </div>
-      )}
-
-      {(conversation.blocked || conversation.blockedByOther) && (
-        <div className="conversation-safety-banner conversation-blocked-banner">
-          <Icon name="lock" size={16} />
-          <span>{conversation.blocked ? t('messages.blocked.byMe') : t('messages.blocked.byOther')}</span>
-          {conversation.blocked && <button type="button" onClick={toggleBlock}>{t('messages.action.unblock')}</button>}
-        </div>
-      )}
-
-      {reportOpen && (
-        <form className="conversation-report-panel" onSubmit={reportConversation}>
-          <div>
-            <b>{t('messages.report.title')}</b>
-            <p>{t('messages.report.body')}</p>
-          </div>
-          <div className="report-reasons" role="radiogroup" aria-label={t('messages.report.reasonLabel')}>
-            {REPORT_REASONS.map((reason) => (
-              <button
-                type="button"
-                key={reason}
-                className={reportCode === reason ? 'active' : ''}
-                onClick={() => setReportCode(reason)}
-                role="radio"
-                aria-checked={reportCode === reason}
-              >
-                {t(`messages.report.reason.${reason}`)}
-              </button>
-            ))}
-          </div>
-          <textarea
-            value={reportReason}
-            onChange={(e) => setReportReason(e.target.value.slice(0, 500))}
-            placeholder={t('messages.report.placeholder')}
-            rows={3}
-            autoFocus
-          />
-          <div className="report-actions">
-            <button type="button" className="btn btn-sm" onClick={() => { setReportOpen(false); setReportReason(''); }}>{t('common.cancel')}</button>
-            <button className="btn btn-primary btn-sm" disabled={!reportCode}>{t('messages.action.report')}</button>
-          </div>
-        </form>
-      )}
-
-      {searchOpen && (
-        <div className="conversation-search">
-          <Icon name="search" size={16} />
-          <input value={messageQuery} onChange={(e) => setMessageQuery(e.target.value)} placeholder={t('messages.search.inConversation')} />
-          {messageQuery && <span className="search-results-count">{searchMatches.length ? `${searchIndex + 1}/${searchMatches.length}` : '0'}</span>}
-          {messageQuery && <button type="button" onClick={() => goToSearchMatch(-1)} aria-label={t('messages.search.previous')}><Icon name="chevronUp" size={14} /></button>}
-          {messageQuery && <button type="button" onClick={() => goToSearchMatch(1)} aria-label={t('messages.search.next')}><Icon name="chevronDown" size={14} /></button>}
-          {messageQuery && <button type="button" onClick={() => setMessageQuery('')} aria-label={t('messages.search.clear')}><Icon name="x" size={14} /></button>}
-        </div>
-      )}
-
-      <main className="message-thread" ref={threadRef} onScroll={onThreadScroll}>
-        {messagePage?.hasMore && (
-          <button className="load-older-messages" type="button" onClick={loadOlder} disabled={loadingOlder}>
-            {loadingOlder ? t('common.loading') : t('messages.loadOlder')}
-          </button>
-        )}
-        {messages.length === 0 && (
-          <div className="message-empty">
-            <Icon name="chat" size={26} />
-            <b>{t('messages.conversation.empty.title')}</b>
-            <p>{t('messages.conversation.empty.body')}</p>
-            <div className="message-suggestions">
-              {suggestions(conversation).map((suggestion) => (
-                <button type="button" key={suggestion} onClick={() => setText(suggestion)}>{suggestion}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        {messages.length > 0 && visibleMessages.length === 0 && (
-          <div className="message-empty">
-            <Icon name="search" size={24} />
-            <b>{t('messages.search.noMessage')}</b>
-            <p>{t('messages.search.noMessageBody')}</p>
-          </div>
-        )}
-
-        {grouped.map((item) => (
-          item.kind === 'date'
-            ? <div className="message-day" key={item.id}>{item.label}</div>
-            : <MessageGroup key={item.id} group={item} userId={user.id} conversation={conversation} query={messageQuery} onPreview={setPreviewImage} onSelect={setSelectedMessage} setMessageNode={(messageId, node) => { if (node) messageNodesRef.current.set(messageId, node); }} />
-        ))}
-
-        {newMessageCount > 0 && (
-          <button className="new-messages-jump" type="button" onClick={jumpToLatest}>
-            {t('messages.newMessages', { count: newMessageCount })}
-          </button>
-        )}
-        <div ref={endRef} />
-      </main>
-
-      {failed && (
-        <div className="message-send-error">
-          <Icon name="alert" size={16} />
-          <span>{failed.message}</span>
-          <button type="button" onClick={(e) => send(e, failed.text, failed.clientId, failed.attachment, failed.location)}>{t('common.retry')}</button>
-        </div>
-      )}
-
-      {attachment && (
-        <div className="message-attachment-preview">
-          <img src={attachment.dataUrl} alt={attachment.name || t('messages.attachment.preview')} />
-          <span>{attachment.name || t('messages.attachment.preview')}</span>
-          <button type="button" onClick={() => setAttachment(null)} aria-label={t('messages.attachment.remove')}><Icon name="x" size={14} /></button>
-        </div>
-      )}
-      {attachmentState && <div className="attachment-progress"><span className="spinner" />{t(attachmentState)}</div>}
-
-      {locationDraft && (
-        <div className="message-location-preview">
-          <Icon name="mapPin" size={20} />
-          <div>
-            <b>{locationDraft.label || t(locationDraft.kind === 'current' ? 'messages.location.current' : 'messages.location.meeting')}</b>
-            <span>{locationDraft.kind === 'current' ? t('messages.location.secure') : locationDraft.city || t('messages.location.addCity')}</span>
-          </div>
-          <button type="button" onClick={() => setLocationSheet('confirm')} aria-label={t('messages.location.edit')}><Icon name="pencil" size={14} /></button>
-          <button type="button" onClick={() => setLocationDraft(null)} aria-label={t('messages.location.remove')}><Icon name="x" size={14} /></button>
-        </div>
-      )}
-
-      {unsafeDraftCategories.length > 0 && (
-        <div className="message-safety-draft" role="alert">
-          <Icon name="shieldCheck" size={16} />
-          <span>{t('messages.safety.draft', { items: unsafeDraftCategories.map((category) => t(`messages.safety.category.${category}`)).join(', ') })}</span>
-        </div>
-      )}
-
-      <div className="message-privacy-note"><Icon name="shieldCheck" size={14} />{t('messages.safety.note')}</div>
-
-      <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
-        <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
-        <div className="compose-attachments" ref={attachmentMenuRef}>
-          <button
-            type="button"
-            className="compose-attach"
-            disabled={!canWrite || sending}
-            onClick={() => setAttachmentMenuOpen((value) => !value)}
-            aria-label={t('messages.attachment.addMenu')}
-            title={t('messages.attachment.addMenu')}
-            aria-expanded={attachmentMenuOpen}
-          ><Icon name="plus" size={19} /></button>
-          {attachmentMenuOpen && (
-            <div className="compose-attachment-menu" role="menu">
-              <button type="button" role="menuitem" onClick={() => cameraRef.current?.click()}><Icon name="camera" size={18} /><span>{t('messages.attachment.camera')}</span></button>
-              <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}><Icon name="image" size={18} /><span>{t('messages.attachment.gallery')}</span></button>
-              <button type="button" role="menuitem" onClick={openLocationSheet}><Icon name="mapPin" size={18} /><span>{t('messages.attachment.location')}</span></button>
-            </div>
-          )}
-        </div>
-        <textarea
-          className={unsafeDraftCategories.length ? 'message-compose-unsafe' : ''}
-          value={text}
-          onChange={(e) => { setText(e.target.value.slice(0, 1000)); announceTyping(); }}
-          placeholder={conversationOpen ? (isOnline ? t('messages.composer.placeholder') : t('messages.offline.placeholder')) : t('messages.composer.closed')}
-          rows={1}
-          disabled={!canWrite || sending}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) send(e);
-          }}
-        />
-        <span className="compose-count">{text.length}/1000</span>
-        <button className="chat-send" disabled={sending || (!text.trim() && !attachment && !locationDraft) || !canWrite} aria-label={t('messages.composer.send')}>
-          {sending ? <span className="spinner" /> : <Icon name="send" size={18} />}
-        </button>
-      </form>
-      {locationSheet && (
-        <LocationShareSheet
-          step={locationSheet}
-          draft={locationDraft}
-          busy={locationBusy}
-          error={locationError}
-          onClose={() => { setLocationSheet(null); setLocationError(''); }}
-          onCurrent={useCurrentLocation}
-          onPlace={useMeetingPlace}
-          onChange={setLocationDraft}
-          onConfirm={() => {
-            if (locationDraft?.kind === 'place' && !locationDraft.label.trim() && !locationDraft.city.trim()) {
-              setLocationError('messages.location.required');
-              return;
-            }
-            setAttachment(null);
-            setLocationSheet(null);
-            setLocationError('');
-          }}
-        />
-      )}
-      {previewImage && <ImagePreview image={previewImage} onClose={() => setPreviewImage(null)} />}
-      {selectedMessage && <MessageActions message={selectedMessage} mine={selectedMessage.from === user.id} onCopy={copyMessage} onDelete={deleteMessage} onReport={() => { setSelectedMessage(null); setReportOpen(true); }} onClose={() => setSelectedMessage(null)} />}
+      <ConversationChrome
+        conversation={conversation}
+        profileHref={profileHref}
+        headerMeta={headerMeta}
+        menuRef={menuRef}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        reportOpen={reportOpen}
+        setReportOpen={setReportOpen}
+        reportCode={reportCode}
+        setReportCode={setReportCode}
+        reportReason={reportReason}
+        setReportReason={setReportReason}
+        reportConversation={reportConversation}
+        toggleArchive={toggleArchive}
+        toggleBlock={toggleBlock}
+        conversationOpen={conversationOpen}
+        isOnline={isOnline}
+        hasSafetyWarning={hasSafetyWarning}
+        messageQuery={messageQuery}
+        setMessageQuery={setMessageQuery}
+        searchMatches={searchMatches}
+        searchIndex={searchIndex}
+        goToSearchMatch={goToSearchMatch}
+      />
+      <ConversationMessages
+        threadRef={threadRef}
+        onThreadScroll={onThreadScroll}
+        messagePage={messagePage}
+        loadOlder={loadOlder}
+        loadingOlder={loadingOlder}
+        messages={messages}
+        visibleMessages={visibleMessages}
+        conversation={conversation}
+        setText={setText}
+        grouped={grouped}
+        userId={user.id}
+        messageQuery={messageQuery}
+        setPreviewImage={setPreviewImage}
+        setSelectedMessage={setSelectedMessage}
+        messageNodesRef={messageNodesRef}
+        newMessageCount={newMessageCount}
+        jumpToLatest={jumpToLatest}
+        endRef={endRef}
+      />
+      <ConversationComposer
+        failed={failed}
+        send={send}
+        attachment={attachment}
+        setAttachment={setAttachment}
+        attachmentState={attachmentState}
+        locationDraft={locationDraft}
+        setLocationDraft={setLocationDraft}
+        setLocationSheet={setLocationSheet}
+        unsafeDraftCategories={unsafeDraftCategories}
+        canWrite={canWrite}
+        fileRef={fileRef}
+        cameraRef={cameraRef}
+        addAttachment={addAttachment}
+        attachmentMenuRef={attachmentMenuRef}
+        attachmentMenuOpen={attachmentMenuOpen}
+        setAttachmentMenuOpen={setAttachmentMenuOpen}
+        sending={sending}
+        openLocationSheet={openLocationSheet}
+        text={text}
+        setText={setText}
+        announceTyping={announceTyping}
+        conversationOpen={conversationOpen}
+        isOnline={isOnline}
+        locationSheet={locationSheet}
+        locationBusy={locationBusy}
+        locationError={locationError}
+        setLocationError={setLocationError}
+        useCurrentLocation={useCurrentLocation}
+        useMeetingPlace={useMeetingPlace}
+        previewImage={previewImage}
+        setPreviewImage={setPreviewImage}
+        selectedMessage={selectedMessage}
+        userId={user.id}
+        copyMessage={copyMessage}
+        deleteMessage={deleteMessage}
+        setSelectedMessage={setSelectedMessage}
+        setReportOpen={setReportOpen}
+      />
     </div>
   );
 }

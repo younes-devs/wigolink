@@ -62,6 +62,16 @@ Les composants de navigation sont dans `client/src/app/components`, les briques
 partagees dans `client/src/shared`, et les appels API dans
 `client/src/core/api.js`.
 
+Les pages coordonnent les donnees et les effets. Les composants d'un domaine
+restent dans son dossier `components`; par exemple, une conversation se compose
+de `ConversationChrome`, `ConversationMessages` et `ConversationComposer`.
+L'administration expose un fichier facade `AdminPanels.jsx`, tandis que chaque
+panneau fonctionnel vit dans son propre module.
+
+Les styles sont charges dans un ordre explicite depuis `client/src/styles.css`:
+fondations, domaines, mise en page responsive, retours d'etat, authentification
+et contrastes sombres. Une feuille ne doit pas melanger ces responsabilites.
+
 ## API
 
 Point d'entree:
@@ -79,6 +89,13 @@ server/services
 server/middleware
 server/jobs
 ```
+
+Le point d'entree ne contient que la configuration, les adaptateurs partages et
+le cablage des routes. Les projections et regles metier transverses sont aussi
+des services: `trip-projections`, `operation-projections`,
+`conversation-domain`, `operation-codes`, `admin-operations` et
+`admin-review`. Les routes Express traduisent HTTP vers ces services sans
+dupliquer leur logique.
 
 Les domaines actifs sont:
 
@@ -151,6 +168,7 @@ Les tests Node se trouvent dans `server/test`. Les commandes de reference sont:
 
 ```text
 npm run check:i18n
+npm run lint
 npm test
 npm run build
 npm run audit:production

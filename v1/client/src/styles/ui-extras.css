@@ -1,0 +1,149 @@
+/* Alerts */
+.alert {
+  border-radius: 13px; padding: 13px 15px; font-size: 13.5px;
+  margin-bottom: 12px; line-height: 1.5;
+  display: flex; gap: 10px; align-items: flex-start;
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+.alert .icon { flex: 0 0 auto; margin-top: 1px; }
+.alert-warn { background: var(--amber-tint); color: var(--amber); border: 1px solid rgba(154, 98, 0, 0.15); }
+.alert-danger { background: var(--danger-tint); color: var(--danger); border: 1px solid rgba(217, 45, 32, 0.15); }
+.alert-teal { background: var(--green-tint); color: var(--green); border: 1px solid rgba(14, 138, 95, 0.15); }
+
+/* Stars */
+.stars { display: flex; gap: 4px; cursor: pointer; color: var(--ink-faint); }
+.stars .icon { transition: color 0.1s, transform 0.1s; }
+.stars .on { color: #f5a623; }
+.stars .icon:hover { transform: scale(1.15); }
+.stars-readonly { cursor: default; }
+.stars-readonly .icon:hover { transform: none; }
+
+/* Avatars & icônes catégorie */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-weight: 700; letter-spacing: 0;
+  flex: 0 0 auto; border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(22, 24, 29, 0.1);
+}
+.cat-icon {
+  width: 46px; height: 46px; border-radius: 14px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent-tint), rgba(45, 190, 235, 0.12));
+  border: 1px solid rgba(10, 108, 245, 0.12);
+  color: var(--accent);
+}
+
+/* Misc */
+.divider { height: 1px; background: var(--hairline); margin: 15px 0; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat {
+  background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px; padding: 15px; box-shadow: var(--shadow);
+}
+.stat .num { font-size: 22px; font-weight: 750; letter-spacing: -0.5px; }
+.stat .lbl { font-size: 11.5px; color: var(--ink-soft); font-weight: 550; margin-top: 2px; }
+.list-row { display: flex; align-items: center; gap: 13px; }
+.list-row .grow { flex: 1; min-width: 0; }
+.muted { color: var(--ink-soft); font-size: 13px; }
+.center { text-align: center; }
+.mt { margin-top: 12px; }
+.mb { margin-bottom: 12px; }
+.price { font-weight: 750; letter-spacing: -0.3px; color: var(--ink); font-size: 17px; }
+.price small { font-size: 11px; color: var(--ink-soft); font-weight: 500; display: block; }
+.video-preview { width: 100%; border-radius: 13px; background: #000; }
+.step-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; }
+.step-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(22, 24, 29, 0.15); transition: all 0.2s; }
+.step-dots i.on { background: var(--accent); width: 22px; border-radius: 5px; }
+
+/* Bascule de thème (PRD UI/UX U9) */
+.theme-toggle { display: flex; gap: 8px; }
+.theme-opt {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 12px; border-radius: 12px; cursor: pointer; font-family: inherit;
+  font-size: 13.5px; font-weight: 600;
+  background: var(--glass-strong); border: 1.5px solid var(--hairline); color: var(--ink-soft);
+  transition: all 0.15s;
+}
+.theme-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+
+/* Onboarding premier lancement (PRD UI/UX U1) */
+.onboard-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(45, 190, 235, 0.35), transparent 55%),
+    radial-gradient(120% 90% at 100% 10%, rgba(125, 90, 245, 0.32), transparent 55%),
+    linear-gradient(160deg, #0a1a3d, #0a3d8f 60%, #0a6cf5);
+  animation: boot-fade 0.3s ease both;
+}
+.onboard-card {
+  position: relative; width: 100%; max-width: 400px;
+  background: var(--surface); border-radius: 24px; padding: 30px 24px 24px;
+  box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto;
+}
+.onboard-skip {
+  position: absolute; top: 14px; inset-inline-end: 16px;
+  z-index: 2;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  min-height: 32px; padding: 0 6px;
+}
+/* En RTL, la flèche « suite » pointe vers la gauche. */
+[dir="rtl"] .onboard-choice > .icon:last-child,
+[dir="rtl"] .btn-primary > .icon { transform: scaleX(-1); }
+.onboard-screen { display: flex; flex-direction: column; animation: content-in 0.25s ease both; }
+.onboard-logo { width: 54px; height: auto; margin: 0 auto 14px; }
+.onboard-title { font-size: 22px; font-weight: 750; letter-spacing: -0.5px; text-align: center; margin-bottom: 6px; }
+.onboard-sub { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; text-align: center; margin-bottom: 20px; }
+.onboard-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+.onboard-step { display: flex; gap: 13px; align-items: flex-start; }
+.onboard-step-icon {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-tint); color: var(--accent);
+}
+.onboard-step b { font-size: 14px; }
+.onboard-step-text { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; margin-top: 2px; }
+.onboard-choice {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  background: var(--glass-strong); border: 1.5px solid var(--hairline); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px; cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s, transform 0.06s;
+}
+.onboard-choice:hover { border-color: var(--accent); }
+.onboard-choice:active { transform: scale(0.99); }
+.onboard-choice-icon {
+  flex: 0 0 auto; width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
+}
+.onboard-choice b { font-size: 15px; }
+.onboard-back { align-self: center; margin-top: 6px; }
+
+/* Fil d'étapes libellé (PRD UI/UX U2) */
+.stepper { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 4px; }
+.stepper-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0; font-family: inherit; cursor: default;
+  position: relative; color: var(--ink-faint);
+}
+.stepper-step.done { cursor: pointer; color: var(--ink-soft); }
+.stepper-step.active { color: var(--accent); }
+.stepper-dot {
+  width: 30px; height: 30px; border-radius: 50%; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: rgba(22, 24, 29, 0.07); color: var(--ink-faint);
+  border: 2px solid transparent; transition: all 0.2s;
+}
+.stepper-step.done .stepper-dot { background: var(--accent); color: #fff; }
+.stepper-step.active .stepper-dot { background: var(--surface); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+.stepper-label { font-size: 12px; font-weight: 600; letter-spacing: -0.1px; }
+/* Trait de liaison entre les pastilles */
+.stepper-step::before {
+  content: ''; position: absolute; top: 15px; inset-inline-start: -50%; width: 100%; height: 2px;
+  background: rgba(22, 24, 29, 0.08);
+}
+.stepper-step:first-child::before { display: none; }
+.stepper-step.done::before, .stepper-step.active::before { background: var(--accent); }
