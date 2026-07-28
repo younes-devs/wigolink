@@ -365,6 +365,26 @@ test('conversation messages garde un repli inline si Supabase Storage est indisp
   assert.equal(logs[0][0], 'message_media_store_failed');
 });
 
+test('conversation messages refuse le repli inline en production', async () => {
+  const { db, service, users } = createHarness({
+    messageMedia: {
+      enabled: true,
+      async storeDataUrl() {
+        throw new Error('Storage indisponible');
+      },
+    },
+    allowInlineMediaFallback: false,
+    logger: { error() {} },
+  });
+
+  const result = await service.sendMessage('conv-1', users[0], {
+    attachments: [{ dataUrl: IMAGE, name: 'preuve.png' }],
+  });
+
+  assert.equal(result.status, 503);
+  assert.equal(db.messages.length, 0);
+});
+
 test('conversation messages autorise uniquement l auteur a supprimer son message', () => {
   const { db, events, service } = createHarness();
   db.messages.push({

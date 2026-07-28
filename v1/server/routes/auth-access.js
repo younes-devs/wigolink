@@ -29,7 +29,7 @@ export function createAuthAccessRouter({
 
   router.post('/login', async (req, res) => {
     const email = normalizeEmail(req.body.email);
-    if (rateLimit(`login:${email}`)) {
+    if (await rateLimit(`login:${email}`)) {
       return res.status(429).json({
         error: 'Trop de tentatives — réessayez dans 10 minutes',
       });
@@ -83,7 +83,7 @@ export function createAuthAccessRouter({
 
   router.post('/forgot', async (req, res) => {
     const email = normalizeEmail(req.body.email);
-    if (rateLimit(`forgot:${email}`)) {
+    if (await rateLimit(`forgot:${email}`)) {
       return res.status(429).json({
         error: 'Trop de demandes — réessayez plus tard',
       });
@@ -111,7 +111,7 @@ export function createAuthAccessRouter({
 
   router.post('/reset', async (req, res) => {
     const email = normalizeEmail(req.body.email);
-    if (rateLimit(`reset:${email}`)) {
+    if (await rateLimit(`reset:${email}`)) {
       return res.status(429).json({
         error: 'Trop de tentatives — refaites une demande',
       });

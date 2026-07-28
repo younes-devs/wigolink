@@ -34,7 +34,7 @@ export function createAccountEmailService({
     if (!user.passwordHash || !verifyPassword(currentPassword, user.passwordHash)) {
       return { status: 400, error: 'Mot de passe actuel incorrect' };
     }
-    if (rateLimit(`change-email:${user.id}`)) {
+    if (await rateLimit(`change-email:${user.id}`)) {
       return {
         status: 429,
         error: 'Trop de demandes. Reessayez plus tard.',

@@ -4,6 +4,7 @@ export function createSystemRouter({
   demo,
   isProduction,
   emailReady,
+  storageReady = false,
   databaseHealth,
   now = () => new Date(),
 }) {
@@ -15,11 +16,13 @@ export function createSystemRouter({
 
   router.get('/health', (_req, res) => {
     const database = databaseHealth();
-    const ready = (!isProduction || emailReady) && database !== 'unavailable';
+    const ready = (!isProduction || (emailReady && storageReady))
+      && database !== 'unavailable';
     res.status(ready ? 200 : 503).json({
       ok: ready,
       database,
       email: emailReady ? 'configured' : 'missing',
+      storage: storageReady ? 'configured' : 'missing',
       at: now().toISOString(),
     });
   });

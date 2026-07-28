@@ -6,6 +6,8 @@ import { createMaintenanceRouter } from '../routes/maintenance.js';
 async function requestMaintenance(path, { method = 'GET', overrides = {} } = {}) {
   const db = {
     messages: [{ attachments: [{ id: 'a-1', dataUrl: 'data:image/png;base64,YQ==' }] }],
+    kycSubmissions: [{ selfiePhoto: 'data:image/png;base64,YQ==', idFrontPhoto: null }],
+    users: [{ id: 'u-1', photoUrl: 'data:image/png;base64,YQ==' }],
   };
   const calls = [];
   const app = express();
@@ -18,8 +20,18 @@ async function requestMaintenance(path, { method = 'GET', overrides = {} } = {})
     adminOnly: (_req, _res, next) => next(),
     db,
     messageMedia: { enabled: true },
+    kycMedia: { enabled: true },
+    profileMedia: { enabled: true },
     migrateMessageMedia: async ({ state }) => {
       delete state.messages[0].attachments[0].dataUrl;
+      return { migrated: 1, skipped: 0 };
+    },
+    migrateKycMedia: async ({ state }) => {
+      state.kycSubmissions[0].selfiePhoto = { storagePath: 'kyc/selfie.png' };
+      return { migrated: 1, skipped: 0 };
+    },
+    migrateProfileMedia: async ({ state }) => {
+      state.users[0].photoUrl = 'https://cdn.test/u-1.png';
       return { migrated: 1, skipped: 0 };
     },
     audit: async (...args) => calls.push(['audit', ...args]),
@@ -43,9 +55,21 @@ test('maintenance expose seulement les compteurs non sensibles', async () => {
   assert.deepEqual(response.body, {
     maintenance: {
       inlineMessageAttachments: 1,
+      inlineKycPhotos: 1,
+      inlineProfilePhotos: 1,
       messageStorageConfigured: true,
+      kycStorageConfigured: true,
+      profileStorageConfigured: true,
     },
   });
+});
+
+test('maintenance migre separement KYC et avatars', async () => {
+  const kyc = await requestMaintenance('/admin/maintenance/kyc-media', { method: 'POST' });
+  assert.deepEqual(kyc.body, { ok: true, migrated: 1, remaining: 0 });
+
+  const profile = await requestMaintenance('/admin/maintenance/profile-media', { method: 'POST' });
+  assert.deepEqual(profile.body, { ok: true, migrated: 1, remaining: 0 });
 });
 
 test('maintenance media migre, audite puis sauvegarde', async () => {

@@ -31,10 +31,10 @@ export function createAdminRecordsRouter({
     res.json(adminRecords.kycList(req.query));
   });
 
-  router.get('/admin/kyc/:id', ...protect, (req, res) => {
+  router.get('/admin/kyc/:id', ...protect, async (req, res) => {
     return sendResult(
       res,
-      adminRecords.kycDetail(req.params.id),
+      await adminRecords.kycDetail(req.params.id),
     );
   });
 

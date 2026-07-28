@@ -17,7 +17,7 @@ export function createAccountPrivacyService({
   confirmationTtlMs = DEFAULT_CONFIRMATION_TTL_MS,
 }) {
   async function requestDeletion({ user, lang }) {
-    if (rateLimit(`delete-account:${user.id}`)) {
+    if (await rateLimit(`delete-account:${user.id}`)) {
       return {
         status: 429,
         error: 'Trop de demandes. Reessayez plus tard.',

@@ -74,7 +74,7 @@ export function createAuthRegistrationRouter({
 
   router.post('/verify-email', async (req, res) => {
     const email = normalizeEmail(req.body.email);
-    if (rateLimit(`verify:${email}`)) {
+    if (await rateLimit(`verify:${email}`)) {
       return res.status(429).json({
         error: 'Trop de tentatives — demandez un nouveau code',
       });
@@ -100,7 +100,7 @@ export function createAuthRegistrationRouter({
 
   router.post('/resend-code', async (req, res) => {
     const email = normalizeEmail(req.body.email);
-    if (rateLimit(`resend:${email}`)) {
+    if (await rateLimit(`resend:${email}`)) {
       return res.status(429).json({
         error: 'Trop de demandes — réessayez plus tard',
       });

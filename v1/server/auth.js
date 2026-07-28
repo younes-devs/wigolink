@@ -48,3 +48,49 @@ export function rateLimit(key) {
   attempts.set(key, entry);
   return entry.count > 10;
 }
+
+export function createDistributedRateLimit({
+  pool,
+  fallback = rateLimit,
+  maxAttempts = 10,
+  windowMs = 10 * 60e3,
+  logger = console,
+}) {
+  if (!pool) return async (key) => fallback(key);
+
+  return async function distributedRateLimit(key) {
+    const id = crypto.createHash('sha256').update(String(key)).digest('hex');
+    try {
+      const result = await pool.query(
+        `with cleanup as (
+           delete from public.wigofly_runtime_records
+           where kind = 'rate_limit' and expires_at < now()
+         )
+         insert into public.wigofly_runtime_records (kind, id, data, expires_at)
+         values ('rate_limit', $1, '{"count":1}'::jsonb, now() + ($2 * interval '1 millisecond'))
+         on conflict (kind, id) do update
+         set data = jsonb_build_object(
+               'count',
+               case
+                 when wigofly_runtime_records.expires_at < now() then 1
+                 else coalesce((wigofly_runtime_records.data->>'count')::int, 0) + 1
+               end
+             ),
+             expires_at = case
+               when wigofly_runtime_records.expires_at < now()
+                 then now() + ($2 * interval '1 millisecond')
+               else wigofly_runtime_records.expires_at
+             end,
+             updated_at = now()
+         returning (data->>'count')::int as count`,
+        [id, windowMs],
+      );
+      return Number(result.rows[0]?.count || 0) > maxAttempts;
+    } catch (error) {
+      logger.error?.('distributed_rate_limit_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return fallback(key);
+    }
+  };
+}

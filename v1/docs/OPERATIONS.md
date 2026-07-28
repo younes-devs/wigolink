@@ -85,3 +85,27 @@ PITR Supabase selon le plan retenu. Tester une restauration dans un projet
 Supabase distinct au moins une fois par trimestre. Les tables prioritaires sont
 `wigofly_app_state`, `audit_logs`, `messages`, `wigofly_kyc_submissions` et
 `wigofly_kyc_decisions`. Ne jamais tester une restauration sur la production.
+
+## Medias prives
+
+Les images de messagerie et les documents KYC doivent etre stockes dans des
+buckets Supabase prives. Configurer `SUPABASE_SECRET_KEY`, puis conserver les
+valeurs suivantes si les noms de buckets par defaut ne conviennent pas :
+
+```text
+SUPABASE_MESSAGE_MEDIA_BUCKET=wigofly-message-media
+SUPABASE_KYC_MEDIA_BUCKET=wigofly-kyc-media
+SUPABASE_PROFILE_MEDIA_BUCKET=wigofly-profile-media
+```
+
+Apres le deploiement du code, migrer une seule fois les anciennes images encore
+presentes en base64 :
+
+```bash
+npm run migrate:message-media
+npm run migrate:kyc-media
+npm run migrate:profile-media
+```
+
+Les commandes sont relancables. Verifier leur compteur `migrated`, puis controler
+un ancien message et un ancien dossier KYC depuis l'administration.

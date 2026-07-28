@@ -18,6 +18,8 @@
     "migrate:relational": "node server/migrate-relational-state-cli.js --write",
     "migrate:relational:verify": "node server/verify-relational-state-cli.js",
     "migrate:message-media": "node server/migrate-message-media-cli.js",
+    "migrate:kyc-media": "node server/migrate-kyc-media-cli.js",
+    "migrate:profile-media": "node server/migrate-profile-media-cli.js",
     "migrate:locations": "node --env-file-if-exists=.env.local scripts/migrate-smart-location-search.mjs",
     "migrate:locations:write": "node --env-file-if-exists=.env.local scripts/migrate-smart-location-search.mjs --write",
     "load:test": "node scripts/load-test.mjs",

@@ -25,6 +25,7 @@ export function createConversationMessageService({
   save,
   broadcastConversation,
   messageMedia = null,
+  allowInlineMediaFallback = true,
   logger = console,
   newId,
   now = Date.now,
@@ -210,6 +211,9 @@ export function createConversationMessageService({
     ) {
       return response(400, { error: 'Piece jointe invalide' });
     }
+    if (attachments.length > 0 && !messageMedia?.enabled && !allowInlineMediaFallback) {
+      return response(503, { error: 'Le stockage des images est temporairement indisponible' });
+    }
 
     const messageId = newId('m');
     let normalizedAttachments;
@@ -250,6 +254,9 @@ export function createConversationMessageService({
         name: error?.name || 'Error',
         message: String(error?.message || 'unknown').slice(0, 200),
       });
+      if (!allowInlineMediaFallback) {
+        return response(503, { error: 'Le stockage des images est temporairement indisponible' });
+      }
       normalizedAttachments = attachments.map((attachment, index) => {
         const dataUrl = typeof attachment === 'string'
           ? attachment

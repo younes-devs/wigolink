@@ -176,7 +176,7 @@ test('dossier membre conserve preuves, participants et compte supprimé', async 
   assert.equal((await service.caseFile('missing')).status, 404);
 });
 
-test('file KYC calcule SLA et détail auditable', () => {
+test('file KYC calcule SLA et détail auditable', async () => {
   const users = [{
     id: 'u-1',
     name: 'Alice',
@@ -215,7 +215,7 @@ test('file KYC calcule SLA et détail auditable', () => {
   const { service } = createHarness({ users, kyc, decisions });
 
   const list = service.kycList({ status: 'pending', q: 'alice' });
-  const detail = service.kycDetail('kyc-new');
+  const detail = await service.kycDetail('kyc-new');
 
   assert.equal(list.submissions[0].overdue, true);
   assert.equal(list.submissions[0].priorRejects, 1);
@@ -224,7 +224,7 @@ test('file KYC calcule SLA et détail auditable', () => {
   assert.equal(detail.status, 200);
   assert.equal(detail.body.submission.selfiePhoto, 'photo');
   assert.equal(detail.body.history[0].adminName, 'Contrôle');
-  assert.equal(service.kycDetail('missing').status, 404);
+  assert.equal((await service.kycDetail('missing')).status, 404);
 });
 
 test('sécurité exclut admins et enrichit les recours', () => {

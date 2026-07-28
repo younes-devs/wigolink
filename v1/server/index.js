@@ -5,7 +5,16 @@ import {
   databaseHealth, getDb, getPersistentSession, refreshDatabaseState, releaseDatabaseState, save, newId, usesDatabase,
 } from './store.js';
 import { WHITELIST, BLACKLIST, CUSTOMS, detectLeak, analyzeMessageSafety, localizeCategory, localizeCustoms } from './rules.js';
-import { hashPassword, verifyPassword, newToken, sixDigitCode, validRegistration, EMAIL_RE, rateLimit } from './auth.js';
+import {
+  createDistributedRateLimit,
+  hashPassword,
+  verifyPassword,
+  newToken,
+  sixDigitCode,
+  validRegistration,
+  EMAIL_RE,
+  rateLimit as localRateLimit,
+} from './auth.js';
 import { langMiddleware } from './middleware/language.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
@@ -63,6 +72,8 @@ import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
 import { createConversationMessageService } from './services/conversation-messages.js';
 import { createMessageMediaService } from './services/message-media.js';
+import { createKycMediaService } from './services/kyc-media.js';
+import { createProfileMediaService } from './services/profile-media.js';
 import { createTripService } from './services/trips.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
@@ -80,6 +91,8 @@ import { createOperationCodeService } from './services/operation-codes.js';
 import { createOperationProjections } from './services/operation-projections.js';
 import { createTripProjections } from './services/trip-projections.js';
 import { migrateInlineMessageMedia } from './migrate-message-media.js';
+import { migrateInlineKycMedia } from './migrate-kyc-media.js';
+import { migrateInlineProfileMedia } from './migrate-profile-media.js';
 import {
   canonicalizeLocation,
   findLocationById,
@@ -103,6 +116,10 @@ const observability = createObservability({
   slowRequestMs: Number(process.env.SLOW_REQUEST_MS) || 1_000,
 });
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
+const SUPABASE_SECRET_KEY = String(
+  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+).trim();
+const STORAGE_READY = !!(SUPABASE_URL && SUPABASE_SECRET_KEY);
 // The database URL is server-only and already mandatory in production. A dedicated
 // OPERATION_CODE_SECRET can supersede it without making deployments brittle.
 const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigofly-local-operation-code-secret';
@@ -129,6 +146,10 @@ app.use(createDatabaseAvailability({
 }));
 
 const db = getDb();
+const rateLimit = createDistributedRateLimit({
+  pool: usesDatabase() ? databasePool() : null,
+  fallback: localRateLimit,
+});
 
 // Les lectures reutilisent un cache tres court par fonction Vercel. Seules les
 // ecritures prennent le verrou Postgres et attendent la validation avant reponse.
@@ -153,6 +174,7 @@ app.use('/api', createSystemRouter({
   demo: DEMO,
   isProduction: IS_PRODUCTION,
   emailReady: EMAIL_READY,
+  storageReady: STORAGE_READY,
   databaseHealth,
 }));
 
@@ -226,8 +248,18 @@ const realtime = createRealtimeService({
 });
 const messageMedia = createMessageMediaService({
   url: SUPABASE_URL,
-  secretKey: String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+  secretKey: SUPABASE_SECRET_KEY,
   bucket: String(process.env.SUPABASE_MESSAGE_MEDIA_BUCKET || 'wigofly-message-media').trim(),
+});
+const kycMedia = createKycMediaService({
+  url: SUPABASE_URL,
+  secretKey: SUPABASE_SECRET_KEY,
+  bucket: String(process.env.SUPABASE_KYC_MEDIA_BUCKET || 'wigofly-kyc-media').trim(),
+});
+const profileMedia = createProfileMediaService({
+  url: SUPABASE_URL,
+  secretKey: SUPABASE_SECRET_KEY,
+  bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigofly-profile-media').trim(),
 });
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
@@ -431,6 +463,7 @@ function kycUserView(user) {
 app.use('/api/kyc', createKycRouter({
   auth,
   kycRepository: repositories.kyc,
+  kycMedia,
   save,
   kycUserView,
   validPhotos,
@@ -462,6 +495,8 @@ app.use('/api/profile', createProfileRouter({
   hashPassword,
   clearUserSessions,
   accountEmail: accountEmailService,
+  profileMedia,
+  allowInlineMediaFallback: !IS_PRODUCTION,
 }));
 
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
@@ -639,6 +674,7 @@ const conversationMessageService = createConversationMessageService({
   save,
   broadcastConversation,
   messageMedia,
+  allowInlineMediaFallback: !IS_PRODUCTION,
   newId,
 });
 
@@ -652,7 +688,11 @@ app.use('/api', createMaintenanceRouter({
   adminOnly,
   db,
   messageMedia,
+  kycMedia,
+  profileMedia,
   migrateMessageMedia: migrateInlineMessageMedia,
+  migrateKycMedia: migrateInlineKycMedia,
+  migrateProfileMedia: migrateInlineProfileMedia,
   audit,
   save,
 }));
@@ -790,6 +830,7 @@ const adminRecordService = createAdminRecordService({
   db,
   findUser,
   kycRepository: repositories.kyc,
+  kycMedia,
   auditLogsRepository: repositories.auditLogs,
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
   kycSlaMs: KYC_SLA_MS,

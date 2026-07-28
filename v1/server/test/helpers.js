@@ -19,7 +19,19 @@ export async function startServer({ env = {} } = {}) {
 
   child = spawn('node', ['index.js'], {
     cwd: serverDir,
-    env: { ...process.env, PORT: String(PORT), DATA_FILE: dataFile, DEMO: 'true', ...env },
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      PORT: String(PORT),
+      DATA_FILE: dataFile,
+      DEMO: 'true',
+      DATABASE_URL: '',
+      PERSISTENCE_DRIVER: 'json',
+      SUPABASE_URL: '',
+      SUPABASE_SECRET_KEY: '',
+      SUPABASE_SERVICE_ROLE_KEY: '',
+      ...env,
+    },
     stdio: 'pipe',
   });
 

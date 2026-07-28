@@ -14,6 +14,8 @@ export function createProfileRouter({
   hashPassword,
   clearUserSessions,
   accountEmail,
+  profileMedia = null,
+  allowInlineMediaFallback = true,
   validateUpdate = validateProfileUpdate,
   validatePhoto = validateProfilePhoto,
   validatePassword = validatePasswordChange,
@@ -49,7 +51,27 @@ export function createProfileRouter({
     }
 
     const before = { hasPhoto: !!req.user.photoUrl };
-    req.user.photoUrl = validation.value;
+    try {
+      if (validation.value === null) {
+        await profileMedia?.remove(req.user.id);
+        req.user.photoUrl = null;
+      } else if (profileMedia?.enabled) {
+        req.user.photoUrl = await profileMedia.storeDataUrl({
+          userId: req.user.id,
+          dataUrl: validation.value,
+        });
+      } else if (allowInlineMediaFallback) {
+        req.user.photoUrl = validation.value;
+      } else {
+        return res.status(503).json({
+          error: 'Le stockage des photos est temporairement indisponible',
+        });
+      }
+    } catch {
+      return res.status(503).json({
+        error: 'Le stockage des photos est temporairement indisponible',
+      });
+    }
     await auditChange({
       actorId: req.user.id,
       action: 'profile.photo.update',

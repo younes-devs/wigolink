@@ -4,6 +4,7 @@ import { validateKycSubmission } from '../validators/kyc.js';
 export function createKycRouter({
   auth,
   kycRepository,
+  kycMedia = null,
   save,
   kycUserView,
   validPhotos,
@@ -12,7 +13,7 @@ export function createKycRouter({
 }) {
   const router = Router();
 
-  router.post('/submit', auth, (req, res) => {
+  router.post('/submit', auth, async (req, res) => {
     if (req.user.kycStatus === 'verified') {
       return res.status(400).json({ error: 'Votre identité est déjà vérifiée' });
     }
@@ -37,13 +38,30 @@ export function createKycRouter({
       });
     }
 
-    kycRepository.appendSubmission({
-      userId: req.user.id,
-      ...validation.value,
-    });
-    req.user.kycStatus = 'pending';
-    save();
-    return res.json({ kyc: kycUserView(req.user) });
+    try {
+      const storedPhotos = kycMedia?.enabled
+        ? await kycMedia.storeSubmission({
+          userId: req.user.id,
+          photos: validation.value,
+        })
+        : {
+          selfiePhoto: validation.value.selfiePhoto,
+          idFrontPhoto: validation.value.idFrontPhoto,
+          idBackPhoto: validation.value.idBackPhoto,
+        };
+      kycRepository.appendSubmission({
+        userId: req.user.id,
+        ...validation.value,
+        ...storedPhotos,
+      });
+      req.user.kycStatus = 'pending';
+      await save();
+      return res.json({ kyc: kycUserView(req.user) });
+    } catch {
+      return res.status(503).json({
+        error: 'Le stockage securise des documents est temporairement indisponible',
+      });
+    }
   });
 
   return router;

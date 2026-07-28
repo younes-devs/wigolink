@@ -42,6 +42,8 @@ create table if not exists public.audit_logs (
 
 create index if not exists audit_logs_at_idx on public.audit_logs (at desc);
 create index if not exists audit_logs_actor_id_idx on public.audit_logs (actor_id);
+create index if not exists audit_logs_actor_at_idx on public.audit_logs (actor_id, at desc);
+create index if not exists audit_logs_target_at_idx on public.audit_logs (target_id, at desc);
 
 create table if not exists public.notifications (
   id text primary key,
@@ -58,6 +60,7 @@ create table if not exists public.notifications (
 
 create index if not exists notifications_user_at_idx on public.notifications (user_id, at desc);
 create index if not exists notifications_user_unread_idx on public.notifications (user_id) where read = false;
+create index if not exists notifications_retention_idx on public.notifications (at);
 
 create table if not exists public.messages (
   id text primary key,
@@ -70,6 +73,7 @@ create table if not exists public.messages (
 
 create index if not exists messages_tx_at_idx on public.messages (tx_id, at);
 create index if not exists messages_flagged_idx on public.messages (flagged) where flagged = true;
+create index if not exists messages_sender_at_idx on public.messages (from_id, at desc);
 
 -- Normalized application records. Every entity keeps its full historical payload in
 -- data while the indexes below support the query patterns used by the API. This
@@ -168,6 +172,8 @@ create table if not exists public.wigofly_kyc_submissions (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_kyc_submissions_user_idx on public.wigofly_kyc_submissions ((data->>'userId'));
+create index if not exists wigofly_kyc_submissions_user_created_idx on public.wigofly_kyc_submissions ((data->>'userId'), created_at desc);
+create index if not exists wigofly_kyc_submissions_status_created_idx on public.wigofly_kyc_submissions ((data->>'status'), created_at);
 
 create table if not exists public.wigofly_kyc_decisions (
   id text primary key,
@@ -194,6 +200,7 @@ create table if not exists public.wigofly_runtime_records (
   primary key (kind, id)
 );
 create index if not exists wigofly_runtime_records_expiry_idx on public.wigofly_runtime_records (expires_at) where expires_at is not null;
+create index if not exists wigofly_runtime_records_kind_expiry_idx on public.wigofly_runtime_records (kind, expires_at) where expires_at is not null;
 
 alter table public.messages add column if not exists conversation_id text;
 alter table public.messages add column if not exists data jsonb not null default '{}'::jsonb;

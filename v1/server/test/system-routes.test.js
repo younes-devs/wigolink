@@ -51,6 +51,7 @@ test('system routes considerent le stockage local pret hors production', async (
     ok: true,
     database: 'local',
     email: 'missing',
+    storage: 'missing',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -66,6 +67,7 @@ test('system routes exigent la configuration email en production', async () => {
     ok: false,
     database: 'connected',
     email: 'missing',
+    storage: 'missing',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -82,6 +84,7 @@ test('system routes refusent une base indisponible meme avec l email configure',
     ok: false,
     database: 'unavailable',
     email: 'configured',
+    storage: 'missing',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -90,6 +93,7 @@ test('system routes declarent la production prete quand ses dependances le sont'
   const response = await requestSystem('/health', {
     isProduction: true,
     emailReady: true,
+    storageReady: true,
     databaseHealth: () => 'connected',
   });
 
@@ -98,6 +102,7 @@ test('system routes declarent la production prete quand ses dependances le sont'
     ok: true,
     database: 'connected',
     email: 'configured',
+    storage: 'configured',
     at: FIXED_DATE.toISOString(),
   });
 });

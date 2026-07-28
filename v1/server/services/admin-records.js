@@ -2,6 +2,7 @@ export function createAdminRecordService({
   db,
   findUser,
   kycRepository,
+  kycMedia = null,
   auditLogsRepository,
   messageSafetyWindowMs,
   kycSlaMs,
@@ -115,10 +116,10 @@ export function createAdminRecordService({
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
     );
-    const kyc = kycRepository
+    const kycRecords = kycRepository
       .listForUser(user.id)
-      .sort((a, b) => b.submittedAt - a.submittedAt)
-      .map((submission) => ({
+      .sort((a, b) => b.submittedAt - a.submittedAt);
+    const kyc = await Promise.all(kycRecords.map(async (submission) => ({
         id: submission.id,
         status: submission.status,
         legalName: submission.legalName,
@@ -128,14 +129,14 @@ export function createAdminRecordService({
         reviewedAt: submission.reviewedAt || null,
         reviewedBy: submission.reviewedBy || null,
         decisionReason: submission.decisionReason || null,
-        selfiePhoto: submission.selfiePhoto || null,
-        idFrontPhoto: submission.idFrontPhoto || null,
-        idBackPhoto: submission.idBackPhoto || null,
+        selfiePhoto: await mediaUrl(submission.selfiePhoto),
+        idFrontPhoto: await mediaUrl(submission.idFrontPhoto),
+        idBackPhoto: await mediaUrl(submission.idBackPhoto),
         documentsPurged:
           !submission.selfiePhoto
           && !submission.idFrontPhoto
           && !submission.idBackPhoto,
-      }));
+      })));
     const auditLogs = await auditLogsRepository.listForMember(
       user.id,
       { limit: 500 },
@@ -330,7 +331,7 @@ export function createAdminRecordService({
     };
   }
 
-  function kycDetail(id) {
+  async function kycDetail(id) {
     const submission = kycRepository.findSubmission(id);
     if (!submission) {
       return response(404, { error: 'Demande introuvable' });
@@ -346,6 +347,9 @@ export function createAdminRecordService({
     return response(200, {
       submission: {
         ...submission,
+        selfiePhoto: await mediaUrl(submission.selfiePhoto),
+        idFrontPhoto: await mediaUrl(submission.idFrontPhoto),
+        idBackPhoto: await mediaUrl(submission.idBackPhoto),
         user: user
           ? {
             name: user.name,
@@ -363,6 +367,12 @@ export function createAdminRecordService({
       },
       history,
     });
+  }
+
+  async function mediaUrl(photo) {
+    if (!photo) return null;
+    if (!kycMedia) return typeof photo === 'string' ? photo : null;
+    return kycMedia.viewUrl(photo);
   }
 
   function safety() {
