@@ -308,6 +308,8 @@ export default {
   'trips.filter.reset': 'Réinitialiser',
   'trips.filter.show': 'Voir les trajets',
   'trips.mine': 'Mes trajets',
+  'trips.available': 'Disponibles',
+  'trips.mobile.tabs.aria': 'Choisir les trajets à afficher',
   'trips.mine.one': 'Mon trajet',
   'trips.mine.empty': "Vous n'avez pas encore publié de trajet.",
   'trips.others': 'Trajets des autres',

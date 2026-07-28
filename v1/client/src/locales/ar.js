@@ -308,6 +308,8 @@ export default {
   'trips.filter.reset': 'إعادة الضبط',
   'trips.filter.show': 'عرض الرحلات',
   'trips.mine': 'رحلاتي',
+  'trips.available': 'المتاحة',
+  'trips.mobile.tabs.aria': 'اختر الرحلات المراد عرضها',
   'trips.mine.one': 'رحلتي',
   'trips.mine.empty': 'لم تنشر أي رحلة بعد.',
   'trips.others': 'رحلات الآخرين',

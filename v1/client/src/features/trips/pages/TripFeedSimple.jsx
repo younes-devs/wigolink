@@ -42,6 +42,7 @@ export default function TripFeedSimple() {
   const [filters, setFilters] = useState(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
+  const [mobileTab, setMobileTab] = useState('others');
   const toast = useToast();
   const requestRef = useRef(0);
   const deferredFilters = useDeferredValue(filters);
@@ -123,6 +124,14 @@ export default function TripFeedSimple() {
           <span className={filters.q ? 'trip-search-value' : ''}>{filters.q || t('trips.search.short')}</span>
           {advancedFilterCount(filters) > 0 && <span className="filter-count">{advancedFilterCount(filters)}</span>}
         </button>
+        <Link
+          className="trip-mobile-publish"
+          to="/trajets/nouveau"
+          aria-label={t('trips.publish.open')}
+          title={t('trips.publish.open')}
+        >
+          <Icon name="plus" size={21} />
+        </Link>
       </section>
 
       <section className="simple-filters trip-desktop-filters">
@@ -163,7 +172,35 @@ export default function TripFeedSimple() {
         document.body
       )}
 
-      <section className="trip-section">
+      <div className="trip-mobile-tabs" role="tablist" aria-label={t('trips.mobile.tabs.aria')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === 'others'}
+          aria-controls="available-trips-panel"
+          className={mobileTab === 'others' ? 'active' : ''}
+          onClick={() => setMobileTab('others')}
+        >
+          {t('trips.available')}
+          {trips?.length > 0 && <span>{trips.length}</span>}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === 'mine'}
+          aria-controls="my-trips-panel"
+          className={mobileTab === 'mine' ? 'active' : ''}
+          onClick={() => setMobileTab('mine')}
+        >
+          {t('trips.mine')}
+          {myTrips?.length > 0 && <span>{myTrips.length}</span>}
+        </button>
+      </div>
+
+      <section
+        id="my-trips-panel"
+        className={`trip-section trip-section-mine${mobileTab !== 'mine' ? ' mobile-tab-hidden' : ''}`}
+      >
         <div className="section-head">
           <h2>{t('trips.mine')}</h2>
           {myTrips?.length > 0 && <span>{myTrips.length}</span>}
@@ -201,7 +238,10 @@ export default function TripFeedSimple() {
         </div>
       </section>
 
-      <section className="trip-section">
+      <section
+        id="available-trips-panel"
+        className={`trip-section trip-section-available${mobileTab !== 'others' ? ' mobile-tab-hidden' : ''}`}
+      >
         <div className="section-head">
           <h2>{t('trips.others')}</h2>
           {trips?.length > 0 && <span>{trips.length}</span>}

@@ -97,6 +97,7 @@
 .simple-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .simple-filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 14px; }
 .trip-search-row { display: none; }
+.trip-mobile-publish, .trip-mobile-tabs { display: none; }
 .trip-filter-sheet { max-width: 440px; }
 .trip-filter-head { justify-content: space-between; }
 .trip-filter-head h2 { margin: 0; font-size: 18px; }
@@ -143,4 +144,3 @@
   display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
   color: var(--accent);
 }
-

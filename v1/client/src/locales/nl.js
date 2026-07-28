@@ -216,6 +216,8 @@ export default {
   'trips.filter.reset': 'Opnieuw instellen',
   'trips.filter.show': 'Reizen bekijken',
   'trips.mine': 'Mijn reizen',
+  'trips.available': 'Beschikbaar',
+  'trips.mobile.tabs.aria': 'Kies welke reizen worden getoond',
   'trips.mine.one': 'Mijn reis',
   'trips.mine.empty': 'U hebt nog geen reis gepubliceerd.',
   'trips.others': 'Reizen van anderen',
