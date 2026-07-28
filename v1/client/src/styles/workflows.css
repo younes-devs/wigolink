@@ -189,6 +189,10 @@
   width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
   background: var(--accent-tint); color: #111827;
 }
+:root[data-theme="dark"] .trip-post-route .trip-transport-icon,
+:root[data-theme="dark"] .trip-detail-route .trip-transport-icon {
+  color: #fff;
+}
 .trip-post-body, .operation-main, .saved-trip, .operation-person {
   display: flex; gap: 12px; align-items: center; min-width: 0;
 }

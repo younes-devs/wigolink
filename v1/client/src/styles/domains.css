@@ -640,7 +640,7 @@
 .profile-edit-btn { align-self: flex-start; margin-top: 0; }
 .profile-actions { display: flex; align-items: center; gap: 8px; margin-top: 0; align-self: flex-start; }
 .profile-actions .icon-btn {
-  border-color: var(--ink);
+  border: 1.5px solid var(--ink);
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(22, 24, 29, 0.12);
 }
