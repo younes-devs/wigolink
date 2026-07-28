@@ -122,6 +122,7 @@ test('postgres notifications : append mappe vers notifications', async () => {
 
 test('postgres notifications : list, unread et markAllRead utilisent le scope utilisateur', async () => {
   const calls = [];
+  const now = Date.parse('2026-07-28T12:00:00.000Z');
   const pool = {
     async query(sql, params) {
       calls.push({ sql, params });
@@ -143,19 +144,30 @@ test('postgres notifications : list, unread et markAllRead utilisent le scope ut
       };
     },
   };
-  const repo = createPostgresNotificationRepository({ pool });
+  const repo = createPostgresNotificationRepository({ pool, now: () => now });
 
   const list = await repo.listForUser('u-fatima', { limit: 999 });
   const unread = await repo.unreadCount('u-fatima');
   const changed = await repo.markAllRead('u-fatima');
 
   assert.match(calls[0].sql, /where user_id = \$1/);
-  assert.deepEqual(calls[0].params, ['u-fatima', 100]);
+  assert.match(calls[0].sql, /at >= to_timestamp\(\$2/);
+  assert.deepEqual(calls[0].params, [
+    'u-fatima',
+    now - 10 * 24 * 60 * 60 * 1000,
+    100,
+  ]);
   assert.equal(list[0].id, 'n-1');
   assert.equal(unread, 3);
   assert.equal(changed, 2);
-  assert.deepEqual(calls[1].params, ['u-fatima']);
-  assert.deepEqual(calls[2].params, ['u-fatima']);
+  assert.deepEqual(calls[1].params, [
+    'u-fatima',
+    now - 10 * 24 * 60 * 60 * 1000,
+  ]);
+  assert.deepEqual(calls[2].params, [
+    'u-fatima',
+    now - 10 * 24 * 60 * 60 * 1000,
+  ]);
 });
 
 test('postgres messages : append et listForTransaction mappent les colonnes SQL', async () => {

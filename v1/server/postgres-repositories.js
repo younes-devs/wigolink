@@ -1,4 +1,8 @@
 import pg from 'pg';
+import {
+  notificationCutoff,
+  NOTIFICATION_RETENTION_MS,
+} from './notification-retention.js';
 
 const { Pool } = pg;
 
@@ -64,7 +68,13 @@ export function createPostgresAuditLogRepository({ pool, findUser, publicUser })
   };
 }
 
-export function createPostgresNotificationRepository({ pool }) {
+export function createPostgresNotificationRepository({
+  pool,
+  now = Date.now,
+  retentionMs = NOTIFICATION_RETENTION_MS,
+}) {
+  const cutoff = () => notificationCutoff({ now, retentionMs });
+
   return {
     async append({ userId, txId = null, type = 'transactions', section = null, key = null, params = {}, text = null, at = Date.now() }) {
       const result = await pool.query(
@@ -82,9 +92,10 @@ export function createPostgresNotificationRepository({ pool }) {
         `select id, user_id, tx_id, type, section, key, params, text, read, at
          from notifications
          where user_id = $1
+           and at >= to_timestamp($2 / 1000.0)
          order by at desc
-         limit $2`,
-        [userId, safeLimit]
+         limit $3`,
+        [userId, cutoff(), safeLimit]
       );
       return result.rows.map(fromNotificationRow);
     },
@@ -93,8 +104,10 @@ export function createPostgresNotificationRepository({ pool }) {
       const result = await pool.query(
         `select count(*)::int as count
          from notifications
-         where user_id = $1 and read = false`,
-        [userId]
+         where user_id = $1
+           and read = false
+           and at >= to_timestamp($2 / 1000.0)`,
+        [userId, cutoff()]
       );
       return Number(result.rows[0]?.count || 0);
     },
@@ -103,8 +116,10 @@ export function createPostgresNotificationRepository({ pool }) {
       const result = await pool.query(
         `update notifications
          set read = true
-         where user_id = $1 and read = false`,
-        [userId]
+         where user_id = $1
+           and read = false
+           and at >= to_timestamp($2 / 1000.0)`,
+        [userId, cutoff()]
       );
       return result.rowCount || 0;
     },

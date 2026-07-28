@@ -4,8 +4,20 @@
 // `db.<collection>` sans casser la demo JSON. Les repositories ci-dessous
 // utilisent encore le store JSON, mais leur interface est celle qu'un adaptateur
 // Postgres/Supabase pourra reprendre collection par collection.
+import {
+  isNotificationVisible,
+  NOTIFICATION_RETENTION_MS,
+} from './notification-retention.js';
 
-export function createRepositories({ db, save, newId, findUser, publicUser }) {
+export function createRepositories({
+  db,
+  save,
+  newId,
+  findUser,
+  publicUser,
+  now = Date.now,
+  notificationRetentionMs = NOTIFICATION_RETENTION_MS,
+}) {
   return {
     accountConfirmations: createAccountConfirmationRepository({ db }),
     authResets: createAuthResetRepository({ db }),
@@ -14,7 +26,12 @@ export function createRepositories({ db, save, newId, findUser, publicUser }) {
     customWhitelist: createCustomWhitelistRepository({ db }),
     kyc: createKycRepository({ db, newId, findUser }),
     messages: createMessageRepository({ db, newId }),
-    notifications: createNotificationRepository({ db, newId }),
+    notifications: createNotificationRepository({
+      db,
+      newId,
+      now,
+      retentionMs: notificationRetentionMs,
+    }),
     reviewQueue: createReviewQueueRepository({ db, newId }),
     settings: createSettingsRepository(),
     users: createUserRepository({ db }),
@@ -359,14 +376,19 @@ function createMessageRepository({ db, newId }) {
   };
 }
 
-function createNotificationRepository({ db, newId }) {
+function createNotificationRepository({ db, newId, now, retentionMs }) {
   const ensure = () => {
     db.notifications = db.notifications || [];
     return db.notifications;
   };
 
+  const isVisible = (notification) => isNotificationVisible(notification, {
+    now,
+    retentionMs,
+  });
+
   const sortedForUser = (userId) => ensure()
-    .filter((n) => n.userId === userId)
+    .filter((n) => n.userId === userId && isVisible(n))
     .sort((a, b) => b.at - a.at);
 
   return {
@@ -386,13 +408,15 @@ function createNotificationRepository({ db, newId }) {
     },
 
     unreadCount(userId) {
-      return ensure().filter((n) => n.userId === userId && !n.read).length;
+      return ensure()
+        .filter((n) => n.userId === userId && !n.read && isVisible(n))
+        .length;
     },
 
     markAllRead(userId) {
       let changed = 0;
       for (const n of ensure()) {
-        if (n.userId === userId && !n.read) {
+        if (n.userId === userId && !n.read && isVisible(n)) {
           n.read = true;
           changed += 1;
         }
