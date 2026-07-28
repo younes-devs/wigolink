@@ -154,7 +154,7 @@ export default function TripFeedSimple() {
               <button className="icon-btn" type="button" onClick={() => setFiltersOpen(false)} aria-label={t('trips.filter.close')} title={t('common.close')}><Icon name="x" size={18} /></button>
             </div>
             <div className="trip-filter-sheet-body">
-              <input className="chat-input" autoFocus value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder={t('trips.search.placeholder')} aria-label={t('trips.search.short')} />
+              <input className="chat-input" value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder={t('trips.search.placeholder')} aria-label={t('trips.search.short')} />
               <input className="chat-input" value={draftFilters.from} onChange={(e) => setDraftFilters({ ...draftFilters, from: e.target.value })} placeholder={t('trips.from')} />
               <input className="chat-input" value={draftFilters.to} onChange={(e) => setDraftFilters({ ...draftFilters, to: e.target.value })} placeholder={t('trips.to')} />
               <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label={t('trips.filter.date')} />
