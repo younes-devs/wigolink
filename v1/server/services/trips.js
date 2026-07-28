@@ -11,12 +11,6 @@ export function createTripService({
   save,
   newId,
   today,
-  matchesTrip,
-  listingView,
-  publicUser,
-  findUser,
-  localizeCustoms,
-  customs,
   canonicalizeLocation = (value) => ({
     id: null,
     countryCode: null,
@@ -331,79 +325,6 @@ export function createTripService({
     };
   }
 
-  function mission(user, lang = 'fr') {
-    const trips = db.trips
-      .filter(
-        (trip) =>
-          trip.travelerId === user.id
-          && trip.date >= today(),
-      )
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const openListings = db.listings.filter(
-      (listing) =>
-        listing.status === 'published'
-        && listing.senderId !== user.id,
-    );
-    const localizedCustoms = localizeCustoms(customs, lang);
-    const missions = trips.map((trip) => {
-      const matches = openListings
-        .filter((listing) => matchesTrip(listing, trip))
-        .sort((a, b) => b.travelerPay - a.travelerPay)
-        .map((listing) => ({
-          ...listingView(listing, lang),
-          sender: publicUser(findUser(listing.senderId)),
-        }));
-      const totalPay = matches.reduce(
-        (total, listing) => total + listing.travelerPay,
-        0,
-      );
-      const totalWeight = matches.reduce(
-        (total, listing) => total + listing.weightKg,
-        0,
-      );
-      const totalValue = matches.reduce(
-        (total, listing) => total + listing.valueEur,
-        0,
-      );
-      const corridorKey = trip.from === 'Casablanca'
-        ? 'MA-EU'
-        : 'EU-MA';
-      const customsLimit = trip.from === 'Casablanca' ? 430 : 185;
-      return {
-        trip,
-        matchCount: matches.length,
-        totalPay,
-        totalWeight: Math.round(totalWeight * 10) / 10,
-        remainingKg: Math.max(
-          0,
-          Math.round((trip.capacityKg - totalWeight) * 10) / 10,
-        ),
-        totalValue,
-        customs: {
-          corridor: localizedCustoms[corridorKey],
-          limitEur: customsLimit,
-          overLimit: totalValue > customsLimit,
-        },
-        matchIds: matches.map((listing) => listing.id),
-        topMatches: matches.slice(0, 3),
-      };
-    });
-    return {
-      missions,
-      totals: {
-        trips: missions.length,
-        matches: missions.reduce(
-          (total, item) => total + item.matchCount,
-          0,
-        ),
-        potentialPay: missions.reduce(
-          (total, item) => total + item.totalPay,
-          0,
-        ),
-      },
-    };
-  }
-
   function detail(id, user) {
     const trip = db.trips.find((item) => item.id === id);
     if (!trip) return response(404, { error: 'Trajet introuvable' });
@@ -484,7 +405,6 @@ export function createTripService({
     create,
     detail,
     list,
-    mission,
     mine,
     overview,
     remove,

@@ -6,7 +6,6 @@ import {
   Header,
   Onboarding,
   shouldOnboard,
-  SideRail,
 } from './components/index.js';
 import { ToastProvider } from '../shared/ui/Toast.jsx';
 import { loadAdminTranslations, t } from '../i18n.js';
@@ -33,22 +32,9 @@ const MessagesSimple = lazy(loadMessagesRoute);
 const ConversationDetail = lazy(() => import('../features/messaging/pages/ConversationDetail.jsx'));
 const OperationsSimple = lazy(loadOperationsRoute);
 const OperationDetailSimple = lazy(() => import('../features/operations/pages/OperationDetailSimple.jsx'));
-const Feed = lazy(() => import('../pages/Feed.jsx'));
-const ListingDetail = lazy(() => import('../features/requests/pages/ListingDetail.jsx'));
-const CreateListing = lazy(() => import('../features/requests/pages/CreateListing.jsx'));
-const MyShipments = lazy(() => import('../features/requests/pages/MyShipments.jsx'));
-const Transactions = lazy(() => import('../features/payments/pages/Transactions.jsx'));
-const TransactionDetail = lazy(() => import('../features/payments/pages/TransactionDetail.jsx'));
-const FinanceCenter = lazy(() => import('../features/payments/pages/FinanceCenter.jsx'));
-const DocumentsCenter = lazy(() => import('../features/guidance/pages/DocumentsCenter.jsx'));
-const SupportCenter = lazy(() => import('../features/guidance/pages/SupportCenter.jsx'));
-const ComplianceCenter = lazy(() => import('../features/guidance/pages/ComplianceCenter.jsx'));
-const SenderMatching = lazy(() => import('../features/requests/pages/SenderMatching.jsx'));
-const OffersCenter = lazy(() => import('../features/requests/pages/OffersCenter.jsx'));
 const Profile = lazy(loadProfileRoute);
 const PublicProfile = lazy(() => import('../features/profile/pages/PublicProfile.jsx'));
 const Settings = lazy(() => import('../features/profile/pages/Settings.jsx'));
-const TrustCenter = lazy(() => import('../features/guidance/pages/TrustCenter.jsx'));
 const Admin = lazy(async () => {
   await loadAdminTranslations();
   return import('../features/admin/pages/Admin.jsx');
@@ -163,22 +149,9 @@ export default function App() {
                   <Route path="/enregistres" element={<SavedTrips />} />
                   <Route path="/messages" element={<MessagesSimple />} />
                   <Route path="/messages/:id" element={<ConversationDetail />} />
-                  <Route path="/ancien-feed" element={<Feed />} />
-                  <Route path="/annonce/:id" element={<ListingDetail />} />
-                  <Route path="/envois" element={<MyShipments />} />
-                  <Route path="/envois/nouveau" element={<CreateListing />} />
-                  <Route path="/transactions" element={<Transactions />} />
-                  <Route path="/transactions/:id" element={<TransactionDetail />} />
-                  <Route path="/finance" element={<FinanceCenter />} />
-                  <Route path="/documents" element={<DocumentsCenter />} />
-                  <Route path="/assistance" element={<SupportCenter />} />
-                  <Route path="/conformite" element={<ComplianceCenter />} />
-                  <Route path="/matching" element={<SenderMatching />} />
-                  <Route path="/offres" element={<OffersCenter />} />
                   <Route path="/profil" element={<Profile />} />
                   <Route path="/membres/:id" element={<PublicProfile />} />
                   <Route path="/parametres" element={<Settings />} />
-                  <Route path="/confiance" element={<TrustCenter />} />
                   <Route path="/verification" element={<Kyc />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="*" element={<NotFound />} />
@@ -187,7 +160,6 @@ export default function App() {
             </Routes>
             </Suspense>
           </div>
-          {user && <SideRail user={user} />}
           </div>
           {user && <BottomNav user={user} />}
           {user && onboarding && <Onboarding user={user} onClose={() => setOnboarding(false)} />}

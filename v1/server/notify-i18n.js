@@ -1,11 +1,11 @@
-// Traduction des notifications in-app (suite du pattern i18n serveur de errors.js).
+// Traduction des notifications in-app.
 //
 // Différence clé avec les erreurs API : une notification est PERSISTÉE au moment de
 // l'événement (db.notifications), puis lue plus tard — potentiellement par un compte qui
 // a changé de langue entretemps, ou consultée par un tiers (admin) dans une autre langue.
 // On ne peut donc pas figer le texte en français à la création : notify() stocke une clé
 // de template + des paramètres structurés, et la traduction se fait à la LECTURE
-// (GET /api/notifications) selon req.lang, comme errors.js le fait pour body.error.
+// (GET /api/notifications) selon req.lang.
 //
 // Les notifications déjà persistées avant ce changement n'ont pas de `key` (juste `text`,
 // en français) — translateNotification les laisse passer telles quelles, jamais cassées.
@@ -47,14 +47,9 @@ const TEMPLATES = {
     nl: (p) => `${p.name} heeft een tegenvoorstel verstuurd.`,
   },
   'tx.accepted': {
-    fr: (p) => `${p.name} transporte « ${p.title} ». Paiement séquestré.`,
-    ar: (p) => `${p.name} ينقل « ${p.title} ». الدفع محجوز.`,
-    nl: (p) => `${p.name} vervoert « ${p.title} ». Betaling in bewaring.`,
-  },
-  'tx.sealed': {
-    fr: (p) => `Colis scellé et filmé pour « ${p.title} ». Organisez la remise.`,
-    ar: (p) => `تم ختم الطرد وتصويره لـ « ${p.title} ». نظّم التسليم.`,
-    nl: (p) => `Pakket verzegeld en gefilmd voor « ${p.title} ». Regel de overdracht.`,
+    fr: (p) => `${p.name} transporte « ${p.title} ». Opération confirmée.`,
+    ar: (p) => `${p.name} ينقل « ${p.title} ». تم تأكيد العملية.`,
+    nl: (p) => `${p.name} vervoert « ${p.title} ». Operatie bevestigd.`,
   },
   'tx.pickedUp': {
     fr: () => 'Colis pris en charge par le voyageur — en transit.',
@@ -62,14 +57,14 @@ const TEMPLATES = {
     nl: () => 'Pakket overgenomen door de reiziger — onderweg.',
   },
   'tx.refused': {
-    fr: () => "Le voyageur a refusé le transport (sans pénalité). Votre annonce est republiée et remboursée.",
-    ar: () => 'رفض المسافر النقل (دون عقوبة). أُعيد نشر إعلانك وتم استرداد المبلغ.',
-    nl: () => 'De reiziger heeft het vervoer geweigerd (zonder boete). Uw zoekertje is opnieuw gepubliceerd en terugbetaald.',
+    fr: () => 'Le voyageur a refusé le transport. L’opération est annulée sans pénalité.',
+    ar: () => 'رفض المسافر النقل. أُلغيت العملية دون عقوبة.',
+    nl: () => 'De reiziger heeft het vervoer geweigerd. De operatie is zonder boete geannuleerd.',
   },
   'tx.delivered.traveler': {
-    fr: (p) => `Livraison validée — ${p.amount} € versés sur votre compte.`,
-    ar: (p) => `تم تأكيد التسليم — تم تحويل ${p.amount} € إلى حسابك.`,
-    nl: (p) => `Levering bevestigd — ${p.amount} € gestort op uw rekening.`,
+    fr: () => 'Livraison validée. L’opération est terminée.',
+    ar: () => 'تم تأكيد التسليم. اكتملت العملية.',
+    nl: () => 'Levering bevestigd. De operatie is voltooid.',
   },
   'tx.delivered.sender': {
     fr: () => 'Colis livré et validé par le destinataire. Pensez à noter vos partenaires.',
@@ -77,9 +72,9 @@ const TEMPLATES = {
     nl: () => 'Pakket geleverd en bevestigd door de ontvanger. Vergeet niet uw partners te beoordelen.',
   },
   'dispute.opened': {
-    fr: () => 'Litige ouvert — escrow gelé. Soumettez vos preuves sous 72 h.',
-    ar: () => 'فُتح نزاع — الضمان مجمّد. قدّم أدلتك خلال 72 ساعة.',
-    nl: () => 'Geschil geopend — escrow bevroren. Dien uw bewijzen in binnen 72 u.',
+    fr: () => 'Litige ouvert. Soumettez vos preuves sous 72 h.',
+    ar: () => 'فُتح نزاع. قدّم أدلتك خلال 72 ساعة.',
+    nl: () => 'Geschil geopend. Dien uw bewijzen in binnen 72 u.',
   },
   'chat.message': {
     fr: (p) => `${p.name} vous a envoyé un message.`,

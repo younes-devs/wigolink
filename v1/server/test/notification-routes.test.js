@@ -8,7 +8,6 @@ async function requestNotifications({
   path = '/',
   auth,
   notifications,
-  runMatchingOfferReminders,
   renderNotification,
   save,
 }) {
@@ -16,7 +15,6 @@ async function requestNotifications({
   app.use('/api/notifications', createNotificationsRouter({
     auth,
     notifications,
-    runMatchingOfferReminders,
     renderNotification,
     save,
   }));
@@ -50,7 +48,7 @@ function authenticated(req, _res, next) {
   next();
 }
 
-test('notification routes executent les rappels puis traduisent les 30 dernieres', async () => {
+test('notification routes traduisent les 30 dernieres', async () => {
   const events = [];
   const stored = [
     { id: 'n-2', key: 'second', text: 'Texte stocke' },
@@ -67,9 +65,6 @@ test('notification routes executent les rappels puis traduisent les 30 dernieres
         events.push(['unread', userId]);
         return 2;
       },
-    },
-    async runMatchingOfferReminders(options) {
-      events.push(['reminders', options]);
     },
     renderNotification(lang, notification) {
       events.push(['render', lang, notification.id]);
@@ -89,7 +84,6 @@ test('notification routes executent les rappels puis traduisent les 30 dernieres
     unread: 2,
   });
   assert.deepEqual(events, [
-    ['reminders', { persist: true }],
     ['list', 'u-1', { limit: 30 }],
     ['render', 'nl', 'n-2'],
     ['render', 'nl', 'n-1'],
@@ -107,9 +101,6 @@ test('notification routes marquent tout comme lu avant la sauvegarde', async () 
       async markAllRead(userId) {
         events.push(['mark', userId]);
       },
-    },
-    runMatchingOfferReminders() {
-      assert.fail('les rappels ne doivent pas etre executes');
     },
     renderNotification() {
       assert.fail('aucune notification ne doit etre rendue');
@@ -142,9 +133,6 @@ test('notification routes ne consultent pas le depot si auth refuse', async () =
         repositoryCalls += 1;
         return 0;
       },
-    },
-    runMatchingOfferReminders() {
-      repositoryCalls += 1;
     },
     renderNotification() {
       repositoryCalls += 1;

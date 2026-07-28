@@ -246,7 +246,7 @@ const terms = {
       { id: 'operation', title: '5. Demandes, remise et preuve', ordered: [
         'Un expéditeur envoie une demande pour un trajet et le voyageur peut accepter, refuser ou discuter des conditions dans Wigofly.',
         'Avant la remise, les parties vérifient le contenu, la quantité, les conditions de transport et le lieu de rendez-vous.',
-        'Les confirmations, photos, vidéos de preuve et messages conservés dans Wigofly peuvent être utilisés pour traiter un litige.',
+        "Les confirmations, messages, photos ou documents volontairement transmis et l'historique des événements conservés dans Wigofly peuvent être utilisés pour traiter un litige.",
         "Une remise ou une livraison ne doit être confirmée que lorsqu'elle a effectivement eu lieu.",
       ] },
       { id: 'payment', title: '6. Paiement et frais', paragraphs: [
@@ -266,7 +266,7 @@ const terms = {
         "Wigofly peut retirer un contenu, limiter une fonctionnalité, suspendre un compte ou transmettre les éléments nécessaires aux autorités lorsque la loi l'exige. Une demande de réexamen peut être adressée à {email}.",
       ] },
       { id: 'disputes', title: '9. Litiges et réclamations', paragraphs: [
-        "Un litige doit être ouvert depuis l'opération concernée dès que possible, avec les éléments utiles : photos, vidéo de preuve, messages et explication factuelle. Wigofly peut demander des informations complémentaires et appliquer les mesures temporaires nécessaires à la sécurité du dossier.",
+        "Un litige doit être ouvert depuis l'opération concernée dès que possible, avec les éléments utiles : messages, photos ou documents volontairement transmis et explication factuelle. Wigofly peut demander des informations complémentaires et appliquer les mesures temporaires nécessaires à la sécurité du dossier.",
         "Une décision interne de modération ou d'assistance ne prive jamais un utilisateur de ses droits légaux ni de sa possibilité de saisir les autorités ou juridictions compétentes.",
       ] },
       { id: 'liability', title: '10. Responsabilité', paragraphs: [
@@ -317,7 +317,7 @@ const terms = {
       { id: 'operation', title: '5. Aanvragen, overdracht en bewijs', ordered: [
         'Een verzender stuurt een aanvraag voor een reis; de reiziger kan aanvaarden, weigeren of de voorwaarden in Wigofly bespreken.',
         'Vóór overdracht controleren partijen inhoud, hoeveelheid, vervoersvoorwaarden en ontmoetingsplaats.',
-        'Bevestigingen, foto’s, bewijsvideo’s en berichten in Wigofly kunnen voor een geschil worden gebruikt.',
+        'Bevestigingen, berichten, vrijwillig ingediende foto’s of documenten en de gebeurtenisgeschiedenis in Wigofly kunnen voor een geschil worden gebruikt.',
         'Een overdracht of levering mag alleen worden bevestigd wanneer die werkelijk heeft plaatsgevonden.',
       ] },
       { id: 'payment', title: '6. Betaling en kosten', paragraphs: [
@@ -337,7 +337,7 @@ const terms = {
         'Wigofly kan inhoud verwijderen, functies beperken, accounts schorsen of vereiste elementen aan autoriteiten bezorgen wanneer de wet dit vereist. Herbeoordeling kan via {email} worden gevraagd.',
       ] },
       { id: 'disputes', title: '9. Geschillen en klachten', paragraphs: [
-        'Open een geschil zo snel mogelijk vanuit de betrokken operatie met nuttige elementen: foto’s, bewijsvideo, berichten en feitelijke uitleg. Wigofly kan extra informatie vragen en tijdelijke beveiligingsmaatregelen nemen.',
+        'Open een geschil zo snel mogelijk vanuit de betrokken operatie met nuttige elementen: berichten, vrijwillig ingediende foto’s of documenten en feitelijke uitleg. Wigofly kan extra informatie vragen en tijdelijke beveiligingsmaatregelen nemen.',
         'Een interne moderatie- of ondersteuningsbeslissing ontneemt een gebruiker nooit wettelijke rechten of toegang tot bevoegde autoriteiten en rechtbanken.',
       ] },
       { id: 'liability', title: '10. Aansprakelijkheid', paragraphs: [
@@ -388,7 +388,7 @@ const terms = {
       { id: 'operation', title: '5. الطلبات والتسليم والأدلة', ordered: [
         'يرسل المرسل طلبا لرحلة ويمكن للمسافر القبول أو الرفض أو مناقشة الشروط داخل Wigofly.',
         'قبل التسليم، يتحقق الطرفان من المحتوى والكمية وشروط النقل ومكان اللقاء.',
-        'يمكن استخدام التأكيدات والصور وفيديوهات الإثبات والرسائل المحفوظة في Wigofly لمعالجة نزاع.',
+        'يمكن استخدام التأكيدات والرسائل والصور أو المستندات المقدمة طوعاً وسجل الأحداث المحفوظ في Wigofly لمعالجة النزاع.',
         'لا يجوز تأكيد التسليم أو الوصول إلا بعد حدوثه فعليا.',
       ] },
       { id: 'payment', title: '6. الدفع والرسوم', paragraphs: [
@@ -408,7 +408,7 @@ const terms = {
         'يجوز لـ Wigofly حذف محتوى أو تقييد ميزة أو إيقاف حساب أو إرسال العناصر اللازمة للسلطات عندما يفرض القانون ذلك. يمكن طلب المراجعة عبر {email}.',
       ] },
       { id: 'disputes', title: '9. النزاعات والشكاوى', paragraphs: [
-        'يجب فتح النزاع من العملية المعنية في أقرب وقت مع العناصر المفيدة: صور وفيديو إثبات ورسائل وشرح واقعي. قد يطلب Wigofly معلومات إضافية ويتخذ تدابير مؤقتة لحماية الملف.',
+        'يجب فتح النزاع من العملية المعنية في أقرب وقت مع العناصر المفيدة: الرسائل والصور أو المستندات المقدمة طوعاً وشرح واقعي. قد يطلب Wigofly معلومات إضافية ويتخذ تدابير مؤقتة لحماية الملف.',
         'لا يحرم قرار داخلي للإشراف أو الدعم المستخدم من حقوقه القانونية أو من اللجوء إلى السلطات أو المحاكم المختصة.',
       ] },
       { id: 'liability', title: '10. المسؤولية', paragraphs: [

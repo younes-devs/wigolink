@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import QRCode from 'qrcode';
 import { Icon } from './Icons.jsx';
 import { useKycFaceGuidance } from './kycFaceGuidance.js';
 import { t } from './i18n.js';
@@ -56,93 +54,6 @@ export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, dange
   );
 }
 
-// QR code réel encodant le code de transaction (préfixé pour le distinguer au scan).
-export function QrBlock({ code, caption }) {
-  const [dataUrl, setDataUrl] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    QRCode.toDataURL(`wigofly:${code}`, { width: 220, margin: 1, color: { dark: '#16181d', light: '#ffffff' } })
-      .then((url) => { if (!cancelled) setDataUrl(url); });
-    return () => { cancelled = true; };
-  }, [code]);
-  return (
-    <div className="qr-frame">
-      {dataUrl ? <img src={dataUrl} width={160} height={160} alt={t('common.qrCode', { code })} /> : <div style={{ width: 160, height: 160 }} />}
-      <div className="qr-code-text">{code}</div>
-      {caption && <div className="muted center">{caption}</div>}
-    </div>
-  );
-}
-
-// Scanner caméra (BarcodeDetector natif). Retombe silencieusement sur la saisie
-// manuelle si l'API n'est pas supportée (Safari, contexte non sécurisé…).
-export function QrScanner({ onDetected, onClose }) {
-  const videoRef = useRef(null);
-  const [error, setError] = useState('');
-  const [supported, setSupported] = useState(true);
-
-  useEffect(() => {
-    if (!('BarcodeDetector' in window)) { setSupported(false); return; }
-    let stream, raf, stopped = false;
-    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-
-    (async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if (stopped) { stream.getTracks().forEach((t) => t.stop()); return; }
-        videoRef.current.srcObject = stream;
-        const tick = async () => {
-          if (stopped) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            const hit = codes.find((c) => c.rawValue?.startsWith('wigofly:'));
-            if (hit) { onDetected(hit.rawValue.slice(7)); return; }
-          } catch { /* frame illisible, on retente */ }
-          raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      } catch {
-        setError(t('scanner.no.camera'));
-      }
-    })();
-
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, [onDetected]);
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal scanner-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <Icon name="qr" size={19} />
-          <b>{t('scanner.title')}</b>
-          <button className="pwd-toggle" style={{ position: 'static', marginLeft: 'auto' }} onClick={onClose}>
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-        {!supported && (
-          <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}>
-            <Icon name="alert" size={17} />
-            <span>{t('scanner.unsupported')}</span>
-          </div>
-        )}
-        {supported && error && (
-          <div className="alert alert-warn" style={{ margin: '0 16px 16px' }}><Icon name="alert" size={17} />{error}</div>
-        )}
-        {supported && !error && (
-          <div className="scanner-frame">
-            <video ref={videoRef} autoPlay muted playsInline />
-            <div className="scanner-reticle" />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function TrustBadge({ user }) {
   if (!user) return null;
   return (
@@ -172,32 +83,6 @@ export function Stars({ value, onChange, readOnly = false, size = 26 }) {
   );
 }
 
-export const STATUS_PILLS = {
-  accepted: 'pill-saffron', sealed: 'pill-saffron', in_transit: 'pill-teal',
-  released: 'pill-teal', disputed: 'pill-danger', refunded: 'pill-gray', cancelled: 'pill-gray',
-};
-
-// Message affiché quand une action exige une identité vérifiée — jamais de redirection
-// silencieuse : l'utilisateur voit pourquoi il est bloqué et choisit d'y aller.
-export function KycRequiredNotice() {
-  return (
-    <div className="alert alert-warn" style={{ alignItems: 'center' }}>
-      <Icon name="shieldCheck" size={17} />
-      <span className="grow">{t('kycnotice.text')}</span>
-      <Link to="/verification">
-        <button className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.06)', color: 'inherit' }}>
-          {t('kycnotice.go')}
-        </button>
-      </Link>
-    </div>
-  );
-}
-
-export function StatusPill({ status }) {
-  const pill = STATUS_PILLS[status] || 'pill-gray';
-  return <span className={`pill ${pill}`}>{STATUS_PILLS[status] ? t(`txstatus.${status}`) : status}</span>;
-}
-
 // Demande l'accès caméra — à appeler directement dans le gestionnaire de clic qui
 // ouvre la capture (pas dans un useEffect différé) : Safari iOS et plusieurs
 // navigateurs mobiles n'affichent la boîte de dialogue système d'autorisation que
@@ -208,8 +93,8 @@ export async function requestCameraStream(facing) {
   return navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false });
 }
 
-// Capture photo via caméra in-app exclusivement (PRD KYC §3 : pas d'upload galerie,
-// même règle anti-fraude que la vidéo de scellage). Renvoie un dataURL JPEG redimensionné.
+// Capture photo via caméra in-app exclusivement: pas d'upload galerie pour le KYC.
+// Renvoie un dataURL JPEG redimensionné.
 // `stream` doit être obtenu via requestCameraStream() au moment du clic déclencheur —
 // c'est ce qui fait apparaître automatiquement la demande d'autorisation du téléphone.
 export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError, onCapture, onClose, guide, faceAssist = false }) {

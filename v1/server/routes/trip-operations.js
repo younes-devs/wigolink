@@ -68,7 +68,6 @@ export function createTripOperationsRouter({
       paymentStatus: 'pending',
       escrow: createEscrow({ travelerPay: price, commission }),
       securityCodes: {},
-      sealingVideo: null,
       events: [],
       createdAt: Date.now(),
     };
@@ -167,8 +166,8 @@ export function createTripOperationsRouter({
       member.badges = member.badges || [];
       if (member.completed >= 5 && !member.badges.includes('voyageur-confirme')) member.badges.push('voyageur-confirme');
     }
-    addEvent(tx, 'delivery_code_verified', req.user.id, { proof: 'sender_code', escrowReleased: true });
-    await audit(req.user.id, 'operation_delivery_code_verified', 'transaction', tx.id, { proof: 'sender_code', escrowReleased: true });
+    addEvent(tx, 'delivery_code_verified', req.user.id, { deliveryConfirmed: true });
+    await audit(req.user.id, 'operation_delivery_code_verified', 'transaction', tx.id, { deliveryConfirmed: true });
     await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
     save();
     res.json({ operation: operationView(tx, req.user) });

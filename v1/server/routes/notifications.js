@@ -3,14 +3,12 @@ import { Router } from 'express';
 export function createNotificationsRouter({
   auth,
   notifications,
-  runMatchingOfferReminders,
   renderNotification,
   save,
 }) {
   const router = Router();
 
   router.get('/', auth, async (req, res) => {
-    await runMatchingOfferReminders({ persist: true });
     const mine = (await notifications.listForUser(req.user.id, { limit: 30 }))
       .map((notification) => ({
         ...notification,

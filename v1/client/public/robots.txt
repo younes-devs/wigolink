@@ -1,29 +1,2 @@
-# Wigofly — robots.txt
-# L'application (authentification, feed, transactions, profil, back-office) ne doit
-# jamais être indexée : contenu privé ou vide côté crawler. Seul le site public
-# (landing + pages de contenu) est exploitable. Voir docs/prd-seo.md §5.1.
-
 User-agent: *
-Allow: /decouvrir
-Allow: /comment-ca-marche
-Allow: /envoyer-colis/
-Allow: /produits/
-Allow: /guide/
-Allow: /cgu/
-Allow: /confidentialite/
-Allow: /sitemap.xml
-Allow: /llms.txt
-Allow: /llm.txt
-Allow: /assets/
-Allow: /favicon.ico
-
 Disallow: /
-Disallow: /annonce/
-Disallow: /envois
-Disallow: /transactions
-Disallow: /profil
-Disallow: /verification
-Disallow: /admin
-Disallow: /api/
-
-Sitemap: https://wigofly.app/sitemap.xml

@@ -135,7 +135,6 @@ body {
 }
 .phone:has(.kyc-page) .app-header,
 .phone:has(.kyc-page) .bottom-nav,
-.phone:has(.kyc-page) .side-rail { display: none; }
 .phone:has(.kyc-page) .content { padding-top: 24px; padding-bottom: 24px; }
 .kyc-page { width: 100%; }
 .phone:has(.conversation-detail) .app-header { display: none; }
@@ -387,4 +386,3 @@ body {
 /* Temporalité de la timeline (PRD UI/UX U10) */
 .tl-time { font-size: 11px; font-weight: 550; color: var(--ink-faint); }
 .tl-time-wait { color: var(--amber); background: var(--amber-tint); border-radius: 6px; padding: 1px 7px; }
-

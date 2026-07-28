@@ -27,7 +27,7 @@ function publicDirIndexFallback() {
   };
 }
 
-// HTTPS local requis pour tester la caméra (KYC, vidéo de scellage) depuis un
+// HTTPS local requis pour tester la caméra KYC depuis un
 // téléphone sur le réseau local : getUserMedia est bloqué par les navigateurs sur
 // les origines non sécurisées, sauf localhost. Certificat auto-signé (accepter
 // l'avertissement du navigateur au premier accès) — seulement pour le dev.

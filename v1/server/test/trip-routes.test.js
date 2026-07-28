@@ -93,27 +93,6 @@ test('trip routes transmet lecture et mutation au service', async () => {
   ]);
 });
 
-test('trip routes transmet mission, membre et langue au service', async () => {
-  const calls = [];
-  const response = await requestTrip({
-    path: '/trips/mission',
-    auth: authenticated,
-    trips: {
-      mission(user, lang) {
-        calls.push([user, lang]);
-        return {
-          missions: [],
-          totals: { trips: 0, matches: 0, potentialPay: 0 },
-        };
-      },
-    },
-  });
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body.missions, []);
-  assert.deepEqual(calls, [[{ id: 'u-1' }, 'ar']]);
-});
-
 test('trip routes conserve statut service et protege avant appel', async () => {
   const refused = await requestTrip({
     method: 'PATCH',

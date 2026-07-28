@@ -21,20 +21,5 @@ export function createOperationReadsRouter({
     );
   });
 
-  router.get('/transactions', auth, (req, res) => {
-    res.json(operationReads.transactions(req.user, req.query));
-  });
-
-  router.get('/transactions/:id', auth, (req, res) => {
-    return sendResult(
-      res,
-      operationReads.transaction(req.params.id, req.user),
-    );
-  });
-
-  router.get('/shipments/command-center', auth, (req, res) => {
-    res.json(operationReads.commandCenter(req.user));
-  });
-
   return router;
 }

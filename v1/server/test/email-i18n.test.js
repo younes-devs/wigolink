@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { verificationEmailCopy } from '../email.js';
-import { langMiddleware } from '../errors.js';
+import { langMiddleware } from '../middleware/language.js';
 
 test('emails de verification : contenus complets en francais, neerlandais et arabe', () => {
   for (const lang of ['fr', 'nl', 'ar']) {

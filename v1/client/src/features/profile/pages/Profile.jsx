@@ -93,7 +93,7 @@ export default function Profile() {
             <div style={{ marginTop: 8 }}><TrustBadge user={user} /></div>
           </div>
           <div className="profile-actions">
-            <Link className="icon-btn" to="/parametres" title={t('settings.title')} aria-label={t('settings.title')}>
+            <Link className="icon-btn profile-settings-btn" to="/parametres" title={t('settings.title')} aria-label={t('settings.title')}>
               <Icon name="settings" size={18} />
             </Link>
             <button className="btn btn-ghost btn-sm profile-edit-btn" onClick={() => setEditing(!editing)}>

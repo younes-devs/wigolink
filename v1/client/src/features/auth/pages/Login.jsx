@@ -130,9 +130,9 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-shell">
         <aside className="auth-hero">
-          <a href="/decouvrir/" className="brand-link auth-hero-brand">
+          <div className="brand-link auth-hero-brand">
             <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
-          </a>
+          </div>
 
           <AuthJourneyLoop t={t} />
 
@@ -141,7 +141,7 @@ export default function Login() {
 
           <div className="auth-hero-badges">
             <span><Icon name="shieldCheck" size={14} />{t('auth.badge.verified')}</span>
-            <span><Icon name="camera" size={14} />{t('auth.badge.video')}</span>
+            <span><Icon name="message" size={14} />{t('auth.badge.chat')}</span>
           </div>
         </aside>
 

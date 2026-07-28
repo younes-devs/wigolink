@@ -14,7 +14,7 @@ export function shouldOnboard(user) {
 }
 
 const STEPS = [
-  { icon: 'plane', k: 'escrow' },
+  { icon: 'plane', k: 'trips' },
   { icon: 'chat', k: 'video' },
   { icon: 'repeat', k: 'validation' },
   { icon: 'star', k: 'pay' },

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ERRORS, PATTERNS } from '../server/errors.js';
+import { ERRORS, PATTERNS } from '../server/middleware/language.js';
 import { TEMPLATES } from '../server/notify-i18n.js';
 import { CUSTOMS } from '../server/rules.js';
 import baseFr from '../client/src/locales/fr.js';
@@ -253,7 +253,7 @@ for (const [corridorId, corridor] of Object.entries(CUSTOMS)) {
 }
 for (const [message, translations] of Object.entries(ERRORS)) {
   for (const lang of ['nl', 'ar']) {
-    if (!translations[lang]) fail(`server/errors.js: traduction ${lang} absente pour ${message}`);
+    if (!translations[lang]) fail(`server/middleware/language.js: traduction ${lang} absente pour ${message}`);
   }
 }
 for (const match of serverSource.matchAll(/\{\s*key:\s*['"]([^'"]+)['"]/g)) {
@@ -270,24 +270,6 @@ for (const match of systemBlock.matchAll(/^\s*([a-z_]+)\s*:/gm)) {
   const key = `messages.system.${match[1]}`;
   for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr })) {
     if (!(key in dict)) fail(`${lang}: événement système sans traduction: ${key}`);
-  }
-}
-
-const preflightKeys = [
-  'kyc', 'required', 'photos', 'customs', 'value', 'weight', 'pay', 'limit', 'route', 'dates', 'category',
-].map((id) => `preflight.check.${id}`).concat([
-  'preflight.check.review.required',
-  'preflight.check.review.required.detail',
-  'preflight.check.review.direct',
-  'preflight.check.customsValue.over',
-  'preflight.check.customsValue.within',
-  'preflight.check.recipient.unknown',
-  'preflight.check.recipient.known',
-  'preflight.check.recipient.optional',
-]);
-for (const key of preflightKeys) {
-  for (const [lang, dict] of Object.entries(dictionaries)) {
-    if (!(key in dict)) fail(`${lang}: contrôle avant publication sans traduction: ${key}`);
   }
 }
 

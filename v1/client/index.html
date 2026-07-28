@@ -3,9 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- L'app (connexion + écrans authentifiés) n'est jamais du contenu public :
-         noindex explicite, cf. docs/prd-seo.md §1 et §5.1. Le SEO vit dans les
-         pages statiques de v1/client/public/ (landing, guides, produits). -->
+    <!-- The authenticated application is private and must not be indexed. -->
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/png" href="/assets/favicon-32.png" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
@@ -14,7 +12,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Wigofly" />
-    <!-- Thème (U9) + langue/RTL (U14) : appliqués avant le rendu pour éviter tout flash. -->
+    <!-- Apply theme and language before rendering to avoid a visual flash. -->
     <script>
       (function () {
         var t = localStorage.getItem('wigofly_theme');

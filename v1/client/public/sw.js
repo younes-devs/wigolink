@@ -1,8 +1,8 @@
-// Service worker minimal (PRD UI/UX U8) — cache l'app-shell statique pour un démarrage
+// Service worker minimal: cache l'app-shell statique pour un démarrage
 // rapide et une tolérance hors-ligne de base. On ne met JAMAIS en cache /api/* : les
-// données (transactions, escrow, KYC) doivent toujours venir du serveur, jamais d'un
+// données (opérations, messages, KYC) doivent toujours venir du serveur, jamais d'un
 // cache potentiellement périmé.
-const CACHE = 'wigofly-shell-v2';
+const CACHE = 'wigofly-shell-v3';
 const SHELL = [
   '/',
   '/manifest.fr.webmanifest',

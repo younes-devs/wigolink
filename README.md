@@ -1,93 +1,68 @@
 # Wigofly
 
-[![Tests](https://github.com/crypt0pwn/cloudkilo/actions/workflows/test.yml/badge.svg)](https://github.com/crypt0pwn/cloudkilo/actions/workflows/test.yml)
+Wigofly met en relation des voyageurs et des expediteurs pour transporter des
+documents ou des colis sur un trajet publie.
 
-Plateforme de transport collaboratif Belgique/France ↔ Maroc — mise en relation sécurisée entre expéditeurs et voyageurs, avec paiement séquestré, vérification d'identité et preuve vidéo.
+Le produit actif suit ce parcours:
 
-Voir [docs/prd.md](docs/prd.md) pour le PRD complet et [docs/plan-projet.md](docs/plan-projet.md) pour le plan de projet et le phasage.
+1. un voyageur publie son trajet et sa capacite;
+2. un expediteur choisit document ou colis et envoie une demande;
+3. le voyageur accepte ou refuse;
+4. l'expediteur confirme le paiement;
+5. deux codes temporaires securisent la remise et la livraison;
+6. chaque partie peut suivre l'operation, discuter et ouvrir un litige.
 
-## Structure du dépôt
+Le paiement est encore simule. Aucun encaissement reel ni service de sequestre
+n'est execute tant qu'un prestataire agree n'a pas ete integre.
 
-```
-docs/       Documents de cadrage (PRD, plan de projet, notes juridiques)
-legal/      Suivi des décisions juridiques de la Phase A (statut, CGU, ONSSA, paiement)
-v0/         V0 "Concierge" — landing page + formulaire (pas d'app)
-v1/         V1 MVP — application mobile (à démarrer après validation V0 + Phase A)
-```
+## Application
 
-## État actuel
+Le code deployable se trouve dans [`v1`](v1).
 
-V1 MVP fonctionnel (web app responsive, mode démo) — le volet juridique (Phase A) reste à traiter avant tout lancement public.
+- Frontend: React 19, React Router et Vite
+- API: Express expose sous `/api`
+- Donnees: PostgreSQL sur Supabase
+- Emails transactionnels: Resend
+- Deploiement: Vercel, frontend et fonction API sur le meme domaine
+- Temps reel: Supabase Realtime pour la messagerie
+- KYC: capture guidee avec MediaPipe, validation administrative
 
-## Lancer l'app (v1)
+## Demarrage local
 
-Prérequis : Node ≥ 20 (installé ici via nvm).
+Prerequis: Node.js 24 et une copie de `v1/.env.example` nommee
+`v1/.env.local`.
 
-```bash
+```text
 cd v1
 npm install
-npm run dev     # API sur :4517 + web sur :5173
+npm run dev
 ```
 
-Ouvrir http://localhost:5173. Comptes de démo (mot de passe : `demo1234`) :
+Le client est disponible sur `http://localhost:5173` et l'API locale sur le
+port `4517`.
 
-| Rôle | Email |
-|---|---|
-| Fatima — expéditrice (Casablanca) | `fatima@demo.wigofly.app` |
-| Karim — voyageur (Bruxelles) | `karim@demo.wigofly.app` |
-| Mehdi — destinataire (Bruxelles) | `mehdi@demo.wigofly.app` |
-| Admin — back-office | `admin@demo.wigofly.app` |
+## Verification
 
-Authentification complète : inscription email + mot de passe (hash scrypt), vérification
-d'email par code à 6 chiffres (aléatoire, jamais prévisible — affiché à l'écran uniquement en
-mode `DEMO=true`, faute de prestataire email branché), connexion Google (simulée), mot de passe
-oublié (même mécanisme de code, invalide les sessions existantes), déconnexion serveur,
-anti-brute-force sur le login.
+Depuis `v1`:
 
-Parcours complet : Fatima publie un envoi (photos obligatoires + liste blanche + écran douane) → l'annonce apparaît dans le feed des voyageurs dont le **trajet déclaré** correspond (sens, dates, capacité kg) → Karim accepte (formation obligatoire au premier transport, puis escrow séquestré) → Fatima filme le scellage (caméra in-app) → double validation QR à la remise → transit (récap douane) → double validation à la livraison → escrow libéré → notation. Notifications in-app à chaque transition (cloche dans l'en-tête). Litiges, détection de désintermédiation dans le chat, zone grise et arbitrage sont gérés dans le back-office (onglet Admin).
-
-**Mode test intégré** : bouton flottant (étincelles, en bas à droite) pour basculer de
-compte en un clic ou créer un utilisateur jetable ; boutons « Remplir (test) » sur les
-formulaires d'annonce et d'inscription ; « Code auto (test) » pour les validations QR.
-Désactivable avec `DEMO=false` côté serveur.
-
-Le récapitulatif douane est mis en cache localement dès son premier chargement (localStorage) et
-reste consultable sans réseau — avec un bandeau explicite « hors ligne » — plus un export PDF
-téléchargeable en un clic.
-
-**Simulé en démo (prestataires réels requis en prod)** : envoi d'emails (codes affichés à l'écran), OAuth Google (sélecteur simulé), escrow (Mangopay/Stripe Connect), QR scannables. Le KYC est un vrai flux manuel (soumission + revue admin), voir [docs/prd-kyc.md](docs/prd-kyc.md).
-
-## Tests
-
-```bash
-cd v1
+```text
+npm run check:i18n
 npm test
+npm run build
 ```
 
-Suite d'intégration boîte noire (`node:test`, aucune dépendance ajoutée) : démarre une vraie
-instance de l'API sur un port et un fichier de données dédiés (jamais le `data.json` de dev/démo),
-et rejoue les scénarios critiques — connexion, IDOR, auto-acceptation, liste noire, parcours complet
-annonce → escrow → scellage → double validation → livraison → notation, dashboard fraude, anti
-brute-force, KYC, litiges, promotion zone grise → liste blanche, plafonds progressifs, refus sans
-pénalité, détection de fuite en messagerie. Lancée automatiquement sur chaque push/PR vers `main`
-(voir `.github/workflows/test.yml`).
+Avant une publication, executer aussi:
 
-## Tester sur téléphone (accès caméra)
-
-Les navigateurs bloquent l'accès caméra (`getUserMedia`) sur les origines non sécurisées —
-seuls `https://` et `http://localhost` sont autorisés. Pour tester le KYC ou la vidéo de
-scellage depuis un téléphone sur le même réseau Wi-Fi, il faut donc servir l'app en HTTPS :
-
-```bash
-cd v1
-mkdir -p .cert
-openssl req -x509 -newkey rsa:2048 -keyout .cert/key.pem -out .cert/cert.pem \
-  -days 825 -nodes -subj "/CN=wigofly-dev" \
-  -addext "subjectAltName=IP:<IP_DE_TON_PC>,IP:127.0.0.1,DNS:localhost"
+```text
+npm run audit:production
 ```
 
-Remplace `<IP_DE_TON_PC>` par l'IP locale de ta machine (`hostname -I`). `npm run dev`
-détecte automatiquement `v1/.cert/` et bascule Vite en HTTPS. Ouvre ensuite
-`https://<IP_DE_TON_PC>:5173` depuis le téléphone — le navigateur affiche un avertissement
-de certificat non fiable (normal, c'est un certificat auto-signé de dev) : accepter/continuer
-une fois suffit, puis la demande d'autorisation caméra fonctionne normalement.
+## Documentation
+
+- [`v1/docs/ARCHITECTURE.md`](v1/docs/ARCHITECTURE.md): organisation et flux actifs
+- [`v1/docs/DEPLOYMENT.md`](v1/docs/DEPLOYMENT.md): configuration Vercel, Supabase et Resend
+- [`v1/docs/OPERATIONS.md`](v1/docs/OPERATIONS.md): controles, migrations et exploitation
+- [`v1/docs/data-sources.md`](v1/docs/data-sources.md): provenance des donnees geographiques
+
+Les anciens PRD et espaces de coordination ont ete retires. Leur historique
+reste consultable dans Git.

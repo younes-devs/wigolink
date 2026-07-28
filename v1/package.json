@@ -35,9 +35,7 @@
     "@supabase/supabase-js": "^2.110.8",
     "cors": "^2.8.6",
     "express": "^4.22.2",
-    "jspdf": "^4.2.1",
     "pg": "^8.22.0",
-    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.1"

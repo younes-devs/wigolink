@@ -40,9 +40,6 @@
   .support-case-body .btn { justify-content: center; }
   .support-action b, .support-action span { white-space: normal; }
   .support-dispute-note span { white-space: normal; }
-  .ops-offer-row { align-items: flex-start; }
-  .ops-offer-row b, .ops-offer-row small { white-space: normal; }
-  .ops-offer-meta { max-width: 88px; }
   .compliance-action b, .compliance-action span,
   .compliance-listing b, .compliance-listing span,
   .compliance-category b, .compliance-category span { white-space: normal; }
@@ -73,16 +70,9 @@
   .content { padding: 24px 24px calc(112px + env(safe-area-inset-bottom)); }
   .notif-panel { right: max(12px, calc((100vw - min(100vw, 620px)) / 2 + 24px)); }
   .stat-grid { grid-template-columns: repeat(4, 1fr); }
-  .preflight-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ops-metrics { grid-template-columns: repeat(4, 1fr); }
   .ops-task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash-metrics { grid-template-columns: repeat(4, 1fr); }
-  .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ship-command-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .shipment-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .shipment-card { display: flex; flex-direction: column; }
-  .shipment-card .list-row.mt { margin-top: auto; padding-top: 12px; }
   .finance-hero { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .finance-action-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .docs-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -157,16 +147,6 @@
   .devbar-fab { right: 24px; bottom: 24px; }
   .devbar-panel { right: 24px; bottom: 78px; }
   .chat-box { max-height: 420px; }
-}
-
-/* Très grand écran (≥1200px) : panneau contextuel à droite */
-@media (min-width: 1200px) {
-  .side-rail {
-    display: block; width: 300px; flex: 0 0 300px;
-    padding: 36px 24px 60px 0;
-    position: sticky; top: 0; align-self: flex-start;
-    max-height: 100vh; overflow-y: auto;
-  }
 }
 
 /* Desktop non connecté : pas de sidebar, page d'auth centrée */
@@ -453,9 +433,9 @@
 /* Transitions d'entrée */
 .content > *:not(.step-dots) { animation: content-in 0.22s ease both; }
 @keyframes content-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.card, .stat, .rail-card { animation: card-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.card, .stat { animation: card-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes card-in { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
-/* Célébration à la libération de l'escrow (PRD UI/UX U16) */
+/* Confirmation visuelle à la fin d'une opération. */
 .celebrate {
   position: fixed; inset: 0; z-index: 70; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
@@ -491,7 +471,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .content > *, .card, .stat, .rail-card, .toast, .skel { animation: none !important; }
+  .content > *, .card, .stat, .toast, .skel { animation: none !important; }
   .bottom-nav, .bottom-nav a, .bottom-nav-label { transition: none !important; }
   .celebrate-burst { display: none; }
   .celebrate-check, .celebrate-text { animation: none !important; }
@@ -542,7 +522,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @keyframes boot-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 .boot-spinner { width: 22px; height: 22px; border-color: rgba(10,108,245,0.18); border-top-color: var(--accent); }
 
-/* Statut de géolocalisation au scellage (PRD §3.2) */
 .geo-status {
   display: flex; align-items: center; gap: 6px;
   font-size: 12px; color: var(--ink-soft); font-weight: 550;
@@ -1252,8 +1231,7 @@ body:has(.auth-page) {
   border-color: var(--header-border);
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
-:root[data-theme="dark"] .card,
-:root[data-theme="dark"] .rail-card {
+:root[data-theme="dark"] .card {
   border-color: var(--glass-border);
 }
 :root[data-theme="dark"] .pill-gray,
@@ -1265,12 +1243,8 @@ body:has(.auth-page) {
 :root[data-theme="dark"] .notif-tabs,
 :root[data-theme="dark"] .geo-status,
 :root[data-theme="dark"] .tabs,
-:root[data-theme="dark"] .offer-history span,
 :root[data-theme="dark"] .stepper-dot,
-:root[data-theme="dark"] .trust-progress > div,
-:root[data-theme="dark"] .rail-progress,
 :root[data-theme="dark"] .kyc-decision-box,
-:root[data-theme="dark"] .listing-photo,
 :root[data-theme="dark"] .policy-table th {
   background: var(--neutral-fill);
 }
@@ -1284,10 +1258,6 @@ body:has(.auth-page) {
 :root[data-theme="dark"] .google-account:hover,
 :root[data-theme="dark"] .quiz-option:hover {
   background: var(--neutral-fill-strong);
-}
-:root[data-theme="dark"] .preflight-check,
-:root[data-theme="dark"] .rail-corridor-stats > div {
-  background: var(--surface-raised);
 }
 :root[data-theme="dark"] .profile-avatar-wrap .avatar,
 :root[data-theme="dark"] .avatar-edit {

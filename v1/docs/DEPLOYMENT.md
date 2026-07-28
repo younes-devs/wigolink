@@ -27,7 +27,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 10. Definir ensuite `RELATIONAL_MESSAGE_READS=true` dans Vercel. La liste des conversations et les pages de messages seront alors lues depuis les tables indexees `wigofly_conversations` et `messages`. Les ecritures continuent de se synchroniser dans la meme transaction que l'etat historique.
 11. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
 12. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
-11. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement et messagerie depuis le domaine final.
+13. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, simulation de paiement et messagerie depuis le domaine final.
 
 ## Gate de securite
 
@@ -37,7 +37,7 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 
 ## Base de donnees
 
-La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de transaction, notifications et journal d'audit sont des tables PostgreSQL indexees, donc elles ne chargent plus le document JSON global a chaque consultation. Le schema comprend aussi les tables relationnelles indexees pour utilisateurs, trajets, annonces, operations, favoris, conversations, litiges, KYC et offres de matching. La migration idempotente `npm run migrate:relational` recopie les donnees existantes vers ces tables avant le basculement progressif des routes. Le fichier `server/data.json` reste reserve au developpement local.
+La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de conversation, notifications et journaux d'audit sont stockes dans des tables PostgreSQL indexees afin d'eviter le chargement du document JSON global a chaque consultation. Le schema relationnel couvre les utilisateurs, trajets, operations, favoris, conversations, litiges et dossiers KYC. Les tables d'annonces et d'offres de matching sont conservees uniquement pour les dossiers historiques et l'administration. La migration idempotente `npm run migrate:relational` recopie les donnees existantes vers ces tables avant le basculement progressif des routes. Le fichier `server/data.json` reste reserve au developpement local.
 
 ## Medias de messagerie
 

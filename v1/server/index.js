@@ -47,18 +47,13 @@ import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
 import { createTripOperationsRouter } from './routes/trip-operations.js';
-import { createListingsRouter } from './routes/listings.js';
-import { createMatchingOffersRouter } from './routes/matching-offers.js';
 import { createOperationReadsRouter } from './routes/operation-reads.js';
 import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMemberOverviewRouter } from './routes/member-overview.js';
-import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
 import { createAdminActionsRouter } from './routes/admin-actions.js';
-import { createTransactionCommunicationsRouter } from './routes/transaction-communications.js';
 import { createAdminFraudRouter } from './routes/admin-fraud.js';
 import { createLocationsRouter } from './routes/locations.js';
-import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
@@ -68,22 +63,17 @@ import { createConversationInboxService } from './services/conversation-inbox.js
 import { createConversationMessageService } from './services/conversation-messages.js';
 import { createMessageMediaService } from './services/message-media.js';
 import { createTripService } from './services/trips.js';
-import { createListingService } from './services/listings.js';
-import { createMatchingOfferService } from './services/matching-offers.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
 import { createPublicProfileService } from './services/public-profiles.js';
 import { createMemberOverviewService } from './services/member-overview.js';
-import { createGuidanceCenterService } from './services/guidance-centers.js';
 import { createAdminActionService } from './services/admin-actions.js';
-import { createTransactionCommunicationService } from './services/transaction-communications.js';
 import { createAdminFraudService } from './services/admin-fraud.js';
 import { migrateInlineMessageMedia } from './migrate-message-media.js';
 import {
   canonicalizeLocation,
   findLocationById,
   locationCatalogStats,
-  locationMatches,
   normalizeLocationText,
   suggestLocations,
 } from './location-search.js';
@@ -174,7 +164,6 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   reminders: true,
   security: true,
 };
-const OFFER_REMINDER_MS = 6 * 3600e3;
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const REMEMBER_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10);
@@ -342,35 +331,6 @@ const notify = createNotificationService({
   renderNotification,
 });
 
-function matchingOfferWaitingUser(offer) {
-  if (offer.status === 'pending_traveler') return offer.travelerId;
-  if (offer.status === 'countered_sender') return offer.senderId;
-  return null;
-}
-
-let runMatchingOfferReminders;
-const matchingOfferService = createMatchingOfferService({
-  db,
-  matchesTrip,
-  publicUser,
-  findUser,
-  positiveNumber,
-  notify,
-  save,
-  newId,
-  runReminders: (...args) => runMatchingOfferReminders(...args),
-});
-
-runMatchingOfferReminders = createMatchingOfferReminderJob({
-  db,
-  normalizeMatchingOffers: matchingOfferService.normalizeAll,
-  normalizeMatchingOffer: matchingOfferService.normalize,
-  matchingOfferWaitingUser,
-  notify,
-  save,
-  reminderMs: OFFER_REMINDER_MS,
-});
-
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
 function validPhotos(photos) {
   if (!Array.isArray(photos)) return false;
@@ -436,7 +396,6 @@ function slugify(s) {
     .slice(0, 40) || 'produit';
 }
 
-const code6 = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 // Nombre positif (ou nul si allowZero) — rejette NaN, chaînes non numériques et valeurs négatives.
 function positiveNumber(v, { allowZero = false } = {}) {
@@ -636,7 +595,6 @@ app.use('/api/profile', createAccountPrivacyRouter({
 app.use('/api/notifications', createNotificationsRouter({
   auth,
   notifications: repositories.notifications,
-  runMatchingOfferReminders,
   renderNotification,
   save,
 }));
@@ -655,15 +613,6 @@ app.use('/api/rules', createRulesRouter({
   localizeCategory,
   localizeCustoms,
 }));
-
-function localizedListingView(listing, lang = 'fr') {
-  if (!listing) return listing;
-  const category = combinedWhitelist().find((item) => item.id === listing.categoryId)
-    || BLACKLIST.find((item) => item.id === listing.categoryId);
-  return category
-    ? { ...listing, categoryLabel: localizeCategory(category, lang).label }
-    : { ...listing };
-}
 
 function localeForLang(lang) {
   return lang === 'nl' ? 'nl-BE' : lang === 'ar' ? 'ar-MA' : 'fr-BE';
@@ -689,12 +638,6 @@ const tripService = createTripService({
   save,
   newId,
   today: TODAY_ISO,
-  matchesTrip,
-  listingView: localizedListingView,
-  publicUser,
-  findUser,
-  localizeCustoms,
-  customs: CUSTOMS,
   canonicalizeLocation,
 });
 
@@ -709,14 +652,6 @@ app.use('/api', createTripsRouter({
   auth,
   trips: tripService,
 }));
-
-// Compatibilité annonce ↔ trajet : même sens, fenêtre de dates qui contient la date du vol, poids ≤ capacité.
-function matchesTrip(listing, trip) {
-  return locationMatches(listing.from, trip.from, { locationId: listing.fromLocationId })
-    && locationMatches(listing.to, trip.to, { locationId: listing.toLocationId })
-    && listing.dateFrom <= trip.date && trip.date <= listing.dateTo
-    && (!listing.weightKg || listing.weightKg <= trip.capacityKg);
-}
 
 function tripPostView(trip, user = null) {
   const traveler = findUser(trip.travelerId);
@@ -1246,56 +1181,14 @@ app.use('/api', createConversationInboxRouter({
   inbox: conversationInbox,
 }));
 
-const listingService = createListingService({
-  db,
-  matchesTrip,
-  listingView: localizedListingView,
-  publicUser,
-  findUser,
-  validPhotos,
-  positiveNumber,
-  slugify,
-  evaluateCategory: evaluateCategoryDynamic,
-  combinedWhitelist,
-  localizeCategory,
-  localizeCustoms,
-  customs: CUSTOMS,
-  reviewQueue: repositories.reviewQueue,
-  auditChange,
-  save,
-  newId,
-});
-
-app.use('/api', createListingsRouter({
-  auth,
-  listings: listingService,
-}));
-
-app.use('/api', createMatchingOffersRouter({
-  auth,
-  matchingOffers: matchingOfferService,
-}));
-
-// ---------- Transactions (machine à états) ----------
-// accepted → sealed → in_transit → delivered → released | disputed
+// ---------- Operations ----------
 const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
 
 const memberOverviewService = createMemberOverviewService({
   db,
-  publicUser,
-  findUser,
   isParty: isPartyToTx,
   closedStatuses: CLOSED_STATUSES,
   unreadConversationCount,
-  flaggedMessagesRepository: repositories.messages,
-  kycUserView,
-  runMatchingOfferReminders,
-  transactionView: txView,
-  matchesTrip,
-  normalizeMatchingOffer: matchingOfferService.normalize,
-  notificationsRepository: repositories.notifications,
-  renderNotification,
-  today: TODAY_ISO,
 });
 
 app.use('/api', createMemberOverviewRouter({
@@ -1331,165 +1224,12 @@ const operationReadService = createOperationReadService({
   isClosedStatus: (status) => CLOSED_STATUSES.includes(status),
   isParty: isPartyToTx,
   operationView,
-  transactionView: txView,
 });
 
 app.use('/api', createOperationReadsRouter({
   auth,
   operationReads: operationReadService,
 }));
-
-function assertTravelerCanAccept(user, listing) {
-  if (!user) return { status: 404, body: { error: 'Voyageur introuvable' } };
-  if (user.kycStatus !== 'verified')
-    return { status: 403, body: { error: 'Vérification d\'identité requise', needsKyc: true } };
-  if (!user.trainingDone && !user.isAdmin)
-    return { status: 403, body: { error: 'Formation voyageur requise', needsTraining: true } };
-  if (!listing || listing.status !== 'published')
-    return { status: 400, body: { error: 'Annonce indisponible' } };
-  if (listing.senderId === user.id)
-    return { status: 400, body: { error: 'Vous ne pouvez pas transporter votre propre annonce' } };
-  const active = db.transactions.filter(
-    (t) => t.travelerId === user.id && !['released', 'refunded', 'cancelled'].includes(t.status)
-  );
-  if (active.length >= user.maxActive)
-    return { status: 400, body: { error: `Plafond atteint : ${user.maxActive} transaction(s) active(s) max` } };
-  return null;
-}
-
-async function acceptListingWithTraveler(listing, traveler, offer = null) {
-  if (offer?.offeredPay) listing.travelerPay = offer.offeredPay;
-  listing.status = 'matched';
-  const commission = Math.round(listing.travelerPay * listing.commissionRate * 100) / 100;
-  const total = listing.travelerPay + commission;
-  const tx = {
-    id: newId('tx'), listingId: listing.id, senderId: listing.senderId,
-    travelerId: traveler.id, recipientId: listing.recipientId || listing.senderId,
-    status: 'accepted',
-    escrow: createEscrow({ travelerPay: listing.travelerPay, commission }),
-    pickupCode: code6(), deliveryCode: code6(),
-    sealingVideo: null, events: [], createdAt: Date.now(),
-  };
-  addEvent(tx, 'accepted', traveler.id, { escrowHeld: total, offerId: offer?.id || null });
-  await notify([tx.senderId, tx.recipientId !== tx.senderId ? tx.recipientId : null], { key: 'tx.accepted', params: { name: traveler.name, title: listing.title } }, tx.id, 'transactions', 'suivi');
-  db.transactions.push(tx);
-  for (const o of db.matchingOffers || []) {
-    matchingOfferService.normalize(o);
-    if (o.listingId !== listing.id) continue;
-    if (offer && o.id === offer.id) {
-      o.status = 'accepted';
-      o.respondedAt = Date.now();
-      o.txId = tx.id;
-    } else if (['pending', 'pending_traveler', 'countered_sender'].includes(o.status)) {
-      o.status = 'closed';
-      o.respondedAt = Date.now();
-    }
-  }
-  return tx;
-}
-
-// Acceptation par le voyageur → escrow séquestré immédiatement (PRD §2.3)
-app.post('/api/listings/:id/accept', auth, async (req, res) => {
-  const listing = db.listings.find((l) => l.id === req.params.id);
-  const blocked = assertTravelerCanAccept(req.user, listing);
-  if (blocked) return res.status(blocked.status).json(blocked.body);
-  const tx = await acceptListingWithTraveler(listing, req.user);
-  save();
-  res.json({ transaction: txView(req.user)(tx) });
-});
-
-app.post('/api/matching-offers/:id/accept', auth, async (req, res) => {
-  const offer = matchingOfferService.normalizeAndSave(
-    (db.matchingOffers || []).find((o) => o.id === req.params.id),
-  );
-  if (!offer || ![offer.travelerId, offer.senderId].includes(req.user.id))
-    return res.status(404).json({ error: 'Proposition introuvable' });
-  if (!['pending_traveler', 'countered_sender'].includes(offer.status))
-    return res.status(400).json({ error: 'Cette proposition n est plus active' });
-  if (offer.status === 'pending_traveler' && offer.travelerId !== req.user.id)
-    return res.status(403).json({ error: 'En attente de la réponse du voyageur' });
-  if (offer.status === 'countered_sender' && offer.senderId !== req.user.id)
-    return res.status(403).json({ error: 'En attente de la réponse de l expéditeur' });
-  const listing = db.listings.find((l) => l.id === offer.listingId);
-  const traveler = findUser(offer.travelerId);
-  const blocked = assertTravelerCanAccept(traveler, listing);
-  if (blocked) return res.status(blocked.status).json(blocked.body);
-  offer.history.push({ by: req.user.id, type: 'accepted', pay: offer.offeredPay, message: '', at: Date.now() });
-  const tx = await acceptListingWithTraveler(listing, traveler, offer);
-  save();
-  res.json({ offer, transaction: txView(req.user)(tx) });
-});
-
-// Vidéo de scellage (PRD §3.2) — caméra in-app uniquement, horodatée
-app.post('/api/transactions/:id/sealing-video', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || t.status !== 'accepted') return res.status(400).json({ error: 'Étape invalide' });
-  if (t.senderId !== req.user.id) return res.status(403).json({ error: "Seul l'expéditeur filme le scellage" });
-  if (!req.body?.dataUrl && !(DEMO && req.body?.simulated)) return res.status(400).json({ error: 'Video de scellage requise' });
-  t.sealingVideo = {
-    dataUrl: req.body.dataUrl || null, simulated: DEMO && !!req.body.simulated,
-    recordedAt: Date.now(), geo: req.body.geo || null, txCode: t.id,
-  };
-  t.status = 'sealed';
-  addEvent(t, 'sealed', req.user.id, { simulated: DEMO && !!req.body.simulated });
-  await notify([t.travelerId], { key: 'tx.sealed', params: { title: db.listings.find((l) => l.id === t.listingId)?.title } }, t.id, 'shipments', 'actions');
-  save();
-  res.json({ transaction: txView(req.user)(t) });
-});
-
-// Double validation remise : le voyageur saisit le code présenté par l'expéditeur (PRD §3.4)
-app.post('/api/transactions/:id/confirm-pickup', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || t.status !== 'sealed') return res.status(400).json({ error: 'Étape invalide' });
-  if (t.travelerId !== req.user.id) return res.status(403).json({ error: 'Seul le voyageur valide la prise en charge' });
-  if ((req.body.code || '').toUpperCase() !== t.pickupCode)
-    return res.status(400).json({ error: 'Code invalide — scannez le QR de l\'expéditeur' });
-  t.status = 'in_transit';
-  addEvent(t, 'in_transit', req.user.id, { responsibility: 'traveler' });
-  await notify([t.senderId, t.recipientId !== t.senderId ? t.recipientId : null], { key: 'tx.pickedUp' }, t.id, 'shipments', 'suivi');
-  save();
-  res.json({ transaction: txView(req.user)(t) });
-});
-
-// Refus sans pénalité avant prise en charge (PRD §3.3)
-app.post('/api/transactions/:id/refuse', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || !['accepted', 'sealed'].includes(t.status)) return res.status(400).json({ error: 'Étape invalide' });
-  if (t.travelerId !== req.user.id) return res.status(403).json({ error: 'Réservé au voyageur' });
-  t.status = 'cancelled';
-  transitionEscrow(t.escrow, 'refunded');
-  const listing = db.listings.find((l) => l.id === t.listingId);
-  if (listing) listing.status = 'published';
-  addEvent(t, 'refused_no_penalty', req.user.id, { reason: req.body.reason || '' });
-  await notify([t.senderId], { key: 'tx.refused' }, t.id, 'shipments', 'suivi');
-  save();
-  res.json({ transaction: txView(req.user)(t) });
-});
-
-// Double validation livraison : le destinataire saisit le code du voyageur → escrow libéré (PRD §5.3/5.4)
-app.post('/api/transactions/:id/confirm-delivery', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || t.status !== 'in_transit') return res.status(400).json({ error: 'Étape invalide' });
-  if (t.recipientId !== req.user.id) return res.status(403).json({ error: 'Seul le destinataire valide la livraison' });
-  if ((req.body.code || '').toUpperCase() !== t.deliveryCode)
-    return res.status(400).json({ error: 'Code invalide — scannez le QR du voyageur' });
-  t.status = 'released';
-  transitionEscrow(t.escrow, 'released');
-  const traveler = findUser(t.travelerId);
-  traveler.completed += 1;
-  if (traveler.completed >= 5 && !traveler.badges.includes('voyageur-confirme'))
-    traveler.badges.push('voyageur-confirme');
-  // Plafonds relevés avec l'historique (PRD §0.3)
-  if (traveler.completed >= 3) { traveler.maxValue = 500; traveler.maxActive = 3; }
-  const sender = findUser(t.senderId);
-  if (sender.completed !== undefined) sender.completed += 1;
-  if (sender.completed >= 3) { sender.maxValue = 500; sender.maxActive = 3; }
-  addEvent(t, 'delivered_and_released', req.user.id, { released: t.escrow.travelerPay });
-  await notify([t.travelerId], { key: 'tx.delivered.traveler', params: { amount: t.escrow.travelerPay } }, t.id, 'shipments', 'suivi');
-  await notify([t.senderId], { key: 'tx.delivered.sender' }, t.id, 'shipments', 'suivi');
-  save();
-  res.json({ transaction: txView(req.user)(t) });
-});
 
 const publicProfileService = createPublicProfileService({
   db,
@@ -1518,196 +1258,9 @@ function disputeView(d, t) {
   };
 }
 
-const guidanceCenterService = createGuidanceCenterService({
-  db,
-  isParty: isPartyToTx,
-  kycRepository: repositories.kyc,
-  evidenceWindowMs: EVIDENCE_WINDOW_MS,
-  localizeCustoms,
-  customs: CUSTOMS,
-  combinedWhitelist,
-  blacklist: BLACKLIST,
-  localizeCategory,
-  reviewQueue: repositories.reviewQueue,
-  disputeView,
-});
-
-app.use('/api', createGuidanceCentersRouter({
-  auth,
-  guidanceCenters: guidanceCenterService,
-}));
-
-function financeActionFor(user, tx, dispute) {
-  if (dispute?.status === 'open') {
-    const mine = dispute.evidence.filter((e) => e.by === user.id).length;
-    return {
-      id: mine ? 'follow_dispute' : 'add_evidence',
-      priority: mine ? 'medium' : 'high',
-      href: `/transactions/${tx.id}#litige`,
-    };
-  }
-  if (tx.status === 'accepted' && tx.senderId === user.id) {
-    return { id: 'seal_to_unlock', priority: 'high', href: `/transactions/${tx.id}#actions` };
-  }
-  if (tx.status === 'sealed' && [tx.senderId, tx.travelerId].includes(user.id)) {
-    return { id: 'handoff_to_move', priority: 'medium', href: `/transactions/${tx.id}#messages` };
-  }
-  if (tx.status === 'in_transit') {
-    return { id: 'wait_delivery', priority: 'medium', href: `/transactions/${tx.id}#suivi` };
-  }
-  if (tx.status === 'released' && tx.travelerId === user.id) {
-    return { id: 'payout_done', priority: 'low', href: `/transactions/${tx.id}` };
-  }
-  if (tx.status === 'refunded' && tx.senderId === user.id) {
-    return { id: 'refund_done', priority: 'low', href: `/transactions/${tx.id}` };
-  }
-  return { id: 'monitor', priority: 'low', href: `/transactions/${tx.id}` };
-}
-
-function financeCenterFor(user) {
-  const txs = db.transactions
-    .filter((t) => [t.senderId, t.travelerId, t.recipientId].includes(user.id))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const rows = txs.map((tx) => {
-    const dispute = db.disputes.find((d) => d.txId === tx.id) || null;
-    const listing = db.listings.find((l) => l.id === tx.listingId) || null;
-    const role = tx.senderId === user.id ? 'sender' : tx.travelerId === user.id ? 'traveler' : 'recipient';
-    return {
-      transaction: txView(user)(tx),
-      listing,
-      dispute: dispute ? disputeView(dispute, tx) : null,
-      role,
-      action: financeActionFor(user, tx, dispute),
-    };
-  });
-  const totals = {
-    held: txs.filter((t) => t.escrow?.state === 'held').reduce((s, t) => s + t.escrow.amount, 0),
-    frozen: txs.filter((t) => t.escrow?.state === 'frozen').reduce((s, t) => s + t.escrow.amount, 0),
-    releasedToMe: txs
-      .filter((t) => t.travelerId === user.id && t.escrow?.state === 'released')
-      .reduce((s, t) => s + t.escrow.travelerPay, 0),
-    paidByMe: txs
-      .filter((t) => t.senderId === user.id && ['held', 'frozen', 'released'].includes(t.escrow?.state))
-      .reduce((s, t) => s + t.escrow.amount, 0),
-    refundedToMe: txs
-      .filter((t) => t.senderId === user.id && t.escrow?.state === 'refunded')
-      .reduce((s, t) => s + t.escrow.amount, 0),
-    commission: txs
-      .filter((t) => ['held', 'frozen', 'released'].includes(t.escrow?.state))
-      .reduce((s, t) => s + (t.escrow.commission || 0), 0),
-  };
-  const openDisputes = rows.filter((r) => r.dispute?.status === 'open');
-  const actions = rows
-    .filter((r) => ['high', 'medium'].includes(r.action.priority))
-    .sort((a, b) => {
-      const rank = { high: 0, medium: 1, low: 2 };
-      return rank[a.action.priority] - rank[b.action.priority] || b.transaction.createdAt - a.transaction.createdAt;
-    })
-    .slice(0, 6)
-    .map((r) => ({
-      id: `${r.transaction.id}:${r.action.id}`,
-      txId: r.transaction.id,
-      title: r.listing?.title || r.transaction.id,
-      status: r.transaction.status,
-      action: r.action,
-    }));
-  return {
-    totals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, Math.round(v * 100) / 100])),
-    counts: {
-      transactions: txs.length,
-      active: txs.filter((t) => !CLOSED_STATUSES.includes(t.status)).length,
-      openDisputes: openDisputes.length,
-      completed: txs.filter((t) => t.status === 'released').length,
-    },
-    actions,
-    rows,
-  };
-}
-
-app.get('/api/finance-center', auth, (req, res) => {
-  res.json({ finance: financeCenterFor(req.user) });
-});
-
-app.post('/api/transactions/:id/dispute', auth, async (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t || !['in_transit', 'released'].includes(t.status))
-    return res.status(400).json({ error: 'Litige impossible à ce stade' });
-  if (!isPartyToTx(t, req.user.id))
-    return res.status(403).json({ error: 'Réservé aux parties de la transaction' });
-  if (!req.body.reason || String(req.body.reason).trim().length < 10)
-    return res.status(400).json({ error: 'Merci de détailler le motif (10 caractères minimum)' });
-  t.status = 'disputed';
-  transitionEscrow(t.escrow, 'frozen');
-  const dispute = {
-    id: newId('d'), txId: t.id, openedBy: req.user.id, reason: String(req.body.reason).trim().slice(0, 2000),
-    evidence: [], status: 'open', createdAt: Date.now(),
-  };
-  db.disputes.push(dispute);
-  repositories.reviewQueue.append({ type: 'dispute', refId: dispute.id });
-  addEvent(t, 'dispute_opened', req.user.id, { reason: dispute.reason });
-  await notify([t.senderId, t.travelerId].filter((id) => id !== req.user.id), { key: 'dispute.opened' }, t.id, 'security', 'litige');
-  save();
-  res.json({ dispute: disputeView(dispute, t) });
-});
-
-// Consultation d'un litige par les parties de la transaction concernée (ou l'admin).
-app.get('/api/transactions/:id/dispute', auth, (req, res) => {
-  const t = db.transactions.find((x) => x.id === req.params.id);
-  if (!t) return res.status(404).json({ error: 'Transaction introuvable' });
-  if (!isPartyToTx(t, req.user.id) && !req.user.isAdmin)
-    return res.status(403).json({ error: 'Non autorisé' });
-  const d = db.disputes.find((x) => x.txId === t.id);
-  if (!d) return res.status(404).json({ error: 'Aucun litige pour cette transaction' });
-  res.json({ dispute: disputeView(d, t) });
-});
-
-app.post('/api/disputes/:id/evidence', auth, (req, res) => {
-  const d = db.disputes.find((x) => x.id === req.params.id);
-  if (!d || d.status !== 'open') return res.status(400).json({ error: 'Litige clos ou introuvable' });
-  const t = db.transactions.find((x) => x.id === d.txId);
-  if (!t || (!isPartyToTx(t, req.user.id) && !req.user.isAdmin))
-    return res.status(403).json({ error: 'Réservé aux parties du litige' });
-  const text = String(req.body.text || '').trim().slice(0, 2000);
-  const { photo } = req.body;
-  if (!text && !photo) return res.status(400).json({ error: 'Ajoutez un commentaire ou une photo' });
-  if (photo) {
-    if (!validPhotos([photo])) return res.status(400).json({ error: 'Photo invalide (JPEG/PNG/WebP, 500 Ko max)' });
-  }
-  d.evidence.push({ by: req.user.id, text: text || null, photo: photo || null, at: Date.now() });
-  save();
-  res.json({ dispute: disputeView(d, t) });
-});
-
-const transactionCommunicationService =
-  createTransactionCommunicationService({
-    db,
-    isParty: isPartyToTx,
-    messagesRepository: repositories.messages,
-    analyzeSafety: analyzeMessageSafety,
-    registerSafetyAttempt: registerMessageSafetyAttempt,
-    safetyError: messageSafetyError,
-    audit,
-    save,
-    notify,
-    localizeCustoms,
-    customs: CUSTOMS,
-    combinedWhitelist,
-    blacklist: BLACKLIST,
-    localizeCategory,
-    publicUser,
-    findUser,
-  });
-
-app.use('/api', createTransactionCommunicationsRouter({
-  auth,
-  transactionCommunications: transactionCommunicationService,
-}));
-
-// ---------- Back-office (PRD §4.7) ----------
+// ---------- Back-office ----------
 
 const KYC_SLA_MS = 24 * 3600e3;
-const OFFER_WATCH_MS = 24 * 3600e3;
-
 const adminFraudService = createAdminFraudService({
   db,
   findUser,
@@ -1722,8 +1275,6 @@ app.use('/api', createAdminFraudRouter({
 }));
 
 async function adminOpsSummary() {
-  await runMatchingOfferReminders({ persist: true });
-  const now = Date.now();
   const reviewOpen = repositories.reviewQueue.open();
   const reviewDisputes = reviewOpen.filter((r) => r.type === 'dispute');
   const reviewListings = reviewOpen.filter((r) => r.type === 'listing');
@@ -1737,41 +1288,6 @@ async function adminOpsSummary() {
     .reduce((s, t) => s + t.escrow.amount, 0);
   const risk = await adminFraudService.summary();
   const riskCount = Object.values(risk).reduce((s, n) => s + n, 0);
-  const activeOfferStatuses = ['pending_traveler', 'countered_sender'];
-  const offerQueue = (db.matchingOffers || [])
-    .map(matchingOfferService.normalize)
-    .filter((o) => activeOfferStatuses.includes(o.status) || o.status === 'expired')
-    .map((o) => {
-      const listing = db.listings.find((l) => l.id === o.listingId);
-      const expiresIn = (o.expiresAt || 0) - now;
-      const severity = o.status === 'expired' || expiresIn <= 0 ? 'critical'
-        : expiresIn <= OFFER_WATCH_MS ? 'warning'
-          : 'ok';
-      return {
-        id: o.id,
-        status: o.status,
-        severity,
-        waitingFor: o.status === 'pending_traveler' ? 'traveler' : o.status === 'countered_sender' ? 'sender' : 'none',
-        offeredPay: o.offeredPay,
-        expiresAt: o.expiresAt,
-        expiresIn,
-        listing: listing ? {
-          id: listing.id,
-          title: listing.title,
-          from: listing.from,
-          to: listing.to,
-          valueEur: listing.valueEur,
-        } : null,
-        sender: publicUser(findUser(o.senderId)),
-        traveler: publicUser(findUser(o.travelerId)),
-      };
-    })
-    .sort((a, b) => {
-      const rank = { critical: 0, warning: 1, ok: 2 };
-      return rank[a.severity] - rank[b.severity] || a.expiresAt - b.expiresAt;
-    });
-  const offersAtRisk = offerQueue.filter((o) => o.severity !== 'ok').length;
-
   const tasks = [
     {
       id: 'review-disputes',
@@ -1779,7 +1295,7 @@ async function adminOpsSummary() {
       count: reviewDisputes.length,
       tab: 'review',
       title: 'Litiges à arbitrer',
-      body: 'Escrow gelé, preuves à lire et décision admin à prendre.',
+      body: 'Montant simulé gelé, preuves à lire et décision admin à prendre.',
     },
     {
       id: 'kyc-overdue',
@@ -1813,20 +1329,12 @@ async function adminOpsSummary() {
       title: 'Signaux de risque',
       body: 'Comptes liés, messages hors app, litiges répétés ou comportements atypiques.',
     },
-    {
-      id: 'offer-watch',
-      severity: offersAtRisk ? 'warning' : 'ok',
-      count: offersAtRisk || offerQueue.length,
-      tab: 'ops',
-      title: 'Offres a surveiller',
-      body: offersAtRisk ? 'Propositions expirees ou proches de l expiration.' : 'Flux de negociation sous controle.',
-    },
   ];
 
   return {
     generatedAt: Date.now(),
     health: {
-      status: reviewDisputes.length || overdueKyc.length ? 'critical' : reviewOpen.length || riskCount || offersAtRisk ? 'watch' : 'clear',
+      status: reviewDisputes.length || overdueKyc.length ? 'critical' : reviewOpen.length || riskCount ? 'watch' : 'clear',
       reviewOpen: reviewOpen.length,
       conversationReports: reviewConversations.length,
       kycPending: pendingKyc.length,
@@ -1835,8 +1343,6 @@ async function adminOpsSummary() {
       flaggedMessages: flaggedMessages.length,
       escrowHeld,
       riskSignals: riskCount,
-      offersActive: offerQueue.filter((o) => activeOfferStatuses.includes(o.status)).length,
-      offersAtRisk,
     },
     tasks,
     risk,
@@ -1868,7 +1374,6 @@ async function adminOpsSummary() {
             user: u ? { name: u.name, email: u.email } : null,
           };
         }),
-      offers: offerQueue.slice(0, 6),
     },
   };
 }

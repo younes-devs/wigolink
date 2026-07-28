@@ -178,14 +178,10 @@ function opsTaskCopy(id, field, fallback) {
     'gray-listings': 'gray',
     'review-conversations': 'conversations',
     'fraud-signals': 'fraud',
-    'offer-watch': 'offers',
   }[id];
   if (!suffix) return fallback;
   if (field === 'body' && id === 'kyc-overdue') {
     return t(fallback?.includes('SLA') ? 'admin.task.kyc.overdueBody' : 'admin.task.kyc.body');
-  }
-  if (field === 'body' && id === 'offer-watch') {
-    return t(fallback?.includes('expire') ? 'admin.task.offers.riskBody' : 'admin.task.offers.body');
   }
   return t(`admin.task.${suffix}.${field}`);
 }
@@ -353,7 +349,6 @@ export function OpsPanel({ ops, error, setTab, reload }) {
         <OpsMetric label={t('admin.ops.reviewOpen')} value={ops.health.reviewOpen} icon="fileText" />
         <OpsMetric label={t('admin.ops.kycOverdue')} value={ops.health.kycOverdue} icon="clock" danger={ops.health.kycOverdue > 0} />
         <OpsMetric label={t('admin.ops.openDisputes')} value={ops.health.openDisputes} icon="alert" danger={ops.health.openDisputes > 0} />
-        <OpsMetric label={t('admin.ops.offersAtRisk')} value={ops.health.offersAtRisk || 0} icon="send" danger={(ops.health.offersAtRisk || 0) > 0} />
         <OpsMetric label={t('admin.ops.escrowHeld')} value={`${Math.round(ops.health.escrowHeld)} €`} icon="lock" />
       </div>
 
@@ -412,32 +407,6 @@ export function OpsPanel({ ops, error, setTab, reload }) {
 
       <section className="ops-section">
         <div className="ops-section-head">
-          <h2><Icon name="send" size={17} />{t('admin.ops.negotiations')}</h2>
-          <button className="link-btn" onClick={() => setTab('ops')}>{t('admin.ops.activeCount', { count: ops.health.offersActive || 0 })}</button>
-        </div>
-        {!ops.latest.offers?.length ? (
-          <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noOffers')}</p>
-        ) : (
-          <div className="ops-offer-list">
-            {ops.latest.offers.map((offer) => (
-              <div key={offer.id} className={`ops-offer-row ops-${offer.severity}`}>
-                <Icon name={offer.severity === 'critical' ? 'alert' : offer.severity === 'warning' ? 'clock' : 'send'} size={16} />
-                <span className="grow">
-                  <b>{offer.listing?.title || offer.id}</b>
-                  <small>{offer.sender?.name} → {offer.traveler?.name} · +{offer.offeredPay} €</small>
-                </span>
-                <span className="ops-offer-meta">
-                  <b>{t(offer.waitingFor === 'traveler' ? 'admin.role.traveler' : offer.waitingFor === 'sender' ? 'admin.role.sender' : 'admin.status.expired')}</b>
-                  <small>{offerTimeLabel(offer)}</small>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="ops-section">
-        <div className="ops-section-head">
           <h2><Icon name="alert" size={17} />{t('admin.ops.riskSignals')}</h2>
           <button className="link-btn" onClick={() => setTab('fraud')}>{t('admin.ops.analyze')}</button>
         </div>
@@ -466,13 +435,6 @@ function OpsMetric({ icon, value, label, danger = false }) {
 
 function RiskPill({ label, value }) {
   return <span className={`ops-risk-pill ${value > 0 ? 'on' : ''}`}><b>{value}</b>{label}</span>;
-}
-
-function offerTimeLabel(offer) {
-  if (offer.status === 'expired' || offer.expiresIn <= 0) return t('admin.status.expired');
-  const hours = Math.ceil(offer.expiresIn / 3600000);
-  if (hours <= 48) return t('time.hours', { n: hours });
-  return t('time.days', { n: Math.ceil(hours / 24) });
 }
 
 export function ListingReviewCard({ item, decide }) {

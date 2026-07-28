@@ -55,7 +55,6 @@ const ERRORS = {
   'Transaction introuvable': { ar: 'المعاملة غير موجودة', nl: 'Transactie niet gevonden' },
   'Réservé aux parties de la transaction': { ar: 'مخصص لأطراف المعاملة فقط', nl: 'Enkel voor de partijen van de transactie' },
   'Étape invalide': { ar: 'خطوة غير صالحة', nl: 'Ongeldige stap' },
-  "Seul l'expéditeur filme le scellage": { ar: 'المرسل وحده يصوّر الختم', nl: 'Enkel de verzender filmt de verzegeling' },
   'Seul le voyageur valide la prise en charge': { ar: 'المسافر وحده يؤكد الاستلام', nl: 'Enkel de reiziger bevestigt de overname' },
   'Seul le destinataire valide la livraison': { ar: 'المستلم وحده يؤكد التسليم', nl: 'Enkel de ontvanger bevestigt de levering' },
   'Réservé au voyageur': { ar: 'مخصص للمسافر فقط', nl: 'Enkel voor de reiziger' },
@@ -191,7 +190,6 @@ const ERRORS = {
   'Cette proposition n est plus active': { ar: 'هذا العرض لم يعد نشطا', nl: 'Deze aanbieding is niet meer actief' },
   'En attente de la réponse du voyageur': { ar: 'في انتظار رد المسافر', nl: 'Wacht op antwoord van de reiziger' },
   'En attente de la réponse de l expéditeur': { ar: 'في انتظار رد المرسل', nl: 'Wacht op antwoord van de verzender' },
-  'Video de scellage requise': { ar: 'فيديو الختم مطلوب', nl: 'Verzegelvideo vereist' },
 
   // Administration et recours
   'Membre introuvable': { ar: 'العضو غير موجود', nl: 'Lid niet gevonden' },
