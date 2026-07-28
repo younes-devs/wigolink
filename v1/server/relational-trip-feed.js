@@ -1,3 +1,8 @@
+import {
+  locationQueryTerms,
+  suggestLocations,
+} from './location-search.js';
+
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 100;
 const MIRRORED_COLLECTIONS = [
@@ -113,8 +118,8 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
       where.push(`t.data->>'travelerId' <> $${params.length}`);
     }
   }
-  addContains(where, params, "t.data->>'from'", query.from);
-  addContains(where, params, "t.data->>'to'", query.to);
+  addLocationContains(where, params, "t.data->>'from'", "t.data->>'fromLocationId'", query.from);
+  addLocationContains(where, params, "t.data->>'to'", "t.data->>'toLocationId'", query.to);
   if (query.date) {
     params.push(String(query.date));
     where.push(`coalesce(t.data->>'departureDate', t.data->>'date') >= $${params.length}`);
@@ -122,8 +127,14 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
   addMinimum(where, params, "coalesce(nullif(t.data->>'capacityKg', '')::numeric, 0)", query.capacityKg);
   addMaximum(where, params, "coalesce(nullif(t.data->>'price', '')::numeric, 25)", query.maxPrice);
   if (query.q) {
-    params.push(`%${String(query.q).trim()}%`);
-    where.push(`concat_ws(' ', t.data->>'from', t.data->>'to', t.data->>'description', u.data->>'name') ilike $${params.length}`);
+    const terms = locationQueryTerms(query.q);
+    params.push(terms.map((term) => `%${term}%`));
+    where.push(`(
+      t.data->>'from' ilike any($${params.length}::text[])
+      or t.data->>'to' ilike any($${params.length}::text[])
+      or t.data->>'description' ilike any($${params.length}::text[])
+      or u.data->>'name' ilike any($${params.length}::text[])
+    )`);
   }
 
   const limit = boundedLimit(query.limit);
@@ -186,10 +197,18 @@ function publicUser(user) {
   };
 }
 
-function addContains(where, params, column, value) {
+function addLocationContains(where, params, column, idColumn, value) {
   if (!value || !String(value).trim()) return;
-  params.push(`%${String(value).trim()}%`);
-  where.push(`${column} ilike $${params.length}`);
+  const terms = locationQueryTerms(value);
+  const resolved = suggestLocations(value, { limit: 1 })[0];
+  params.push(terms.map((term) => `%${term}%`));
+  const termParam = `$${params.length}`;
+  if (!resolved) {
+    where.push(`${column} ilike any(${termParam}::text[])`);
+    return;
+  }
+  params.push(resolved.id);
+  where.push(`(${idColumn} = $${params.length} or ${column} ilike any(${termParam}::text[]))`);
 }
 
 function addMinimum(where, params, column, value) {

@@ -17,6 +17,13 @@ export function createTripService({
   findUser,
   localizeCustoms,
   customs,
+  canonicalizeLocation = (value) => ({
+    id: null,
+    countryCode: null,
+    name: String(value || '').trim().slice(0, 60),
+    latitude: null,
+    longitude: null,
+  }),
   now = Date.now,
 }) {
   function response(status, body) {
@@ -64,7 +71,18 @@ export function createTripService({
     if (!from || !to || !travelDate) {
       return response(400, { error: 'Trajet, sens et date requis' });
     }
-    if (from === to) {
+    const fromLocation = canonicalizeLocation(from, {
+      locationId: body.fromLocationId,
+      countryCode: body.fromCountryCode || 'MA',
+    });
+    const toLocation = canonicalizeLocation(to, {
+      locationId: body.toLocationId,
+      countryCode: body.toCountryCode || 'MA',
+    });
+    if (
+      (fromLocation.id && fromLocation.id === toLocation.id)
+      || (!fromLocation.id && !toLocation.id && fromLocation.name === toLocation.name)
+    ) {
       return response(400, { error: 'Départ et arrivée identiques' });
     }
     if (!transportModes.has(transportMode)) {
@@ -83,8 +101,18 @@ export function createTripService({
     const trip = {
       id: newId('t'),
       travelerId: user.id,
-      from: String(from).trim().slice(0, 60),
-      to: String(to).trim().slice(0, 60),
+      from: fromLocation.name,
+      to: toLocation.name,
+      fromLocationId: fromLocation.id,
+      fromCountryCode: fromLocation.countryCode,
+      fromCoordinates: fromLocation.id
+        ? { latitude: fromLocation.latitude, longitude: fromLocation.longitude }
+        : null,
+      toLocationId: toLocation.id,
+      toCountryCode: toLocation.countryCode,
+      toCoordinates: toLocation.id
+        ? { latitude: toLocation.latitude, longitude: toLocation.longitude }
+        : null,
       date: travelDate,
       departureDate: travelDate,
       transportMode,
@@ -163,6 +191,18 @@ export function createTripService({
       || trip.date;
     const nextFrom = String(from ?? trip.from).trim().slice(0, 60);
     const nextTo = String(to ?? trip.to).trim().slice(0, 60);
+    const fromLocation = canonicalizeLocation(nextFrom, {
+      locationId: from === undefined
+        ? (body.fromLocationId ?? trip.fromLocationId)
+        : body.fromLocationId,
+      countryCode: body.fromCountryCode || trip.fromCountryCode || 'MA',
+    });
+    const toLocation = canonicalizeLocation(nextTo, {
+      locationId: to === undefined
+        ? (body.toLocationId ?? trip.toLocationId)
+        : body.toLocationId,
+      countryCode: body.toCountryCode || trip.toCountryCode || 'MA',
+    });
     const nextTransportMode = transportMode === undefined
       ? normalizeTransportMode(trip.transportMode)
       : transportMode;
@@ -170,7 +210,10 @@ export function createTripService({
     if (!nextFrom || !nextTo || !travelDate) {
       return response(400, { error: 'Trajet, sens et date requis' });
     }
-    if (nextFrom === nextTo) {
+    if (
+      (fromLocation.id && fromLocation.id === toLocation.id)
+      || (!fromLocation.id && !toLocation.id && fromLocation.name === toLocation.name)
+    ) {
       return response(400, { error: 'Depart et arrivee identiques' });
     }
     if (!transportModes.has(nextTransportMode)) {
@@ -186,8 +229,18 @@ export function createTripService({
       return response(400, { error: 'Prix invalide' });
     }
 
-    trip.from = nextFrom;
-    trip.to = nextTo;
+    trip.from = fromLocation.name;
+    trip.to = toLocation.name;
+    trip.fromLocationId = fromLocation.id;
+    trip.fromCountryCode = fromLocation.countryCode;
+    trip.fromCoordinates = fromLocation.id
+      ? { latitude: fromLocation.latitude, longitude: fromLocation.longitude }
+      : null;
+    trip.toLocationId = toLocation.id;
+    trip.toCountryCode = toLocation.countryCode;
+    trip.toCoordinates = toLocation.id
+      ? { latitude: toLocation.latitude, longitude: toLocation.longitude }
+      : null;
     trip.date = travelDate;
     trip.departureDate = travelDate;
     trip.transportMode = nextTransportMode;

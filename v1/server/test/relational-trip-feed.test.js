@@ -35,7 +35,7 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
       },
     },
     user: { id: 'u-1' },
-    query: { from: 'Oujda', to: 'Bruxelles', q: 'valise', limit: 999, offset: -4 },
+    query: { from: 'wjda', to: 'Bruxelles', q: 'valise', limit: 999, offset: -4 },
     today: '2026-07-17',
   });
   assert.equal(result.trips[0].saved, true);
@@ -46,8 +46,12 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.match(calls[0].sql, /wigofly_trips/);
   assert.match(calls[0].sql, /wigofly_users/);
   assert.match(calls[0].sql, /wigofly_saved_trips/);
-  assert.ok(calls[0].params.includes('%Oujda%'));
-  assert.ok(calls[0].params.includes('%valise%'));
+  const searchTerms = calls[0].params.flatMap((param) => (Array.isArray(param) ? param : []));
+  assert.ok(searchTerms.includes('%Oujda%'));
+  assert.ok(searchTerms.includes('%wjda%'));
+  assert.ok(searchTerms.includes('%valise%'));
+  assert.match(calls[0].sql, /fromLocationId/);
+  assert.ok(calls[0].params.includes('ma-2540483'));
 });
 
 test('feed relationnel : ne synchronise que les ecritures changees', async () => {

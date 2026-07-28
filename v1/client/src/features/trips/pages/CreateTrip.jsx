@@ -11,20 +11,20 @@ import {
   transportIconName,
   transportLabel,
 } from '../components/TripTransport.jsx';
+import { LocationInput } from '../components/LocationInput.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 
 const DRAFT_KEY = 'wigofly:trip-draft:v1';
-const CITIES = [
-  'Amsterdam', 'Anvers', 'Bruxelles', 'Casablanca', 'Charleroi', 'Fès',
-  'Liège', 'Lille', 'Lyon', 'Marrakech', 'Marseille', 'Nador', 'Oujda',
-  'Paris', 'Rabat', 'Rotterdam', 'Tanger', 'Utrecht',
-];
 
 function defaultDraft() {
   return {
     transportMode: 'plane',
     from: '',
+    fromLocationId: '',
+    fromCountryCode: '',
     to: '',
+    toLocationId: '',
+    toCountryCode: '',
     date: '',
     capacityKg: 6,
     price: 25,
@@ -80,7 +80,10 @@ export default function CreateTrip() {
     if (targetStep === 0 && !['plane', 'car'].includes(form.transportMode)) return t('trips.wizard.error.transport');
     if (targetStep === 1) {
       if (!form.from.trim() || !form.to.trim()) return t('trips.wizard.error.route');
-      if (form.from.trim().toLocaleLowerCase() === form.to.trim().toLocaleLowerCase()) return t('trips.wizard.error.sameCity');
+      if (
+        (form.fromLocationId && form.fromLocationId === form.toLocationId)
+        || form.from.trim().toLocaleLowerCase() === form.to.trim().toLocaleLowerCase()
+      ) return t('trips.wizard.error.sameCity');
     }
     if (targetStep === 2) {
       if (!form.date) return t('trips.wizard.error.date');
@@ -219,27 +222,56 @@ export default function CreateTrip() {
           {step === 1 && (
             <div className="wizard-route-fields">
               <div className="field">
-                <label htmlFor="trip-from">{t('trips.from')}</label>
-                <div className="wizard-input-icon">
-                  <Icon name="mapPin" size={18} />
-                  <input id="trip-from" list="trip-cities" autoComplete="address-level2" value={form.from}
-                    onChange={(event) => update('from', event.target.value)} placeholder={t('trips.wizard.route.fromPlaceholder')} />
-                </div>
+                <LocationInput
+                  id="trip-from"
+                  label={t('trips.from')}
+                  withIcon
+                  value={form.from}
+                  locationId={form.fromLocationId}
+                  countryCode={form.fromCountryCode}
+                  placeholder={t('trips.wizard.route.fromPlaceholder')}
+                  onChange={({ value, locationId, countryCode }) => {
+                    setError('');
+                    setForm((current) => ({
+                      ...current,
+                      from: value,
+                      fromLocationId: locationId,
+                      fromCountryCode: countryCode,
+                    }));
+                  }}
+                />
               </div>
-              <button className="wizard-swap" type="button" onClick={() => setForm((current) => ({ ...current, from: current.to, to: current.from }))} aria-label={t('trips.wizard.route.swap')}>
+              <button className="wizard-swap" type="button" onClick={() => setForm((current) => ({
+                ...current,
+                from: current.to,
+                fromLocationId: current.toLocationId,
+                fromCountryCode: current.toCountryCode,
+                to: current.from,
+                toLocationId: current.fromLocationId,
+                toCountryCode: current.fromCountryCode,
+              }))} aria-label={t('trips.wizard.route.swap')}>
                 <Icon name="repeat" size={18} />
               </button>
               <div className="field">
-                <label htmlFor="trip-to">{t('trips.to')}</label>
-                <div className="wizard-input-icon">
-                  <Icon name="mapPin" size={18} />
-                  <input id="trip-to" list="trip-cities" autoComplete="address-level2" value={form.to}
-                    onChange={(event) => update('to', event.target.value)} placeholder={t('trips.wizard.route.toPlaceholder')} />
-                </div>
+                <LocationInput
+                  id="trip-to"
+                  label={t('trips.to')}
+                  withIcon
+                  value={form.to}
+                  locationId={form.toLocationId}
+                  countryCode={form.toCountryCode}
+                  placeholder={t('trips.wizard.route.toPlaceholder')}
+                  onChange={({ value, locationId, countryCode }) => {
+                    setError('');
+                    setForm((current) => ({
+                      ...current,
+                      to: value,
+                      toLocationId: locationId,
+                      toCountryCode: countryCode,
+                    }));
+                  }}
+                />
               </div>
-              <datalist id="trip-cities">
-                {CITIES.map((city) => <option key={city} value={city} />)}
-              </datalist>
             </div>
           )}
 

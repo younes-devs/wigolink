@@ -6,6 +6,7 @@ import { Avatar, Icon } from '../../../Icons.jsx';
 import { SkeletonList } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { TripTransportIcon } from '../components/TripTransport.jsx';
+import { LocationInput } from '../components/LocationInput.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 
 const tripOverviewCache = new Map();
@@ -136,8 +137,8 @@ export default function TripFeedSimple() {
 
       <section className="simple-filters trip-desktop-filters">
         <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t('trips.search.placeholder')} />
-        <input className="chat-input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} placeholder={t('trips.from')} />
-        <input className="chat-input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} placeholder={t('trips.to')} />
+        <LocationInput inputClassName="chat-input" value={filters.from} onChange={({ value }) => setFilters({ ...filters, from: value })} placeholder={t('trips.from')} />
+        <LocationInput inputClassName="chat-input" value={filters.to} onChange={({ value }) => setFilters({ ...filters, to: value })} placeholder={t('trips.to')} />
         <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label={t('trips.filter.date')} />
         <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder={t('trips.filter.price.short')} />
         <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity.short')} />
@@ -155,8 +156,8 @@ export default function TripFeedSimple() {
             </div>
             <div className="trip-filter-sheet-body">
               <input className="chat-input" value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder={t('trips.search.placeholder')} aria-label={t('trips.search.short')} />
-              <input className="chat-input" value={draftFilters.from} onChange={(e) => setDraftFilters({ ...draftFilters, from: e.target.value })} placeholder={t('trips.from')} />
-              <input className="chat-input" value={draftFilters.to} onChange={(e) => setDraftFilters({ ...draftFilters, to: e.target.value })} placeholder={t('trips.to')} />
+              <LocationInput inputClassName="chat-input" value={draftFilters.from} onChange={({ value }) => setDraftFilters({ ...draftFilters, from: value })} placeholder={t('trips.from')} />
+              <LocationInput inputClassName="chat-input" value={draftFilters.to} onChange={({ value }) => setDraftFilters({ ...draftFilters, to: value })} placeholder={t('trips.to')} />
               <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label={t('trips.filter.date')} />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.maxPrice} onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })} placeholder={t('trips.filter.price')} />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.capacityKg} onChange={(e) => setDraftFilters({ ...draftFilters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity')} />

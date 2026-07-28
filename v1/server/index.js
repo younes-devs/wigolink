@@ -57,6 +57,7 @@ import { createGuidanceCentersRouter } from './routes/guidance-centers.js';
 import { createAdminActionsRouter } from './routes/admin-actions.js';
 import { createTransactionCommunicationsRouter } from './routes/transaction-communications.js';
 import { createAdminFraudRouter } from './routes/admin-fraud.js';
+import { createLocationsRouter } from './routes/locations.js';
 import { createMatchingOfferReminderJob } from './jobs/matching-offer-reminders.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -78,6 +79,14 @@ import { createAdminActionService } from './services/admin-actions.js';
 import { createTransactionCommunicationService } from './services/transaction-communications.js';
 import { createAdminFraudService } from './services/admin-fraud.js';
 import { migrateInlineMessageMedia } from './migrate-message-media.js';
+import {
+  canonicalizeLocation,
+  findLocationById,
+  locationCatalogStats,
+  locationMatches,
+  normalizeLocationText,
+  suggestLocations,
+} from './location-search.js';
 
 const app = express();
 const {
@@ -686,7 +695,15 @@ const tripService = createTripService({
   findUser,
   localizeCustoms,
   customs: CUSTOMS,
+  canonicalizeLocation,
 });
+
+app.use('/api', createLocationsRouter({
+  auth,
+  suggest: suggestLocations,
+  findById: findLocationById,
+  stats: locationCatalogStats,
+}));
 
 app.use('/api', createTripsRouter({
   auth,
@@ -695,7 +712,8 @@ app.use('/api', createTripsRouter({
 
 // Compatibilité annonce ↔ trajet : même sens, fenêtre de dates qui contient la date du vol, poids ≤ capacité.
 function matchesTrip(listing, trip) {
-  return listing.from === trip.from && listing.to === trip.to
+  return locationMatches(listing.from, trip.from, { locationId: listing.fromLocationId })
+    && locationMatches(listing.to, trip.to, { locationId: listing.toLocationId })
     && listing.dateFrom <= trip.date && trip.date <= listing.dateTo
     && (!listing.weightKg || listing.weightKg <= trip.capacityKg);
 }
@@ -727,8 +745,16 @@ function availableTripPosts(user, query = {}) {
     .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today)
     .filter((trip) => findUser(trip.travelerId)?.kycStatus === 'verified');
   if (query.excludeMine === '1') trips = trips.filter((trip) => trip.travelerId !== user.id);
-  if (query.from) trips = trips.filter((t) => t.from.toLowerCase().includes(String(query.from).toLowerCase()));
-  if (query.to) trips = trips.filter((t) => t.to.toLowerCase().includes(String(query.to).toLowerCase()));
+  if (query.from) trips = trips.filter((trip) => locationMatches(
+    trip.from,
+    query.from,
+    { locationId: trip.fromLocationId, countryCode: trip.fromCountryCode || 'MA' },
+  ));
+  if (query.to) trips = trips.filter((trip) => locationMatches(
+    trip.to,
+    query.to,
+    { locationId: trip.toLocationId, countryCode: trip.toCountryCode || 'MA' },
+  ));
   if (query.date) trips = trips.filter((t) => (t.departureDate || t.date) >= String(query.date));
   const minCapacity = Number(query.capacityKg);
   if (Number.isFinite(minCapacity) && minCapacity >= 0 && String(query.capacityKg).trim() !== '')
@@ -737,8 +763,20 @@ function availableTripPosts(user, query = {}) {
   if (Number.isFinite(maxPrice) && maxPrice >= 0 && String(query.maxPrice).trim() !== '')
     trips = trips.filter((t) => Number(t.price ?? t.proposedPrice ?? 25) <= maxPrice);
   if (query.q) {
-    const needle = String(query.q).toLowerCase();
-    trips = trips.filter((t) => `${t.from} ${t.to} ${t.description || ''} ${findUser(t.travelerId)?.name || ''}`.toLowerCase().includes(needle));
+    const needle = normalizeLocationText(query.q);
+    trips = trips.filter((trip) => (
+      locationMatches(trip.from, query.q, {
+        locationId: trip.fromLocationId,
+        countryCode: trip.fromCountryCode || 'MA',
+      })
+      || locationMatches(trip.to, query.q, {
+        locationId: trip.toLocationId,
+        countryCode: trip.toCountryCode || 'MA',
+      })
+      || normalizeLocationText(
+        `${trip.description || ''} ${findUser(trip.travelerId)?.name || ''}`,
+      ).includes(needle)
+    ));
   }
   return trips.sort((a, b) => (a.departureDate || a.date).localeCompare(b.departureDate || b.date)).map((t) => tripPostView(t, user));
 }

@@ -1,0 +1,7875 @@
+{
+  "source": {
+    "provider": "GeoNames",
+    "license": "CC BY 4.0",
+    "url": "https://download.geonames.org/export/dump/MA.zip",
+    "importedAt": "2026-07-28",
+    "selection": "featureClass=P and (population>=500 or administrative seat)"
+  },
+  "countryCode": "MA",
+  "locations": [
+    {
+      "id": "ma-2553604",
+      "name": "Casablanca",
+      "asciiName": "Casablanca",
+      "aliases": [
+        "Ad Dar al Bayda",
+        "Anafi",
+        "Anfa",
+        "CMN",
+        "Casa Branca",
+        "Dar-el-Beida",
+        "Dar-uel-Beyda",
+        "Darul Baidha",
+        "Dâr-ül-Beydâ",
+        "Ed Dar el Baida",
+        "Kasablank",
+        "Kasablanka",
+        "Kasablankae",
+        "Kazablanka",
+        "Kazablanko",
+        "Kazamplan'ka",
+        "Tigemmi Tamellalt",
+        "White House",
+        "aldar albydaʾ",
+        "dar albydaʾ",
+        "ka sa bu lan ka",
+        "ka sab l xng ka",
+        "kacapilanka",
+        "kasabalanka",
+        "kasabeullangka",
+        "kasabilanika",
+        "kasaburanka",
+        "qzblnqh",
+        "Καζαμπλάνκα",
+        "Казабланка",
+        "Касабланкæ",
+        "Касабланка",
+        "Կասաբլանկա",
+        "קזבלנקה",
+        "أنفا",
+        "الدار البيضاء",
+        "دار البیضاء",
+        "دارالبیضا",
+        "كازابلانكا",
+        "کازابلانکا",
+        "کاسابلانکا",
+        "कसाबलांका",
+        "কাসাব্লাংকা",
+        "ਕਾਸਾਬਲਾਂਕਾ",
+        "காசாபிளாங்கா",
+        "కాసాబ్లాంకా",
+        "ಕಾಸಾಬ್ಲಾಂಕಾ",
+        "കാസബ്ലങ്ക",
+        "กาซาบล็องกา",
+        "ກາຊາບັງກາ",
+        "ကာဆာဘလန်ကာမြို့",
+        "კასაბლანკა",
+        "ካሳብላንካ",
+        "ⴰⵏⴼⴰ",
+        "カサブランカ",
+        "卡萨布兰卡",
+        "카사블랑카"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "141",
+      "latitude": 33.58831,
+      "longitude": -7.61138,
+      "population": 3665954,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2538475",
+      "name": "Rabat",
+      "asciiName": "Rabat",
+      "aliases": [
+        "RBA",
+        "Raba",
+        "Rabata",
+        "Rabatas",
+        "Rabato",
+        "Rabatum",
+        "Rabot",
+        "Rampat",
+        "Rbat",
+        "alrbat",
+        "la ba",
+        "la ba te",
+        "labateu",
+        "rabota",
+        "rapat",
+        "Ραμπάτ",
+        "Рабат",
+        "Ռաբատ",
+        "ראבאט",
+        "רבאט",
+        "الرباط",
+        "رابات",
+        "ربات",
+        "رباط",
+        "ڕەبات",
+        "रबाट",
+        "रबात",
+        "রাবাত",
+        "ਰਬਾਤ",
+        "ରବୋଟ",
+        "ரபாத்",
+        "ราบัต",
+        "ར་བ་ཐ།",
+        "რაბატი",
+        "ራባት",
+        "ラバト",
+        "剌八",
+        "拉巴特",
+        "라바트"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "421",
+      "latitude": 34.01325,
+      "longitude": -6.83255,
+      "population": 1655753,
+      "featureCode": "PPLC"
+    },
+    {
+      "id": "ma-2548885",
+      "name": "Fes",
+      "asciiName": "Fes",
+      "aliases": [
+        "FEZ",
+        "fas",
+        "fezu",
+        "phesa",
+        "Фес",
+        "فاس",
+        "फेस",
+        "ফেস",
+        "ਫੇਸ",
+        "ፌsi",
+        "ፌስ",
+        "フェズ"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 34.03313,
+      "longitude": -5.00028,
+      "population": 1191905,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2530335",
+      "name": "Tangier",
+      "asciiName": "Tangier",
+      "aliases": [
+        "TNG",
+        "Tanca",
+        "Tanger",
+        "Tangeri",
+        "Tangero",
+        "Tangiers",
+        "Tanjer",
+        "Tanzha",
+        "Tanzher",
+        "Tingis",
+        "tan ji ya",
+        "tanijeri",
+        "tanje",
+        "tanji'ara",
+        "tanji'e",
+        "tanjiyara",
+        "tnjh",
+        "tnjt",
+        "Тангер",
+        "Танжа",
+        "Танжер",
+        "تنجه",
+        "طنجة",
+        "ٹnjyr",
+        "ٹنجیر",
+        "ټnjh",
+        "ټنجه",
+        "तांजिए",
+        "তাঞ্জিয়ার",
+        "ਤਾਂਜੀਅਰ",
+        "ታንጄር",
+        "タンジェ",
+        "坦幾亞"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.76727,
+      "longitude": -5.79975,
+      "population": 1035141,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2542997",
+      "name": "Marrakesh",
+      "asciiName": "Marrakesh",
+      "aliases": [
+        "Marakes",
+        "Marakesh",
+        "Marakeso",
+        "Maraksh",
+        "Marrakech",
+        "Marrakes",
+        "Marrakesch",
+        "Marrakesz",
+        "Marraqueix",
+        "Marraquexe",
+        "Marrokesh",
+        "Merrakex",
+        "Morocco City",
+        "RAK",
+        "ma la ke shen",
+        "marakesa",
+        "marakeshi",
+        "marakeshu",
+        "mraksh",
+        "Маракеш",
+        "Марракеш",
+        "Маррокеш",
+        "مراكش",
+        "مراکش",
+        "मराकेश",
+        "মারাকেশ",
+        "ਮਾਰਾਕੇਸ਼",
+        "ማራኬሽ",
+        "ⴰⵎⵓⵔⴰⴽⵓⵛ",
+        "マラケシュ",
+        "马拉喀什"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.63416,
+      "longitude": -7.99994,
+      "population": 995871,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2537763",
+      "name": "Salé",
+      "asciiName": "Sale",
+      "aliases": [
+        "Sala",
+        "Sali",
+        "Sallee",
+        "Sla",
+        "Сале",
+        "سلا"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "441",
+      "latitude": 34.0531,
+      "longitude": -6.79846,
+      "population": 972299,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2561668",
+      "name": "Agadir",
+      "asciiName": "Agadir",
+      "aliases": [
+        "AGA",
+        "Agadair",
+        "Agadir - akadyr",
+        "Agadir Ighir",
+        "Agadiras",
+        "Agadyr",
+        "Ankantir",
+        "Irhir",
+        "Santa Cruz",
+        "a jia di er",
+        "agadileu",
+        "agadira",
+        "agadiru",
+        "aghadyr",
+        "akadyr",
+        "aګadyr",
+        "aݣadyr",
+        "ʿegadiri",
+        "Αγκαντίρ",
+        "Агадир",
+        "Агадыр",
+        "Агадір",
+        "אגאדיר",
+        "أغادير",
+        "أكادير",
+        "أگادیر",
+        "أݣادير",
+        "اغادیر",
+        "اګادير",
+        "अगादिर",
+        "আগাদির",
+        "ਅਗਾਦੀਰ",
+        "አጋዲር",
+        "アガディール",
+        "阿加迪尔",
+        "아가디르"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.42018,
+      "longitude": -9.59815,
+      "population": 698310,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2542715",
+      "name": "Meknes",
+      "asciiName": "Meknes",
+      "aliases": [
+        "MEK",
+        "Mekinez",
+        "mei ke nei si",
+        "mekunesu",
+        "mknas",
+        "mqns",
+        "Мекнес",
+        "מקנס",
+        "مكناس",
+        "مکناس",
+        "ⴰⵎⴽⵏⴰⵙ",
+        "メクネス",
+        "梅克内斯"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.89352,
+      "longitude": -5.54727,
+      "population": 568295,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2540483",
+      "name": "Oujda",
+      "asciiName": "Oujda",
+      "aliases": [
+        "OUD",
+        "Oudja",
+        "Oudjda",
+        "Ouja",
+        "Oujda-Angad",
+        "Ucda",
+        "Udzda",
+        "Udzhda",
+        "Ugda",
+        "Ujda",
+        "Uzhda",
+        "Wadzda",
+        "Wejda",
+        "ujada",
+        "ujida",
+        "wgdh",
+        "wjdh",
+        "wjdt",
+        "wjdt-anjad",
+        "wjdt-ankad",
+        "wu ji da",
+        "Уджда",
+        "Уджда қаласы",
+        "Ужда",
+        "Уџда",
+        "וגדה",
+        "وجدة",
+        "وجدة-أنجاد",
+        "وجدة-أنكاد",
+        "وجده",
+        "وجدہ",
+        "उजडा",
+        "উজদা",
+        "ਉਜਡਾ",
+        "ውjada",
+        "ውጃዳ",
+        "ⵜⵉⵓⵊⴷ",
+        "ⵡⴰⵊⴷⴰ",
+        "ウジダ",
+        "乌季达",
+        "우지다"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "411",
+      "latitude": 34.68139,
+      "longitude": -1.90858,
+      "population": 539711,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2544571",
+      "name": "Kenitra",
+      "asciiName": "Kenitra",
+      "aliases": [
+        "Al Qunaytirah",
+        "Al-Kunajtira",
+        "Kenitre",
+        "Kenitro",
+        "Khenifra",
+        "Lyautey",
+        "Mina Hassan Tani",
+        "NNA",
+        "Port Laoti",
+        "Port-Lyautey",
+        "Ville de Kenitra",
+        "alqnytrt",
+        "gai ni te la",
+        "keniteula",
+        "kenitira",
+        "kenitora",
+        "knytra",
+        "knytrہ",
+        "qnytrh",
+        "Кенитра",
+        "Кенитра қаласы",
+        "Кенітра",
+        "אל-קניטרה",
+        "القنيطرة",
+        "قنیطره",
+        "کنيترا",
+        "کنیترہ",
+        "केनित्रा",
+        "কেনিত্রা",
+        "ਕੇਨੀਤ੍ਰਾ",
+        "კენიტრა",
+        "ኬኒትራ",
+        "ケニトラ",
+        "蓋尼特拉",
+        "케니트라"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.26101,
+      "longitude": -6.5802,
+      "population": 470949,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2528910",
+      "name": "Tétouan",
+      "asciiName": "Tetouan",
+      "aliases": [
+        "TTU",
+        "Tehtuan",
+        "Tetuan",
+        "Tetuanas",
+        "Tetuano",
+        "Tetuao",
+        "de tu an",
+        "teto'una",
+        "ttwan",
+        "Τετουάν",
+        "Тетуан",
+        "Тетуан қаласы",
+        "Тэтуан",
+        "תטואן",
+        "تطوان",
+        "तेतोउन",
+        "თეტუანი",
+        "テトゥアン",
+        "得土安",
+        "테투안"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.57845,
+      "longitude": -5.36837,
+      "population": 415810,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2558545",
+      "name": "Al Hoceïma",
+      "asciiName": "Al Hoceima",
+      "aliases": [
+        "AHU",
+        "Al Huceima",
+        "Al Husaymat",
+        "Al-Husajma",
+        "Alhacemas",
+        "Alhucemas",
+        "Villa Alhucemas",
+        "Villa Sanjurjo",
+        "alhsymt",
+        "hsymh",
+        "الحسيمة",
+        "حسیمه"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.25165,
+      "longitude": -3.93723,
+      "population": 395644,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2529013",
+      "name": "Temara",
+      "asciiName": "Temara",
+      "aliases": [
+        "Kasba Temara"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.92866,
+      "longitude": -6.90656,
+      "population": 342345,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537881",
+      "name": "Safi",
+      "asciiName": "Safi",
+      "aliases": [
+        "Asafi",
+        "Asfi",
+        "SFI",
+        "Safim",
+        "asfy",
+        "asfy  mraksh",
+        "sa fei",
+        "sapi",
+        "Сафи",
+        "Сафі",
+        "Սաֆի",
+        "סאפי",
+        "آسفي",
+        "اسفی",
+        "اسفی، مراکش",
+        "საფი",
+        "ⴰⵙⴼⵉ",
+        "サフィ",
+        "薩非",
+        "사피"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.29939,
+      "longitude": -9.23718,
+      "population": 336883,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2542051",
+      "name": "Mohammedia",
+      "asciiName": "Mohammedia",
+      "aliases": [
+        "Al Muhammadiyah",
+        "Al-Muhammadijja",
+        "Fadalah",
+        "Fdala",
+        "Fedala",
+        "Fedalah",
+        "Fedhala",
+        "Mohamedija",
+        "Mohamedio",
+        "Mohammadia",
+        "Mokhammedija",
+        "Muhammediye",
+        "Məhəmmədiyyə",
+        "Sedala",
+        "alhrawyyn",
+        "almhmdyt",
+        "mhmdyh",
+        "mohamedia",
+        "mu han mo di ye",
+        "Мохаммедия",
+        "المحمدية",
+        "الهراويين",
+        "محمدیه",
+        "محمدیہ",
+        "穆罕默迪耶",
+        "모하메디아"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "371",
+      "latitude": 33.68607,
+      "longitude": -7.38298,
+      "population": 227799,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2544248",
+      "name": "Khouribga",
+      "asciiName": "Khouribga",
+      "aliases": [
+        "Khouribja",
+        "Kouriga",
+        "Kourigha",
+        "khrybkt",
+        "خريبكة"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.88108,
+      "longitude": -6.9063,
+      "population": 214241,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550078",
+      "name": "El Jadida",
+      "asciiName": "El Jadida",
+      "aliases": [
+        "Al Jadida",
+        "Al Yadida",
+        "Al-Djadida",
+        "Al-Dzadida",
+        "Castilho Real",
+        "Dzadida",
+        "Ehl'-Dzhadida",
+        "Ehl'-Dzhadzida",
+        "El Jadid",
+        "El-Yadida",
+        "Mazagan",
+        "Mazagao",
+        "Mazaghan",
+        "Mazargan",
+        "aljdydh",
+        "aljdydt",
+        "ela jadida",
+        "jie di dai",
+        "xælcha di da",
+        "Мазарґан",
+        "Эль-Джадзіда",
+        "Эль-Джадида",
+        "אל-גדידה",
+        "الجديدة",
+        "الجدیده",
+        "الجدیدہ",
+        "एल जदिदा",
+        "แอลฌาดีดา",
+        "ელ-ჯადიდა",
+        "アル・ジャディーダ",
+        "杰迪代",
+        "엘자디다"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.25682,
+      "longitude": -8.50882,
+      "population": 212863,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555745",
+      "name": "Beni Mellal",
+      "asciiName": "Beni Mellal",
+      "aliases": [
+        "Ayt Mellal",
+        "BEM",
+        "Bani Mallal",
+        "Beni Melal",
+        "Beni Melalis",
+        "Beni-Mellal-Centre",
+        "Beni-Millal'",
+        "bei ni mai la lei",
+        "beni melala",
+        "beni melaል",
+        "beni・merraru",
+        "bny mlal",
+        "bny mll",
+        "Бени-Меллаль",
+        "Бени-Миллаль",
+        "בני מלל",
+        "بني ملال",
+        "بنی ملال",
+        "बेनी मेलाल",
+        "বেনি মেলাল",
+        "ਬੇਨੀ ਮੇਲਾਲ",
+        "ቤኒ ሜላል",
+        "ベニ・メッラル",
+        "貝尼邁拉勒",
+        "베니멜랄"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.33725,
+      "longitude": -6.34983,
+      "population": 210397,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-10920963",
+      "name": "Salé Al Jadida",
+      "asciiName": "Sale Al Jadida",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "441",
+      "latitude": 33.99722,
+      "longitude": -6.74047,
+      "population": 200000,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10374934",
+      "name": "Ait Melloul",
+      "asciiName": "Ait Melloul",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "273",
+      "latitude": 30.34164,
+      "longitude": -9.50356,
+      "population": 187652,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541479",
+      "name": "Nador",
+      "asciiName": "Nador",
+      "aliases": [
+        "NDR",
+        "Nadora",
+        "Nadoras",
+        "Nnadur",
+        "Villa Nador",
+        "alnazwr",
+        "na zu er",
+        "nad xr",
+        "nadoleu",
+        "nazwr",
+        "Надор",
+        "الناظور",
+        "ناظور",
+        "นาดอร์",
+        "ⵏⴰⴹⵓⵕ",
+        "納祖爾",
+        "나도르"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.16813,
+      "longitude": -2.93352,
+      "population": 176600,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2552615",
+      "name": "Dar Bouazza",
+      "asciiName": "Dar Bouazza",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "385",
+      "latitude": 33.51535,
+      "longitude": -7.81677,
+      "population": 165295,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529317",
+      "name": "Taza",
+      "asciiName": "Taza",
+      "aliases": [
+        "ta zha",
+        "tazh",
+        "tazt",
+        "Таза",
+        "Таза қаласы",
+        "תאזה",
+        "تازة",
+        "تازه",
+        "تازہ",
+        "塔扎"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.21,
+      "longitude": -4.01,
+      "population": 162110,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2548880",
+      "name": "Fès al Bali",
+      "asciiName": "Fes al Bali",
+      "aliases": [
+        "Fes le Vieux",
+        "Fes-l'Ancien",
+        "Medina",
+        "Old Fes"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 34.0701,
+      "longitude": -4.95473,
+      "population": 156000,
+      "featureCode": "PPLX"
+    },
+    {
+      "id": "ma-2537406",
+      "name": "Settat",
+      "asciiName": "Settat",
+      "aliases": [
+        "Azettad",
+        "Sattat",
+        "Setatas",
+        "sai ta te",
+        "setateu",
+        "sltat",
+        "stat",
+        "Сеттат",
+        "سطات",
+        "سلطات",
+        "სეტატი",
+        "塞塔特",
+        "세타트"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 33.00103,
+      "longitude": -7.61662,
+      "population": 155333,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2556272",
+      "name": "Berrechid",
+      "asciiName": "Berrechid",
+      "aliases": [
+        "Barrechid",
+        "Bev-rechid"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 33.26553,
+      "longitude": -7.58754,
+      "population": 149201,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558470",
+      "name": "Khemisset",
+      "asciiName": "Khemisset",
+      "aliases": [
+        "Al Khmissat",
+        "Kimisset"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.82404,
+      "longitude": -6.06627,
+      "population": 143640,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2545957",
+      "name": "Inezgane",
+      "asciiName": "Inezgane",
+      "aliases": [
+        "Imezgane",
+        "Insgane"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "273",
+      "latitude": 30.35535,
+      "longitude": -9.53639,
+      "population": 142320,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2544001",
+      "name": "Ksar El Kebir",
+      "asciiName": "Ksar El Kebir",
+      "aliases": [
+        "Alcazarquebir",
+        "Alcazarquivir",
+        "Alcazquivir",
+        "El Ksar El Kbir",
+        "El Ksar El Kebir"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "331",
+      "latitude": 35.00044,
+      "longitude": -5.90378,
+      "population": 138262,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2543549",
+      "name": "Larache",
+      "asciiName": "Larache",
+      "aliases": [
+        "Al `Ara'ish",
+        "Al-Araisz",
+        "El Aaraich",
+        "El Araish",
+        "Larasas",
+        "Larash",
+        "Larasha",
+        "Laraso",
+        "Laraxe",
+        "Larraix",
+        "Lavache",
+        "araishu",
+        "la la shen",
+        "la rach",
+        "lalasyu",
+        "Лараш",
+        "Лараша",
+        "לראצה",
+        "العرائش",
+        "عرائش",
+        "عرایش",
+        "ลารัช",
+        "アライシュ",
+        "拉臘什",
+        "라라슈"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "331",
+      "latitude": 35.19321,
+      "longitude": -6.15572,
+      "population": 136505,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548526",
+      "name": "Guelmim",
+      "asciiName": "Guelmim",
+      "aliases": [
+        "GLN",
+        "Gel'mim",
+        "Gelmima",
+        "Gelmimas",
+        "Goulimine",
+        "Gulimin",
+        "Kulmim",
+        "gai lei min",
+        "gerumin",
+        "gu'elamima",
+        "gulimimi",
+        "guweልmiም",
+        "guyelamima",
+        "gwlmym",
+        "klmym",
+        "nglmym",
+        "Гельмим",
+        "Гулимин",
+        "Гулимин қаласы",
+        "Гулімін",
+        "كلميم",
+        "کلمیم",
+        "ڭلميم",
+        "گولمیم",
+        "गुएलमिम",
+        "গুয়েলমিম",
+        "ਗੁਏਲਮਿਮ",
+        "გულიმიმი",
+        "ጉዌልሚም",
+        "ゲルミン",
+        "蓋勒敏",
+        "겔밈"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "261",
+      "latitude": 28.98696,
+      "longitude": -10.05738,
+      "population": 129200,
+      "featureCode": "PPLA"
+    },
+    {
+      "id": "ma-2544333",
+      "name": "Khenifra",
+      "asciiName": "Khenifra",
+      "aliases": [
+        "Chenifra",
+        "Chunajfira",
+        "Jenifra",
+        "Xnifra",
+        "hai ni fu la",
+        "khnyfrh",
+        "khnyfrt",
+        "Хенифра",
+        "خنيفرة",
+        "خنیفره",
+        "خنیفرہ",
+        "海尼夫拉"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.93492,
+      "longitude": -5.66167,
+      "population": 128318,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2555467",
+      "name": "Berkane",
+      "asciiName": "Berkane",
+      "aliases": [
+        "Berkan",
+        "Berkawe",
+        "Birkani",
+        "bai er kan",
+        "brkan",
+        "Беркан",
+        "بركان",
+        "برکان",
+        "ⴱⴻⵔⴽⴰⵏ",
+        "拜爾坎"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.92,
+      "longitude": -2.32,
+      "population": 119284,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530048",
+      "name": "Taourirt",
+      "asciiName": "Taourirt",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "533",
+      "latitude": 34.40731,
+      "longitude": -2.89732,
+      "population": 112908,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554006",
+      "name": "Bouskoura",
+      "asciiName": "Bouskoura",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "385",
+      "latitude": 33.44976,
+      "longitude": -7.65239,
+      "population": 112501,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548830",
+      "name": "Al Fqih Ben Çalah",
+      "asciiName": "Al Fqih Ben Calah",
+      "aliases": [
+        "Fkih Ben Salah",
+        "Fquih Ben Salah"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "255",
+      "latitude": 32.50213,
+      "longitude": -6.68771,
+      "population": 111402,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10374906",
+      "name": "Dchira El Jihadia",
+      "asciiName": "Dchira El Jihadia",
+      "aliases": [
+        "Dcheira El Jihadia",
+        "ⴷⵛⵉⵔⴰ ⵍⵊⵉⵀⴰⴷⵉⵢⴰ"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "273",
+      "latitude": 30.37345,
+      "longitude": -9.54761,
+      "population": 109564,
+      "featureCode": "PPLX"
+    },
+    {
+      "id": "ma-2540689",
+      "name": "Oued Zem",
+      "asciiName": "Oued Zem",
+      "aliases": [
+        "Wadi Zam",
+        "wad zm",
+        "wady zm",
+        "واد زم",
+        "وادي زم"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.8627,
+      "longitude": -6.57359,
+      "population": 104029,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2549979",
+      "name": "El Kelaa des Srarhna",
+      "asciiName": "El Kelaa des Srarhna",
+      "aliases": [
+        "El Kelaa des Sraghna",
+        "El Kelaa des Srharna",
+        "Kelaa",
+        "Kelaa Des Srarhna"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 32.05121,
+      "longitude": -7.41079,
+      "population": 103982,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532945",
+      "name": "Sidi Slimane",
+      "asciiName": "Sidi Slimane",
+      "aliases": [
+        "Sidi Slamain",
+        "Sidi Sliman",
+        "Сиди-Слимане"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.26479,
+      "longitude": -5.92598,
+      "population": 101541,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-7280528",
+      "name": "Errachidia",
+      "asciiName": "Errachidia",
+      "aliases": [
+        "Al-Rashidiyya",
+        "Ar-Raszidijja",
+        "ERH",
+        "Ehr-Rashidija",
+        "Imtɣeren",
+        "Ksar es-Souk",
+        "Rachidia",
+        "Rasidija",
+        "alrshydyt",
+        "ar-Rachidiya",
+        "la xi di ye",
+        "Эр-Рашидия",
+        "א-רשידיה",
+        "الرشيدية",
+        "الرشیدیہ",
+        "拉希迪耶"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.9314,
+      "longitude": -4.42663,
+      "population": 100870,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548489",
+      "name": "Guercif",
+      "asciiName": "Guercif",
+      "aliases": [
+        "Garsif"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.22568,
+      "longitude": -3.35361,
+      "population": 99238,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2539134",
+      "name": "Oulad Teïma",
+      "asciiName": "Oulad Teima",
+      "aliases": [
+        "Ouled Teima"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.39467,
+      "longitude": -9.20897,
+      "population": 97608,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556018",
+      "name": "Ben Guerir",
+      "asciiName": "Ben Guerir",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "427",
+      "latitude": 32.24088,
+      "longitude": -7.95397,
+      "population": 96777,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718669",
+      "name": "Ouislane",
+      "asciiName": "Ouislane",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.91406,
+      "longitude": -5.48969,
+      "population": 95995,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2528659",
+      "name": "Tiflet",
+      "asciiName": "Tiflet",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.89469,
+      "longitude": -6.30649,
+      "population": 94684,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10375044",
+      "name": "Lqoliaa",
+      "asciiName": "Lqoliaa",
+      "aliases": [
+        "Lqliaa",
+        "ⵍⵇⵍⵉⵄⴰ"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "273",
+      "latitude": 30.29759,
+      "longitude": -9.46597,
+      "population": 90890,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529649",
+      "name": "Taroudant",
+      "asciiName": "Taroudant",
+      "aliases": [
+        "Taroudannt",
+        "Tarudant",
+        "Tarudantas",
+        "Tarudante",
+        "ta lu dan te",
+        "tarwdant",
+        "Тарудант",
+        "تارودانت",
+        "塔魯丹特"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.47028,
+      "longitude": -8.87695,
+      "population": 87520,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537545",
+      "name": "Sefrou",
+      "asciiName": "Sefrou",
+      "aliases": [
+        "Sefru"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.83186,
+      "longitude": -4.828,
+      "population": 87234,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2549263",
+      "name": "Essaouira",
+      "asciiName": "Essaouira",
+      "aliases": [
+        "Amegdul",
+        "As Suwayrah",
+        "As-Sawira",
+        "As-Shawirah",
+        "ESU",
+        "Ehs-Suvejra",
+        "Ehssuehjra",
+        "Es Suira",
+        "Es-Suvejra",
+        "Esauira",
+        "Essauira",
+        "Magador",
+        "Medino de Esauiro",
+        "Mogadar",
+        "Mogador",
+        "Savira",
+        "Suira",
+        "Suvayr",
+        "Szavira",
+        "alswyrt",
+        "el-suvaira",
+        "es'sa'ura",
+        "esau-ila",
+        "mwghadwr",
+        "mwkadwr",
+        "suo wei la",
+        "swyrh",
+        "Ес-Сувейра",
+        "Эс-Сувейра",
+        "Эссуэйра",
+        "אסואירה",
+        "الصويرة",
+        "صویره",
+        "صویرہ",
+        "موغادور",
+        "موكادور",
+        "एस्साउरा",
+        "ელ-სუვაირა",
+        "エッサウィラ",
+        "索维拉",
+        "에사우이라"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.5125,
+      "longitude": -9.77,
+      "population": 85137,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548818",
+      "name": "Fnidek",
+      "asciiName": "Fnidek",
+      "aliases": [
+        "Castillejos",
+        "Fnideq",
+        "Fnides",
+        "Los Castillejos",
+        "Фнидек"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.84906,
+      "longitude": -5.35747,
+      "population": 84558,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2533191",
+      "name": "Sidi Kacem",
+      "asciiName": "Sidi Kacem",
+      "aliases": [
+        "Petitjean",
+        "Pettijean",
+        "Sidi Qacem",
+        "Sidi Qasim",
+        "sdy qasm",
+        "سدي قاسم"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.22149,
+      "longitude": -5.70775,
+      "population": 82632,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527089",
+      "name": "Tiznit",
+      "asciiName": "Tiznit",
+      "aliases": [
+        "Tiznitas",
+        "ti zi ni te",
+        "tznyt",
+        "Тизнит",
+        "تزنيت",
+        "تزنیت",
+        "提茲尼特"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.69742,
+      "longitude": -9.73162,
+      "population": 81569,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530241",
+      "name": "Tan-Tan",
+      "asciiName": "Tan-Tan",
+      "aliases": [
+        "TTA",
+        "Tantanas",
+        "Тан-Тан",
+        "طانطان",
+        "タンタン"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "521",
+      "latitude": 28.43799,
+      "longitude": -11.10321,
+      "population": 79942,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2540850",
+      "name": "Ouarzazate",
+      "asciiName": "Ouarzazate",
+      "aliases": [
+        "OZZ",
+        "Ouarzazat",
+        "Ouarzazte",
+        "Ouorzazate",
+        "Uarzazat",
+        "Uarzazatas",
+        "Varzazat",
+        "Warzazat",
+        "wrzazat",
+        "wrzzat",
+        "Варзазат",
+        "Уарзазат",
+        "ورزازات",
+        "ورززات"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 30.91894,
+      "longitude": -6.89341,
+      "population": 77603,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-12718688",
+      "name": "Souk El Arbaa",
+      "asciiName": "Souk El Arbaa",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.68473,
+      "longitude": -6.00344,
+      "population": 75635,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526488",
+      "name": "Youssoufia",
+      "asciiName": "Youssoufia",
+      "aliases": [
+        "Louis Gentil"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.24634,
+      "longitude": -8.52941,
+      "population": 73848,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2546917",
+      "name": "Ifrane",
+      "asciiName": "Ifrane",
+      "aliases": [
+        "Ifran",
+        "Ifranas",
+        "afran",
+        "ipeulan",
+        "yi fu lan",
+        "Ифран",
+        "איפראן",
+        "إفران",
+        "伊夫兰",
+        "이프란"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.52666,
+      "longitude": -5.11019,
+      "population": 73782,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718676",
+      "name": "Lahraouyine",
+      "asciiName": "Lahraouyine",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "355",
+      "latitude": 33.54138,
+      "longitude": -7.52848,
+      "population": 70783,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542987",
+      "name": "Martil",
+      "asciiName": "Martil",
+      "aliases": [
+        "Rio Martin",
+        "Rio Martine",
+        "Wad Martin"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.61662,
+      "longitude": -5.27522,
+      "population": 70274,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2560841",
+      "name": "Aïn Harrouda",
+      "asciiName": "Ain Harrouda",
+      "aliases": [
+        "Ain el Harrouda"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "371",
+      "latitude": 33.63737,
+      "longitude": -7.44971,
+      "population": 68161,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532412",
+      "name": "Souq Sebt Oulad Nemma",
+      "asciiName": "Souq Sebt Oulad Nemma",
+      "aliases": [
+        "Es Sebt",
+        "Souk Sebt des Oulad Nemaa",
+        "Souk es Sebt"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "255",
+      "latitude": 32.2973,
+      "longitude": -6.70301,
+      "population": 65601,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2562055",
+      "name": "Skhirate",
+      "asciiName": "Skhirate",
+      "aliases": [
+        "Ac Ckhirat",
+        "Kasba Skira",
+        "Minaret de Skhirat",
+        "Skhirat"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.8527,
+      "longitude": -7.03171,
+      "population": 65272,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2540810",
+      "name": "Ouezzane",
+      "asciiName": "Ouezzane",
+      "aliases": [
+        "Ouazzane",
+        "Quazzane",
+        "Uazan",
+        "Wazzan"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "405",
+      "latitude": 34.79584,
+      "longitude": -5.57849,
+      "population": 65088,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2555519",
+      "name": "Benslimane",
+      "asciiName": "Benslimane",
+      "aliases": [
+        "Ben Sliman",
+        "Bouhault",
+        "Boulhaut",
+        "Boulhout",
+        "Camp Boulhaut",
+        "GMD",
+        "O Ben Slimane"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "111",
+      "latitude": 33.61601,
+      "longitude": -7.12153,
+      "population": 62352,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555882",
+      "name": "Beni Enzar",
+      "asciiName": "Beni Enzar",
+      "aliases": [
+        "Beni Anzar",
+        "Beni Ensar",
+        "ⴱⵏⵉ ⵏⵚⴰⵔ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.26,
+      "longitude": -2.93,
+      "population": 61786,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542898",
+      "name": "Mdiq",
+      "asciiName": "Mdiq",
+      "aliases": [
+        "Al Mediq",
+        "El Medik",
+        "El Rincon",
+        "M'dia",
+        "M'dik",
+        "Mdic",
+        "Ricon el Medik",
+        "Rincon",
+        "Rincon de El Medik",
+        "Rincon de Medik",
+        "Rincon del Medik",
+        "Rincon el Madik",
+        "Мдик"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "573",
+      "latitude": 35.68313,
+      "longitude": -5.32871,
+      "population": 61398,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2536074",
+      "name": "Sidi Bennour",
+      "asciiName": "Sidi Bennour",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 32.65236,
+      "longitude": -8.42769,
+      "population": 60948,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2542227",
+      "name": "Midelt",
+      "asciiName": "Midelt",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.6852,
+      "longitude": -4.74512,
+      "population": 60390,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2556464",
+      "name": "Azrou",
+      "asciiName": "Azrou",
+      "aliases": [
+        "Azru",
+        "ai zi lu",
+        "azrw",
+        "Азру",
+        "أزرو",
+        "艾茲魯"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.43443,
+      "longitude": -5.22126,
+      "population": 59348,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2527645",
+      "name": "Tirhanimîne",
+      "asciiName": "Tirhanimine",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.23619,
+      "longitude": -3.95453,
+      "population": 55827,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10375207",
+      "name": "My Drarga",
+      "asciiName": "My Drarga",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.37733,
+      "longitude": -9.47342,
+      "population": 55631,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8542188",
+      "name": "Dakhla",
+      "asciiName": "Dakhla",
+      "aliases": [
+        "Dajla",
+        "Villa Cisneros",
+        "aldakhlt‎",
+        "الداخلة‎"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.41145,
+      "longitude": -9.55344,
+      "population": 55618,
+      "featureCode": "PPLX"
+    },
+    {
+      "id": "ma-2560939",
+      "name": "Ain El Aouda",
+      "asciiName": "Ain El Aouda",
+      "aliases": [
+        "'Ain al 'Awda",
+        "Ain el Apuda"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.80333,
+      "longitude": -6.79461,
+      "population": 54397,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555567",
+      "name": "Ben Jerrar",
+      "asciiName": "Ben Jerrar",
+      "aliases": [
+        "Ben Jarrar Ait Amira",
+        "Ben Jerra",
+        "Zaouia Ben Jerrar"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 30.26224,
+      "longitude": -9.50377,
+      "population": 53026,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552292",
+      "name": "Ad Darwa",
+      "asciiName": "Ad Darwa",
+      "aliases": [
+        "Deroua",
+        "Derroua"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "117",
+      "latitude": 33.37487,
+      "longitude": -7.5356,
+      "population": 52108,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542013",
+      "name": "Al Aaroui",
+      "asciiName": "Al Aaroui",
+      "aliases": [
+        "Mont Arrouit",
+        "Mont-Aroui",
+        "Mont-Arruit",
+        "Monte 'Arrouit",
+        "Monte Arruit"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.0109,
+      "longitude": -3.00938,
+      "population": 51976,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544720",
+      "name": "Kasba Tadla",
+      "asciiName": "Kasba Tadla",
+      "aliases": [
+        "Kasbah Tadla",
+        "Tadla"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.5977,
+      "longitude": -6.26844,
+      "population": 51697,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718663",
+      "name": "Bejaâd",
+      "asciiName": "Bejaad",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.77133,
+      "longitude": -6.39231,
+      "population": 51206,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10797349",
+      "name": "Sidi Taibi",
+      "asciiName": "Sidi Taibi",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.18698,
+      "longitude": -6.68176,
+      "population": 51050,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2545017",
+      "name": "Jerada",
+      "asciiName": "Jerada",
+      "aliases": [
+        "Djerada",
+        "Dzherada",
+        "Jarada",
+        "Джерада",
+        "ⵊⴻⵔⴰⴷⴰ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.31,
+      "longitude": -2.16,
+      "population": 47507,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2553455",
+      "name": "Chefchaouen",
+      "asciiName": "Chefchaouen",
+      "aliases": [
+        "Chaouen",
+        "Chauen",
+        "Chechaouen",
+        "Chechaouene",
+        "Chefchaouene",
+        "Chichaouene",
+        "Ech Chaouene",
+        "Scheschauen",
+        "Shefshauen",
+        "Ville de Chechaouen",
+        "Xauen",
+        "Xexauen",
+        "shfshawn",
+        "Шефшауен",
+        "شفشاون"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.16878,
+      "longitude": -5.2636,
+      "population": 46721,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2545069",
+      "name": "Mrirt",
+      "asciiName": "Mrirt",
+      "aliases": [
+        "Djemaa de Mrirt",
+        "Ej Jema de Mrirt",
+        "Jema de Mrirt",
+        "Jemaa de Mrirt",
+        "Jemaa del Mrirt",
+        "Souk Jemaa de Mrirt"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 33.16427,
+      "longitude": -5.56722,
+      "population": 46660,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527915",
+      "name": "Tinghir",
+      "asciiName": "Tinghir",
+      "aliases": [
+        "Tineghir",
+        "Tinerhir",
+        "Tinrhir"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "577",
+      "latitude": 31.51472,
+      "longitude": -5.53278,
+      "population": 45911,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2550806",
+      "name": "El Aïoun",
+      "asciiName": "El Aioun",
+      "aliases": [
+        "Aioun Sidi Mellouk",
+        "Al 'Youn",
+        "El Aioun Sidi Mellouk",
+        "ⵍⵄⵢⵓⵏ",
+        "ⵍⵄⵢⵓⵏ ⵙⵉⴷⵉ ⵎⵍⵍⵓⴽ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "533",
+      "latitude": 34.58319,
+      "longitude": -2.50612,
+      "population": 45679,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556657",
+      "name": "Azemmour",
+      "asciiName": "Azemmour",
+      "aliases": [
+        "Azamor",
+        "Azimur",
+        "Azzegour"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.28952,
+      "longitude": -8.3425,
+      "population": 44683,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532394",
+      "name": "Souq Larb’a al Gharb",
+      "asciiName": "Souq Larb'a al Gharb",
+      "aliases": [
+        "El Arba du Gharb",
+        "El Arba du Rharb",
+        "El Arbaa du Rharb",
+        "El Arboa du Rharb",
+        "Souk-el-Arba-du-Gharb"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.68664,
+      "longitude": -6.00272,
+      "population": 44059,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526452",
+      "name": "Zagora",
+      "asciiName": "Zagora",
+      "aliases": [
+        "OZG",
+        "Загора"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "587",
+      "latitude": 30.33241,
+      "longitude": -5.8384,
+      "population": 43752,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2559217",
+      "name": "Ait Ourir",
+      "asciiName": "Ait Ourir",
+      "aliases": [
+        "Ait Urir",
+        "Et Tleta",
+        "Tleta des Ait Ourir"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.56517,
+      "longitude": -7.66163,
+      "population": 42705,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556570",
+      "name": "Azilal",
+      "asciiName": "Azilal",
+      "aliases": [
+        "Arilal",
+        "Asila",
+        "Asilal"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.96156,
+      "longitude": -6.57109,
+      "population": 42062,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2461874",
+      "name": "Smara",
+      "asciiName": "Smara",
+      "aliases": [
+        "Asmara",
+        "Es-Semara",
+        "Es-Smara",
+        "Esmara",
+        "SMW",
+        "Semara",
+        "Smar",
+        "alsmarh",
+        "alsmart",
+        "camara",
+        "seumala",
+        "si ma la",
+        "smarh",
+        "sumara",
+        "Σμάρα",
+        "Ес-Семара",
+        "Смара",
+        "Смара қаласы",
+        "סמארה",
+        "السمارة",
+        "السماره",
+        "سمارا",
+        "سماره",
+        "स्मारा",
+        "স্মারা",
+        "સ્મારા",
+        "சமாரா",
+        "స్మర",
+        "ಸ್ಮಾರ",
+        "ස්මරා",
+        "สมารา",
+        "スマラ",
+        "斯馬拉",
+        "斯马拉",
+        "스마라"
+      ],
+      "admin1Code": "11",
+      "admin2Code": "221",
+      "latitude": 26.73841,
+      "longitude": -11.67194,
+      "population": 42056,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532822",
+      "name": "Sidi Yahia El Gharb",
+      "asciiName": "Sidi Yahia El Gharb",
+      "aliases": [
+        "Sidi Yahia al Gharb",
+        "Sidi Yahia del Garb",
+        "Sidi Yahia el Rharb",
+        "Sidi Yahya du Rharb",
+        "Sidi Yanya du Rharb",
+        "Sidi Yaya du Rhanb"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "491",
+      "latitude": 34.30494,
+      "longitude": -6.30404,
+      "population": 41472,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10374981",
+      "name": "Tine Biougra",
+      "asciiName": "Tine Biougra",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 30.20942,
+      "longitude": -9.37922,
+      "population": 41421,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530155",
+      "name": "Taounate",
+      "asciiName": "Taounate",
+      "aliases": [
+        "Taounat",
+        "Taunat",
+        "Tawnat",
+        "Таунат"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.53661,
+      "longitude": -4.64009,
+      "population": 41075,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2553751",
+      "name": "Bouznika",
+      "asciiName": "Bouznika",
+      "aliases": [
+        "Bouzhika",
+        "Bouzniqa",
+        "Buznike",
+        "Kasba bou Znika",
+        "Бузнике"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "111",
+      "latitude": 33.78942,
+      "longitude": -7.15968,
+      "population": 40663,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718675",
+      "name": "Had Soualem",
+      "asciiName": "Had Soualem",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "117",
+      "latitude": 33.41972,
+      "longitude": -7.85237,
+      "population": 40146,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2550898",
+      "name": "Imzouren",
+      "asciiName": "Imzouren",
+      "aliases": [
+        "Ain Zoren",
+        "Amzourhen-Khemis-Mrabten",
+        "Eimoren",
+        "Einzoren",
+        "Einzorene",
+        "Imsouren",
+        "Imzourene",
+        "Izourene"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.14637,
+      "longitude": -3.85063,
+      "population": 40000,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526435",
+      "name": "Zaïo",
+      "asciiName": "Zaio",
+      "aliases": [
+        "Toumiat Zaio",
+        "Tumiat",
+        "Tumiat Zaio",
+        "ⵣⴰⵢⵢⵓ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 34.94282,
+      "longitude": -2.7329,
+      "population": 39099,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557500",
+      "name": "Aourir",
+      "asciiName": "Aourir",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.49238,
+      "longitude": -9.6355,
+      "population": 38617,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550252",
+      "name": "El Hajeb",
+      "asciiName": "El Hajeb",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.68786,
+      "longitude": -5.371,
+      "population": 38527,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537538",
+      "name": "Zeghanghane",
+      "asciiName": "Zeghanghane",
+      "aliases": [
+        "Segangan",
+        "Segangane",
+        "ⴰⵣⵖⴰⵏⵖⴰⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.15561,
+      "longitude": -3.00236,
+      "population": 37154,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556076",
+      "name": "Ben Ahmed",
+      "asciiName": "Ben Ahmed",
+      "aliases": [
+        "Kasba Ben Ahmed"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 33.06635,
+      "longitude": -7.24161,
+      "population": 36149,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527271",
+      "name": "Tit Mellil",
+      "asciiName": "Tit Mellil",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "355",
+      "latitude": 33.55808,
+      "longitude": -7.48647,
+      "population": 35797,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2542866",
+      "name": "Mechraa Bel Ksiri",
+      "asciiName": "Mechraa Bel Ksiri",
+      "aliases": [
+        "Ksiri",
+        "Mechra Belqsiri",
+        "Mechra al Ksiri",
+        "Mechra-bel-Kairi"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.57373,
+      "longitude": -5.95585,
+      "population": 34393,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557055",
+      "name": "Asilah",
+      "asciiName": "Asilah",
+      "aliases": [
+        "Arcila",
+        "Arcilas",
+        "Arsila",
+        "Arzila",
+        "Arzilah",
+        "Asila",
+        "Asilakh",
+        "Assila",
+        "Assilah",
+        "Augusta Zilil",
+        "Colonia Augusti Iulia Constantia Zilil",
+        "Ville d'Arcila",
+        "ashira",
+        "asilla",
+        "asylh",
+        "asylt",
+        "sylt",
+        "Асила",
+        "Асилах",
+        "أصيلة",
+        "اصیله",
+        "صيلة",
+        "アシラー",
+        "아실라"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.46522,
+      "longitude": -6.03415,
+      "population": 34011,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532171",
+      "name": "Tabount",
+      "asciiName": "Tabount",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 30.90321,
+      "longitude": -6.91579,
+      "population": 33929,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718681",
+      "name": "Laâttaouia",
+      "asciiName": "Laattaouia",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 31.83532,
+      "longitude": -7.31431,
+      "population": 33103,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718684",
+      "name": "Sidi Slimane Echcharaa",
+      "asciiName": "Sidi Slimane Echcharaa",
+      "aliases": [
+        "ⵙⵉⴷⵙ ⵙⵍⵉⵎⴰⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.90818,
+      "longitude": -2.35055,
+      "population": 32979,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552317",
+      "name": "Demnate",
+      "asciiName": "Demnate",
+      "aliases": [
+        "Demnat",
+        "Demnot"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.73443,
+      "longitude": -7.00505,
+      "population": 32217,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2549356",
+      "name": "Arfoud",
+      "asciiName": "Arfoud",
+      "aliases": [
+        "Ehrfud",
+        "Erfoud",
+        "Эрфуд"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.4353,
+      "longitude": -4.23258,
+      "population": 31971,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555157",
+      "name": "Bouarfa",
+      "asciiName": "Bouarfa",
+      "aliases": [
+        "Bordj de Bou Arfa",
+        "Buarfa",
+        "UAR"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 32.53379,
+      "longitude": -1.96209,
+      "population": 31499,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532421",
+      "name": "Souk et Tnine Jorf el Mellah",
+      "asciiName": "Souk et Tnine Jorf el Mellah",
+      "aliases": [
+        "El Zoco el Tenin de Yorf el-lah",
+        "Et Tnine Jorf el Mellah",
+        "Jorf-el-Melha",
+        "Souk et Tnine Djorf el Mellah"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.49162,
+      "longitude": -5.50846,
+      "population": 31318,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542768",
+      "name": "Mehdya",
+      "asciiName": "Mehdya",
+      "aliases": [
+        "Mahdia Plage",
+        "Media",
+        "Mehdaia",
+        "Mehdia",
+        "Mehdia-Plage",
+        "Mehdiya",
+        "Mehdya-Port",
+        "Mehedia",
+        "Mehediya",
+        "Mehediyah",
+        "Mehedyia",
+        "Mendiya-Plage",
+        "Plage",
+        "Plage de Mehdia"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.25596,
+      "longitude": -6.67345,
+      "population": 31269,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560774",
+      "name": "Aïn Taoujdat",
+      "asciiName": "Ain Taoujdat",
+      "aliases": [
+        "Ain Taoudjad",
+        "Ain Taoudjat",
+        "Ain Taoujat",
+        "Ain Taoujdate",
+        "Ait Taoujdate"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.93575,
+      "longitude": -5.21328,
+      "population": 30889,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8299790",
+      "name": "Tamesna",
+      "asciiName": "Tamesna",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.81809,
+      "longitude": -6.91658,
+      "population": 30705,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10375138",
+      "name": "Oadar Temsia",
+      "asciiName": "Oadar Temsia",
+      "aliases": [
+        "Temsia"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "273",
+      "latitude": 30.36531,
+      "longitude": -9.41044,
+      "population": 30526,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2553303",
+      "name": "Chichaoua",
+      "asciiName": "Chichaoua",
+      "aliases": [
+        "Chichaua",
+        "Mzala Chichaoua"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.54351,
+      "longitude": -8.76275,
+      "population": 30432,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2531480",
+      "name": "Tahla",
+      "asciiName": "Tahla",
+      "aliases": [
+        "El Ayba Tahalla",
+        "Tahala"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.04965,
+      "longitude": -4.42162,
+      "population": 30279,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-11025266",
+      "name": "Sabaa Aiyoun",
+      "asciiName": "Sabaa Aiyoun",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.90331,
+      "longitude": -5.36868,
+      "population": 28693,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2538059",
+      "name": "Rich",
+      "asciiName": "Rich",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "363",
+      "latitude": 32.25644,
+      "longitude": -4.50152,
+      "population": 28382,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542147",
+      "name": "Missour",
+      "asciiName": "Missour",
+      "aliases": [
+        "Misour"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.04893,
+      "longitude": -3.98947,
+      "population": 27937,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526359",
+      "name": "Zawyat ech Cheïkh",
+      "asciiName": "Zawyat ech Cheikh",
+      "aliases": [
+        "Zaouia ech Cheikh",
+        "Zavijja ash Shejkh",
+        "Zouiat ech Cheikh",
+        "Завийя аш Шейх"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.64445,
+      "longitude": -5.91826,
+      "population": 27723,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2535530",
+      "name": "Bouknadel",
+      "asciiName": "Bouknadel",
+      "aliases": [
+        "Buknadel",
+        "Sidi Bou Knadel",
+        "Sidi Bouqnadel"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "441",
+      "latitude": 34.11849,
+      "longitude": -6.7389,
+      "population": 27577,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718687",
+      "name": "Aïn Attig",
+      "asciiName": "Ain Attig",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.88758,
+      "longitude": -6.96807,
+      "population": 27384,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8504943",
+      "name": "Tamansourt",
+      "asciiName": "Tamansourt",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.755,
+      "longitude": -8.11,
+      "population": 27383,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2553382",
+      "name": "Echemmaia Est",
+      "asciiName": "Echemmaia Est",
+      "aliases": [
+        "Chemaia",
+        "Kasba el Chemaia"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "585",
+      "latitude": 32.08102,
+      "longitude": -8.62458,
+      "population": 26538,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540180",
+      "name": "Oulad Barhil",
+      "asciiName": "Oulad Barhil",
+      "aliases": [
+        "Ksar Oulad Abbou",
+        "Oulad Abbou",
+        "Oulad Barrehil",
+        "Oulad Ber Rehil"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.64042,
+      "longitude": -8.46875,
+      "population": 26521,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555342",
+      "name": "Bir Jdid",
+      "asciiName": "Bir Jdid",
+      "aliases": [
+        "Bir Jdid Chavent",
+        "Bir Jedid Chavent",
+        "Bir Jedid Saint-Hubert"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.37362,
+      "longitude": -7.99462,
+      "population": 26355,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540207",
+      "name": "Oulad Ayad",
+      "asciiName": "Oulad Ayad",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.2,
+      "longitude": -6.8,
+      "population": 26008,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2541210",
+      "name": "Zawyat an Nwaçer",
+      "asciiName": "Zawyat an Nwacer",
+      "aliases": [
+        "Nouaceur",
+        "Nouaseur",
+        "Nwacer"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "385",
+      "latitude": 33.37981,
+      "longitude": -7.61932,
+      "population": 25991,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2537368",
+      "name": "Gueznaia",
+      "asciiName": "Gueznaia",
+      "aliases": [
+        "Badriouene",
+        "Gzanaia",
+        "Gzennaia",
+        "Sgouennaia"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.70211,
+      "longitude": -5.89044,
+      "population": 25771,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542826",
+      "name": "Mediouna",
+      "asciiName": "Mediouna",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "355",
+      "latitude": 33.45161,
+      "longitude": -7.51995,
+      "population": 24506,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718664",
+      "name": "Moulay Ali Cherif",
+      "asciiName": "Moulay Ali Cherif",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.28244,
+      "longitude": -4.26541,
+      "population": 24251,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2534515",
+      "name": "Sidi Ifni",
+      "asciiName": "Sidi Ifni",
+      "aliases": [
+        "Ifni",
+        "SII",
+        "Sidi Ifnis",
+        "Sidifni",
+        "sidiipeuni",
+        "sydy afny",
+        "Сиди Ифни",
+        "سيدي إفني",
+        "시디이프니"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.37975,
+      "longitude": -10.17299,
+      "population": 23606,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537469",
+      "name": "Selouane",
+      "asciiName": "Selouane",
+      "aliases": [
+        "Zelaun",
+        "Zelouan",
+        "Zelouane",
+        "Zeluan",
+        "ⴱⵍⵡⴰⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.07313,
+      "longitude": -2.9423,
+      "population": 23553,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2571932",
+      "name": "Azla",
+      "asciiName": "Azla",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.55303,
+      "longitude": -5.24472,
+      "population": 22985,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550419",
+      "name": "El Gara",
+      "asciiName": "El Gara",
+      "aliases": [
+        "Boucheron",
+        "El-Guara"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "117",
+      "latitude": 33.27732,
+      "longitude": -7.23236,
+      "population": 22773,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2546128",
+      "name": "Imi-n-Tanout",
+      "asciiName": "Imi-n-Tanout",
+      "aliases": [
+        "Imi-N-Tanoute",
+        "Kasba Kahira"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.17213,
+      "longitude": -8.84728,
+      "population": 22753,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2533182",
+      "name": "Sidi Rahal",
+      "asciiName": "Sidi Rahal",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "117",
+      "latitude": 33.47739,
+      "longitude": -7.93641,
+      "population": 22525,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548878",
+      "name": "New Fes",
+      "asciiName": "New Fes",
+      "aliases": [
+        "Djedid",
+        "Fes Djedid",
+        "Fes Jdid",
+        "Fes Jedid",
+        "Fes le Nouveau",
+        "Fes-le-Neuf",
+        "Mechouar Fes Jdid"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 34.05466,
+      "longitude": -5.00725,
+      "population": 22451,
+      "featureCode": "PPLX"
+    },
+    {
+      "id": "ma-2538401",
+      "name": "Ras el Ma",
+      "asciiName": "Ras el Ma",
+      "aliases": [
+        "Domaine de Ras el Ma",
+        "Rasse-Ma"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "591",
+      "latitude": 33.97399,
+      "longitude": -5.09613,
+      "population": 22345,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526239",
+      "name": "Setti Fatma",
+      "asciiName": "Setti Fatma",
+      "aliases": [
+        "Sette Fatna",
+        "Setti Fadma",
+        "Sti Fadma",
+        "Zaouia Sti Fatma",
+        "Сти-Фадма"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.22508,
+      "longitude": -7.67751,
+      "population": 22283,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549750",
+      "name": "El Ksiba",
+      "asciiName": "El Ksiba",
+      "aliases": [
+        "Ksiba"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.57286,
+      "longitude": -6.01947,
+      "population": 21840,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558428",
+      "name": "El Mansouria",
+      "asciiName": "El Mansouria",
+      "aliases": [
+        "Al Mancouriya",
+        "Kasba Mansouriah",
+        "Mansoriyeh",
+        "Mansouria",
+        "Mansouriah",
+        "Minaret de Mansuria"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "111",
+      "latitude": 33.74643,
+      "longitude": -7.30194,
+      "population": 21679,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2561124",
+      "name": "Ahfir",
+      "asciiName": "Ahfir",
+      "aliases": [
+        "Martimprey du Kiss",
+        "ⴰⵃⴼⵉⵔ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.95368,
+      "longitude": -2.10027,
+      "population": 21435,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550547",
+      "name": "Al Brouj",
+      "asciiName": "Al Brouj",
+      "aliases": [
+        "El Borch",
+        "El Borouj"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.50467,
+      "longitude": -7.19238,
+      "population": 21004,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2546028",
+      "name": "Imouzzer Kandar",
+      "asciiName": "Imouzzer Kandar",
+      "aliases": [
+        "Immouzer",
+        "Imouzzer",
+        "Imouzzer du Kandar"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.72871,
+      "longitude": -5.01092,
+      "population": 20884,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2551147",
+      "name": "Douar Toulal",
+      "asciiName": "Douar Toulal",
+      "aliases": [
+        "Dar Toulal",
+        "Toulal"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.88483,
+      "longitude": -5.59664,
+      "population": 20831,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544821",
+      "name": "Karia Ba Mohamed",
+      "asciiName": "Karia Ba Mohamed",
+      "aliases": [
+        "Karia Ba Mohammed"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.37094,
+      "longitude": -5.2138,
+      "population": 20487,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538027",
+      "name": "Reçani",
+      "asciiName": "Recani",
+      "aliases": [
+        "Risani",
+        "Rissani",
+        "Рисани"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.28318,
+      "longitude": -4.26565,
+      "population": 20469,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529362",
+      "name": "Tata",
+      "asciiName": "Tata",
+      "aliases": [
+        "Tatta"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "551",
+      "latitude": 29.74409,
+      "longitude": -7.973,
+      "population": 20322,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537610",
+      "name": "Sebt Gzoula",
+      "asciiName": "Sebt Gzoula",
+      "aliases": [
+        "Es Sebt",
+        "Es Sebt Gzoula",
+        "Gzoula",
+        "Sebt des Gzoula"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.10779,
+      "longitude": -9.08366,
+      "population": 20248,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10958491",
+      "name": "Bni Bouayach",
+      "asciiName": "Bni Bouayach",
+      "aliases": [
+        "Bni Bojazh",
+        "Бни Бояж"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.10506,
+      "longitude": -3.84028,
+      "population": 19951,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558436",
+      "name": "Beni Yakhlef",
+      "asciiName": "Beni Yakhlef",
+      "aliases": [
+        "Al Luwayziyah",
+        "Al Lwiziya",
+        "Ellouizia",
+        "Elluoizia",
+        "Louizia",
+        "Saint-Jean de Fedala"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "371",
+      "latitude": 33.68407,
+      "longitude": -7.33924,
+      "population": 19622,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2538898",
+      "name": "Oulmes",
+      "asciiName": "Oulmes",
+      "aliases": [
+        "Oulmes-Les Thermes",
+        "Ul'mes",
+        "awlmas",
+        "wlmas",
+        "Ульмес",
+        "أولماس",
+        "ولماس"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.42585,
+      "longitude": -6.00137,
+      "population": 19014,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557533",
+      "name": "Aoulouz",
+      "asciiName": "Aoulouz",
+      "aliases": [
+        "Dar Caid"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.67307,
+      "longitude": -8.18087,
+      "population": 19010,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557019",
+      "name": "Asni",
+      "asciiName": "Asni",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.24653,
+      "longitude": -7.9789,
+      "population": 18674,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549981",
+      "name": "Kelaat Mgouna",
+      "asciiName": "Kelaat Mgouna",
+      "aliases": [
+        "El Kelaa",
+        "El Kelaa des Mgouna",
+        "Kelaat Mguna",
+        "Qala'at Mgouna",
+        "Келаат Мгуна"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "577",
+      "latitude": 31.24573,
+      "longitude": -6.1326,
+      "population": 18515,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718680",
+      "name": "Méchouar-Kasba",
+      "asciiName": "Mechouar-Kasba",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.6008,
+      "longitude": -7.98653,
+      "population": 18410,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2596460",
+      "name": "Ribat Al Khayr",
+      "asciiName": "Ribat Al Khayr",
+      "aliases": [
+        "Ribat al Kheir",
+        "Ribat el Kheir"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.81518,
+      "longitude": -4.40717,
+      "population": 18278,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2561358",
+      "name": "Agouraï",
+      "asciiName": "Agourai",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.63,
+      "longitude": -5.58,
+      "population": 18182,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530704",
+      "name": "Tamallalt",
+      "asciiName": "Tamallalt",
+      "aliases": [
+        "Kasba Tamlalt el Djedid",
+        "Tamelelt",
+        "Tamelelt Jdida",
+        "Tamelelt el Jedid",
+        "Tamelelte el Djedid",
+        "Tamelet ej Jdid",
+        "Tamelet el Djedid",
+        "Tamelit ej Jedid"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 31.81897,
+      "longitude": -7.51446,
+      "population": 18060,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548623",
+      "name": "Goulmima",
+      "asciiName": "Goulmima",
+      "aliases": [
+        "Goulmina",
+        "Guelmina",
+        "Kulmima",
+        "klmymt",
+        "كلميمة"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.69227,
+      "longitude": -4.95256,
+      "population": 17929,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538573",
+      "name": "Outat Oulad Al Haj",
+      "asciiName": "Outat Oulad Al Haj",
+      "aliases": [
+        "Outat Oulad el Hajj",
+        "Outat el Hadj",
+        "Outat el Haj",
+        "Outat el Hajj"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.34499,
+      "longitude": -3.70387,
+      "population": 17895,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560922",
+      "name": "Aïn Beni Mathar",
+      "asciiName": "Ain Beni Mathar",
+      "aliases": [
+        "Ajn Bni Matar",
+        "Beni Mattar Ahel Ras-el-Ain",
+        "Berguent",
+        "Ras el Ain des Beni Mathar",
+        "Айн Бни Матар"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.0097,
+      "longitude": -2.03238,
+      "population": 17787,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-6546693",
+      "name": "Boujniba",
+      "asciiName": "Boujniba",
+      "aliases": [
+        "Boujniba (Commune Urbaine)",
+        "Boujniba (MU)",
+        "ابي الجعد (البلدية)"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.90046,
+      "longitude": -6.77464,
+      "population": 17504,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718686",
+      "name": "Mers El Kheir",
+      "asciiName": "Mers El Kheir",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.86262,
+      "longitude": -6.92964,
+      "population": 17352,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2536392",
+      "name": "Sidi Allal El Bahraoui",
+      "asciiName": "Sidi Allal El Bahraoui",
+      "aliases": [
+        "Monod",
+        "Sidi Allal al Bahrawi",
+        "Sidi-Allal-Bahraoui"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 34.0077,
+      "longitude": -6.53082,
+      "population": 17325,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2543667",
+      "name": "Lalla Mimouna",
+      "asciiName": "Lalla Mimouna",
+      "aliases": [
+        "Lal-la Mimuna",
+        "Lalla miouna-adachra"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.84606,
+      "longitude": -6.06645,
+      "population": 17217,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554281",
+      "name": "Boumia",
+      "asciiName": "Boumia",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.7236,
+      "longitude": -5.1025,
+      "population": 17091,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550162",
+      "name": "El Harhoura",
+      "asciiName": "El Harhoura",
+      "aliases": [
+        "Miramar"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.94483,
+      "longitude": -6.93106,
+      "population": 16773,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542230",
+      "name": "Midar",
+      "asciiName": "Midar",
+      "aliases": [
+        "Arba Laazib Midar",
+        "Azib de Midar",
+        "El Arba de Midar",
+        "Soko Arbaa Laazib Midar",
+        "Мидар"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 34.94025,
+      "longitude": -3.53311,
+      "population": 16402,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550985",
+      "name": "Driouch",
+      "asciiName": "Driouch",
+      "aliases": [
+        "Dar Driuch",
+        "Dar Drius"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 34.97705,
+      "longitude": -3.37902,
+      "population": 16096,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556996",
+      "name": "Assa",
+      "asciiName": "Assa",
+      "aliases": [
+        "Zaouia Assa"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "071",
+      "latitude": 28.60986,
+      "longitude": -9.42986,
+      "population": 15910,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558052",
+      "name": "Amizmiz",
+      "asciiName": "Amizmiz",
+      "aliases": [
+        "Amimiz",
+        "Amismiz"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.21673,
+      "longitude": -8.23184,
+      "population": 15685,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558844",
+      "name": "Ait Yazza",
+      "asciiName": "Ait Yazza",
+      "aliases": [
+        "Ait Lazza",
+        "Yazza"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.50188,
+      "longitude": -8.79917,
+      "population": 15570,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555504",
+      "name": "Ben Taieb",
+      "asciiName": "Ben Taieb",
+      "aliases": [
+        "Ben Tieb",
+        "Ben-Tib"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 35.04427,
+      "longitude": -3.45418,
+      "population": 15568,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2554594",
+      "name": "Bou Izakarn",
+      "asciiName": "Bou Izakarn",
+      "aliases": [
+        "Bou Izakaren",
+        "Bou Izakarene",
+        "Bu Isacarn"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "261",
+      "latitude": 29.17705,
+      "longitude": -9.71181,
+      "population": 15536,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2539139",
+      "name": "Oulad Tayeb",
+      "asciiName": "Oulad Tayeb",
+      "aliases": [
+        "Ulad Tajib",
+        "Улад Тайиб"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 33.94633,
+      "longitude": -4.99509,
+      "population": 15491,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2561290",
+      "name": "Aguelmous",
+      "asciiName": "Aguelmous",
+      "aliases": [
+        "Aguelmouss"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 33.16139,
+      "longitude": -5.84626,
+      "population": 15480,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2533481",
+      "name": "Sidi Lmokhtar",
+      "asciiName": "Sidi Lmokhtar",
+      "aliases": [
+        "Sidi Mojtar",
+        "Sidi Mokhtar",
+        "Sidi Moktar",
+        "Zaouia Sidi Moktar"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.57739,
+      "longitude": -9.01575,
+      "population": 14803,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529872",
+      "name": "Targuist",
+      "asciiName": "Targuist",
+      "aliases": [
+        "Targvist",
+        "Таргвист"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 34.93769,
+      "longitude": -4.31856,
+      "population": 14621,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2549888",
+      "name": "Zemamra",
+      "asciiName": "Zemamra",
+      "aliases": [
+        "El Khemis",
+        "El Khemis des Zemamra",
+        "Khemis des Zemamra",
+        "Khmis Village",
+        "Souk el Khemis-des Zemamra"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "467",
+      "latitude": 32.62287,
+      "longitude": -8.70227,
+      "population": 14500,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548343",
+      "name": "Oulad Frej",
+      "asciiName": "Oulad Frej",
+      "aliases": [
+        "El Had",
+        "Had Oulad Frej",
+        "Had Ouled Frej Centre",
+        "Had des Oulad Frej",
+        "Souk el Had"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 32.95956,
+      "longitude": -8.2274,
+      "population": 14492,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2561737",
+      "name": "Afourer",
+      "asciiName": "Afourer",
+      "aliases": [
+        "Afouraire",
+        "Afourar"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.20721,
+      "longitude": -6.53824,
+      "population": 14397,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718683",
+      "name": "Bouizazarene Ihaddadene",
+      "asciiName": "Bouizazarene Ihaddadene",
+      "aliases": [
+        "ⴱⵓⵉⵣⴰⵣⴰⵔⴻⵏ ⵉⵃⴷⴷⴰⴷⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.15779,
+      "longitude": -2.97377,
+      "population": 14326,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555395",
+      "name": "Bhalil",
+      "asciiName": "Bhalil",
+      "aliases": [
+        "Bahlil",
+        "Behalil"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.85194,
+      "longitude": -4.87228,
+      "population": 14192,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554943",
+      "name": "Bou Fekrane",
+      "asciiName": "Bou Fekrane",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.76097,
+      "longitude": -5.48748,
+      "population": 14131,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532707",
+      "name": "Sidi Zouine",
+      "asciiName": "Sidi Zouine",
+      "aliases": [
+        "Sidi Zuin",
+        "Sidi-Zouina",
+        "Zaouia nta Sidi Zouine"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.66914,
+      "longitude": -8.34541,
+      "population": 14017,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526459",
+      "name": "Zag",
+      "asciiName": "Zag",
+      "aliases": [],
+      "admin1Code": "10",
+      "admin2Code": "071",
+      "latitude": 28.0221,
+      "longitude": -9.29397,
+      "population": 13936,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2535619",
+      "name": "Sidi Bou Lanouar",
+      "asciiName": "Sidi Bou Lanouar",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.86,
+      "longitude": -6.88,
+      "population": 13929,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549623",
+      "name": "El Menzel",
+      "asciiName": "El Menzel",
+      "aliases": [
+        "El Mennzel"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.83758,
+      "longitude": -4.54472,
+      "population": 13803,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10904142",
+      "name": "Loudaya",
+      "asciiName": "Loudaya",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.63348,
+      "longitude": -8.24893,
+      "population": 13775,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541906",
+      "name": "Moulay Abdallah",
+      "asciiName": "Moulay Abdallah",
+      "aliases": [
+        "Tett"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.19664,
+      "longitude": -8.58811,
+      "population": 13601,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554322",
+      "name": "Boumalne Dades",
+      "asciiName": "Boumalne Dades",
+      "aliases": [
+        "Bou Malem",
+        "Boumalne"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "577",
+      "latitude": 31.37986,
+      "longitude": -5.98819,
+      "population": 13461,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718690",
+      "name": "El Guerdane",
+      "asciiName": "El Guerdane",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.37757,
+      "longitude": -9.01997,
+      "population": 13445,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544968",
+      "name": "Jorf",
+      "asciiName": "Jorf",
+      "aliases": [
+        "Djorf",
+        "Oulad Rhanem ej Jorf"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.49442,
+      "longitude": -4.40598,
+      "population": 13433,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557134",
+      "name": "Ar Rommani",
+      "asciiName": "Ar Rommani",
+      "aliases": [
+        "Ar Rumman",
+        "Marchand",
+        "Romani",
+        "Rommani"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.52838,
+      "longitude": -6.60348,
+      "population": 13428,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526389",
+      "name": "Zaouïa Aït Ishak",
+      "asciiName": "Zaouia Ait Ishak",
+      "aliases": [
+        "Ait Ichek",
+        "Ait Isehak",
+        "Ait Ishak",
+        "Ait Issehak",
+        "Ait Shak",
+        "Zaouia Ait Issehak",
+        "Zawyat Ait Ishag",
+        "Zawyat Ait Ishaq"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.76181,
+      "longitude": -5.72535,
+      "population": 13299,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2531432",
+      "name": "Tahannout",
+      "asciiName": "Tahannout",
+      "aliases": [
+        "Tahanaout",
+        "Tahanaoute",
+        "Tahanaut",
+        "Tahannaout",
+        "Tahannawt",
+        "Tahnaout"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.35236,
+      "longitude": -7.95012,
+      "population": 13215,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2543394",
+      "name": "Ifrane",
+      "asciiName": "Ifrane",
+      "aliases": [
+        "Ifran",
+        "Lfrane",
+        "Ифран"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.70217,
+      "longitude": -6.3494,
+      "population": 13000,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541805",
+      "name": "Moulay Driss Zerhoun",
+      "asciiName": "Moulay Driss Zerhoun",
+      "aliases": [
+        "Moulay Idris",
+        "Moulay Idriss",
+        "Moulay-Idriss du Zarhoun"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 34.05555,
+      "longitude": -5.52132,
+      "population": 12683,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552545",
+      "name": "Dar Ould Zidouh",
+      "asciiName": "Dar Ould Zidouh",
+      "aliases": [
+        "Dar Oulad Zidouh",
+        "Dar-Oould-Zidouh"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.31247,
+      "longitude": -6.90494,
+      "population": 12547,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548851",
+      "name": "Figuig",
+      "asciiName": "Figuig",
+      "aliases": [
+        "Figuiq",
+        "Markaz Fikik",
+        "mrkz fkyk",
+        "مركز فكيك"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 32.10891,
+      "longitude": -1.22855,
+      "population": 12516,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555009",
+      "name": "Boudenib",
+      "asciiName": "Boudenib",
+      "aliases": [
+        "Boudenib Centre"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.95229,
+      "longitude": -3.60604,
+      "population": 12419,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532420",
+      "name": "Jem’at Oulad ’Abbou",
+      "asciiName": "Jem'at Oulad 'Abbou",
+      "aliases": [
+        "Foucald",
+        "Foucauld",
+        "Foucault",
+        "Souk Jemaa des Oulad Abbou",
+        "Souk Jemaa des Oulad Arbou",
+        "Souk-Jemaa-Oulad-Abbou",
+        "Souk-Jemad-Oulad-Abbou",
+        "Suq Jum`ah Awlad `Abbu"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "117",
+      "latitude": 33.1148,
+      "longitude": -7.9336,
+      "population": 12338,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2545051",
+      "name": "Jamaat Shaim",
+      "asciiName": "Jamaat Shaim",
+      "aliases": [
+        "Ej Jema Sahim",
+        "El Djema Sahim",
+        "El Djemaa Sahim",
+        "El Jema Sahim",
+        "Jema Sahim",
+        "Jemaa-Shaim",
+        "Souk el Jema Sahim"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.34694,
+      "longitude": -8.84249,
+      "population": 12285,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527366",
+      "name": "Tissa",
+      "asciiName": "Tissa",
+      "aliases": [
+        "El Arbaa de Tissa",
+        "L'Arba de Tissa",
+        "Village de Tissa"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.28791,
+      "longitude": -4.66372,
+      "population": 12224,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2555885",
+      "name": "Bni Drar",
+      "asciiName": "Bni Drar",
+      "aliases": [
+        "Beni Drar",
+        "ⴱⵏⵉ ⴷⵔⴰⵔ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "411",
+      "latitude": 34.86005,
+      "longitude": -1.98979,
+      "population": 11939,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2539829",
+      "name": "Oulad Embarek",
+      "asciiName": "Oulad Embarek",
+      "aliases": [
+        "Oulad Mbarek",
+        "Ulad Embarek"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.27162,
+      "longitude": -6.44967,
+      "population": 11840,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2561539",
+      "name": "Agdz",
+      "asciiName": "Agdz",
+      "aliases": [
+        "Agoz",
+        "Ksar Agdz"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "587",
+      "latitude": 30.69356,
+      "longitude": -6.44628,
+      "population": 11663,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718662",
+      "name": "Hattane",
+      "asciiName": "Hattane",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "311",
+      "latitude": 32.84085,
+      "longitude": -6.80027,
+      "population": 11594,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530843",
+      "name": "Tamanar",
+      "asciiName": "Tamanar",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.00087,
+      "longitude": -9.67802,
+      "population": 11557,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529411",
+      "name": "Tassila",
+      "asciiName": "Tassila",
+      "aliases": [
+        "Tissila Exterieur",
+        "Tissila Interieur"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 29.97134,
+      "longitude": -9.64195,
+      "population": 11419,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540716",
+      "name": "Oued Amlil",
+      "asciiName": "Oued Amlil",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.2,
+      "longitude": -4.28,
+      "population": 11362,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537611",
+      "name": "Sebt Bni Garfett",
+      "asciiName": "Sebt Bni Garfett",
+      "aliases": [
+        "Beni Gorfet",
+        "Beni Zarfet",
+        "Bni Garfett",
+        "Es Sebt",
+        "Sebt des Beni Zarfet",
+        "Souk-Sebt-des-Beni-Zarfet",
+        "Zoco el Sebt de Beni Gorfet"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "331",
+      "latitude": 35.25796,
+      "longitude": -5.83334,
+      "population": 11311,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544334",
+      "name": "Khenichet-sur Ouerrha",
+      "asciiName": "Khenichet-sur Ouerrha",
+      "aliases": [
+        "Jenichet",
+        "Khemichet",
+        "Khenichet"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.44041,
+      "longitude": -5.67879,
+      "population": 11241,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558414",
+      "name": "Almis du Guigou",
+      "asciiName": "Almis du Guigou",
+      "aliases": [
+        "Almis"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.38738,
+      "longitude": -4.82927,
+      "population": 11060,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560905",
+      "name": "Aïn Cheggag",
+      "asciiName": "Ain Cheggag",
+      "aliases": [
+        "Ecole d'Ain Chegag"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.89286,
+      "longitude": -5.03699,
+      "population": 11055,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718668",
+      "name": "Zoualet",
+      "asciiName": "Zoualet",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.93664,
+      "longitude": -5.46514,
+      "population": 10985,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532821",
+      "name": "Sidi Yahya Zaer",
+      "asciiName": "Sidi Yahya Zaer",
+      "aliases": [
+        "Sidi Yahia",
+        "Sidi Yahia Zaer",
+        "Sidi Yahia Zaire",
+        "Sidi Yahia az Za'er",
+        "Sidi Yahia des Zaer",
+        "Sidi Yahya",
+        "Sidi Yahya des Zaer"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "501",
+      "latitude": 33.82977,
+      "longitude": -6.91262,
+      "population": 10926,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2533178",
+      "name": "Sidi Rahhal",
+      "asciiName": "Sidi Rahhal",
+      "aliases": [
+        "Sidi Rahal",
+        "Zaouia Sidi Rahal",
+        "Zaouia Sidi Rahhal",
+        "Zaouia Sidi Rahkal"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 31.65031,
+      "longitude": -7.47288,
+      "population": 10817,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2564788",
+      "name": "Aklim",
+      "asciiName": "Aklim",
+      "aliases": [
+        "ⴰⴽⵍⵉⵎ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.92,
+      "longitude": -2.43,
+      "population": 10586,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2539114",
+      "name": "Oulad Yaïch",
+      "asciiName": "Oulad Yaich",
+      "aliases": [
+        "Oulad Yaiche",
+        "Ouled Aich"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.43498,
+      "longitude": -6.3245,
+      "population": 10560,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540698",
+      "name": "Oued Laou",
+      "asciiName": "Oued Laou",
+      "aliases": [
+        "Oued Lahou",
+        "Oued Lao",
+        "Oued Lou",
+        "Uad Lau",
+        "wady lw",
+        "وادي لو"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.4484,
+      "longitude": -5.09627,
+      "population": 10553,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718661",
+      "name": "Ouaouizeght",
+      "asciiName": "Ouaouizeght",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.15872,
+      "longitude": -6.35408,
+      "population": 10318,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718678",
+      "name": "El Ouatia",
+      "asciiName": "El Ouatia",
+      "aliases": [],
+      "admin1Code": "10",
+      "admin2Code": "521",
+      "latitude": 28.49624,
+      "longitude": -11.33268,
+      "population": 10149,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2535534",
+      "name": "Sidi Bou Othmane",
+      "asciiName": "Sidi Bou Othmane",
+      "aliases": [
+        "Sidi Bou Otmane",
+        "Sidi Bu Osman"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 31.90226,
+      "longitude": -7.94169,
+      "population": 10025,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10955770",
+      "name": "Cap Negro II",
+      "asciiName": "Cap Negro II",
+      "aliases": [
+        "Cabo Negro",
+        "Kabo Negro",
+        "Кабо Негро"
+      ],
+      "admin1Code": "01",
+      "admin2Code": null,
+      "latitude": 35.6597,
+      "longitude": -5.28525,
+      "population": 10000,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2565267",
+      "name": "Mhamid",
+      "asciiName": "Mhamid",
+      "aliases": [
+        "Mkhamid",
+        "Мхамид"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "587",
+      "latitude": 29.82,
+      "longitude": -5.72,
+      "population": 10000,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530641",
+      "name": "Tameslouht",
+      "asciiName": "Tameslouht",
+      "aliases": [
+        "Tamesloht",
+        "Tameslout",
+        "tamslwht",
+        "تامصلوحت"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.49472,
+      "longitude": -8.09772,
+      "population": 9929,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530923",
+      "name": "Talsint",
+      "asciiName": "Talsint",
+      "aliases": [
+        "Talsinnt"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 32.53599,
+      "longitude": -3.44143,
+      "population": 9914,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548769",
+      "name": "Foum Zguid",
+      "asciiName": "Foum Zguid",
+      "aliases": [
+        "fm zkyd",
+        "فم زكيد"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "551",
+      "latitude": 30.08792,
+      "longitude": -6.87119,
+      "population": 9812,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527925",
+      "name": "Tinajdad",
+      "asciiName": "Tinajdad",
+      "aliases": [
+        "Tindjad",
+        "Tindjadj",
+        "Tinejad",
+        "Tinejdad",
+        "Tinjdad"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.50764,
+      "longitude": -5.03293,
+      "population": 9764,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558424",
+      "name": "Al M’aziz",
+      "asciiName": "Al M'aziz",
+      "aliases": [
+        "El Maaziz",
+        "Maaziz"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.67073,
+      "longitude": -6.31613,
+      "population": 9719,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527641",
+      "name": "Tirhassaline",
+      "asciiName": "Tirhassaline",
+      "aliases": [
+        "Dechra Maamar",
+        "Maama",
+        "Mammar",
+        "Tighassaline"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.7822,
+      "longitude": -5.65282,
+      "population": 9620,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2537802",
+      "name": "Saidia",
+      "asciiName": "Saidia",
+      "aliases": [
+        "Saida",
+        "Saidia du Kiss",
+        "Saidija",
+        "Саидия",
+        "ⵙⴰⵢⴷⵉⴰ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 35.08195,
+      "longitude": -2.22897,
+      "population": 9587,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718674",
+      "name": "Oulad M'Rah",
+      "asciiName": "Oulad M'Rah",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.91284,
+      "longitude": -7.26438,
+      "population": 9496,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718660",
+      "name": "Ighram Laalam",
+      "asciiName": "Ighram Laalam",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.52378,
+      "longitude": -6.14977,
+      "population": 9467,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718673",
+      "name": "Sidi Ali Ben Hamdouche",
+      "asciiName": "Sidi Ali Ben Hamdouche",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.28665,
+      "longitude": -8.32664,
+      "population": 9463,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2528981",
+      "name": "Tendrara",
+      "asciiName": "Tendrara",
+      "aliases": [
+        "Ain Tendrara"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 33.04964,
+      "longitude": -2.00018,
+      "population": 9289,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555610",
+      "name": "Bni Tajjit",
+      "asciiName": "Bni Tajjit",
+      "aliases": [
+        "Beni Tadjit",
+        "Beni Tajit",
+        "Beni Tajjite",
+        "Tadjit"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 32.28928,
+      "longitude": -3.46616,
+      "population": 9269,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2550016",
+      "name": "Al Qbab",
+      "asciiName": "Al Qbab",
+      "aliases": [
+        "El Kbab",
+        "El Kebab",
+        "Kebbab"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.74121,
+      "longitude": -5.51994,
+      "population": 9112,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532434",
+      "name": "Souq Al Had Bradya",
+      "asciiName": "Souq Al Had Bradya",
+      "aliases": [
+        "Souk el Had des Bradia",
+        "Souq al Had Bradia"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "255",
+      "latitude": 32.44928,
+      "longitude": -6.5366,
+      "population": 9080,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526710",
+      "name": "Tounfit",
+      "asciiName": "Tounfit",
+      "aliases": [
+        "Tounfite",
+        "Tounfite-centre"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "363",
+      "latitude": 32.46945,
+      "longitude": -5.24512,
+      "population": 8920,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718685",
+      "name": "Zirara",
+      "asciiName": "Zirara",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.24099,
+      "longitude": -5.7424,
+      "population": 8735,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11024543",
+      "name": "Bouderbala",
+      "asciiName": "Bouderbala",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.81672,
+      "longitude": -5.27583,
+      "population": 8634,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548320",
+      "name": "Had Kourt",
+      "asciiName": "Had Kourt",
+      "aliases": [
+        "El Had Kourt",
+        "Had-Hourt",
+        "Had-Kurt"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.61588,
+      "longitude": -5.7404,
+      "population": 8564,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550749",
+      "name": "Laouamra",
+      "asciiName": "Laouamra",
+      "aliases": [
+        "Aauamara",
+        "Aouamara",
+        "Aumara",
+        "El Aouamra"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "331",
+      "latitude": 35.06938,
+      "longitude": -6.08835,
+      "population": 8509,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541068",
+      "name": "Oualidia",
+      "asciiName": "Oualidia",
+      "aliases": [
+        "El Oualidia",
+        "Kasba Oualidia",
+        "Koudia Oualidia",
+        "Oualidiya",
+        "Qasbah al Walidiyah",
+        "Qualidia",
+        "Ualidija",
+        "Уалидия"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 32.73372,
+      "longitude": -9.03059,
+      "population": 8484,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2538392",
+      "name": "Ras Kebdana",
+      "asciiName": "Ras Kebdana",
+      "aliases": [
+        "Ras el Ma",
+        "ⵉⵅⴼ ⵏ ⵡⴰⵎⴰⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.14069,
+      "longitude": -2.42455,
+      "population": 8277,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541833",
+      "name": "Moulay Bousselham",
+      "asciiName": "Moulay Bousselham",
+      "aliases": [
+        "Mamorah",
+        "Moulay Bou Selham"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.88158,
+      "longitude": -6.29455,
+      "population": 8050,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542616",
+      "name": "Melqa el Ouidane",
+      "asciiName": "Melqa el Ouidane",
+      "aliases": [
+        "Berteaux",
+        "Camp Berteau",
+        "Camp Berteaux",
+        "Melg el Ouidane",
+        "Melga al Widane",
+        "Melga el Ouidane",
+        "Melqu-el-Ouidane"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "533",
+      "latitude": 34.55964,
+      "longitude": -3.02321,
+      "population": 8009,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529245",
+      "name": "Taznakht",
+      "asciiName": "Taznakht",
+      "aliases": [
+        "Tazenakht",
+        "Tazenskht"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 30.57836,
+      "longitude": -7.20341,
+      "population": 7950,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10965229",
+      "name": "Souq Khmis Aït Yadine",
+      "asciiName": "Souq Khmis Ait Yadine",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.9716,
+      "longitude": -6.01689,
+      "population": 7908,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526104",
+      "name": "Zayda",
+      "asciiName": "Zayda",
+      "aliases": [
+        "Kasba Zaida",
+        "Zaida",
+        "Zeida"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "363",
+      "latitude": 32.81921,
+      "longitude": -4.96099,
+      "population": 7831,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718659",
+      "name": "Kahf Nssar",
+      "asciiName": "Kahf Nssar",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.91361,
+      "longitude": -5.95873,
+      "population": 7821,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10640347",
+      "name": "Sidi Ahmed",
+      "asciiName": "Sidi Ahmed",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "585",
+      "latitude": 32.20807,
+      "longitude": -8.49141,
+      "population": 7781,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560940",
+      "name": "Ain Aicha",
+      "asciiName": "Ain Aicha",
+      "aliases": [
+        "Ain Alcha"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.46103,
+      "longitude": -4.69026,
+      "population": 7759,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2554389",
+      "name": "Boulemane",
+      "asciiName": "Boulemane",
+      "aliases": [
+        "Boulmane"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.36376,
+      "longitude": -4.72896,
+      "population": 7757,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2531171",
+      "name": "Talat-n-Ya’qoub",
+      "asciiName": "Talat-n-Ya'qoub",
+      "aliases": [
+        "Kasba Goundafa",
+        "Kasba Goundala",
+        "Rasoa Goundafa",
+        "Talaat n' Yakoub",
+        "Talate n'Yakoub",
+        "Talate n'Yakour",
+        "Tlate n'Yacoub"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 30.98893,
+      "longitude": -8.18927,
+      "population": 7702,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558667",
+      "name": "Akka",
+      "asciiName": "Akka",
+      "aliases": [
+        "Akka Centre"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "551",
+      "latitude": 29.38914,
+      "longitude": -8.2549,
+      "population": 7501,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2557310",
+      "name": "Aghbala",
+      "asciiName": "Aghbala",
+      "aliases": [
+        "Arbala",
+        "Arhabala",
+        "Arhbala"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.48076,
+      "longitude": -5.64295,
+      "population": 7365,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2531014",
+      "name": "Taliouine",
+      "asciiName": "Taliouine",
+      "aliases": [
+        "Talioune"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.52917,
+      "longitude": -7.91262,
+      "population": 7345,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529777",
+      "name": "Tarhjicht",
+      "asciiName": "Tarhjicht",
+      "aliases": [
+        "Taghjicht",
+        "Tagjist",
+        "Tarhjijt",
+        "Tarjicht"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "261",
+      "latitude": 29.05827,
+      "longitude": -9.42877,
+      "population": 7316,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2551836",
+      "name": "Douar el Caïd el Gueddari",
+      "asciiName": "Douar el Caid el Gueddari",
+      "aliases": [
+        "Dar Guedari",
+        "Dar Gueddari",
+        "Dar al Gaddari",
+        "Dar el Gueddari",
+        "Douar Caid el Gueddari",
+        "El Caid el Gueddari",
+        "El Gueddari"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.42121,
+      "longitude": -6.09099,
+      "population": 7254,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548196",
+      "name": "Haj Kaddour",
+      "asciiName": "Haj Kaddour",
+      "aliases": [
+        "Hadj Kaddour"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.82507,
+      "longitude": -5.42501,
+      "population": 7106,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552975",
+      "name": "Ben Qarrich",
+      "asciiName": "Ben Qarrich",
+      "aliases": [
+        "Ben Carrich",
+        "Ben Karrich",
+        "Beni-Kriche-El Fouki",
+        "Dar Ben Karrich",
+        "Dar beni Kriche Bahri"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.5109,
+      "longitude": -5.42047,
+      "population": 7021,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548676",
+      "name": "Ghafsaï",
+      "asciiName": "Ghafsai",
+      "aliases": [
+        "Rafsai"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.62799,
+      "longitude": -4.91266,
+      "population": 6946,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718689",
+      "name": "Fam El Hisn",
+      "asciiName": "Fam El Hisn",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "551",
+      "latitude": 29.01889,
+      "longitude": -8.89111,
+      "population": 6937,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2531877",
+      "name": "Tafraout",
+      "asciiName": "Tafraout",
+      "aliases": [
+        "Tafraoute",
+        "Tafraut"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.72449,
+      "longitude": -8.9747,
+      "population": 6928,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2544367",
+      "name": "Khemis Sahel",
+      "asciiName": "Khemis Sahel",
+      "aliases": [
+        "El Jmis",
+        "El Khemis",
+        "Jemis del Sahel",
+        "Khemis du Sahel",
+        "Soko el Jemis",
+        "Souk Khemis du Sahel",
+        "Zoco el Jemis",
+        "khmys alsahl",
+        "خميس الساحل"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "331",
+      "latitude": 35.25344,
+      "longitude": -6.0796,
+      "population": 6816,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8556357",
+      "name": "Sidi Bouzid",
+      "asciiName": "Sidi Bouzid",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.23151,
+      "longitude": -8.55062,
+      "population": 6741,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-9645313",
+      "name": "Gueltat Zemmour",
+      "asciiName": "Gueltat Zemmour",
+      "aliases": [],
+      "admin1Code": "11",
+      "admin2Code": "121",
+      "latitude": 25.14276,
+      "longitude": -12.37168,
+      "population": 6740,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2536047",
+      "name": "Sidi Bibi",
+      "asciiName": "Sidi Bibi",
+      "aliases": [
+        "Sidi Bidi"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 30.23784,
+      "longitude": -9.52877,
+      "population": 6728,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11471726",
+      "name": "Oulad El Rhadabne",
+      "asciiName": "Oulad El Rhadabne",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 33.17521,
+      "longitude": -8.60592,
+      "population": 6717,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532405",
+      "name": "Souq at Tlata des Loulad",
+      "asciiName": "Souq at Tlata des Loulad",
+      "aliases": [
+        "Loulad",
+        "Souk Tleta Loulad",
+        "Souk-Tlet-de-Loulad",
+        "Venet-Ville"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.99471,
+      "longitude": -7.11982,
+      "population": 6614,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2556377",
+      "name": "Bab Taza",
+      "asciiName": "Bab Taza",
+      "aliases": [
+        "Bab Tasa",
+        "Bab Tazza"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.06166,
+      "longitude": -5.19828,
+      "population": 6448,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2545346",
+      "name": "Itzer",
+      "asciiName": "Itzer",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.8783,
+      "longitude": -5.0515,
+      "population": 6438,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532440",
+      "name": "Foum Jam’a",
+      "asciiName": "Foum Jam'a",
+      "aliases": [
+        "Foum Jem`a",
+        "Foum ej Jemaa",
+        "Souk de Foum Jemaa"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.96166,
+      "longitude": -6.98354,
+      "population": 6359,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11025160",
+      "name": "Lemhaya",
+      "asciiName": "Lemhaya",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.97716,
+      "longitude": -5.251,
+      "population": 6354,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11131249",
+      "name": "Souk El Arba Des Aït Baha",
+      "asciiName": "Souk El Arba Des Ait Baha",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 30.06958,
+      "longitude": -9.15465,
+      "population": 6189,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548601",
+      "name": "Gourrama",
+      "asciiName": "Gourrama",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "363",
+      "latitude": 32.34016,
+      "longitude": -4.07349,
+      "population": 6129,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10933159",
+      "name": "Had Oulad Zbair",
+      "asciiName": "Had Oulad Zbair",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.2894,
+      "longitude": -4.31952,
+      "population": 6099,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532918",
+      "name": "Sidi Smai’il",
+      "asciiName": "Sidi Smai'il",
+      "aliases": [
+        "Sidi Smail",
+        "Sidi Smaine",
+        "Sidi-Smain",
+        "Zaouia Sidi Smain"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 32.82461,
+      "longitude": -8.51122,
+      "population": 6076,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540953",
+      "name": "Aït Ouaoumana",
+      "asciiName": "Ait Ouaoumana",
+      "aliases": [
+        "Dechra Ouaoumana",
+        "Ouaoumana"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.71029,
+      "longitude": -5.8063,
+      "population": 6001,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544815",
+      "name": "Kariat Arkmane",
+      "asciiName": "Kariat Arkmane",
+      "aliases": [
+        "El Arba",
+        "El Arbaa",
+        "El Arbaa Soko",
+        "Karia Arkeman",
+        "Karia d'Arkemane",
+        "Karia da Arkeman",
+        "Karia de Arkeman",
+        "Karia de Arkenan",
+        "Karia-Arakmane-Afso",
+        "Kariat Arekmam",
+        "Kariat akmane",
+        "Kariet Arkmane",
+        "Soko el Arbaa",
+        "Souk-el-Arbaa",
+        "Zoco el Arbaa",
+        "ⵇⵕⵢⵜ ⴰⵕⴽⵎⴰⵏ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.1071,
+      "longitude": -2.74693,
+      "population": 5882,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532646",
+      "name": "Skhour Rehamna",
+      "asciiName": "Skhour Rehamna",
+      "aliases": [
+        "Les Skhour des Rehamna",
+        "Skhour des Rehamna",
+        "Souk El Arba des Skour",
+        "Souk el Arba des Skhour"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "427",
+      "latitude": 32.48244,
+      "longitude": -7.91533,
+      "population": 5835,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2463161",
+      "name": "Aousserd",
+      "asciiName": "Aousserd",
+      "aliases": [
+        "Aousred",
+        "Auserd",
+        "Ausert",
+        "Ausserd",
+        "Aussert",
+        "Awsard",
+        "alwsrd",
+        "awsrd",
+        "آوسرد",
+        "الوسرد"
+      ],
+      "admin1Code": "12",
+      "admin2Code": "066",
+      "latitude": 22.554,
+      "longitude": -14.33,
+      "population": 5832,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558766",
+      "name": "Ajdir",
+      "asciiName": "Ajdir",
+      "aliases": [
+        "Adzdir",
+        "Ajddir",
+        "Atzntir",
+        "Axdir",
+        "a jie di er",
+        "ajdyr",
+        "Ατζντίρ",
+        "Әҗдир",
+        "אז'דיר",
+        "أجدير",
+        "اجدیر",
+        "阿杰迪尔"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.19537,
+      "longitude": -3.91166,
+      "population": 5802,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541843",
+      "name": "Moulay Bou ’azza",
+      "asciiName": "Moulay Bou 'azza",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 33.22576,
+      "longitude": -6.19807,
+      "population": 5753,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2550681",
+      "name": "Arbaa Laaounate",
+      "asciiName": "Arbaa Laaounate",
+      "aliases": [
+        "Aounat",
+        "Aounate",
+        "Arba Aounate",
+        "Arbaa du Aounates",
+        "El Arba des Aounat",
+        "El Arba el Aounata",
+        "El Arba el Aounate",
+        "El Khemis el Aounat",
+        "Souk el Arba el Aounate"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "467",
+      "latitude": 32.7434,
+      "longitude": -8.19501,
+      "population": 5661,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2531453",
+      "name": "Dhar Souk",
+      "asciiName": "Dhar Souk",
+      "aliases": [
+        "Tahar Souk",
+        "Tahr Souk"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.65197,
+      "longitude": -4.27921,
+      "population": 5658,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529923",
+      "name": "Tarfaya",
+      "asciiName": "Tarfaya",
+      "aliases": [
+        "Cabo Juby",
+        "Cabo Yubi",
+        "Cap Juby",
+        "Talfaia",
+        "Tarfaia",
+        "Tarfaja",
+        "Villa Bens",
+        "tarufaya",
+        "trfayh",
+        "trfayt",
+        "Тарфая",
+        "طرفاية",
+        "طرفایه",
+        "タルファヤ"
+      ],
+      "admin1Code": "11",
+      "admin2Code": "537",
+      "latitude": 27.9392,
+      "longitude": -12.92604,
+      "population": 5615,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2554130",
+      "name": "Boureït",
+      "asciiName": "Boureit",
+      "aliases": [
+        "Bab-Berret",
+        "Bouret"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 34.99827,
+      "longitude": -4.89297,
+      "population": 5434,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560813",
+      "name": "Aïn Leuh",
+      "asciiName": "Ain Leuh",
+      "aliases": [
+        "Ajn Ljokh",
+        "Айн Лёх"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.28984,
+      "longitude": -5.33863,
+      "population": 5426,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549150",
+      "name": "Tlet El Hanchane",
+      "asciiName": "Tlet El Hanchane",
+      "aliases": [
+        "Et Tleta Hanchene",
+        "Et Tleta el Hanchene",
+        "Tlata Hanchane",
+        "Tleta Hanchen",
+        "Tleta Hannchene"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.52207,
+      "longitude": -9.43594,
+      "population": 5421,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552407",
+      "name": "Debdou",
+      "asciiName": "Debdou",
+      "aliases": [
+        "Dabdou",
+        "Debdau",
+        "Debdu",
+        "Dubdu",
+        "dbdw",
+        "דבדו",
+        "دبدو"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "533",
+      "latitude": 33.98228,
+      "longitude": -3.04263,
+      "population": 5416,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10984425",
+      "name": "Ain Karma",
+      "asciiName": "Ain Karma",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 34.00664,
+      "longitude": -5.6157,
+      "population": 5372,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2536383",
+      "name": "Sidi Allal Tazi",
+      "asciiName": "Sidi Allal Tazi",
+      "aliases": [
+        "Allal Tazi"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.52257,
+      "longitude": -6.32197,
+      "population": 5317,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2568012",
+      "name": "Taghazout",
+      "asciiName": "Taghazout",
+      "aliases": [
+        "Tarhazoute"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.54259,
+      "longitude": -9.71115,
+      "population": 5233,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2527055",
+      "name": "Tiztoutine",
+      "asciiName": "Tiztoutine",
+      "aliases": [
+        "Tistoutine",
+        "Tistutin"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 34.97159,
+      "longitude": -3.15273,
+      "population": 5224,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10869575",
+      "name": "Bellaa",
+      "asciiName": "Bellaa",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 30.05145,
+      "longitude": -9.56162,
+      "population": 5186,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718677",
+      "name": "Lakhsas",
+      "asciiName": "Lakhsas",
+      "aliases": [],
+      "admin1Code": "10",
+      "admin2Code": "473",
+      "latitude": 29.36606,
+      "longitude": -9.75082,
+      "population": 5163,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558398",
+      "name": "Alnif",
+      "asciiName": "Alnif",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.11411,
+      "longitude": -5.17154,
+      "population": 5162,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2534496",
+      "name": "Sidi Jaber",
+      "asciiName": "Sidi Jaber",
+      "aliases": [
+        "Sidi Jabeur"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "091",
+      "latitude": 32.38952,
+      "longitude": -6.42095,
+      "population": 5100,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718667",
+      "name": "Al Machouar - Stinia",
+      "asciiName": "Al Machouar - Stinia",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 33.88543,
+      "longitude": -5.55574,
+      "population": 5092,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542167",
+      "name": "Mirleft",
+      "asciiName": "Mirleft",
+      "aliases": [
+        "Ahl Sahel",
+        "Mighleft",
+        "Mirhlef",
+        "Mirhleft"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "473",
+      "latitude": 29.57829,
+      "longitude": -10.03245,
+      "population": 5092,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541779",
+      "name": "Moulay Yacoub",
+      "asciiName": "Moulay Yacoub",
+      "aliases": [
+        "Moulay Yakoub",
+        "Muley Yacub"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "591",
+      "latitude": 34.08793,
+      "longitude": -5.18171,
+      "population": 5036,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2563695",
+      "name": "Had Beni Chiker",
+      "asciiName": "Had Beni Chiker",
+      "aliases": [
+        "Beni Chiker"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.27652,
+      "longitude": -3.01452,
+      "population": 4852,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2525874",
+      "name": "Zoumi",
+      "asciiName": "Zoumi",
+      "aliases": [
+        "Zumi"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 34.80321,
+      "longitude": -5.34458,
+      "population": 4846,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558633",
+      "name": "Aknoul",
+      "asciiName": "Aknoul",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.65371,
+      "longitude": -3.86754,
+      "population": 4807,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550800",
+      "name": "El Akarta",
+      "asciiName": "El Akarta",
+      "aliases": [
+        "Douar el Akarta",
+        "Lakarta"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.67372,
+      "longitude": -9.09502,
+      "population": 4770,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532628",
+      "name": "Skoura",
+      "asciiName": "Skoura",
+      "aliases": [
+        "Skoura des Ahl el Oust"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 31.06262,
+      "longitude": -6.5525,
+      "population": 4730,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526230",
+      "name": "Talmest",
+      "asciiName": "Talmest",
+      "aliases": [
+        "Telmest",
+        "Zaouia Talmest"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.81224,
+      "longitude": -9.3379,
+      "population": 4726,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11708554",
+      "name": "Sidi ’Addi",
+      "asciiName": "Sidi 'Addi",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.3957,
+      "longitude": -5.33341,
+      "population": 4604,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2546029",
+      "name": "Imouzzer des Marmoucha",
+      "asciiName": "Imouzzer des Marmoucha",
+      "aliases": [
+        "Immouzer",
+        "Immouzer Mermoucha",
+        "Immouzer des Marmoucha",
+        "Imouzzer Marmoucha"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.47024,
+      "longitude": -4.29571,
+      "population": 4600,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2553654",
+      "name": "Bzou",
+      "asciiName": "Bzou",
+      "aliases": [
+        "Bezou",
+        "Bzou Aghbalou"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.09171,
+      "longitude": -7.04786,
+      "population": 4588,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2596457",
+      "name": "Zerarda",
+      "asciiName": "Zerarda",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 33.97,
+      "longitude": -4.38,
+      "population": 4573,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526371",
+      "name": "Za Bougrine",
+      "asciiName": "Za Bougrine",
+      "aliases": [
+        "Zaouia Bougrine",
+        "Zouiat Bougrine"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.85524,
+      "longitude": -4.48813,
+      "population": 4490,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2545797",
+      "name": "Ighram",
+      "asciiName": "Ighram",
+      "aliases": [
+        "Igherm",
+        "Irherm"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.08928,
+      "longitude": -8.46023,
+      "population": 4485,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2543602",
+      "name": "Lake Lalla Takerkoust",
+      "asciiName": "Lake Lalla Takerkoust",
+      "aliases": [
+        "Lalla Takarkoust",
+        "Lalla Takerkoust",
+        "Zaouia Lalla Tekerkoust",
+        "lla takrkwst",
+        "lla tkrkwst",
+        "لالا ٹاکیرکوسٹ",
+        "للا تاكركوست",
+        "للا تكركوست",
+        "للا تکرکوست",
+        "ララ・タクルクスト"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.36179,
+      "longitude": -8.1336,
+      "population": 4455,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2540468",
+      "name": "Oukaïmedene",
+      "asciiName": "Oukaimedene",
+      "aliases": [
+        "Oukaimden",
+        "Oukaimeden",
+        "Oukkainrdem",
+        "Ukajmden",
+        "Укаймден"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.20603,
+      "longitude": -7.86089,
+      "population": 4440,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8431703",
+      "name": "Touarga",
+      "asciiName": "Touarga",
+      "aliases": [
+        "Tawarikah",
+        "twarkt",
+        "تواركة"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "421",
+      "latitude": 34.01011,
+      "longitude": -6.8317,
+      "population": 4293,
+      "featureCode": "PPLX"
+    },
+    {
+      "id": "ma-12747061",
+      "name": "Idmine",
+      "asciiName": "Idmine",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.61064,
+      "longitude": -9.34996,
+      "population": 4279,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549076",
+      "name": "Ezzhiliga",
+      "asciiName": "Ezzhiliga",
+      "aliases": [],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.3,
+      "longitude": -6.53,
+      "population": 4211,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550079",
+      "name": "Jebha",
+      "asciiName": "Jebha",
+      "aliases": [
+        "El Jabha",
+        "Jebba",
+        "Kabaz",
+        "Puerto Capax",
+        "Puerto Capaz",
+        "Yebba",
+        "Yebha"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.20549,
+      "longitude": -4.66524,
+      "population": 4102,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10970845",
+      "name": "Sebt Jahjouh",
+      "asciiName": "Sebt Jahjouh",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.71581,
+      "longitude": -5.6687,
+      "population": 4094,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718666",
+      "name": "Kantina",
+      "asciiName": "Kantina",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "171",
+      "latitude": 33.73177,
+      "longitude": -5.57938,
+      "population": 3976,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718672",
+      "name": "Ras El Aïn",
+      "asciiName": "Ras El Ain",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.98253,
+      "longitude": -7.3975,
+      "population": 3946,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544656",
+      "name": "Dar Kebdani",
+      "asciiName": "Dar Kebdani",
+      "aliases": [
+        "Alcazaba de Quebdani",
+        "Dar Quebdani",
+        "Kasba Kebdani",
+        "Kebdani",
+        "Quebdani"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 35.12237,
+      "longitude": -3.33148,
+      "population": 3939,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2528103",
+      "name": "Timahdit",
+      "asciiName": "Timahdit",
+      "aliases": [
+        "Timhadit",
+        "Timhadite"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.23654,
+      "longitude": -5.05954,
+      "population": 3895,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2529069",
+      "name": "Tiddas",
+      "asciiName": "Tiddas",
+      "aliases": [
+        "Tedders"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "291",
+      "latitude": 33.56955,
+      "longitude": -6.26594,
+      "population": 3843,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549224",
+      "name": "Essekhinat",
+      "asciiName": "Essekhinat",
+      "aliases": [
+        "Es Skhinat"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 34.03394,
+      "longitude": -4.86151,
+      "population": 3831,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560894",
+      "name": "Ain Dourij",
+      "asciiName": "Ain Dourij",
+      "aliases": [
+        "Ain Dorij"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "405",
+      "latitude": 34.61427,
+      "longitude": -5.28733,
+      "population": 3706,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8559176",
+      "name": "Douar Sidi Bouafif",
+      "asciiName": "Douar Sidi Bouafif",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.17244,
+      "longitude": -3.86732,
+      "population": 3658,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2555182",
+      "name": "Bou’nane",
+      "asciiName": "Bou'nane",
+      "aliases": [
+        "Bou Anane"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "251",
+      "latitude": 32.03738,
+      "longitude": -3.04978,
+      "population": 3635,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2569052",
+      "name": "Smimou",
+      "asciiName": "Smimou",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.21014,
+      "longitude": -9.70863,
+      "population": 3505,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2531927",
+      "name": "Tafersit",
+      "asciiName": "Tafersit",
+      "aliases": [
+        "Dar Tafersit",
+        "Taferhsit"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 35.00857,
+      "longitude": -3.54088,
+      "population": 3425,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526780",
+      "name": "Touissite",
+      "asciiName": "Touissite",
+      "aliases": [
+        "Touisit",
+        "Touissit",
+        "Twissit",
+        "twysyt",
+        "Тоуисит",
+        "تويسيت",
+        "تویسیت",
+        "ⵜⵓⵢⵙⵉⵜ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.47857,
+      "longitude": -1.7685,
+      "population": 3425,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541830",
+      "name": "Moulay Brahim",
+      "asciiName": "Moulay Brahim",
+      "aliases": [
+        "Zaouia Moulay Brahim",
+        "Zaouiat Moulay Brahim"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.28785,
+      "longitude": -7.9683,
+      "population": 3401,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557391",
+      "name": "Arbaoua",
+      "asciiName": "Arbaoua",
+      "aliases": [
+        "Arbaua"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "281",
+      "latitude": 34.90239,
+      "longitude": -5.94871,
+      "population": 3330,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718658",
+      "name": "Had Bouhssoussen",
+      "asciiName": "Had Bouhssoussen",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 33.14861,
+      "longitude": -6.07972,
+      "population": 3329,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11734596",
+      "name": "Aït Lous",
+      "asciiName": "Ait Lous",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.10772,
+      "longitude": -9.34422,
+      "population": 3228,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8739768",
+      "name": "Mosquée",
+      "asciiName": "Mosquee",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.80622,
+      "longitude": -2.41297,
+      "population": 3150,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11708832",
+      "name": "Souq al Had",
+      "asciiName": "Souq al Had",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "271",
+      "latitude": 33.2923,
+      "longitude": -5.49078,
+      "population": 2973,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560792",
+      "name": "Ain Erreggada",
+      "asciiName": "Ain Erreggada",
+      "aliases": [
+        "Ain Regada",
+        "ⴰⵢⵏ ⵄⵕⴳⴳⴰⴷⴰ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.93348,
+      "longitude": -2.22995,
+      "population": 2941,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718682",
+      "name": "Kassita",
+      "asciiName": "Kassita",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 34.89025,
+      "longitude": -3.72657,
+      "population": 2921,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718671",
+      "name": "Méchouar de Casablanca",
+      "asciiName": "Mechouar de Casablanca",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "141",
+      "latitude": 33.57918,
+      "longitude": -7.60615,
+      "population": 2888,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11092343",
+      "name": "Korouna",
+      "asciiName": "Korouna",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "167",
+      "latitude": 35.11628,
+      "longitude": -3.64215,
+      "population": 2822,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2560891",
+      "name": "Aïn Jemaa",
+      "asciiName": "Ain Jemaa",
+      "aliases": [
+        "Ain Djemaa",
+        "Ain Jema",
+        "Ain ej Jemaa"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 34.0259,
+      "longitude": -5.79355,
+      "population": 2717,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718692",
+      "name": "Issaguen",
+      "asciiName": "Issaguen",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 34.91875,
+      "longitude": -4.56889,
+      "population": 2701,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548420",
+      "name": "Guisser",
+      "asciiName": "Guisser",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.76645,
+      "longitude": -7.49818,
+      "population": 2698,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2543231",
+      "name": "Madagh",
+      "asciiName": "Madagh",
+      "aliases": [
+        "Madarh",
+        "ⵎⴰⴷⴰⵖ"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 35.01032,
+      "longitude": -2.33701,
+      "population": 2677,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2542957",
+      "name": "Matmata",
+      "asciiName": "Matmata",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.09914,
+      "longitude": -4.55219,
+      "population": 2620,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557290",
+      "name": "Aghbalou N Sardane",
+      "asciiName": "Aghbalou N Sardane",
+      "aliases": [
+        "Aghbalou n'Serdan",
+        "Aghbalou n'Serdane",
+        "Arbalou n'Serdane",
+        "Arhbalou n'Serdane",
+        "Arhbalou-Serdane"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "363",
+      "latitude": 32.67953,
+      "longitude": -5.29854,
+      "population": 2511,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532626",
+      "name": "Skoura",
+      "asciiName": "Skoura",
+      "aliases": [
+        "ⵙⴽⵓⵔⴰ ⵎⴷⴰⵣ"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.51935,
+      "longitude": -4.54351,
+      "population": 2479,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2539320",
+      "name": "Oulad Saïd",
+      "asciiName": "Oulad Said",
+      "aliases": [
+        "Oulad Said Houman",
+        "Ouled Said"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 32.96789,
+      "longitude": -7.81277,
+      "population": 2407,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2549102",
+      "name": "Bni Hadifa",
+      "asciiName": "Bni Hadifa",
+      "aliases": [
+        "Beni Hadifa",
+        "El Tzenin de Beni Hadifa",
+        "Et Tnine",
+        "Et Tnine de Beni Hadifa",
+        "Et Tnine des Beni Hadifa",
+        "Soko el Tzenin de Beni Hadifa",
+        "Zoko el Tzenin"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.02251,
+      "longitude": -4.14009,
+      "population": 2370,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11071896",
+      "name": "Imlili",
+      "asciiName": "Imlili",
+      "aliases": [
+        "Imlily",
+        "Itmlily",
+        "amlyly",
+        "إمليلي"
+      ],
+      "admin1Code": "12",
+      "admin2Code": "391",
+      "latitude": 23.23441,
+      "longitude": -16.08041,
+      "population": 2269,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2544510",
+      "name": "Kerrouchen",
+      "asciiName": "Kerrouchen",
+      "aliases": [
+        "Kerrouchene"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.79639,
+      "longitude": -5.3188,
+      "population": 2241,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537824",
+      "name": "Aç-çahrij",
+      "asciiName": "Ac-cahrij",
+      "aliases": [
+        "Sahrij",
+        "Sahriz",
+        "Zaouia Chary"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 31.80489,
+      "longitude": -7.14638,
+      "population": 2195,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526999",
+      "name": "Tlet Sidi Bouguedra",
+      "asciiName": "Tlet Sidi Bouguedra",
+      "aliases": [
+        "Et Tleta",
+        "Et Tleta de Sidi Embarek",
+        "Souk et Tleta de Sidi Embarek",
+        "Souq et Tleta de Sidi Bouguedra",
+        "Tleta",
+        "Tleta Bou Guedra",
+        "Tleta Sidi Mbarek",
+        "Tleta Sidi Mbarek Bou Guedra",
+        "Tleta Sidi Mbark Bouguedra",
+        "Tleta de Sidi Bouguedra"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.25507,
+      "longitude": -8.98067,
+      "population": 2127,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12534572",
+      "name": "Ait Khallouf",
+      "asciiName": "Ait Khallouf",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.26179,
+      "longitude": -9.27259,
+      "population": 2109,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526092",
+      "name": "Boubker",
+      "asciiName": "Boubker",
+      "aliases": [
+        "Bou Beker",
+        "Ouled Ali Boubeker",
+        "Zellidja-Boubker",
+        "Zellija-Boubeker"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.47369,
+      "longitude": -1.7295,
+      "population": 2068,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-10795660",
+      "name": "Sebt El Maarif",
+      "asciiName": "Sebt El Maarif",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "467",
+      "latitude": 32.50149,
+      "longitude": -8.57453,
+      "population": 2002,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2530814",
+      "name": "Tamassint",
+      "asciiName": "Tamassint",
+      "aliases": [
+        "Tamasin",
+        "Tamasint",
+        "Tamassint es Soufla"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.07203,
+      "longitude": -3.96118,
+      "population": 1999,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527002",
+      "name": "Tlet Ighoud",
+      "asciiName": "Tlet Ighoud",
+      "aliases": [
+        "Et Tleta",
+        "Tleta Irhoud",
+        "Tleta d'Irhoud",
+        "Tleta-Ighoud",
+        "Tleta-Ighoun"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "585",
+      "latitude": 31.86011,
+      "longitude": -8.88214,
+      "population": 1993,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718670",
+      "name": "Oulad Amrane",
+      "asciiName": "Oulad Amrane",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "467",
+      "latitude": 32.39313,
+      "longitude": -8.51993,
+      "population": 1964,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11707723",
+      "name": "Tighza",
+      "asciiName": "Tighza",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 33.18739,
+      "longitude": -5.62436,
+      "population": 1950,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2548363",
+      "name": "Had Abdallah Rhiat",
+      "asciiName": "Had Abdallah Rhiat",
+      "aliases": [
+        "Douar el Had",
+        "El Had",
+        "El Had n'Intaoun",
+        "Had-Abdallah-Rhiate",
+        "Had-Abdallah-Riate"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.51914,
+      "longitude": -7.83691,
+      "population": 1857,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2531366",
+      "name": "Taïneste",
+      "asciiName": "Taineste",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.55415,
+      "longitude": -4.13582,
+      "population": 1850,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2527100",
+      "name": "Tizi Ouzli",
+      "asciiName": "Tizi Ouzli",
+      "aliases": [
+        "Tizi Ousli"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.76214,
+      "longitude": -3.79582,
+      "population": 1831,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542024",
+      "name": "Mokrisset",
+      "asciiName": "Mokrisset",
+      "aliases": [
+        "Mokhisset",
+        "Mokhrisset"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "405",
+      "latitude": 34.92997,
+      "longitude": -5.35293,
+      "population": 1784,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-9645312",
+      "name": "Akhfennir",
+      "asciiName": "Akhfennir",
+      "aliases": [],
+      "admin1Code": "11",
+      "admin2Code": "121",
+      "latitude": 28.09455,
+      "longitude": -12.05157,
+      "population": 1583,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2558768",
+      "name": "Ajdir",
+      "asciiName": "Ajdir",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 34.74347,
+      "longitude": -3.97582,
+      "population": 1577,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-13608358",
+      "name": "Tah",
+      "asciiName": "Tah",
+      "aliases": [
+        "altah",
+        "الطاح"
+      ],
+      "admin1Code": null,
+      "admin2Code": null,
+      "latitude": 27.67311,
+      "longitude": -12.9576,
+      "population": 1516,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542380",
+      "name": "Messeïed",
+      "asciiName": "Messeied",
+      "aliases": [
+        "El Mesied",
+        "Lemseied",
+        "M'sied",
+        "Meseied",
+        "Messeid"
+      ],
+      "admin1Code": "10",
+      "admin2Code": "521",
+      "latitude": 28.01506,
+      "longitude": -10.81399,
+      "population": 1501,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2552886",
+      "name": "Dar Chaoui",
+      "asciiName": "Dar Chaoui",
+      "aliases": [
+        "Dar Chaui",
+        "Dar Xaui",
+        "Dar ech Chaui",
+        "Der Xaui",
+        "Xauia"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.5377,
+      "longitude": -5.71742,
+      "population": 1401,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2540704",
+      "name": "Oued el Himer",
+      "asciiName": "Oued el Himer",
+      "aliases": [
+        "El-Heimer",
+        "Oued el Haimer",
+        "Oued el Heimer",
+        "Ued el Heimer"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.44897,
+      "longitude": -1.9006,
+      "population": 1399,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2550278",
+      "name": "Had Hrara",
+      "asciiName": "Had Hrara",
+      "aliases": [
+        "El Had",
+        "El Had Harrara",
+        "Had Harrara",
+        "Had Herrara"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "431",
+      "latitude": 32.44072,
+      "longitude": -9.13344,
+      "population": 1387,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2532410",
+      "name": "Tafetachte",
+      "asciiName": "Tafetachte",
+      "aliases": [
+        "Ain Taftecht",
+        "Souk Tafetecht",
+        "TaFetecht",
+        "Taftecht"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.58341,
+      "longitude": -9.2561,
+      "population": 1387,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2538755",
+      "name": "Ounagha",
+      "asciiName": "Ounagha",
+      "aliases": [
+        "Oumara",
+        "Ounara",
+        "Ounarha"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "211",
+      "latitude": 31.53203,
+      "longitude": -9.54944,
+      "population": 1347,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8556210",
+      "name": "Aghmat",
+      "asciiName": "Aghmat",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.4225,
+      "longitude": -7.80111,
+      "population": 1319,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2557595",
+      "name": "Aoufous",
+      "asciiName": "Aoufous",
+      "aliases": [
+        "Aoufouss",
+        "Centre d'Aoufous"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.68,
+      "longitude": -4.17,
+      "population": 1295,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-12718679",
+      "name": "M'Nabha",
+      "asciiName": "M'Nabha",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "351",
+      "latitude": 31.86662,
+      "longitude": -8.18195,
+      "population": 1276,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2553694",
+      "name": "Brikcha",
+      "asciiName": "Brikcha",
+      "aliases": [
+        "Brickcha",
+        "Douar Brikcha"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 34.96732,
+      "longitude": -5.57295,
+      "population": 1274,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526981",
+      "name": "Tmourghout",
+      "asciiName": "Tmourghout",
+      "aliases": [
+        "Tamoughout",
+        "Tamourhout",
+        "Tamrghoute",
+        "Tmourhout"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 33.9065,
+      "longitude": -4.02696,
+      "population": 1250,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718665",
+      "name": "N'zalat",
+      "asciiName": "N'zalat",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "061",
+      "latitude": 34.12301,
+      "longitude": -5.43068,
+      "population": 1249,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2596325",
+      "name": "Jebel Tiskaouine",
+      "asciiName": "Jebel Tiskaouine",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "577",
+      "latitude": 31.02722,
+      "longitude": -5.11643,
+      "population": 1197,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-12718691",
+      "name": "Karia",
+      "asciiName": "Karia",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.4665,
+      "longitude": -5.79715,
+      "population": 1191,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2541460",
+      "name": "Naima",
+      "asciiName": "Naima",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "411",
+      "latitude": 34.60277,
+      "longitude": -2.21764,
+      "population": 1188,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2526968",
+      "name": "Tnine Sidi Lyamani",
+      "asciiName": "Tnine Sidi Lyamani",
+      "aliases": [
+        "El Tzenin",
+        "Et Tnine",
+        "Et Tnine de Sidi Amar",
+        "Sidi Iamani",
+        "Tenin Sidi Lameni",
+        "Tnine de Sidi el Yamani"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.36929,
+      "longitude": -5.97242,
+      "population": 1155,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-11396027",
+      "name": "Mahroun",
+      "asciiName": "Mahroun",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.04349,
+      "longitude": -5.23378,
+      "population": 600,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2542444",
+      "name": "Marzouga",
+      "asciiName": "Marzouga",
+      "aliases": [
+        "Merzouga",
+        "Merzuga",
+        "mei er zu ka",
+        "meleujuga",
+        "mrzwkh",
+        "mrzwkt",
+        "mrzwqh",
+        "Мерзуга",
+        "Մերզուգա",
+        "مرزوقه",
+        "مرزوكة",
+        "مرزوكه",
+        "مرزوݣة",
+        "梅爾祖卡",
+        "메르주가"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.09914,
+      "longitude": -4.01304,
+      "population": 500,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-8987072",
+      "name": "Mnoud",
+      "asciiName": "Mnoud",
+      "aliases": [
+        "Nekour"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.05898,
+      "longitude": -3.82762,
+      "population": 500,
+      "featureCode": "PPL"
+    },
+    {
+      "id": "ma-2562202",
+      "name": "Abadou",
+      "asciiName": "Abadou",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.57917,
+      "longitude": -7.31308,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2561978",
+      "name": "Adar",
+      "asciiName": "Adar",
+      "aliases": [
+        "Addar"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.14111,
+      "longitude": -8.37221,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2561957",
+      "name": "Adassil",
+      "asciiName": "Adassil",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.10783,
+      "longitude": -8.49083,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2561614",
+      "name": "Agadir Melloul",
+      "asciiName": "Agadir Melloul",
+      "aliases": [
+        "Agadir Jdid"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.22492,
+      "longitude": -7.79601,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558415",
+      "name": "Almis Marmoucha",
+      "asciiName": "Almis Marmoucha",
+      "aliases": [
+        "Almis de Marmucha",
+        "Almis des Marmoucha",
+        "Mermoucha-Centre"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.32,
+      "longitude": -4.18,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558337",
+      "name": "Amalou",
+      "asciiName": "Amalou",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.19153,
+      "longitude": -8.74873,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558122",
+      "name": "Amersid",
+      "asciiName": "Amersid",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.74983,
+      "longitude": -4.47063,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2558118",
+      "name": "Amerzgane",
+      "asciiName": "Amerzgane",
+      "aliases": [
+        "Amarzgane",
+        "Anergane"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 31.0437,
+      "longitude": -7.21037,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557995",
+      "name": "Amouguer",
+      "asciiName": "Amouguer",
+      "aliases": [
+        "Amouguear"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 32.27491,
+      "longitude": -4.93535,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2559366",
+      "name": "Anergui",
+      "asciiName": "Anergui",
+      "aliases": [
+        "Ait Ouanergui"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.06914,
+      "longitude": -5.93961,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557415",
+      "name": "Arazane",
+      "asciiName": "Arazane",
+      "aliases": [
+        "Arazene"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.50346,
+      "longitude": -8.60637,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2557347",
+      "name": "Argana",
+      "asciiName": "Argana",
+      "aliases": [
+        "Agana"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.7825,
+      "longitude": -9.11968,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2556991",
+      "name": "Assads",
+      "asciiName": "Assads",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.23,
+      "longitude": -8.86,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2556835",
+      "name": "Assoul",
+      "asciiName": "Assoul",
+      "aliases": [
+        "Assoul Ksar"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.95286,
+      "longitude": -5.20812,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2556629",
+      "name": "Azgour",
+      "asciiName": "Azgour",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.13753,
+      "longitude": -8.31488,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2555372",
+      "name": "Bigoudine",
+      "asciiName": "Bigoudine",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.72376,
+      "longitude": -9.21097,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2555262",
+      "name": "Bouabout",
+      "asciiName": "Bouabout",
+      "aliases": [
+        "Bouaboute"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.26554,
+      "longitude": -9.17865,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2571909",
+      "name": "Bouarouss",
+      "asciiName": "Bouarouss",
+      "aliases": [
+        "Bou Arous"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.36,
+      "longitude": -4.81,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554997",
+      "name": "Boudinar",
+      "asciiName": "Boudinar",
+      "aliases": [
+        "Ain Boudinar",
+        "Budinar"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.15601,
+      "longitude": -3.62358,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2572146",
+      "name": "Boukhalef",
+      "asciiName": "Boukhalef",
+      "aliases": [
+        "Tanger Boukhalef"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "511",
+      "latitude": 35.7328,
+      "longitude": -5.89954,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2554409",
+      "name": "Boulaouane",
+      "asciiName": "Boulaouane",
+      "aliases": [
+        "Guaouar Boulaouane",
+        "Kasba Bou Laouane",
+        "Kasha Bou Laouane"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "181",
+      "latitude": 32.85995,
+      "longitude": -8.05555,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2552306",
+      "name": "Derdara",
+      "asciiName": "Derdara",
+      "aliases": [
+        "Dardara"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.11041,
+      "longitude": -5.29015,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548869",
+      "name": "Fezna",
+      "asciiName": "Fezna",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 31.52921,
+      "longitude": -4.45562,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548855",
+      "name": "Fifi",
+      "asciiName": "Fifi",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 34.94873,
+      "longitude": -5.24798,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548713",
+      "name": "Galaz",
+      "asciiName": "Galaz",
+      "aliases": [
+        "Golaz"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.54424,
+      "longitude": -4.80355,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538099",
+      "name": "Ghouazi",
+      "asciiName": "Ghouazi",
+      "aliases": [
+        "Rhouazi"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.47737,
+      "longitude": -5.30235,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2548503",
+      "name": "Guenfouda",
+      "asciiName": "Guenfouda",
+      "aliases": [
+        "Guenfuda",
+        "Guennfouda"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.48361,
+      "longitude": -2.04562,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2547782",
+      "name": "Hassi Berkane",
+      "asciiName": "Hassi Berkane",
+      "aliases": [
+        "Hasi Berkane"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 34.83898,
+      "longitude": -2.86699,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2546627",
+      "name": "Iguidi",
+      "asciiName": "Iguidi",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.83826,
+      "longitude": -7.90294,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2546081",
+      "name": "Imider",
+      "asciiName": "Imider",
+      "aliases": [
+        "Imiter"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 31.37324,
+      "longitude": -5.79384,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2546187",
+      "name": "Imilchil",
+      "asciiName": "Imilchil",
+      "aliases": [
+        "Assif-Melloul",
+        "Enilchil"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "201",
+      "latitude": 32.15309,
+      "longitude": -5.62453,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2545436",
+      "name": "Isseksi",
+      "asciiName": "Isseksi",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.22981,
+      "longitude": -6.27661,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2565241",
+      "name": "Mellila",
+      "asciiName": "Mellila",
+      "aliases": [],
+      "admin1Code": "06",
+      "admin2Code": "111",
+      "latitude": 33.38,
+      "longitude": -7.14,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2541840",
+      "name": "Moulay Bouchta",
+      "asciiName": "Moulay Bouchta",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.48922,
+      "longitude": -5.13023,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2550684",
+      "name": "Ouaoula",
+      "asciiName": "Ouaoula",
+      "aliases": [
+        "Arba de Ouaouila",
+        "Arba-Ouaoula",
+        "El Arba Ouaoula",
+        "El Arba d'Aauala"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.87,
+      "longitude": -6.75,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2540554",
+      "name": "Ouijjane",
+      "asciiName": "Ouijjane",
+      "aliases": [
+        "Souk-Sebt-Ouijjane"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.62777,
+      "longitude": -9.53959,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2539936",
+      "name": "Oulad Daoud",
+      "asciiName": "Oulad Daoud",
+      "aliases": [
+        "Douar Oulad Daoud"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.40438,
+      "longitude": -4.69342,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538652",
+      "name": "Ourtzagh",
+      "asciiName": "Ourtzagh",
+      "aliases": [
+        "Ourtzarh"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.53477,
+      "longitude": -4.96878,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538385",
+      "name": "Ratba",
+      "asciiName": "Ratba",
+      "aliases": [],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.77772,
+      "longitude": -4.93989,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538332",
+      "name": "Reggada",
+      "asciiName": "Reggada",
+      "aliases": [
+        "Er Reggada",
+        "Souk-el-Had de Reggada",
+        "alrgadt",
+        "alrkadt",
+        "alrqadt",
+        "الرقادة",
+        "الركادة",
+        "الرگادة"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.58016,
+      "longitude": -9.70086,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2552531",
+      "name": "Riah",
+      "asciiName": "Riah",
+      "aliases": [
+        "Dar Riah",
+        "Douar Riah"
+      ],
+      "admin1Code": "06",
+      "admin2Code": "461",
+      "latitude": 33.15122,
+      "longitude": -7.37504,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2538028",
+      "name": "Rislane",
+      "asciiName": "Rislane",
+      "aliases": [
+        "Rislane Thata"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "113",
+      "latitude": 34.76987,
+      "longitude": -2.46034,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537965",
+      "name": "Rouadi",
+      "asciiName": "Rouadi",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.14119,
+      "longitude": -4.13631,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526159",
+      "name": "Saddina",
+      "asciiName": "Saddina",
+      "aliases": [
+        "Zatdina"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.6141,
+      "longitude": -5.45191,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532542",
+      "name": "Senada",
+      "asciiName": "Senada",
+      "aliases": [
+        "Sanadat",
+        "Snada"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "051",
+      "latitude": 35.07452,
+      "longitude": -4.21583,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2537320",
+      "name": "Sidi Abdallah",
+      "asciiName": "Sidi Abdallah",
+      "aliases": [
+        "Ouled Abdellah"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 32.53544,
+      "longitude": -7.83243,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-8504942",
+      "name": "Sidi Abdallah Ghiat",
+      "asciiName": "Sidi Abdallah Ghiat",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.523,
+      "longitude": -7.833,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2536370",
+      "name": "Sidi Amar",
+      "asciiName": "Sidi Amar",
+      "aliases": [
+        "Ait Ben Amar",
+        "Dechra Sidi Amar",
+        "Sidi Ammar"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.94987,
+      "longitude": -5.83225,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2535477",
+      "name": "Sidi Bousber",
+      "asciiName": "Sidi Bousber",
+      "aliases": [
+        "Sidi Bousbeur"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.56283,
+      "longitude": -5.36208,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2534572",
+      "name": "Sidi Harazem",
+      "asciiName": "Sidi Harazem",
+      "aliases": [
+        "Douar Sidi Harazem"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "231",
+      "latitude": 34.02733,
+      "longitude": -4.88343,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2534315",
+      "name": "Sidi Lamine",
+      "asciiName": "Sidi Lamine",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.90783,
+      "longitude": -6.05069,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2533339",
+      "name": "Sidi Moussa",
+      "asciiName": "Sidi Moussa",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "191",
+      "latitude": 32.27209,
+      "longitude": -7.20095,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2533158",
+      "name": "Sidi Redouane",
+      "asciiName": "Sidi Redouane",
+      "aliases": [
+        "Redouane",
+        "Sidi Reduan"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.68692,
+      "longitude": -5.44538,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532797",
+      "name": "Sidi Yahya Ou Saad",
+      "asciiName": "Sidi Yahya Ou Saad",
+      "aliases": [
+        "Sidi Yahya Ou Saoua",
+        "Sidi yahya ou saoud"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "301",
+      "latitude": 32.68011,
+      "longitude": -5.57738,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532270",
+      "name": "Tabant",
+      "asciiName": "Tabant",
+      "aliases": [
+        "Tabannt"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.65255,
+      "longitude": -6.41049,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532214",
+      "name": "Tabia",
+      "asciiName": "Tabia",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.03009,
+      "longitude": -6.79985,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532230",
+      "name": "Tabia",
+      "asciiName": "Tabia",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.03462,
+      "longitude": -8.87688,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2532195",
+      "name": "Tabouda",
+      "asciiName": "Tabouda",
+      "aliases": [
+        "Tabouda de l'Ouerrha"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.71923,
+      "longitude": -5.1403,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2531994",
+      "name": "Tadrart",
+      "asciiName": "Tadrart",
+      "aliases": [
+        "Tanrart"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.77477,
+      "longitude": -9.45951,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530906",
+      "name": "Talzemt",
+      "asciiName": "Talzemt",
+      "aliases": [
+        "Talzent"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "131",
+      "latitude": 33.59,
+      "longitude": -4.19,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530516",
+      "name": "Tamorot",
+      "asciiName": "Tamorot",
+      "aliases": [
+        "Tamorote",
+        "Zoco es Sebtz de Tamorot"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 34.93632,
+      "longitude": -4.7794,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2568400",
+      "name": "Tamri",
+      "asciiName": "Tamri",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "001",
+      "latitude": 30.69602,
+      "longitude": -9.82972,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530395",
+      "name": "Tanalt",
+      "asciiName": "Tanalt",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "163",
+      "latitude": 29.77548,
+      "longitude": -9.16796,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530188",
+      "name": "Taouima",
+      "asciiName": "Taouima",
+      "aliases": [
+        "Tauima"
+      ],
+      "admin1Code": "02",
+      "admin2Code": "381",
+      "latitude": 35.1299,
+      "longitude": -2.9279,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530160",
+      "name": "Taouloukoult",
+      "asciiName": "Taouloukoult",
+      "aliases": [
+        "Taoulokoult",
+        "Zaouia Taouloukoult"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 31.22218,
+      "longitude": -9.07943,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2530148",
+      "name": "Taounza",
+      "asciiName": "Taounza",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.09368,
+      "longitude": -6.60607,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529621",
+      "name": "Tarsouat",
+      "asciiName": "Tarsouat",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "581",
+      "latitude": 29.58153,
+      "longitude": -9.02664,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529286",
+      "name": "Tazarine",
+      "asciiName": "Tazarine",
+      "aliases": [
+        "El Kelaa n'Tazarine",
+        "Tazarine-des-Zerarda",
+        "Tazzarine"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "561",
+      "latitude": 33.88307,
+      "longitude": -4.1862,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529251",
+      "name": "Tazemmourt",
+      "asciiName": "Tazemmourt",
+      "aliases": [
+        "Tazemmourte"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.40854,
+      "longitude": -8.829,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529133",
+      "name": "Tazouta",
+      "asciiName": "Tazouta",
+      "aliases": [
+        "Taouchet Tazouta"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "451",
+      "latitude": 33.66991,
+      "longitude": -4.63392,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529019",
+      "name": "Telouet",
+      "asciiName": "Telouet",
+      "aliases": [
+        "Dar Kaid el Glaoui",
+        "Telouete",
+        "Teluet"
+      ],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 31.28925,
+      "longitude": -7.23789,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2529656",
+      "name": "Teroual",
+      "asciiName": "Teroual",
+      "aliases": [
+        "Taroual",
+        "Terual"
+      ],
+      "admin1Code": "04",
+      "admin2Code": "481",
+      "latitude": 34.67452,
+      "longitude": -5.27331,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2565258",
+      "name": "Tidili Mesfioua",
+      "asciiName": "Tidili Mesfioua",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.46586,
+      "longitude": -7.61199,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2528650",
+      "name": "Tifni",
+      "asciiName": "Tifni",
+      "aliases": [],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 31.62777,
+      "longitude": -6.94093,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2528258",
+      "name": "Tilmi",
+      "asciiName": "Tilmi",
+      "aliases": [],
+      "admin1Code": "08",
+      "admin2Code": "401",
+      "latitude": 31.81794,
+      "longitude": -5.76812,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2528130",
+      "name": "Timezgadiouine",
+      "asciiName": "Timezgadiouine",
+      "aliases": [
+        "Timesgadioume"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "161",
+      "latitude": 30.88366,
+      "longitude": -9.04548,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2528129",
+      "name": "Timezgana",
+      "asciiName": "Timezgana",
+      "aliases": [
+        "Et Tnine de Timesgana"
+      ],
+      "admin1Code": "03",
+      "admin2Code": "531",
+      "latitude": 34.58,
+      "longitude": -4.73,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2528013",
+      "name": "Timoulilt",
+      "asciiName": "Timoulilt",
+      "aliases": [
+        "Souk-Tnine de Timoulilt",
+        "Timouillit"
+      ],
+      "admin1Code": "05",
+      "admin2Code": "081",
+      "latitude": 32.20368,
+      "longitude": -6.4666,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2527749",
+      "name": "Tiouli",
+      "asciiName": "Tiouli",
+      "aliases": [],
+      "admin1Code": "02",
+      "admin2Code": "275",
+      "latitude": 34.36679,
+      "longitude": -1.83705,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2527695",
+      "name": "Tiout",
+      "asciiName": "Tiout",
+      "aliases": [
+        "Agadir Tiout",
+        "Tioute"
+      ],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.3887,
+      "longitude": -8.69572,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2571059",
+      "name": "Tizgane",
+      "asciiName": "Tizgane",
+      "aliases": [],
+      "admin1Code": "01",
+      "admin2Code": "151",
+      "latitude": 35.41211,
+      "longitude": -5.06836,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2527184",
+      "name": "Tizguine",
+      "asciiName": "Tizguine",
+      "aliases": [],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.22836,
+      "longitude": -8.31611,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2526924",
+      "name": "Touama",
+      "asciiName": "Touama",
+      "aliases": [
+        "El Touama",
+        "Oulad Touama"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.53501,
+      "longitude": -7.49291,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-10916940",
+      "name": "Zawit Al Bour",
+      "asciiName": "Zawit Al Bour",
+      "aliases": [],
+      "admin1Code": "09",
+      "admin2Code": "541",
+      "latitude": 30.67478,
+      "longitude": -8.17424,
+      "population": 0,
+      "featureCode": "PPLA2"
+    },
+    {
+      "id": "ma-2548313",
+      "name": "Zerkten",
+      "asciiName": "Zerkten",
+      "aliases": [
+        "Had Zerektene",
+        "Had-Zerekten",
+        "Zerekten",
+        "Zerektene"
+      ],
+      "admin1Code": "07",
+      "admin2Code": "041",
+      "latitude": 31.4447,
+      "longitude": -7.39224,
+      "population": 0,
+      "featureCode": "PPLA3"
+    },
+    {
+      "id": "ma-2525973",
+      "name": "Zinat",
+      "asciiName": "Zinat",
+      "aliases": [
+        "Ercouiene",
+        "Ercoulene",
+        "Jinat",
+        "Sinat"
+      ],
+      "admin1Code": "01",
+      "admin2Code": "571",
+      "latitude": 35.43,
+      "longitude": -5.4,
+      "population": 0,
+      "featureCode": "PPLA3"
+    }
+  ]
+}

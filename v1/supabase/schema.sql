@@ -92,6 +92,11 @@ create table if not exists public.wigofly_trips (
 create index if not exists wigofly_trips_traveler_date_idx on public.wigofly_trips ((data->>'travelerId'), (data->>'date'));
 create index if not exists wigofly_trips_route_date_idx on public.wigofly_trips ((lower(data->>'from')), (lower(data->>'to')), (data->>'date'));
 create index if not exists wigofly_trips_feed_idx on public.wigofly_trips ((coalesce(data->>'status', 'published')), (coalesce(data->>'departureDate', data->>'date')));
+create extension if not exists pg_trgm;
+create index if not exists wigofly_trips_from_location_idx on public.wigofly_trips ((data->>'fromLocationId')) where data ? 'fromLocationId';
+create index if not exists wigofly_trips_to_location_idx on public.wigofly_trips ((data->>'toLocationId')) where data ? 'toLocationId';
+create index if not exists wigofly_trips_from_trgm_idx on public.wigofly_trips using gin ((data->>'from') gin_trgm_ops);
+create index if not exists wigofly_trips_to_trgm_idx on public.wigofly_trips using gin ((data->>'to') gin_trgm_ops);
 
 create table if not exists public.wigofly_listings (
   id text primary key,
