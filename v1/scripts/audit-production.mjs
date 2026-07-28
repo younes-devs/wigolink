@@ -32,6 +32,19 @@ export function classifyAuditReport(report, { rscModeUsed = false } = {}) {
   return { ok: blocked.length === 0, blocked, accepted };
 }
 
+export function parseAuditReport(output) {
+  let report;
+  try {
+    report = JSON.parse(String(output || ''));
+  } catch {
+    throw new Error('npm audit n a pas renvoye un rapport JSON valide.');
+  }
+  if (!report || typeof report.vulnerabilities !== 'object' || !report.metadata) {
+    throw new Error('Rapport npm audit incomplet.');
+  }
+  return report;
+}
+
 function usesReactRouterServerMode(root) {
   const serverRoot = path.join(root, 'server');
   const needles = [
@@ -57,13 +70,29 @@ function walk(directory) {
 }
 
 function main() {
-  const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const audit = spawnSync(command, ['audit', '--omit=dev', '--json'], {
+  const isWindows = process.platform === 'win32';
+  const command = isWindows ? (process.env.ComSpec || 'cmd.exe') : 'npm';
+  const args = isWindows
+    ? ['/d', '/s', '/c', 'npm audit --omit=dev --json']
+    : ['audit', '--omit=dev', '--json'];
+  const audit = spawnSync(command, args, {
     cwd: path.resolve(import.meta.dirname, '..'),
     encoding: 'utf8',
     maxBuffer: 10 * 1024 * 1024,
   });
-  const report = JSON.parse(audit.stdout || '{}');
+  if (audit.error) {
+    console.error(JSON.stringify({ ok: false, error: audit.error.message }));
+    process.exitCode = 1;
+    return;
+  }
+  let report;
+  try {
+    report = parseAuditReport(audit.stdout);
+  } catch (error) {
+    console.error(JSON.stringify({ ok: false, error: error.message }));
+    process.exitCode = 1;
+    return;
+  }
   const result = classifyAuditReport(report, {
     rscModeUsed: usesReactRouterServerMode(path.resolve(import.meta.dirname, '..')),
   });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classifyAuditReport } from '../../scripts/audit-production.mjs';
+import { classifyAuditReport, parseAuditReport } from '../../scripts/audit-production.mjs';
 
 const RSC_ADVISORY = {
   severity: 'high',
@@ -31,4 +31,12 @@ test('audit production bloque une nouvelle alerte et l avis RSC si le mode serve
   };
   assert.equal(classifyAuditReport(report).blocked.length, 1);
   assert.equal(classifyAuditReport(report, { rscModeUsed: true }).blocked.length, 2);
+});
+
+test('audit production refuse un rapport absent ou tronque', () => {
+  assert.throws(() => parseAuditReport(''), /rapport JSON valide/i);
+  assert.throws(
+    () => parseAuditReport(JSON.stringify({ vulnerabilities: {} })),
+    /rapport npm audit incomplet/i
+  );
 });
