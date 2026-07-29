@@ -5,7 +5,11 @@ import {
   relationalAdminActionsEnabled,
 } from '../relational-admin-actions.js';
 
-function createPool({ user = null, activeAdmins = 2 } = {}) {
+function createPool({
+  user = null,
+  activeAdmins = 2,
+  whitelist = null,
+} = {}) {
   const calls = [];
   const client = {
     async query(sql, params = []) {
@@ -18,6 +22,11 @@ function createPool({ user = null, activeAdmins = 2 } = {}) {
       }
       if (/update public\.wigofly_users/.test(sql)) {
         return { rowCount: 1 };
+      }
+      if (/delete from public\.wigofly_custom_whitelist/.test(sql)) {
+        return whitelist
+          ? { rowCount: 1, rows: [{ data: whitelist }] }
+          : { rowCount: 0, rows: [] };
       }
       return { rowCount: 1, rows: [] };
     },
@@ -136,4 +145,27 @@ test('suspension met a jour le membre et son audit atomiquement', async () => {
   assert.equal(result.user.suspendedBy, 'admin');
   assert.ok(harness.calls.some(({ sql }) => /user\.safety\.\$\{action\}/.test(sql)) === false);
   assert.ok(harness.calls.some(({ params }) => params.includes('user.safety.suspend')));
+});
+
+test('retrait whitelist et audit partagent la meme transaction', async () => {
+  const harness = createPool({
+    whitelist: { id: 'documents', label: 'Documents' },
+  });
+  const repository = createRelationalAdminMemberMutations({
+    getPool: () => harness.pool,
+  });
+
+  const removed = await repository.removeWhitelist({
+    actorId: 'admin',
+    categoryId: 'documents',
+  });
+
+  assert.equal(removed.id, 'documents');
+  assert.ok(harness.calls.some(({ sql }) => (
+    /delete from public\.wigofly_custom_whitelist/.test(sql)
+  )));
+  assert.ok(harness.calls.some(({ sql }) => (
+    /insert into public\.audit_logs/.test(sql)
+  )));
+  assert.ok(harness.calls.some(({ sql }) => sql === 'commit'));
 });

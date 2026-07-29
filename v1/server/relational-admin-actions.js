@@ -109,6 +109,30 @@ export function createRelationalAdminMemberMutations({ getPool }) {
         return { kind: 'ok', user: target };
       });
     },
+
+    async removeWhitelist({ actorId, categoryId }) {
+      return transaction(pool(), async (client) => {
+        const result = await client.query(
+          `delete from public.wigofly_custom_whitelist
+           where id = $1
+           returning data`,
+          [String(categoryId)],
+        );
+        const removed = result.rows[0]?.data;
+        if (!removed) return null;
+        await client.query(
+          `insert into public.audit_logs
+             (actor_id, action, target_type, target_id, meta)
+           values ($1, 'custom_whitelist.remove', 'custom_whitelist', $2, $3::jsonb)`,
+          [
+            String(actorId),
+            String(removed.id),
+            JSON.stringify({ label: removed.label }),
+          ],
+        );
+        return removed;
+      });
+    },
   };
 }
 

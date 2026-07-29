@@ -227,6 +227,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     false,
   );
   assert.equal(
+    isRelationalAdminActionRequest({
+      method: 'DELETE',
+      path: '/api/admin/whitelist/documents',
+    }, enabled),
+    true,
+  );
+  assert.equal(
     isRelationalSafetyAppealRequest({
       method: 'POST',
       path: '/api/safety/appeals',
@@ -274,6 +281,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/admin/overview',
     }, enabled),
     false,
+  );
+  assert.equal(
+    isRelationalAdminDashboardRequest({
+      method: 'POST',
+      path: '/api/admin/review/rq-1',
+    }, enabled),
+    true,
   );
   assert.equal(
     isRelationalSafetyAppealRequest({

@@ -319,6 +319,34 @@ test('retrait whitelist est audité et absent retourne 404', async () => {
   assert.equal(harness.saves(), 1);
 });
 
+test('retrait whitelist peut etre delegue au stockage relationnel', async () => {
+  const calls = [];
+  const harness = createHarness({
+    adminMemberMutations: {
+      async removeWhitelist(input) {
+        calls.push(input);
+        return input.categoryId === 'documents'
+          ? { id: 'documents' }
+          : null;
+      },
+    },
+  });
+
+  assert.equal(
+    (await harness.service.removeWhitelist(
+      { id: 'admin' },
+      'documents',
+    )).status,
+    200,
+  );
+  assert.deepEqual(calls, [{
+    actorId: 'admin',
+    categoryId: 'documents',
+  }]);
+  assert.equal(harness.saves(), 0);
+  assert.equal(harness.audits.length, 0);
+});
+
 test('décision KYC approuve ou refuse définitivement à la limite', async () => {
   const admin = { id: 'admin' };
   const approvedUser = { id: 'approved-user', kycStatus: 'pending' };

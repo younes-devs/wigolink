@@ -1287,6 +1287,7 @@ app.use('/api', createAdminActionsRouter({
 const relationalAdminReview = usesDatabase()
   ? createRelationalAdminReview({
     getPool: databasePool,
+    whitelist: WHITELIST,
     transitionEscrow,
     notify,
     audit,

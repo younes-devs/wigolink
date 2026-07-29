@@ -20,6 +20,7 @@ export function createAdminReviewService({
         actorId,
         reviewId,
         decision,
+        maxQty,
       });
       if (relational.handled) {
         return {

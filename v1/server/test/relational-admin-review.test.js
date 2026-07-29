@@ -101,16 +101,104 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
   assert.equal(notifications.length, 1);
 });
 
-test('resolution admin relationnelle laisse les revues non litige au service historique', async () => {
+test('revue annonce relationnelle publie et promeut atomiquement', async () => {
+  const calls = [];
   const client = {
-    async query(sql) {
-      if (String(sql).includes('select data')) {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (String(sql).includes('wigofly_review_queue')
+        && String(sql).includes('select data')) {
         return {
           rows: [{
             data: {
               id: 'rq-listing',
               type: 'listing',
               refId: 'l-1',
+              status: 'open',
+            },
+          }],
+        };
+      }
+      if (String(sql).includes('wigofly_listings')
+        && String(sql).includes('select data')) {
+        return {
+          rows: [{
+            data: {
+              id: 'l-1',
+              categoryId: 'documents',
+              categoryLabel: 'Documents',
+              whitelistVerdict: 'gray',
+              status: 'review',
+            },
+          }],
+        };
+      }
+      if (String(sql).includes('wigofly_custom_whitelist')
+        && String(sql).includes('select id')) {
+        return { rowCount: 0, rows: [] };
+      }
+      return { rows: [] };
+    },
+    release() {},
+  };
+  const audits = [];
+  const review = createRelationalAdminReview({
+    getPool: () => ({ connect: async () => client }),
+    whitelist: [],
+    transitionEscrow() {},
+    async notify() {},
+    async audit(...args) {
+      audits.push(args);
+    },
+    now: () => 600,
+  });
+  const result = await review({
+    actorId: 'admin',
+    reviewId: 'rq-listing',
+    decision: 'approve',
+    maxQty: 3,
+  });
+
+  assert.deepEqual(result, {
+    handled: true,
+    status: 200,
+    body: { ok: true },
+  });
+  const listingUpdate = calls.find(({ sql }) => (
+    sql.includes('update public.wigofly_listings')
+  ));
+  assert.equal(JSON.parse(listingUpdate.params[1]).status, 'published');
+  assert.ok(calls.some(({ sql }) => (
+    sql.includes('insert into public.wigofly_custom_whitelist')
+  )));
+  assert.equal(audits[0][1], 'review.listing.approve');
+});
+
+test('revue conversation relationnelle conserve auteur et decision', async () => {
+  const calls = [];
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (String(sql).includes('wigofly_review_queue')
+        && String(sql).includes('select data')) {
+        return {
+          rows: [{
+            data: {
+              id: 'rq-conversation',
+              type: 'conversation',
+              refId: 'conv-1',
+              status: 'open',
+            },
+          }],
+        };
+      }
+      if (String(sql).includes('wigofly_conversations')
+        && String(sql).includes('select data')) {
+        return {
+          rows: [{
+            data: {
+              id: 'conv-1',
+              reports: [{ id: 'report-1', at: 1 }],
             },
           }],
         };
@@ -124,10 +212,21 @@ test('resolution admin relationnelle laisse les revues non litige au service his
     transitionEscrow() {},
     async notify() {},
     async audit() {},
+    now: () => 700,
   });
-  assert.deepEqual(await review({
+
+  const result = await review({
     actorId: 'admin',
-    reviewId: 'rq-listing',
-    decision: 'approve',
-  }), { handled: false });
+    reviewId: 'rq-conversation',
+    decision: 'conversation_watch',
+  });
+
+  assert.equal(result.status, 200);
+  const conversationUpdate = calls.find(({ sql }) => (
+    sql.includes('update public.wigofly_conversations')
+  ));
+  const conversation = JSON.parse(conversationUpdate.params[1]);
+  assert.equal(conversation.moderationStatus, 'conversation_watch');
+  assert.equal(conversation.reports[0].reviewedBy, 'admin');
+  assert.equal(conversation.reports[0].decision, 'conversation_watch');
 });

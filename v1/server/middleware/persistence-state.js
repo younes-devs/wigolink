@@ -156,13 +156,17 @@ export function isRelationalAdminActionRequest(
   req,
   relationalAdminActionsEnabled,
 ) {
-  return relationalAdminActionsEnabled()
-    && req.method === 'POST'
-    && (
-      /^\/api\/admin\/users\/[^/]+\/(?:case-file\/access|role|safety)$/.test(
-        req.path,
-      )
-    );
+  if (!relationalAdminActionsEnabled()) return false;
+  if (
+    req.method === 'POST'
+    && /^\/api\/admin\/users\/[^/]+\/(?:case-file\/access|role|safety)$/.test(
+      req.path,
+    )
+  ) {
+    return true;
+  }
+  return req.method === 'DELETE'
+    && /^\/api\/admin\/whitelist\/[^/]+$/.test(req.path);
 }
 
 export function isRelationalAdminAuditRequest(req, relationalAuthEnabled) {
@@ -175,9 +179,15 @@ export function isRelationalAdminDashboardRequest(
   req,
   relationalAdminDashboardEnabled,
 ) {
-  return relationalAdminDashboardEnabled()
-    && req.method === 'GET'
-    && /^\/api\/admin\/(?:overview|ops|kpis|fraud)$/.test(req.path);
+  if (!relationalAdminDashboardEnabled()) return false;
+  if (
+    req.method === 'GET'
+    && /^\/api\/admin\/(?:overview|ops|kpis|fraud)$/.test(req.path)
+  ) {
+    return true;
+  }
+  return req.method === 'POST'
+    && /^\/api\/admin\/review\/[^/]+$/.test(req.path);
 }
 
 export function isRelationalSafetyAppealRequest(

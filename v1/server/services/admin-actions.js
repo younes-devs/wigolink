@@ -318,6 +318,15 @@ export function createAdminActionService({
   }
 
   async function removeWhitelist(actor, categoryId) {
+    if (adminMemberMutations?.removeWhitelist) {
+      const removed = await adminMemberMutations.removeWhitelist({
+        actorId: actor.id,
+        categoryId,
+      });
+      return removed
+        ? response(200, { ok: true })
+        : response(404, { error: 'Categorie introuvable' });
+    }
     const removed = customWhitelist.remove(categoryId);
     if (!removed) {
       return response(404, { error: 'Catégorie introuvable' });
