@@ -250,6 +250,42 @@ test('account privacy service refuse un code invalide ou une operation active', 
   assert.deepEqual(active.events, ['confirmation:get']);
 });
 
+test('account privacy utilise les dossiers relationnels pour export et suppression', async () => {
+  const user = member();
+  const relational = {
+    listings: [{ id: 'l-sql' }],
+    trips: [{ id: 't-sql' }],
+    transactions: [{ id: 'tx-sql' }],
+    disputes: [{ id: 'd-sql' }],
+  };
+  const { service, confirmations } = createHarness({
+    async loadRelationalRecords(userId) {
+      assert.equal(userId, user.id);
+      return relational;
+    },
+    async countRelationalActiveOperations(userId) {
+      assert.equal(userId, user.id);
+      return 2;
+    },
+  });
+
+  const exported = await service.exportData(user);
+  assert.deepEqual(exported.trips, relational.trips);
+  assert.deepEqual(exported.transactions, relational.transactions);
+
+  confirmations.set(user.id, {
+    type: 'delete_account',
+    code: '123456',
+    expires: 20_000,
+  });
+  const blocked = await service.deleteAccount({
+    user,
+    body: { code: '123456' },
+  });
+  assert.equal(blocked.status, 400);
+  assert.match(blocked.error, /2 transaction/);
+});
+
 test('account privacy service anonymise, purge, invalide, audite puis sauvegarde', async () => {
   const user = member();
   let auditPayload;

@@ -13,6 +13,8 @@ export function createAccountPrivacyService({
   clearUserSessions,
   auditChange,
   save,
+  loadRelationalRecords = null,
+  countRelationalActiveOperations = null,
   now = Date.now,
   confirmationTtlMs = DEFAULT_CONFIRMATION_TTL_MS,
 }) {
@@ -46,12 +48,18 @@ export function createAccountPrivacyService({
   async function exportData(user) {
     const userId = user.id;
     const { passwordHash, ...userSafe } = user;
+    const relational = loadRelationalRecords
+      ? await loadRelationalRecords(userId)
+      : null;
     return {
       exportedAt: new Date(now()).toISOString(),
       user: userSafe,
-      listings: db.listings.filter((listing) => listing.senderId === userId),
-      trips: db.trips.filter((trip) => trip.travelerId === userId),
-      transactions: db.transactions.filter((transaction) => (
+      listings: relational?.listings
+        || db.listings.filter((listing) => listing.senderId === userId),
+      trips: relational?.trips
+        || db.trips.filter((trip) => trip.travelerId === userId),
+      transactions: relational?.transactions
+        || db.transactions.filter((transaction) => (
         [
           transaction.senderId,
           transaction.travelerId,
@@ -59,7 +67,8 @@ export function createAccountPrivacyService({
         ].includes(userId)
       )),
       messages: await messages.listFromUser(userId),
-      disputes: db.disputes.filter((dispute) => dispute.openedBy === userId),
+      disputes: relational?.disputes
+        || db.disputes.filter((dispute) => dispute.openedBy === userId),
       kyc: kyc.listForUser(userId).map((submission) => ({
         id: submission.id,
         submittedAt: submission.submittedAt,
@@ -90,17 +99,19 @@ export function createAccountPrivacyService({
     }
 
     const userId = user.id;
-    const activeTransactions = db.transactions.filter((transaction) => (
-      [
-        transaction.senderId,
-        transaction.travelerId,
-        transaction.recipientId,
-      ].includes(userId) && !isClosedStatus(transaction.status)
-    ));
-    if (activeTransactions.length > 0) {
+    const activeTransactionCount = countRelationalActiveOperations
+      ? await countRelationalActiveOperations(userId)
+      : db.transactions.filter((transaction) => (
+        [
+          transaction.senderId,
+          transaction.travelerId,
+          transaction.recipientId,
+        ].includes(userId) && !isClosedStatus(transaction.status)
+      )).length;
+    if (activeTransactionCount > 0) {
       return {
         status: 400,
-        error: `Impossible : ${activeTransactions.length} transaction(s) encore en cours. Terminez-les d'abord.`,
+        error: `Impossible : ${activeTransactionCount} transaction(s) encore en cours. Terminez-les d'abord.`,
       };
     }
 

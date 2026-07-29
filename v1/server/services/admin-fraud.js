@@ -3,6 +3,7 @@ export function createAdminFraudService({
   findUser,
   messagesRepository,
   kycRepository,
+  loadRelationalFraudState = null,
 }) {
   function members() {
     return db.users.filter((user) => !user.isAdmin);
@@ -52,16 +53,21 @@ export function createAdminFraudService({
   }
 
   async function summary() {
-    const pairCounts = transactionPairs();
-    const disputesByUser = disputeCounts();
+    const relational = loadRelationalFraudState
+      ? await loadRelationalFraudState()
+      : null;
+    const pairCounts = relational?.repeatPairs || Object.values(transactionPairs()).map(
+      (transactions) => ({ transactionCount: transactions.length }),
+    );
+    const disputesByUser = relational?.disputeCounts || disputeCounts();
     const kycRejections = kycRepository.rejectionCountsByUser();
     const humanMembers = members();
     return {
       linkedAccounts:
         groupedMembers('phone').length
         + groupedMembers('registerIp').length,
-      repeatPairs: Object.values(pairCounts).filter(
-        (transactions) => transactions.length >= 3,
+      repeatPairs: pairCounts.filter(
+        (pair) => pair.transactionCount >= 3,
       ).length,
       flaggedMessaging: await messagesRepository.flaggedSenderCount(),
       abnormalCancel: humanMembers.filter(
@@ -77,6 +83,9 @@ export function createAdminFraudService({
   }
 
   async function details() {
+    const relational = loadRelationalFraudState
+      ? await loadRelationalFraudState()
+      : null;
     const linkedAccounts = [
       ...groupedMembers('phone').map(
         ([value, users]) => ({ signal: 'phone', value, users }),
@@ -95,39 +104,51 @@ export function createAdminFraudService({
       })),
     }));
 
-    const repeatPairs = Object.entries(transactionPairs())
-      .filter(([, transactions]) => transactions.length >= 2)
-      .map(([key, transactions]) => {
-        const [firstId, secondId] = key.split('|');
-        const disputedCount = transactions.filter(
-          (transaction) =>
-            transaction.status === 'disputed'
-            || db.disputes.some(
-              (dispute) => dispute.txId === transaction.id,
-            ),
-        ).length;
-        return {
-          users: [firstId, secondId].map((userId) => {
-            const user = findUser(userId);
-            return user
-              ? { id: user.id, name: user.name }
-              : { id: userId, name: '?' };
-          }),
-          transactionCount: transactions.length,
-          disputedCount,
-          totalValueEur: Math.round(
-            transactions.reduce(
-              (total, transaction) =>
-                total + (transaction.escrow?.amount || 0),
-              0,
-            ) * 100,
-          ) / 100,
-        };
-      })
-      .sort(
-        (first, second) =>
-          second.transactionCount - first.transactionCount,
-      );
+    const repeatPairs = relational
+      ? relational.repeatPairs.map((pair) => ({
+        users: [pair.firstUserId, pair.secondUserId].map((userId) => {
+          const user = findUser(userId);
+          return user
+            ? { id: user.id, name: user.name }
+            : { id: userId, name: '?' };
+        }),
+        transactionCount: pair.transactionCount,
+        disputedCount: pair.disputedCount,
+        totalValueEur: Math.round(pair.totalValueEur * 100) / 100,
+      }))
+      : Object.entries(transactionPairs())
+        .filter(([, transactions]) => transactions.length >= 2)
+        .map(([key, transactions]) => {
+          const [firstId, secondId] = key.split('|');
+          const disputedCount = transactions.filter(
+            (transaction) =>
+              transaction.status === 'disputed'
+              || db.disputes.some(
+                (dispute) => dispute.txId === transaction.id,
+              ),
+          ).length;
+          return {
+            users: [firstId, secondId].map((userId) => {
+              const user = findUser(userId);
+              return user
+                ? { id: user.id, name: user.name }
+                : { id: userId, name: '?' };
+            }),
+            transactionCount: transactions.length,
+            disputedCount,
+            totalValueEur: Math.round(
+              transactions.reduce(
+                (total, transaction) =>
+                  total + (transaction.escrow?.amount || 0),
+                0,
+              ) * 100,
+            ) / 100,
+          };
+        });
+    repeatPairs.sort(
+      (first, second) =>
+        second.transactionCount - first.transactionCount,
+    );
 
     const flaggedByUser = {};
     for (const message of await messagesRepository.all()) {
@@ -155,7 +176,9 @@ export function createAdminFraudService({
         (first, second) => second.cancelRate - first.cancelRate,
       );
 
-    const disputeProne = Object.entries(disputeCounts())
+    const disputeProne = Object.entries(
+      relational?.disputeCounts || disputeCounts(),
+    )
       .filter(([, count]) => count >= 2)
       .map(([userId, count]) => ({
         userId,

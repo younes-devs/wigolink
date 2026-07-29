@@ -12,8 +12,22 @@ export function createAdminReviewService({
   notify,
   save,
   now = Date.now,
+  relationalReview = null,
 }) {
   async function review({ actorId, reviewId, decision, maxQty }) {
+    if (relationalReview) {
+      const relational = await relationalReview({
+        actorId,
+        reviewId,
+        decision,
+      });
+      if (relational.handled) {
+        return {
+          status: relational.status,
+          body: relational.body,
+        };
+      }
+    }
     const item = repositories.reviewQueue.find(reviewId);
     if (!item) return notFound('Introuvable');
     repositories.reviewQueue.close(item, decision);

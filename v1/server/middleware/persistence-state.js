@@ -48,10 +48,44 @@ export function isRelationalTripWrite(req, relationalTripWritesEnabled) {
     && RELATIONAL_SAVED_TRIP_PATH.test(req.path);
 }
 
+export function isRelationalTripMutation(req, relationalTripMutationsEnabled) {
+  return relationalTripMutationsEnabled()
+    && (
+      (req.method === 'POST' && req.path === '/api/trips')
+      || (
+        ['PATCH', 'DELETE'].includes(req.method)
+        && /^\/api\/trips\/[^/]+$/.test(req.path)
+      )
+    );
+}
+
 export function isRelationalOperationWrite(req, relationalOperationWritesEnabled) {
   return relationalOperationWritesEnabled()
     && req.method === 'POST'
     && RELATIONAL_OPERATION_WRITE_PATH.test(req.path);
+}
+
+export function isRelationalNavigationRead(req, relationalNavigationEnabled) {
+  return relationalNavigationEnabled()
+    && req.method === 'GET'
+    && req.path === '/api/navigation-summary';
+}
+
+export function isRelationalPublicProfileRequest(
+  req,
+  relationalPublicProfileReadsEnabled,
+  relationalOperationWritesEnabled,
+) {
+  if (
+    req.method === 'GET'
+    && relationalPublicProfileReadsEnabled()
+    && /^\/api\/users\/[^/]+(?:\/reviews)?$/.test(req.path)
+  ) {
+    return true;
+  }
+  return req.method === 'POST'
+    && relationalOperationWritesEnabled()
+    && /^\/api\/transactions\/[^/]+\/rate$/.test(req.path);
 }
 
 export function createPersistenceState({
@@ -65,7 +99,10 @@ export function createPersistenceState({
   relationalMessageWritesEnabled = () => false,
   relationalOperationReadsEnabled = () => false,
   relationalTripWritesEnabled = () => false,
+  relationalTripMutationsEnabled = () => false,
   relationalOperationWritesEnabled = () => false,
+  relationalNavigationEnabled = () => false,
+  relationalPublicProfileReadsEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -80,7 +117,14 @@ export function createPersistenceState({
       || isRelationalMessageWrite(req, relationalMessageWritesEnabled)
       || isRelationalOperationRead(req, relationalOperationReadsEnabled)
       || isRelationalTripWrite(req, relationalTripWritesEnabled)
+      || isRelationalTripMutation(req, relationalTripMutationsEnabled)
       || isRelationalOperationWrite(req, relationalOperationWritesEnabled)
+      || isRelationalNavigationRead(req, relationalNavigationEnabled)
+      || isRelationalPublicProfileRequest(
+        req,
+        relationalPublicProfileReadsEnabled,
+        relationalOperationWritesEnabled,
+      )
     ) {
       return next();
     }

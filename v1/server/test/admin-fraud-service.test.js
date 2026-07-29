@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAdminFraudService } from '../services/admin-fraud.js';
 
-function harness() {
+function harness({ loadRelationalFraudState = null } = {}) {
   const db = {
     users: [
       { id: 'admin', name: 'Admin', isAdmin: true },
@@ -91,6 +91,7 @@ function harness() {
         return { 'u-2': 2 };
       },
     },
+    loadRelationalFraudState,
   });
   return { service };
 }
@@ -107,6 +108,35 @@ test('resume fraude compte chaque participant une fois par litige', async () => 
     disputeProne: 2,
     kycRepeatRejections: 1,
   });
+});
+
+test('fraude utilise les agregats relationnels quand ils sont disponibles', async () => {
+  const { service } = harness({
+    async loadRelationalFraudState() {
+      return {
+        repeatPairs: [{
+          firstUserId: 'u-1',
+          secondUserId: 'u-2',
+          transactionCount: 7,
+          disputedCount: 4,
+          totalValueEur: 99,
+        }],
+        disputeCounts: { 'u-2': 3 },
+      };
+    },
+  });
+
+  const summary = await service.summary();
+  const details = await service.details();
+
+  assert.equal(summary.repeatPairs, 1);
+  assert.equal(summary.disputeProne, 1);
+  assert.equal(details.repeatPairs[0].totalValueEur, 99);
+  assert.deepEqual(details.disputeProne, [{
+    userId: 'u-2',
+    name: 'Bob',
+    disputeCount: 3,
+  }]);
 });
 
 test('detail fraude projette et trie les signaux sans secrets membre', async () => {

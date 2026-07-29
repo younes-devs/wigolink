@@ -40,12 +40,29 @@ import {
 } from './relational-operations.js';
 import {
   createRelationalTripWriter,
+  relationalTripMutationsEnabled,
   relationalTripWritesEnabled,
 } from './relational-trip-writes.js';
 import {
   createRelationalOperationWriter,
   relationalOperationWritesEnabled,
 } from './relational-operation-writes.js';
+import {
+  relationalNavigationEnabled,
+  relationalNavigationSummary,
+} from './relational-navigation.js';
+import {
+  relationalActiveOperationCount,
+  relationalMemberRecords,
+} from './relational-member-records.js';
+import { relationalAdminOperationState } from './relational-admin-operations.js';
+import { createRelationalAdminReview } from './relational-admin-review.js';
+import {
+  rateRelationalOperation,
+  relationalPublicProfile,
+  relationalPublicProfileReadsEnabled,
+  relationalPublicReviews,
+} from './relational-public-profiles.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
@@ -73,6 +90,8 @@ import { createRelationalReadsRouter } from './routes/relational-reads.js';
 import { createRelationalMessageWriteRouter } from './routes/relational-message-writes.js';
 import { createRelationalTripWriteRouter } from './routes/relational-trip-writes.js';
 import { createRelationalOperationWriteRouter } from './routes/relational-operation-writes.js';
+import { createRelationalNavigationRouter } from './routes/relational-navigation.js';
+import { createRelationalPublicProfilesRouter } from './routes/relational-public-profiles.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
@@ -103,6 +122,7 @@ import { createPublicProfileService } from './services/public-profiles.js';
 import { createMemberOverviewService } from './services/member-overview.js';
 import { createAdminActionService } from './services/admin-actions.js';
 import { createAdminFraudService } from './services/admin-fraud.js';
+import { relationalAdminFraudState } from './relational-admin-fraud.js';
 import { createAdminOperationsService } from './services/admin-operations.js';
 import { createAdminReviewService } from './services/admin-review.js';
 import {
@@ -186,7 +206,10 @@ app.use(createPersistenceState({
   relationalMessageWritesEnabled,
   relationalOperationReadsEnabled,
   relationalTripWritesEnabled,
+  relationalTripMutationsEnabled,
   relationalOperationWritesEnabled,
+  relationalNavigationEnabled,
+  relationalPublicProfileReadsEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -314,7 +337,10 @@ const relationalMessageWriteAuth = createRelationalReadAuth({
   canAccessApp,
 });
 const relationalTripWriteAuth = createRelationalReadAuth({
-  enabled: relationalTripWritesEnabled,
+  enabled: () => (
+    relationalTripWritesEnabled()
+    || relationalTripMutationsEnabled()
+  ),
   getPool: databasePool,
   findUserFromSession: relationalUserFromSession,
   getSession: activeSession,
@@ -322,6 +348,23 @@ const relationalTripWriteAuth = createRelationalReadAuth({
 });
 const relationalOperationWriteAuth = createRelationalReadAuth({
   enabled: relationalOperationWritesEnabled,
+  getPool: databasePool,
+  findUserFromSession: relationalUserFromSession,
+  getSession: activeSession,
+  canAccessApp,
+});
+const relationalNavigationAuth = createRelationalReadAuth({
+  enabled: relationalNavigationEnabled,
+  getPool: databasePool,
+  findUserFromSession: relationalUserFromSession,
+  getSession: activeSession,
+  canAccessApp,
+});
+const relationalPublicProfileAuth = createRelationalReadAuth({
+  enabled: () => (
+    relationalPublicProfileReadsEnabled()
+    || relationalOperationWritesEnabled()
+  ),
   getPool: databasePool,
   findUserFromSession: relationalUserFromSession,
   getSession: activeSession,
@@ -346,16 +389,11 @@ app.use('/api', createRelationalReadsRouter({
   today: TODAY_ISO,
 }));
 
-const relationalTripWriter = createRelationalTripWriter({
+app.use('/api', createRelationalNavigationRouter({
+  auth: relationalNavigationAuth,
+  enabled: relationalNavigationEnabled,
   getPool: databasePool,
-  getTrip: relationalTrip,
-  today: TODAY_ISO,
-});
-
-app.use('/api', createRelationalTripWriteRouter({
-  auth: relationalTripWriteAuth,
-  enabled: relationalTripWritesEnabled,
-  writer: relationalTripWriter,
+  summary: relationalNavigationSummary,
 }));
 
 function addEvent(tx, type, actorId, meta = {}) {
@@ -383,6 +421,21 @@ const notify = createNotificationService({
   defaultSettings: DEFAULT_NOTIFICATION_SETTINGS,
   renderNotification,
 });
+
+const relationalTripWriter = createRelationalTripWriter({
+  getPool: databasePool,
+  getTrip: relationalTrip,
+  today: TODAY_ISO,
+  canonicalizeLocation,
+  auditChange,
+});
+
+app.use('/api', createRelationalTripWriteRouter({
+  auth: relationalTripWriteAuth,
+  enabled: relationalTripWritesEnabled,
+  mutationsEnabled: relationalTripMutationsEnabled,
+  writer: relationalTripWriter,
+}));
 
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
 function validPhotos(photos) {
@@ -583,6 +636,18 @@ const accountPrivacyService = createAccountPrivacyService({
   clearUserSessions,
   auditChange,
   save,
+  loadRelationalRecords: usesDatabase()
+    ? (userId) => relationalMemberRecords({
+      pool: databasePool(),
+      userId,
+    })
+    : null,
+  countRelationalActiveOperations: usesDatabase()
+    ? (userId) => relationalActiveOperationCount({
+      pool: databasePool(),
+      userId,
+    })
+    : null,
 });
 
 app.use('/api/profile', createAccountPrivacyRouter({
@@ -904,6 +969,18 @@ const publicProfileService = createPublicProfileService({
   save,
 });
 
+app.use('/api', createRelationalPublicProfilesRouter({
+  auth: relationalPublicProfileAuth,
+  readsEnabled: relationalPublicProfileReadsEnabled,
+  writesEnabled: relationalOperationWritesEnabled,
+  getPool: databasePool,
+  profile: relationalPublicProfile,
+  reviews: relationalPublicReviews,
+  rate: rateRelationalOperation,
+  normalizeTransportMode: tripTransportMode,
+  detectLeak,
+}));
+
 app.use('/api', createPublicProfilesRouter({
   auth,
   publicProfiles: publicProfileService,
@@ -929,6 +1006,11 @@ const adminFraudService = createAdminFraudService({
   findUser,
   messagesRepository: repositories.messages,
   kycRepository: repositories.kyc,
+  loadRelationalFraudState: usesDatabase()
+    ? () => relationalAdminFraudState({
+      pool: databasePool(),
+    })
+    : null,
 });
 
 app.use('/api', createAdminFraudRouter({
@@ -946,6 +1028,11 @@ const adminOperationsService = createAdminOperationsService({
   disputeView,
   localeForLang,
   kycSlaMs: KYC_SLA_MS,
+  loadRelationalOperationState: usesDatabase()
+    ? () => relationalAdminOperationState({
+      pool: databasePool(),
+    })
+    : null,
 });
 
 app.use('/api', createAdminOperationsRouter({
@@ -968,6 +1055,12 @@ const adminRecordService = createAdminRecordService({
       userId,
       offset,
       limit,
+    })
+    : null,
+  loadRelationalRecords: usesDatabase()
+    ? (userId) => relationalMemberRecords({
+      pool: databasePool(),
+      userId,
     })
     : null,
 });
@@ -999,6 +1092,15 @@ app.use('/api', createAdminActionsRouter({
   adminActions: adminActionService,
 }));
 
+const relationalAdminReview = usesDatabase()
+  ? createRelationalAdminReview({
+    getPool: databasePool,
+    transitionEscrow,
+    notify,
+    audit,
+  })
+  : null;
+
 const adminReviewService = createAdminReviewService({
   db,
   repositories,
@@ -1008,6 +1110,7 @@ const adminReviewService = createAdminReviewService({
   audit,
   notify,
   save,
+  relationalReview: relationalAdminReview,
 });
 
 app.use('/api', createAdminReviewRouter({

@@ -13,6 +13,7 @@ function createHarness({
   decisions = [],
   auditLogs = [],
   safetyAppeals = [],
+  loadRelationalRecords = null,
 } = {}) {
   const db = {
     users,
@@ -54,6 +55,7 @@ function createHarness({
     messageSafetyWindowMs: 1_000,
     kycSlaMs: 5_000,
     now: () => NOW,
+    loadRelationalRecords,
   });
   return { service };
 }
@@ -174,6 +176,42 @@ test('dossier membre conserve preuves, participants et compte supprimé', async 
   assert.equal(record.kyc[0].selfiePhoto, 'selfie');
   assert.deepEqual(record.auditLogs, auditLogs);
   assert.equal((await service.caseFile('missing')).status, 404);
+});
+
+test('dossier admin prefere les trajets et operations relationnels', async () => {
+  const users = [{
+    id: 'u-1',
+    name: 'Alice',
+    email: 'alice@example.test',
+  }];
+  const { service } = createHarness({
+    users,
+    transactions: [{ id: 'tx-stale', senderId: 'u-1' }],
+    async loadRelationalRecords(userId) {
+      assert.equal(userId, 'u-1');
+      return {
+        trips: [{ id: 't-sql', travelerId: 'u-1' }],
+        listings: [],
+        transactions: [{ id: 'tx-sql', senderId: 'u-1' }],
+        disputes: [{ id: 'd-sql', txId: 'tx-sql', createdAt: 5 }],
+        notifications: [{ id: 'n-sql', userId: 'u-1', at: 6 }],
+      };
+    },
+  });
+
+  const result = await service.caseFile('u-1');
+  assert.deepEqual(
+    result.body.caseFile.transactions.map(({ id }) => id),
+    ['tx-sql'],
+  );
+  assert.deepEqual(
+    result.body.caseFile.trips.map(({ id }) => id),
+    ['t-sql'],
+  );
+  assert.deepEqual(
+    result.body.caseFile.disputes.map(({ id }) => id),
+    ['d-sql'],
+  );
 });
 
 test('file KYC calcule SLA et détail auditable', async () => {

@@ -7,18 +7,31 @@ export function createAdminOperationsService({
   disputeView,
   localeForLang,
   kycSlaMs,
+  loadRelationalOperationState = null,
   now = Date.now,
 }) {
   async function summary() {
-    const reviewOpen = repositories.reviewQueue.open();
+    const relational = loadRelationalOperationState
+      ? await loadRelationalOperationState()
+      : null;
+    const historicalReviewOpen = repositories.reviewQueue.open();
+    const reviewOpen = relational
+      ? [
+        ...historicalReviewOpen.filter((item) => item.type !== 'dispute'),
+        ...relational.reviewQueue,
+      ]
+      : historicalReviewOpen;
     const reviewDisputes = reviewOpen.filter((item) => item.type === 'dispute');
     const reviewListings = reviewOpen.filter((item) => item.type === 'listing');
     const reviewConversations = reviewOpen.filter((item) => item.type === 'conversation');
     const pendingKyc = repositories.kyc.pending();
     const overdueKyc = pendingKyc.filter((submission) => now() - submission.submittedAt > kycSlaMs);
-    const openDisputes = db.disputes.filter((dispute) => dispute.status === 'open');
+    const operationDisputes = relational?.disputes || db.disputes;
+    const openDisputes = operationDisputes.filter((dispute) => dispute.status === 'open');
     const flaggedMessages = await repositories.messages.flagged();
-    const simulatedHeld = db.transactions
+    const simulatedHeld = relational
+      ? relational.stats.escrowHeld
+      : db.transactions
       .filter((transaction) => ['held', 'frozen'].includes(transaction.escrow?.state))
       .reduce((total, transaction) => total + transaction.escrow.amount, 0);
     const risk = await adminFraud.summary();
@@ -93,7 +106,7 @@ export function createAdminOperationsService({
             label: item.type === 'listing'
               ? db.listings.find((listing) => listing.id === item.refId)?.title
               : item.type === 'dispute'
-                ? db.disputes.find((dispute) => dispute.id === item.refId)?.reason
+                ? operationDisputes.find((dispute) => dispute.id === item.refId)?.reason
                 : adminConversationModerationView(
                   db.conversations.find((conversation) => conversation.id === item.refId),
                 )?.reports?.[0]?.reason,
@@ -116,15 +129,26 @@ export function createAdminOperationsService({
   }
 
   async function overview() {
+    const relational = loadRelationalOperationState
+      ? await loadRelationalOperationState()
+      : null;
+    const operationDisputes = relational?.disputes || db.disputes;
+    const historicalReviewOpen = repositories.reviewQueue.open();
+    const reviewQueue = relational
+      ? [
+        ...historicalReviewOpen.filter((item) => item.type !== 'dispute'),
+        ...relational.reviewQueue,
+      ]
+      : historicalReviewOpen;
     return {
-      reviewQueue: repositories.reviewQueue.open().map((item) => ({
+      reviewQueue: reviewQueue.map((item) => ({
         ...item,
         listing: item.type === 'listing'
           ? db.listings.find((listing) => listing.id === item.refId)
           : null,
         dispute: item.type === 'dispute'
           ? (() => {
-            const dispute = db.disputes.find((candidate) => candidate.id === item.refId);
+            const dispute = operationDisputes.find((candidate) => candidate.id === item.refId);
             return dispute ? disputeView(dispute) : null;
           })()
           : null,
@@ -137,15 +161,17 @@ export function createAdminOperationsService({
       stats: {
         users: db.users.length,
         listings: db.listings.length,
-        transactions: db.transactions.length,
-        released: db.transactions.filter((transaction) => transaction.status === 'released').length,
-        disputed: db.transactions.filter((transaction) => transaction.status === 'disputed').length,
+        transactions: relational?.stats.transactions ?? db.transactions.length,
+        released: relational?.stats.released
+          ?? db.transactions.filter((transaction) => transaction.status === 'released').length,
+        disputed: relational?.stats.disputed
+          ?? db.transactions.filter((transaction) => transaction.status === 'disputed').length,
         flaggedMessages: (await repositories.messages.flagged()).length,
-        escrowHeld: db.transactions
+        escrowHeld: relational?.stats.escrowHeld ?? db.transactions
           .filter((transaction) => ['held', 'frozen'].includes(transaction.escrow?.state))
           .reduce((total, transaction) => total + transaction.escrow.amount, 0),
       },
-      disputes: db.disputes,
+      disputes: operationDisputes,
       customWhitelist: repositories.customWhitelist.all(),
     };
   }

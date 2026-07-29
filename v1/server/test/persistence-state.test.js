@@ -5,9 +5,12 @@ import {
   createPersistenceState,
   isRelationalMessageRead,
   isRelationalMessageWrite,
+  isRelationalNavigationRead,
+  isRelationalPublicProfileRequest,
   isRelationalOperationRead,
   isRelationalOperationWrite,
   isRelationalTripWrite,
+  isRelationalTripMutation,
   isRelationalTripRead,
 } from '../middleware/persistence-state.js';
 
@@ -142,6 +145,29 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     false,
   );
   assert.equal(
+    isRelationalNavigationRead({
+      method: 'GET',
+      path: '/api/navigation-summary',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalPublicProfileRequest(
+      { method: 'GET', path: '/api/users/u-1/reviews' },
+      enabled,
+      () => false,
+    ),
+    true,
+  );
+  assert.equal(
+    isRelationalPublicProfileRequest(
+      { method: 'POST', path: '/api/transactions/tx-1/rate' },
+      () => false,
+      enabled,
+    ),
+    true,
+  );
+  assert.equal(
     isRelationalTripWrite({
       method: 'POST',
       path: '/api/saved-trips/t-1',
@@ -154,6 +180,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/trips/t-1',
     }, enabled),
     false,
+  );
+  assert.equal(
+    isRelationalTripMutation({
+      method: 'POST',
+      path: '/api/trips',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalTripMutation({
+      method: 'PATCH',
+      path: '/api/trips/t-1',
+    }, enabled),
+    true,
   );
   assert.equal(
     isRelationalMessageRead({ method: 'GET', path: '/api/conversations/c-1/delete' }, enabled),

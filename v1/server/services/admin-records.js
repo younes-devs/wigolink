@@ -7,6 +7,7 @@ export function createAdminRecordService({
   messageSafetyWindowMs,
   kycSlaMs,
   loadMessageArchive = null,
+  loadRelationalRecords = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -80,6 +81,9 @@ export function createAdminRecordService({
     user,
     { messageOffset = 0, messageLimit = 50 } = {},
   ) {
+    const relationalRecords = loadRelationalRecords
+      ? await loadRelationalRecords(user.id)
+      : null;
     const relationalArchive = loadMessageArchive
       ? await loadMessageArchive({
         userId: user.id,
@@ -113,7 +117,7 @@ export function createAdminRecordService({
         )
         .sort((a, b) => b.at - a.at);
     const messageTotal = relationalArchive?.total ?? allMessages.length;
-    const transactions = db.transactions
+    const transactions = (relationalRecords?.transactions || db.transactions)
       .filter(
         (transaction) => [
           transaction.senderId,
@@ -204,18 +208,18 @@ export function createAdminRecordService({
         suspendedUntil: user.suspendedUntil || null,
       },
       kyc,
-      trips: db.trips
+      trips: (relationalRecords?.trips || db.trips)
         .filter((trip) => trip.travelerId === user.id)
         .sort(
           (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
         ),
-      listings: db.listings
+      listings: (relationalRecords?.listings || db.listings)
         .filter((listing) => listing.senderId === user.id)
         .sort(
           (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
         ),
       transactions,
-      disputes: db.disputes
+      disputes: (relationalRecords?.disputes || db.disputes)
         .filter((dispute) => transactionIds.has(dispute.txId))
         .sort((a, b) => b.createdAt - a.createdAt),
       conversations: conversations.map((conversation) => ({
@@ -239,7 +243,7 @@ export function createAdminRecordService({
         total: messageTotal,
         hasMore: messageOffset + messages.length < messageTotal,
       },
-      notifications: (db.notifications || [])
+      notifications: (relationalRecords?.notifications || db.notifications || [])
         .filter((notification) => notification.userId === user.id)
         .sort((a, b) => b.at - a.at)
         .slice(0, 100),
