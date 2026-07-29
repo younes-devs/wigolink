@@ -48,6 +48,23 @@ function createHarness({
     if (sql.includes('select text from public.messages')) {
       return { rows: [], rowCount: 0 };
     }
+    if (
+      sql.includes('from public.wigofly_runtime_records')
+      && sql.includes("kind = 'message_upload'")
+      && sql.includes('expires_at > now()')
+    ) {
+      return {
+        rows: (params[0] || []).map((id) => ({
+          id,
+          data: {
+            userId: user.id,
+            conversationId: conversation.id,
+            storagePath: `conversations/${conversation.id}/${id}.jpg`,
+          },
+        })),
+        rowCount: (params[0] || []).length,
+      };
+    }
     if (sql.includes('select from_id, data from public.messages')) {
       return {
         rows: foundMessage ? [{
@@ -145,6 +162,10 @@ test('upload direct signe seulement pour un participant et un type image', async
   assert.equal(result.status, 200);
   assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
   assert.equal(result.body.upload.maxBytes, 700 * 1024);
+  const reservation = harness.queries.find(({ sql }) => (
+    sql.includes('insert into public.wigofly_runtime_records')
+  ));
+  assert.equal(reservation.params[0], result.body.upload.attachmentId);
 });
 
 test('message direct conserve uniquement la reference storage verifiee', async () => {
@@ -178,6 +199,11 @@ test('message direct conserve uniquement la reference storage verifiee', async (
     persisted.attachments[0].storagePath,
     'conversations/conv-1/att-12345678.jpg',
   );
+  assert.ok(harness.queries.some(({ sql, params }) => (
+    sql.includes("kind = 'message_upload'")
+    && sql.includes('delete')
+    && params[0].includes('att-12345678')
+  )));
 });
 
 test('ecritures messages relationnelles : insere un message idempotent avec un id serveur', async () => {

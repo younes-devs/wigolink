@@ -5,6 +5,7 @@ import {
   createPersistenceState,
   isRelationalAuthRequest,
   isRelationalAccountRequest,
+  isRelationalMaintenanceRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -235,6 +236,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/profile/delete',
     }, enabled),
     false,
+  );
+  assert.equal(
+    isRelationalMaintenanceRequest({
+      method: 'GET',
+      path: '/api/cron/maintenance',
+    }, enabled),
+    true,
   );
   assert.equal(
     isRelationalMessageWrite({

@@ -80,6 +80,7 @@ import { createObservability } from './observability.js';
 import { createSystemRouter } from './routes/system.js';
 import { createObservabilityRouter } from './routes/observability.js';
 import { createMaintenanceRouter } from './routes/maintenance.js';
+import { createCronRouter } from './routes/cron.js';
 import { createNotificationsRouter } from './routes/notifications.js';
 import { createAccountRouter } from './routes/account.js';
 import { createAccountPrivacyRouter } from './routes/account-privacy.js';
@@ -120,6 +121,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
+import { createRetentionService } from './services/retention.js';
 import { createTripService } from './services/trips.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
@@ -332,6 +334,15 @@ const profileMedia = createProfileMediaService({
   secretKey: SUPABASE_SECRET_KEY,
   bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigofly-profile-media').trim(),
 });
+const retention = createRetentionService({
+  getPool: databasePool,
+  messageMedia,
+});
+
+app.use('/api', createCronRouter({
+  secret: process.env.CRON_SECRET,
+  retention,
+}));
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
 // Les clients utilisent donc le WebSocket gere par Supabase Realtime.

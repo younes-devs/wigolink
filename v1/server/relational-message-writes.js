@@ -5,6 +5,7 @@ const SAFETY_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SAFETY_COOLDOWN_MS = 30 * 60 * 1000;
 const SAFETY_STRIKE_LIMIT = 3;
 const LOCATION_EXPIRY_MINUTES = new Set([30, 120]);
+const MESSAGE_UPLOAD_TTL_MS = 2 * 60 * 60 * 1000;
 
 export function relationalMessageWritesEnabled(env = process.env) {
   return env.RELATIONAL_MESSAGE_WRITES === 'true';
@@ -67,6 +68,8 @@ export function createRelationalMessageWriter({
     const media = await storeAttachments({
       attachments: prepared.attachments,
       conversationId,
+      userId: user.id,
+      pool,
       messageId: prepared.messageId,
       messageMedia,
       allowInlineMediaFallback,
@@ -184,6 +187,13 @@ export function createRelationalMessageWriter({
           JSON.stringify(message),
         ],
       );
+      if (media.reservationIds.length) {
+        await client.query(
+          `delete from public.wigofly_runtime_records
+           where kind = 'message_upload' and id = any($1::text[])`,
+          [media.reservationIds],
+        );
+      }
 
       const conversation = {
         ...locked.conversation,
@@ -292,6 +302,28 @@ export function createRelationalMessageWriter({
         attachmentId,
         mime,
       });
+      await getPool().query(
+        `insert into public.wigofly_runtime_records
+           (kind, id, data, expires_at, updated_at)
+         values ('message_upload', $1, $2::jsonb, to_timestamp($3 / 1000.0), now())
+         on conflict (kind, id) do update
+         set data = excluded.data,
+             expires_at = excluded.expires_at,
+             updated_at = now()`,
+        [
+          attachmentId,
+          JSON.stringify({
+            attachmentId,
+            conversationId,
+            userId: user.id,
+            storagePath: upload.storagePath,
+            mime,
+            declaredSize,
+            createdAt: now(),
+          }),
+          now() + MESSAGE_UPLOAD_TTL_MS,
+        ],
+      );
       return response(200, {
         upload: {
           attachmentId: upload.attachmentId,
@@ -705,6 +737,8 @@ function prepareMessage({ body, conversation, operation, validPhotos, now }) {
 async function storeAttachments({
   attachments,
   conversationId,
+  userId,
+  pool,
   messageId: providedMessageId,
   messageMedia,
   allowInlineMediaFallback,
@@ -718,7 +752,14 @@ async function storeAttachments({
     });
   }
   const storagePaths = [];
+  const reservationIds = [];
   try {
+    await validateUploadReservations({
+      attachments,
+      conversationId,
+      userId,
+      pool,
+    });
     const normalized = await Promise.all(attachments.map(async (attachment, index) => {
       if (isDirectAttachment(attachment, conversationId)) {
         const stored = await messageMedia?.info(attachment.storagePath);
@@ -731,6 +772,7 @@ async function storeAttachments({
           throw new Error('Upload direct invalide');
         }
         storagePaths.push(attachment.storagePath);
+        reservationIds.push(attachment.id);
         return {
           id: attachment.id,
           type: 'image',
@@ -770,7 +812,12 @@ async function storeAttachments({
           }),
       };
     }));
-    return { attachments: normalized, messageId, storagePaths };
+    return {
+      attachments: normalized,
+      messageId,
+      storagePaths,
+      reservationIds,
+    };
   } catch (error) {
     await removeStoredMedia(messageMedia, storagePaths);
     logger.error('relational_message_media_store_failed', {
@@ -800,7 +847,42 @@ async function storeAttachments({
       }),
       messageId,
       storagePaths: [],
+      reservationIds: [],
     };
+  }
+}
+
+async function validateUploadReservations({
+  attachments,
+  conversationId,
+  userId,
+  pool,
+}) {
+  const direct = attachments.filter((attachment) => (
+    isDirectAttachment(attachment, conversationId)
+  ));
+  if (!direct.length) return;
+  const ids = direct.map((attachment) => attachment.id);
+  const result = await pool.query(
+    `select id, data
+     from public.wigofly_runtime_records
+     where kind = 'message_upload'
+       and id = any($1::text[])
+       and expires_at > now()`,
+    [ids],
+  );
+  const reservations = new Map(
+    result.rows.map((row) => [row.id, row.data]),
+  );
+  const valid = direct.every((attachment) => {
+    const reservation = reservations.get(attachment.id);
+    return reservation
+      && reservation.userId === userId
+      && reservation.conversationId === conversationId
+      && reservation.storagePath === attachment.storagePath;
+  });
+  if (!valid || reservations.size !== direct.length) {
+    throw new Error('Reservation upload invalide');
   }
 }
 

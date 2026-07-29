@@ -114,6 +114,12 @@ export function isRelationalAccountRequest(req, relationalAuthEnabled) {
     && RELATIONAL_ACCOUNT_PATHS.has(req.path);
 }
 
+export function isRelationalMaintenanceRequest(req, relationalAuthEnabled) {
+  return relationalAuthEnabled()
+    && req.method === 'GET'
+    && req.path === '/api/cron/maintenance';
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -154,6 +160,7 @@ export function createPersistenceState({
       )
       || isRelationalAuthRequest(req, relationalAuthEnabled)
       || isRelationalAccountRequest(req, relationalAuthEnabled)
+      || isRelationalMaintenanceRequest(req, relationalAuthEnabled)
     ) {
       return next();
     }
