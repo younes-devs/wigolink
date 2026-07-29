@@ -21,7 +21,8 @@ import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
 import { emailConfig, sendVerificationEmail } from './email.js';
 import {
-  listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession,
+  listRelationalSavedTrips, listRelationalTrips, relationalTrip,
+  relationalTripReadsEnabled, relationalUserFromSession,
   snapshotRelationalTripState, syncRelationalTripState,
 } from './relational-trip-feed.js';
 import {
@@ -32,6 +33,15 @@ import {
   createRelationalMessageWriter,
   relationalMessageWritesEnabled,
 } from './relational-message-writes.js';
+import {
+  listRelationalOperations,
+  relationalOperation,
+  relationalOperationReadsEnabled,
+} from './relational-operations.js';
+import {
+  createRelationalTripWriter,
+  relationalTripWritesEnabled,
+} from './relational-trip-writes.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
@@ -57,6 +67,7 @@ import { createRulesRouter } from './routes/rules.js';
 import { createRealtimeRouter } from './routes/realtime.js';
 import { createRelationalReadsRouter } from './routes/relational-reads.js';
 import { createRelationalMessageWriteRouter } from './routes/relational-message-writes.js';
+import { createRelationalTripWriteRouter } from './routes/relational-trip-writes.js';
 import { createConversationInboxRouter } from './routes/conversation-inbox.js';
 import { createConversationMessageRouter } from './routes/conversation-messages.js';
 import { createTripsRouter } from './routes/trips.js';
@@ -168,6 +179,8 @@ app.use(createPersistenceState({
   relationalTripReadsEnabled,
   relationalMessageReadsEnabled,
   relationalMessageWritesEnabled,
+  relationalOperationReadsEnabled,
+  relationalTripWritesEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -276,8 +289,12 @@ app.use('/api/realtime', createRealtimeRouter({
   realtime,
 }));
 
+const relationalReadsEnabled = () =>
+  relationalTripReadsEnabled()
+  || relationalMessageReadsEnabled()
+  || relationalOperationReadsEnabled();
 const relationalReadAuth = createRelationalReadAuth({
-  enabled: relationalTripReadsEnabled,
+  enabled: relationalReadsEnabled,
   getPool: databasePool,
   findUserFromSession: relationalUserFromSession,
   getSession: activeSession,
@@ -290,6 +307,13 @@ const relationalMessageWriteAuth = createRelationalReadAuth({
   getSession: activeSession,
   canAccessApp,
 });
+const relationalTripWriteAuth = createRelationalReadAuth({
+  enabled: relationalTripWritesEnabled,
+  getPool: databasePool,
+  findUserFromSession: relationalUserFromSession,
+  getSession: activeSession,
+  canAccessApp,
+});
 
 app.use('/api', createRelationalReadsRouter({
   auth: relationalReadAuth,
@@ -297,9 +321,29 @@ app.use('/api', createRelationalReadsRouter({
   messageReadsEnabled: relationalMessageReadsEnabled,
   getPool: databasePool,
   listTrips: listRelationalTrips,
+  getTrip: relationalTrip,
+  listSavedTrips: listRelationalSavedTrips,
   listConversations: listRelationalConversations,
   getConversation: relationalConversation,
+  operationReadsEnabled: relationalOperationReadsEnabled,
+  listOperations: listRelationalOperations,
+  getOperation: relationalOperation,
+  operationCodePublicState: (value) => operationCodePublicState(value),
+  disputeView: (value, transaction) => disputeView(value, transaction),
   today: TODAY_ISO,
+}));
+
+const relationalTripWriter = createRelationalTripWriter({
+  getPool: databasePool,
+  getTrip: relationalTrip,
+  newId,
+  today: TODAY_ISO,
+});
+
+app.use('/api', createRelationalTripWriteRouter({
+  auth: relationalTripWriteAuth,
+  enabled: relationalTripWritesEnabled,
+  writer: relationalTripWriter,
 }));
 
 function addEvent(tx, type, actorId, meta = {}) {

@@ -4,6 +4,8 @@ const RELATIONAL_TRIP_PATHS = new Set([
   '/api/trips/mine',
   '/api/trips/overview',
 ]);
+const RELATIONAL_TRIP_DETAIL_PATH = /^\/api\/trips\/[^/]+$/;
+const RELATIONAL_SAVED_TRIP_PATH = /^\/api\/saved-trips(?:\/[^/]+)?$/;
 const RELATIONAL_MESSAGE_PATH = /^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/;
 const RELATIONAL_MESSAGE_WRITE_PATH = /^\/api\/conversations\/[^/]+(?:\/messages(?:\/[^/]+)?|\/(?:read|unread|archive|pin|typing))?$/;
 const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[^/]+\/attachments\/[^/]+$/;
@@ -11,7 +13,11 @@ const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[
 export function isRelationalTripRead(req, relationalTripReadsEnabled) {
   return relationalTripReadsEnabled()
     && req.method === 'GET'
-    && RELATIONAL_TRIP_PATHS.has(req.path);
+    && (
+      RELATIONAL_TRIP_PATHS.has(req.path)
+      || RELATIONAL_TRIP_DETAIL_PATH.test(req.path)
+      || req.path === '/api/saved-trips'
+    );
 }
 
 export function isRelationalMessageRead(req, relationalMessageReadsEnabled) {
@@ -29,6 +35,18 @@ export function isRelationalMessageWrite(req, relationalMessageWritesEnabled) {
     && RELATIONAL_MESSAGE_WRITE_PATH.test(req.path);
 }
 
+export function isRelationalOperationRead(req, relationalOperationReadsEnabled) {
+  return relationalOperationReadsEnabled()
+    && req.method === 'GET'
+    && /^\/api\/operations(?:\/[^/]+)?$/.test(req.path);
+}
+
+export function isRelationalTripWrite(req, relationalTripWritesEnabled) {
+  return relationalTripWritesEnabled()
+    && ['POST', 'DELETE'].includes(req.method)
+    && RELATIONAL_SAVED_TRIP_PATH.test(req.path);
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -38,6 +56,8 @@ export function createPersistenceState({
   relationalTripReadsEnabled,
   relationalMessageReadsEnabled,
   relationalMessageWritesEnabled = () => false,
+  relationalOperationReadsEnabled = () => false,
+  relationalTripWritesEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -50,6 +70,8 @@ export function createPersistenceState({
       isRelationalTripRead(req, relationalTripReadsEnabled)
       || isRelationalMessageRead(req, relationalMessageReadsEnabled)
       || isRelationalMessageWrite(req, relationalMessageWritesEnabled)
+      || isRelationalOperationRead(req, relationalOperationReadsEnabled)
+      || isRelationalTripWrite(req, relationalTripWritesEnabled)
     ) {
       return next();
     }

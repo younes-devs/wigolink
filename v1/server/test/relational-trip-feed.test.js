@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  listRelationalTrips, relationalTripReadsEnabled, relationalUserFromSession,
+  listRelationalSavedTrips, listRelationalTrips, relationalTrip,
+  relationalTripReadsEnabled, relationalUserFromSession,
   snapshotRelationalTripState, syncRelationalTripState,
 } from '../relational-trip-feed.js';
 
@@ -52,6 +53,108 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.ok(searchTerms.includes('%valise%'));
   assert.match(calls[0].sql, /fromLocationId/);
   assert.ok(calls[0].params.includes('ma-2540483'));
+});
+
+test('feed relationnel : detail charge trajet, favori et operations sans document global', async () => {
+  const calls = [];
+  const result = await relationalTrip({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return {
+          rows: [{
+            trip: {
+              id: 't-1',
+              travelerId: 'u-1',
+              from: 'Oujda',
+              to: 'Bruxelles',
+              date: '2026-08-01',
+              status: 'published',
+            },
+            traveler: {
+              id: 'u-1',
+              name: 'Younes',
+              kycStatus: 'verified',
+            },
+            saved: true,
+            active_operations: 2,
+          }],
+        };
+      },
+    },
+    user: { id: 'u-1' },
+    id: 't-1',
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.trip.saved, true);
+  assert.equal(result.body.trip.activeOperations, 2);
+  assert.match(calls[0].sql, /wigofly_transactions/);
+  assert.deepEqual(calls[0].params, ['u-1', 't-1']);
+});
+
+test('feed relationnel : detail masque un trajet expire', async () => {
+  const result = await relationalTrip({
+    pool: {
+      query() {
+        return {
+          rows: [{
+            trip: {
+              id: 't-old',
+              travelerId: 'u-2',
+              from: 'Oujda',
+              to: 'Paris',
+              date: '2026-01-01',
+              status: 'published',
+            },
+            traveler: { id: 'u-2', name: 'Karim' },
+            saved: false,
+            active_operations: 0,
+          }],
+        };
+      },
+    },
+    user: { id: 'u-1' },
+    id: 't-old',
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 404);
+});
+
+test('feed relationnel : favoris supprime les expires puis retourne une page', async () => {
+  const calls = [];
+  const result = await listRelationalSavedTrips({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        if (calls.length === 1) return { rows: [], rowCount: 1 };
+        return {
+          rows: [{
+            trip: {
+              id: 't-1',
+              travelerId: 'u-2',
+              from: 'Oujda',
+              to: 'Bruxelles',
+              date: '2026-08-01',
+              status: 'published',
+            },
+            traveler: { id: 'u-2', name: 'Karim' },
+            saved: true,
+          }],
+        };
+      },
+    },
+    user: { id: 'u-1' },
+    today: '2026-07-29',
+    query: { limit: 20 },
+  });
+
+  assert.equal(result.trips[0].saved, true);
+  assert.match(calls[0].sql, /delete from public.wigofly_saved_trips/);
+  assert.match(calls[1].sql, /order by saved_trip.created_at desc/);
+  assert.deepEqual(calls[1].params, ['u-1', '2026-07-29', 21, 0]);
 });
 
 test('feed relationnel : ne synchronise que les ecritures changees', async () => {

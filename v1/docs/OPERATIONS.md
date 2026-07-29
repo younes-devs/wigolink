@@ -39,6 +39,12 @@ relationnelles ne sont pas verifies. Une fois actif, surveiller les erreurs
 Vercel Logs. Le retour arriere consiste uniquement a remettre ce drapeau a
 `false`; les lignes deja ecrites restent lisibles et conservees.
 
+`RELATIONAL_OPERATION_READS=true` retire les pages `En cours` et detail
+d'operation du document global. `RELATIONAL_TRIP_WRITES=true` couvre pour
+l'instant les ajouts et retraits de favoris; les mutations de trajets et
+d'operations restent sous migration tant que leurs transactions multi-entites
+ne sont pas entierement atomiques.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

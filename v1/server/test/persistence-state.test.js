@@ -5,6 +5,8 @@ import {
   createPersistenceState,
   isRelationalMessageRead,
   isRelationalMessageWrite,
+  isRelationalOperationRead,
+  isRelationalTripWrite,
   isRelationalTripRead,
 } from '../middleware/persistence-state.js';
 
@@ -98,10 +100,38 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
 
   assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/trips' }, enabled), true);
   assert.equal(isRelationalTripRead({ method: 'POST', path: '/api/trips' }, enabled), false);
-  assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/trips/t-1' }, enabled), false);
+  assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/trips/t-1' }, enabled), true);
   assert.equal(
     isRelationalMessageRead({ method: 'GET', path: '/api/conversations/c-1/messages' }, enabled),
     true,
+  );
+  assert.equal(
+    isRelationalOperationRead({
+      method: 'GET',
+      path: '/api/operations/tx-1',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalOperationRead({
+      method: 'POST',
+      path: '/api/operations/tx-1/pay',
+    }, enabled),
+    false,
+  );
+  assert.equal(
+    isRelationalTripWrite({
+      method: 'POST',
+      path: '/api/saved-trips/t-1',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalTripWrite({
+      method: 'PATCH',
+      path: '/api/trips/t-1',
+    }, enabled),
+    false,
   );
   assert.equal(
     isRelationalMessageRead({ method: 'GET', path: '/api/conversations/c-1/delete' }, enabled),
@@ -181,6 +211,57 @@ test('persistence state contourne le document global pour les ecritures de messa
   );
   middleware(
     { method: 'DELETE', path: '/api/conversations/c-1/messages/m-1' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+
+  assert.equal(nextCalls, 2);
+  assert.deepEqual(events, []);
+});
+
+test('persistence state contourne le document global pour les lectures d operations relationnelles', () => {
+  let nextCalls = 0;
+  const { events, middleware } = createMiddleware({
+    relationalOperationReadsEnabled: () => true,
+  });
+
+  middleware(
+    { method: 'GET', path: '/api/operations' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+  middleware(
+    { method: 'GET', path: '/api/operations/tx-1' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+
+  assert.equal(nextCalls, 2);
+  assert.deepEqual(events, []);
+});
+
+test('persistence state contourne le document global pour les favoris relationnels', () => {
+  let nextCalls = 0;
+  const { events, middleware } = createMiddleware({
+    relationalTripReadsEnabled: () => true,
+    relationalTripWritesEnabled: () => true,
+  });
+
+  middleware(
+    { method: 'GET', path: '/api/saved-trips' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+  middleware(
+    { method: 'POST', path: '/api/saved-trips/t-1' },
     createResponse(events),
     () => {
       nextCalls += 1;

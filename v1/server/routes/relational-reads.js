@@ -6,8 +6,15 @@ export function createRelationalReadsRouter({
   messageReadsEnabled,
   getPool,
   listTrips,
+  getTrip,
+  listSavedTrips,
   listConversations,
   getConversation,
+  operationReadsEnabled = () => false,
+  listOperations,
+  getOperation,
+  operationCodePublicState,
+  disputeView,
   today,
   logger = console,
 }) {
@@ -79,6 +86,41 @@ export function createRelationalReadsRouter({
     }
   });
 
+  router.get('/trips/:id', auth, async (req, res, next) => {
+    if (!tripReadsEnabled()) return next('route');
+    try {
+      const result = await getTrip({
+        pool: getPool(),
+        user: req.user,
+        id: req.params.id,
+        today: today(),
+      });
+      return res.status(result.status).json(result.body);
+    } catch (error) {
+      logger.error('Echec de lecture relationnelle d un trajet', error);
+      return res.status(503).json({
+        error: 'Trajet temporairement indisponible. Reessayez.',
+      });
+    }
+  });
+
+  router.get('/saved-trips', auth, async (req, res, next) => {
+    if (!tripReadsEnabled()) return next('route');
+    try {
+      return res.json(await listSavedTrips({
+        pool: getPool(),
+        user: req.user,
+        today: today(),
+        query: req.query,
+      }));
+    } catch (error) {
+      logger.error('Echec de lecture relationnelle des favoris', error);
+      return res.status(503).json({
+        error: 'Trajets enregistres temporairement indisponibles. Reessayez.',
+      });
+    }
+  });
+
   router.get('/conversations', auth, async (req, res, next) => {
     if (!messageReadsEnabled()) return next('route');
     try {
@@ -140,6 +182,43 @@ export function createRelationalReadsRouter({
       logger.error('Echec de lecture relationnelle des messages', error);
       return res.status(503).json({
         error: 'Messages temporairement indisponibles. Reessayez.',
+      });
+    }
+  });
+
+  router.get('/operations', auth, async (req, res, next) => {
+    if (!operationReadsEnabled()) return next('route');
+    try {
+      return res.json(await listOperations({
+        pool: getPool(),
+        user: req.user,
+        query: req.query,
+        operationCodePublicState,
+        disputeView,
+      }));
+    } catch (error) {
+      logger.error('Echec de lecture relationnelle des operations', error);
+      return res.status(503).json({
+        error: 'Operations temporairement indisponibles. Reessayez.',
+      });
+    }
+  });
+
+  router.get('/operations/:id', auth, async (req, res, next) => {
+    if (!operationReadsEnabled()) return next('route');
+    try {
+      const result = await getOperation({
+        pool: getPool(),
+        user: req.user,
+        id: req.params.id,
+        operationCodePublicState,
+        disputeView,
+      });
+      return res.status(result.status).json(result.body);
+    } catch (error) {
+      logger.error('Echec de lecture relationnelle d une operation', error);
+      return res.status(503).json({
+        error: 'Operation temporairement indisponible. Reessayez.',
       });
     }
   });

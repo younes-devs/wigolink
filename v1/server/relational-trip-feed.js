@@ -177,6 +177,100 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
   };
 }
 
+export async function relationalTrip({ pool, user, id, today }) {
+  const result = await pool.query(
+    `select t.data as trip, u.data as traveler,
+       exists(
+         select 1
+         from public.wigofly_saved_trips saved
+         where saved.data->>'userId' = $1
+           and saved.data->>'tripId' = t.id
+       ) as saved,
+       (
+         select count(*)::int
+         from public.wigofly_transactions operation
+         where operation.data->>'tripId' = t.id
+           and coalesce(operation.data->>'status', '') not in (
+             'released', 'refunded', 'cancelled'
+           )
+       ) as active_operations
+     from public.wigofly_trips t
+     join public.wigofly_users u on u.id = t.data->>'travelerId'
+     where t.id = $2`,
+    [user.id, id],
+  );
+  const row = result.rows[0];
+  if (!row) {
+    return { status: 404, body: { error: 'Trajet introuvable' } };
+  }
+  const trip = tripView(
+    row.trip,
+    row.traveler,
+    row.saved,
+    row.trip.travelerId === user.id
+      ? row.active_operations
+      : undefined,
+  );
+  if (
+    trip.status !== 'published'
+    || trip.departureDate < today
+  ) {
+    return {
+      status: 404,
+      body: { error: 'Trajet expire ou indisponible' },
+    };
+  }
+  return { status: 200, body: { trip } };
+}
+
+export async function listRelationalSavedTrips({
+  pool,
+  user,
+  today,
+  query = {},
+}) {
+  await pool.query(
+    `delete from public.wigofly_saved_trips saved
+     where saved.data->>'userId' = $1
+       and not exists (
+         select 1
+         from public.wigofly_trips trip
+         where trip.id = saved.data->>'tripId'
+           and coalesce(trip.data->>'status', 'published') = 'published'
+           and coalesce(trip.data->>'departureDate', trip.data->>'date') >= $2
+       )`,
+    [user.id, today],
+  );
+  const limit = boundedLimit(query.limit);
+  const offset = boundedOffset(query.offset);
+  const result = await pool.query(
+    `select trip.data as trip, traveler.data as traveler, true as saved
+     from public.wigofly_saved_trips saved_trip
+     join public.wigofly_trips trip
+       on trip.id = saved_trip.data->>'tripId'
+     join public.wigofly_users traveler
+       on traveler.id = trip.data->>'travelerId'
+     where saved_trip.data->>'userId' = $1
+       and coalesce(trip.data->>'status', 'published') = 'published'
+       and coalesce(trip.data->>'departureDate', trip.data->>'date') >= $2
+     order by saved_trip.created_at desc
+     limit $3 offset $4`,
+    [user.id, today, limit + 1, offset],
+  );
+  const hasMore = result.rows.length > limit;
+  return {
+    trips: result.rows.slice(0, limit).map((row) =>
+      tripView(row.trip, row.traveler, true)
+    ),
+    page: {
+      limit,
+      offset,
+      hasMore,
+      nextOffset: hasMore ? offset + limit : null,
+    },
+  };
+}
+
 function tripView(trip, traveler, saved, activeOperations) {
   const date = trip.departureDate || trip.date;
   return {
