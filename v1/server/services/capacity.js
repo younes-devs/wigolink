@@ -14,6 +14,7 @@ const MONITORED_TABLES = [
   'wigofly_matching_offers',
   'wigofly_saved_trips',
   'wigofly_conversations',
+  'wigofly_conversation_members',
   'wigofly_conversation_reports',
   'messages',
   'notifications',

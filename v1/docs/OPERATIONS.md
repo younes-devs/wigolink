@@ -39,6 +39,12 @@ relationnelles ne sont pas verifies. Une fois actif, surveiller les erreurs
 Vercel Logs. Le retour arriere consiste uniquement a remettre ce drapeau a
 `false`; les lignes deja ecrites restent lisibles et conservees.
 
+`RELATIONAL_CONVERSATION_MEMBERS=true` remplace les tableaux partages
+`readBy`, `archivedBy`, `pinnedBy`, `deletedBy` et `blockedBy` par une ligne
+indexee par participant. Ouvrir une conversation met alors a jour une seule
+ligne, quel que soit le nombre de messages. Appliquer le schema, executer le
+backfill et verifier une ligne par participant avant activation.
+
 `RELATIONAL_OPERATION_READS=true` retire les pages `En cours` et detail
 d'operation du document global. `RELATIONAL_TRIP_WRITES=true` couvre pour
 l'instant les ajouts et retraits de favoris.

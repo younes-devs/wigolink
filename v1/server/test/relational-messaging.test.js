@@ -76,6 +76,63 @@ test('messagerie relationnelle : synchronise uniquement les messages plus recent
   assert.deepEqual(calls[0].params, ['conv-1', 300, 51]);
 });
 
+test('messagerie relationnelle utilise l etat participant indexe', async () => {
+  const calls = [];
+  const data = await listRelationalConversations({
+    pool: {
+      async query(sql, params) {
+        calls.push({ sql, params });
+        return {
+          rows: [{
+            ...row,
+            member_archived: true,
+            member_pinned: true,
+            member_blocked: false,
+            member_last_read_at: 150,
+          }],
+        };
+      },
+    },
+    user: { id: 'u-1' },
+    query: { includeArchived: '1' },
+    today: '2026-07-17',
+    memberStateEnabled: true,
+  });
+
+  assert.equal(data.conversations[0].archived, true);
+  assert.equal(data.conversations[0].pinned, true);
+  assert.equal(data.conversations[0].lastReadAt, 150);
+  assert.match(calls[0].sql, /wigofly_conversation_members member/);
+  assert.match(calls[0].sql, /m\.at > coalesce\(member\.last_read_at/);
+  assert.doesNotMatch(calls[0].sql, /data->'readBy'/);
+});
+
+test('recus de lecture sont derives du curseur participant', async () => {
+  const data = await relationalConversationMessages({
+    pool: {
+      async query() {
+        return {
+          rows: [{
+            data: {
+              id: 'm-1',
+              conversationId: 'conv-1',
+              from: 'u-1',
+              text: 'Bonjour',
+              at: 200,
+              readBy: ['u-1'],
+            },
+            member_read_by: ['u-2'],
+          }],
+        };
+      },
+    },
+    conversationId: 'conv-1',
+    memberStateEnabled: true,
+  });
+
+  assert.deepEqual(data.messages[0].readBy.sort(), ['u-1', 'u-2']);
+});
+
 test('messagerie relationnelle : archive admin inclut les messages masques et leurs totaux', async () => {
   const calls = [];
   const pool = {

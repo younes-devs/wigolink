@@ -163,6 +163,30 @@ create index if not exists wigofly_conversations_last_message_idx on public.wigo
 create index if not exists wigofly_conversations_operation_idx on public.wigofly_conversations ((data->>'operationId'));
 create index if not exists wigofly_conversations_participants_idx on public.wigofly_conversations using gin ((data->'participantIds'));
 
+create table if not exists public.wigofly_conversation_members (
+  conversation_id text not null references public.wigofly_conversations(id),
+  user_id text not null,
+  archived boolean not null default false,
+  pinned boolean not null default false,
+  deleted boolean not null default false,
+  blocked boolean not null default false,
+  last_read_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (conversation_id, user_id)
+);
+create index if not exists wigofly_conversation_members_user_state_idx
+  on public.wigofly_conversation_members (
+    user_id,
+    deleted,
+    archived,
+    pinned,
+    updated_at desc
+  );
+create index if not exists wigofly_conversation_members_conversation_read_idx
+  on public.wigofly_conversation_members (conversation_id, last_read_at);
+alter table public.wigofly_conversation_members enable row level security;
+
 create table if not exists public.wigofly_conversation_reports (
   id text primary key,
   conversation_id text not null references public.wigofly_conversations(id),
@@ -288,10 +312,43 @@ where current.client_id is null
 create unique index if not exists messages_client_id_unique_idx
   on public.messages (conversation_id, from_id, client_id)
   where client_id is not null;
+insert into public.wigofly_conversation_members (
+  conversation_id,
+  user_id,
+  archived,
+  pinned,
+  deleted,
+  blocked,
+  last_read_at,
+  created_at,
+  updated_at
+)
+select
+  conversation.id,
+  participant.user_id,
+  coalesce(conversation.data->'archivedBy', '[]'::jsonb) ? participant.user_id,
+  coalesce(conversation.data->'pinnedBy', '[]'::jsonb) ? participant.user_id,
+  coalesce(conversation.data->'deletedBy', '[]'::jsonb) ? participant.user_id,
+  coalesce(conversation.data->'blockedBy', '[]'::jsonb) ? participant.user_id,
+  (
+    select max(message.at)
+    from public.messages message
+    where message.conversation_id = conversation.id
+      and message.from_id <> participant.user_id
+      and coalesce(message.data->'readBy', '[]'::jsonb) ? participant.user_id
+  ),
+  conversation.created_at,
+  conversation.updated_at
+from public.wigofly_conversations conversation
+cross join lateral jsonb_array_elements_text(
+  coalesce(conversation.data->'participantIds', '[]'::jsonb)
+) participant(user_id)
+on conflict (conversation_id, user_id) do nothing;
 
 revoke all on table public.wigofly_users, public.wigofly_trips, public.wigofly_listings,
   public.wigofly_transactions, public.wigofly_matching_offers, public.wigofly_saved_trips,
-  public.wigofly_conversations, public.wigofly_conversation_reports,
+  public.wigofly_conversations, public.wigofly_conversation_members,
+  public.wigofly_conversation_reports,
   public.wigofly_disputes, public.wigofly_review_queue,
   public.wigofly_kyc_submissions, public.wigofly_kyc_decisions, public.wigofly_custom_whitelist,
   public.wigofly_runtime_records from anon, authenticated;

@@ -5,18 +5,34 @@ export function relationalNavigationEnabled(env = process.env) {
     || env.RELATIONAL_OPERATION_WRITES === 'true';
 }
 
-export async function relationalNavigationSummary({ pool, user }) {
+export async function relationalNavigationSummary({
+  pool,
+  user,
+  memberStateEnabled = false,
+}) {
+  const messageJoin = memberStateEnabled
+    ? `join public.wigofly_conversation_members member
+         on member.conversation_id = c.id and member.user_id = $1`
+    : '';
+  const messageMembership = memberStateEnabled
+    ? 'and not member.deleted'
+    : `and c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
+  const unreadFilter = memberStateEnabled
+    ? `and m.at > coalesce(member.last_read_at, 'epoch'::timestamptz)`
+    : `and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`;
   const result = await pool.query(
     `select
        (
          select count(distinct c.id)::int
          from public.wigofly_conversations c
+         ${messageJoin}
          join public.messages m on m.conversation_id = c.id
-         where c.data->'participantIds' ? $1
-           and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)
+         where true
+           ${messageMembership}
            and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
            and m.from_id <> $1
-           and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
+           ${unreadFilter}
        ) as messages_unread,
        (
          select count(*)::int

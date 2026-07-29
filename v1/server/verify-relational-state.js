@@ -7,6 +7,7 @@ const REQUIRED_TABLES = [
   'wigofly_matching_offers',
   'wigofly_saved_trips',
   'wigofly_conversations',
+  'wigofly_conversation_members',
   'wigofly_conversation_reports',
   'wigofly_disputes',
   'wigofly_review_queue',

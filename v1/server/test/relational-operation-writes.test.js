@@ -43,6 +43,7 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
     client,
     notifications,
     calls,
+    memberState: true,
   });
 
   const result = await writer.accept({
@@ -64,6 +65,9 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
   )));
   assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigofly_transactions')));
   assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigofly_conversations')));
+  assert.equal(calls.filter(({ sql }) =>
+    sql.includes('insert into public.wigofly_conversation_members')
+  ).length, 2);
   assert.equal(notifications.length, 1);
   assert.equal(client.released, 1);
 });
@@ -150,7 +154,7 @@ test('transition relationnelle verrouille uniquement operation et persiste atomi
   assert.equal(client.transactions, 'begin,commit');
 });
 
-function writerHarness({ client, notifications = [] }) {
+function writerHarness({ client, notifications = [], memberState = false }) {
   let latestOperation = null;
   const originalQuery = client.query;
   client.query = async (sql, params = []) => {
@@ -203,6 +207,7 @@ function writerHarness({ client, notifications = [] }) {
     today: () => '2026-07-29',
     now: () => 1_785_312_000_000,
     logger: { error() {} },
+    memberStateEnabled: () => memberState,
   });
 }
 

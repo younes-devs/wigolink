@@ -1,4 +1,7 @@
 import { relationalId } from './relational-id.js';
+import {
+  ensureConversationMembers,
+} from './relational-conversation-members.js';
 
 export function relationalOperationWritesEnabled(env = process.env) {
   return env.RELATIONAL_OPERATION_WRITES === 'true';
@@ -20,6 +23,7 @@ export function createRelationalOperationWriter({
   today,
   now = Date.now,
   logger = console,
+  memberStateEnabled = () => false,
 }) {
   async function accept({ user, tripId, body = {} }) {
     if (user.kycStatus !== 'verified') {
@@ -139,6 +143,9 @@ export function createRelationalOperationWriter({
         deletedBy: [],
       };
       await insertRecord(client, 'wigofly_conversations', conversation);
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(client, conversation, { now });
+      }
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => {});

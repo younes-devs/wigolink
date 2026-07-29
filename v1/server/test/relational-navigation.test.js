@@ -43,6 +43,29 @@ test('navigation relationnelle compte les conversations et actions en SQL', asyn
   assert.doesNotMatch(calls[0].sql, /operation_requires_action/);
 });
 
+test('navigation relationnelle compte les non lus depuis le curseur participant', async () => {
+  const calls = [];
+  await relationalNavigationSummary({
+    pool: {
+      async query(sql) {
+        calls.push(sql);
+        return {
+          rows: [{
+            messages_unread: 1,
+            operations_action_required: 0,
+          }],
+        };
+      },
+    },
+    user: { id: 'u-1' },
+    memberStateEnabled: true,
+  });
+
+  assert.match(calls[0], /wigofly_conversation_members member/);
+  assert.match(calls[0], /m\.at > coalesce\(member\.last_read_at/);
+  assert.doesNotMatch(calls[0], /data->'readBy'/);
+});
+
 test('action operation conserve la machine de statuts du menu', () => {
   assert.equal(operationActionRequired({
     operationStatus: 'attente_confirmation',

@@ -32,6 +32,8 @@ function createHarness({
   foundMessage = null,
   mediaEnabled = false,
   mediaInfo = null,
+  memberState = false,
+  latestIncomingAt = null,
 } = {}) {
   const queries = [];
   const mediaRemoved = [];
@@ -76,6 +78,21 @@ function createHarness({
     }
     if (sql.includes('extract(epoch from at)')) {
       return { rows: [{ at: 100 }], rowCount: 1 };
+    }
+    if (
+      sql.includes('select id, data, at from public.messages')
+      && sql.includes('from_id <> $2')
+    ) {
+      return latestIncomingAt === null
+        ? { rows: [], rowCount: 0 }
+        : {
+          rows: [{
+            id: 'm-latest',
+            data: { id: 'm-latest', from: 'u-2', at: latestIncomingAt },
+            at: latestIncomingAt,
+          }],
+          rowCount: 1,
+        };
     }
     if (sql.includes('select m.data') && sql.includes('attachment')) {
       return { rows: attachment ? [{ data: { attachments: [attachment] } }] : [] };
@@ -128,6 +145,7 @@ function createHarness({
     broadcastConversation(_conversation, event) {
       broadcasts.push(event);
     },
+    memberStateEnabled: () => memberState,
     newId(prefix) {
       sequence += 1;
       return `${prefix}-${sequence}`;
@@ -297,6 +315,76 @@ test('ecritures messages relationnelles : suppression logique conserve la preuve
     ),
     true,
   );
+});
+
+test('lecture relationnelle met a jour une seule ligne participant', async () => {
+  const harness = createHarness({ memberState: true });
+  const result = await harness.writer.markRead({
+    user,
+    conversationId: 'conv-1',
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('update public.wigofly_conversation_members member')
+    && sql.includes('last_read_at')
+  ));
+  assert.equal(harness.queries.some(({ sql }) =>
+    sql.includes('update public.messages')
+  ), false);
+});
+
+test('non lu relationnel place le curseur juste avant le dernier message recu', async () => {
+  const latestIncomingAt = '2026-07-29T10:30:00.123456Z';
+  const harness = createHarness({
+    memberState: true,
+    latestIncomingAt,
+  });
+  const result = await harness.writer.markUnread({
+    user,
+    conversationId: 'conv-1',
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  const update = harness.queries.find(({ sql }) =>
+    sql.includes('update public.wigofly_conversation_members')
+    && sql.includes("interval '1 microsecond'")
+  );
+  assert.ok(update);
+  assert.deepEqual(update.params, ['conv-1', 'u-1', latestIncomingAt]);
+  assert.equal(harness.queries.some(({ sql }) =>
+    sql.includes('update public.messages')
+  ), false);
+});
+
+test('archives et epingles ne verrouillent plus la conversation partagee', async () => {
+  const harness = createHarness({ memberState: true });
+  const archived = await harness.writer.archive({
+    user,
+    conversationId: 'conv-1',
+    active: true,
+    today: '2026-07-29',
+  });
+  const pinned = await harness.writer.pin({
+    user,
+    conversationId: 'conv-1',
+    active: true,
+    today: '2026-07-29',
+  });
+
+  assert.equal(archived.status, 200);
+  assert.equal(pinned.status, 200);
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('set archived = $3')
+  ));
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('set pinned = $3')
+  ));
+  assert.equal(harness.queries.some(({ sql }) =>
+    sql.includes('for update of c')
+  ), false);
 });
 
 function createActionHarness(handler = async () => ({ rows: [], rowCount: 1 })) {

@@ -5,14 +5,39 @@ export function relationalMessageReadsEnabled(env = process.env) {
   return env.RELATIONAL_MESSAGE_READS === 'true';
 }
 
-export async function listRelationalConversations({ pool, user, query = {}, today }) {
+export async function listRelationalConversations({
+  pool,
+  user,
+  query = {},
+  today,
+  memberStateEnabled = false,
+}) {
   const limit = boundedLimit(query.limit);
   const offset = boundedOffset(query.offset);
+  const memberSelect = memberStateEnabled
+    ? `, member.archived as member_archived,
+       member.pinned as member_pinned,
+       member.blocked as member_blocked,
+       extract(epoch from member.last_read_at) * 1000 as member_last_read_at`
+    : '';
+  const memberJoin = memberStateEnabled
+    ? `join public.wigofly_conversation_members member
+         on member.conversation_id = c.id and member.user_id = $1`
+    : '';
+  const unreadFilter = memberStateEnabled
+    ? `and m.at > coalesce(member.last_read_at, 'epoch'::timestamptz)`
+    : `and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`;
+  const membershipFilter = memberStateEnabled
+    ? 'where not member.deleted'
+    : `where c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
   const result = await pool.query(
     `select c.data as conversation, other.data as other, trip.data as trip, operation.data as operation,
        last_message.data as last_message,
        coalesce(unread.count, 0)::int as unread_count
+       ${memberSelect}
      from public.wigofly_conversations c
+     ${memberJoin}
      left join lateral (
        select u.data from public.wigofly_users u
        where u.id <> $1 and c.data->'participantIds' ? u.id
@@ -32,10 +57,9 @@ export async function listRelationalConversations({ pool, user, query = {}, toda
        where m.conversation_id = c.id
          and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
          and m.from_id <> $1
-         and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
+         ${unreadFilter}
      ) unread on true
-     where c.data->'participantIds' ? $1
-       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)
+     ${membershipFilter}
      order by coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) desc
      limit $2 offset $3`,
     [user.id, limit, offset]
@@ -48,12 +72,39 @@ export async function listRelationalConversations({ pool, user, query = {}, toda
   };
 }
 
-export async function relationalConversation({ pool, user, id, query = {}, today, includeMessages = false }) {
+export async function relationalConversation({
+  pool,
+  user,
+  id,
+  query = {},
+  today,
+  includeMessages = false,
+  memberStateEnabled = false,
+}) {
+  const memberSelect = memberStateEnabled
+    ? `, member.archived as member_archived,
+       member.pinned as member_pinned,
+       member.blocked as member_blocked,
+       extract(epoch from member.last_read_at) * 1000 as member_last_read_at`
+    : '';
+  const memberJoin = memberStateEnabled
+    ? `join public.wigofly_conversation_members member
+         on member.conversation_id = c.id and member.user_id = $1`
+    : '';
+  const unreadFilter = memberStateEnabled
+    ? `and m.at > coalesce(member.last_read_at, 'epoch'::timestamptz)`
+    : `and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`;
+  const membershipFilter = memberStateEnabled
+    ? 'and not member.deleted'
+    : `and c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
   const result = await pool.query(
     `select c.data as conversation, other.data as other, trip.data as trip, operation.data as operation,
        last_message.data as last_message,
        coalesce(unread.count, 0)::int as unread_count
+       ${memberSelect}
      from public.wigofly_conversations c
+     ${memberJoin}
      left join lateral (
        select u.data from public.wigofly_users u
        where u.id <> $1 and c.data->'participantIds' ? u.id
@@ -72,21 +123,31 @@ export async function relationalConversation({ pool, user, id, query = {}, today
        where m.conversation_id = c.id
          and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
          and m.from_id <> $1
-         and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)
+         ${unreadFilter}
      ) unread on true
-     where c.id = $2 and c.data->'participantIds' ? $1
-       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`,
+     where c.id = $2
+       ${membershipFilter}`,
     [user.id, id]
   );
   const row = result.rows[0];
   if (!row) return null;
   const conversation = conversationView(row, user, today);
   if (!includeMessages) return { conversation };
-  const messagesPage = await relationalConversationMessages({ pool, conversationId: id, query });
+  const messagesPage = await relationalConversationMessages({
+    pool,
+    conversationId: id,
+    query,
+    memberStateEnabled,
+  });
   return { conversation, ...messagesPage };
 }
 
-export async function relationalConversationMessages({ pool, conversationId, query = {} }) {
+export async function relationalConversationMessages({
+  pool,
+  conversationId,
+  query = {},
+  memberStateEnabled = false,
+}) {
   const limit = boundedLimit(query.limit || 50);
   const before = positiveTimestamp(query.before);
   const after = positiveTimestamp(query.after);
@@ -109,15 +170,33 @@ export async function relationalConversationMessages({ pool, conversationId, que
     where.push(`m.text ilike $${params.length}`);
   }
   params.push(limit + 1);
+  const readStateSelect = memberStateEnabled
+    ? `, coalesce((
+         select jsonb_agg(member.user_id)
+         from public.wigofly_conversation_members member
+         where member.conversation_id = m.conversation_id
+           and member.last_read_at >= m.at
+       ), '[]'::jsonb) as member_read_by`
+    : '';
   const result = await pool.query(
-    `select m.data from public.messages m
+    `select m.data ${readStateSelect} from public.messages m
      where ${where.join(' and ')}
      order by m.at ${after ? 'asc' : 'desc'}
      limit $${params.length}`,
     params
   );
   const hasMore = result.rows.length > limit;
-  const selected = result.rows.slice(0, limit).map((row) => messageView(row.data));
+  const selected = result.rows.slice(0, limit).map((row) => {
+    const message = row.data;
+    if (!memberStateEnabled) return messageView(message);
+    return messageView({
+      ...message,
+      readBy: [...new Set([
+        message.from,
+        ...(Array.isArray(row.member_read_by) ? row.member_read_by : []),
+      ].filter(Boolean))],
+    });
+  });
   const messages = after ? selected : selected.reverse();
   return {
     messages,
@@ -186,8 +265,12 @@ function conversationView(row, viewer, today) {
   const operation = operationView(row.operation, trip);
   const lastMessage = row.last_message ? messageView(row.last_message) : null;
   const unread = Number(row.unread_count || 0);
-  const archived = (conversation.archivedBy || []).includes(viewer.id);
-  const pinned = (conversation.pinnedBy || []).includes(viewer.id);
+  const archived = row.member_archived === undefined
+    ? (conversation.archivedBy || []).includes(viewer.id)
+    : row.member_archived === true;
+  const pinned = row.member_pinned === undefined
+    ? (conversation.pinnedBy || []).includes(viewer.id)
+    : row.member_pinned === true;
   const completed = operation
     ? ['termine', 'released', 'refunded', 'cancelled'].includes(operation.operationStatus || operation.status)
     : !!trip && (trip.departureDate || trip.date || '') < today;
@@ -212,6 +295,10 @@ function conversationView(row, viewer, today) {
     status: archived ? 'archived' : completed ? 'completed' : 'active',
     archived,
     pinned,
+    blocked: row.member_blocked === undefined
+      ? (conversation.blockedBy || []).includes(viewer.id)
+      : row.member_blocked === true,
+    lastReadAt: Number(row.member_last_read_at || 0) || null,
     actionRequired: false,
     actionLabel,
     actionHref,

@@ -34,6 +34,9 @@ import {
   relationalMessageWritesEnabled,
 } from './relational-message-writes.js';
 import {
+  relationalConversationMembersEnabled,
+} from './relational-conversation-members.js';
+import {
   listRelationalOperations,
   relationalOperation,
   relationalOperationReadsEnabled,
@@ -399,6 +402,18 @@ const relationalReadsEnabled = () =>
   relationalTripReadsEnabled()
   || relationalMessageReadsEnabled()
   || relationalOperationReadsEnabled();
+const relationalConversationReader = (args) => relationalConversation({
+  ...args,
+  memberStateEnabled: relationalConversationMembersEnabled(),
+});
+const relationalConversationList = (args) => listRelationalConversations({
+  ...args,
+  memberStateEnabled: relationalConversationMembersEnabled(),
+});
+const relationalNavigationReader = (args) => relationalNavigationSummary({
+  ...args,
+  memberStateEnabled: relationalConversationMembersEnabled(),
+});
 const relationalReadAuth = createRelationalReadAuth({
   enabled: relationalReadsEnabled,
   getPool: databasePool,
@@ -456,8 +471,8 @@ app.use('/api', createRelationalReadsRouter({
   listTrips: listRelationalTrips,
   getTrip: relationalTrip,
   listSavedTrips: listRelationalSavedTrips,
-  listConversations: listRelationalConversations,
-  getConversation: relationalConversation,
+  listConversations: relationalConversationList,
+  getConversation: relationalConversationReader,
   operationReadsEnabled: relationalOperationReadsEnabled,
   listOperations: listRelationalOperations,
   getOperation: relationalOperation,
@@ -470,7 +485,7 @@ app.use('/api', createRelationalNavigationRouter({
   auth: relationalNavigationAuth,
   enabled: relationalNavigationEnabled,
   getPool: databasePool,
-  summary: relationalNavigationSummary,
+  summary: relationalNavigationReader,
 }));
 
 function addEvent(tx, type, actorId, meta = {}) {
@@ -828,7 +843,7 @@ const {
 
 const relationalMessageWriter = createRelationalMessageWriter({
   getPool: databasePool,
-  getConversation: relationalConversation,
+  getConversation: relationalConversationReader,
   validPhotos,
   analyzeSafety: analyzeMessageSafety,
   safetyError: messageSafetyError,
@@ -853,6 +868,7 @@ const relationalMessageWriter = createRelationalMessageWriter({
     };
   },
   broadcastConversation,
+  memberStateEnabled: relationalConversationMembersEnabled,
 });
 
 app.use('/api', createRelationalMessageWriteRouter({
@@ -865,7 +881,7 @@ app.use('/api', createRelationalMessageWriteRouter({
 const relationalOperationWriter = createRelationalOperationWriter({
   getPool: databasePool,
   getOperation: relationalOperation,
-  getConversation: relationalConversation,
+  getConversation: relationalConversationReader,
   operationCodePublicState,
   disputeView,
   createEscrow,
@@ -876,6 +892,7 @@ const relationalOperationWriter = createRelationalOperationWriter({
   audit,
   validPhotos,
   today: TODAY_ISO,
+  memberStateEnabled: relationalConversationMembersEnabled,
 });
 
 app.use('/api', createRelationalOperationWriteRouter({

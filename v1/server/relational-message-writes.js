@@ -1,4 +1,7 @@
 import { relationalId } from './relational-id.js';
+import {
+  ensureConversationMembers,
+} from './relational-conversation-members.js';
 
 const SAFETY_WINDOW_MS = 10 * 60 * 1000;
 const SAFETY_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -28,6 +31,7 @@ export function createRelationalMessageWriter({
   allowInlineMediaFallback = true,
   notificationFor,
   broadcastConversation,
+  memberStateEnabled = () => false,
   newId = relationalId,
   now = Date.now,
   logger = console,
@@ -205,9 +209,13 @@ export function createRelationalMessageWriter({
       const conversation = {
         ...locked.conversation,
         lastMessageAt: createdAt,
-        archivedBy: (locked.conversation.archivedBy || [])
-          .filter((participantId) => participantId !== user.id),
-        deletedBy: [],
+        ...(memberStateEnabled()
+          ? {}
+          : {
+            archivedBy: (locked.conversation.archivedBy || [])
+              .filter((participantId) => participantId !== user.id),
+            deletedBy: [],
+          }),
       };
       await client.query(
         `update public.wigofly_conversations
@@ -215,6 +223,17 @@ export function createRelationalMessageWriter({
          where id = $1`,
         [conversationId, JSON.stringify(conversation)],
       );
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(client, conversation, { now });
+        await client.query(
+          `update public.wigofly_conversation_members
+           set deleted = false,
+               archived = case when user_id = $2 then false else archived end,
+               updated_at = now()
+           where conversation_id = $1`,
+          [conversationId, user.id],
+        );
+      }
       await insertNotifications({
         client,
         conversation,
@@ -430,10 +449,23 @@ export function createRelationalMessageWriter({
         conversationId = existing.rows[0].id;
         const conversation = {
           ...existing.rows[0].data,
-          deletedBy: (existing.rows[0].data.deletedBy || [])
-            .filter((id) => id !== user.id),
+          ...(memberStateEnabled()
+            ? {}
+            : {
+              deletedBy: (existing.rows[0].data.deletedBy || [])
+                .filter((id) => id !== user.id),
+            }),
         };
         await updateConversation(client, conversation);
+        if (memberStateEnabled()) {
+          await ensureConversationMembers(client, conversation, { now });
+          await client.query(
+            `update public.wigofly_conversation_members
+             set deleted = false, updated_at = now()
+             where conversation_id = $1 and user_id = $2`,
+            [conversation.id, user.id],
+          );
+        }
       } else {
         const conversation = {
           id: newId('conv'),
@@ -454,6 +486,9 @@ export function createRelationalMessageWriter({
            values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
           [conversation.id, JSON.stringify(conversation), createdAt],
         );
+        if (memberStateEnabled()) {
+          await ensureConversationMembers(client, conversation, { now });
+        }
       }
       await client.query('commit');
       const detail = await getConversation({
@@ -461,6 +496,7 @@ export function createRelationalMessageWriter({
         user,
         id: conversationId,
         today,
+        memberStateEnabled: memberStateEnabled(),
       });
       return response(200, { conversation: detail?.conversation || null });
     } catch (error) {
@@ -585,6 +621,7 @@ export function createRelationalMessageWriter({
         user,
         id: conversationId,
         today,
+        memberStateEnabled: memberStateEnabled(),
       });
       return response(200, {
         ok: true,
@@ -645,9 +682,13 @@ export function createRelationalMessageWriter({
       member.blockedUserIds = [...blockedIds];
       const conversation = {
         ...context.conversation,
-        blockedBy: blocked
-          ? [...new Set([...(context.conversation.blockedBy || []), user.id])]
-          : (context.conversation.blockedBy || []).filter((id) => id !== user.id),
+        ...(memberStateEnabled()
+          ? {}
+          : {
+            blockedBy: blocked
+              ? [...new Set([...(context.conversation.blockedBy || []), user.id])]
+              : (context.conversation.blockedBy || []).filter((id) => id !== user.id),
+          }),
       };
       await client.query(
         `update public.wigofly_users
@@ -655,7 +696,17 @@ export function createRelationalMessageWriter({
          where id = $1`,
         [user.id, JSON.stringify(member)],
       );
-      await updateConversation(client, conversation);
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(client, conversation, { now });
+        await client.query(
+          `update public.wigofly_conversation_members
+           set blocked = $3, updated_at = now()
+           where conversation_id = $1 and user_id = $2`,
+          [conversationId, user.id, blocked],
+        );
+      } else {
+        await updateConversation(client, conversation);
+      }
       await insertConversationAudit(client, {
         actorId: user.id,
         action: blocked ? 'conversation.block' : 'conversation.unblock',
@@ -669,6 +720,7 @@ export function createRelationalMessageWriter({
         user: member,
         id: conversationId,
         today,
+        memberStateEnabled: memberStateEnabled(),
       });
       return response(200, {
         ok: true,
@@ -731,25 +783,41 @@ export function createRelationalMessageWriter({
          where id = $1`,
         [user.id, JSON.stringify(member)],
       );
-      await client.query(
-        `update public.wigofly_conversations
-         set data = jsonb_set(
-           data,
-           '{blockedBy}',
-           coalesce((
-             select jsonb_agg(value)
-             from jsonb_array_elements_text(
-               coalesce(data->'blockedBy', '[]'::jsonb)
-             ) value
-             where value <> $1
-           ), '[]'::jsonb),
-           true
-         ),
-         updated_at = now()
-         where data->'participantIds' ? $1
-           and data->'participantIds' ? $2`,
-        [user.id, safeOtherId],
-      );
+      if (memberStateEnabled()) {
+        await client.query(
+          `update public.wigofly_conversation_members member
+           set blocked = false, updated_at = now()
+           where member.user_id = $1
+             and exists (
+               select 1
+               from public.wigofly_conversations conversation
+               where conversation.id = member.conversation_id
+                 and conversation.data->'participantIds' ? $1
+                 and conversation.data->'participantIds' ? $2
+             )`,
+          [user.id, safeOtherId],
+        );
+      } else {
+        await client.query(
+          `update public.wigofly_conversations
+           set data = jsonb_set(
+             data,
+             '{blockedBy}',
+             coalesce((
+               select jsonb_agg(value)
+               from jsonb_array_elements_text(
+                 coalesce(data->'blockedBy', '[]'::jsonb)
+               ) value
+               where value <> $1
+             ), '[]'::jsonb),
+             true
+           ),
+           updated_at = now()
+           where data->'participantIds' ? $1
+             and data->'participantIds' ? $2`,
+          [user.id, safeOtherId],
+        );
+      }
       await insertConversationAudit(client, {
         actorId: user.id,
         action: 'user.unblock',
@@ -777,7 +845,12 @@ export function createRelationalMessageWriter({
     const client = await pool.connect();
     try {
       await client.query('begin');
-      const context = await conversationContext(client, conversationId, user.id, { lock: true });
+      const context = await conversationContext(
+        client,
+        conversationId,
+        user.id,
+        { lock: true },
+      );
       if (!context) {
         await client.query('rollback');
         return response(404, { error: 'Conversation introuvable' });
@@ -855,6 +928,7 @@ export function createRelationalMessageWriter({
         user,
         id: conversationId,
         today,
+        memberStateEnabled: memberStateEnabled(),
       });
       return response(200, {
         ok: true,
@@ -902,20 +976,48 @@ export function createRelationalMessageWriter({
     const pool = getPool();
     const context = await conversationContext(pool, conversationId, user.id);
     if (!context) return response(404, { error: 'Conversation introuvable' });
-    const updated = await pool.query(
-      `update public.messages
-       set data = jsonb_set(
-         data,
-         '{readBy}',
-         coalesce(data->'readBy', '[]'::jsonb) || to_jsonb($2::text),
-         true
-       )
-       where conversation_id = $1
-         and from_id <> $2
-         and coalesce((data->>'hiddenForParticipants')::boolean, false) = false
-         and not (coalesce(data->'readBy', '[]'::jsonb) ? $2)`,
-      [conversationId, user.id],
-    );
+    let updated;
+    if (memberStateEnabled()) {
+      await ensureConversationMembers(pool, context.conversation, { now });
+      updated = await pool.query(
+        `with latest as (
+           select max(at) as at
+           from public.messages
+           where conversation_id = $1
+             and from_id <> $2
+             and coalesce(
+               (data->>'hiddenForParticipants')::boolean,
+               false
+             ) = false
+         )
+         update public.wigofly_conversation_members member
+         set last_read_at = latest.at, updated_at = now()
+         from latest
+         where member.conversation_id = $1
+           and member.user_id = $2
+           and latest.at is not null
+           and latest.at > coalesce(
+             member.last_read_at,
+             'epoch'::timestamptz
+           )`,
+        [conversationId, user.id],
+      );
+    } else {
+      updated = await pool.query(
+        `update public.messages
+         set data = jsonb_set(
+           data,
+           '{readBy}',
+           coalesce(data->'readBy', '[]'::jsonb) || to_jsonb($2::text),
+           true
+         )
+         where conversation_id = $1
+           and from_id <> $2
+           and coalesce((data->>'hiddenForParticipants')::boolean, false) = false
+           and not (coalesce(data->'readBy', '[]'::jsonb) ? $2)`,
+        [conversationId, user.id],
+      );
+    }
     if (updated.rowCount) {
       broadcastConversation(context.conversation, {
         type: 'read',
@@ -928,6 +1030,7 @@ export function createRelationalMessageWriter({
       conversationId,
       user,
       today,
+      memberStateEnabled: memberStateEnabled(),
     });
   }
 
@@ -936,7 +1039,7 @@ export function createRelationalMessageWriter({
     const context = await conversationContext(pool, conversationId, user.id);
     if (!context) return response(404, { error: 'Conversation introuvable' });
     const latest = await pool.query(
-      `select id, data from public.messages
+      `select id, data, at from public.messages
        where conversation_id = $1
          and from_id <> $2
          and coalesce((data->>'hiddenForParticipants')::boolean, false) = false
@@ -944,12 +1047,27 @@ export function createRelationalMessageWriter({
       [conversationId, user.id],
     );
     if (latest.rows[0]) {
-      const message = latest.rows[0].data;
-      message.readBy = (message.readBy || []).filter((id) => id !== user.id);
-      await pool.query(
-        'update public.messages set data = $2::jsonb where id = $1',
-        [latest.rows[0].id, JSON.stringify(message)],
-      );
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(pool, context.conversation, { now });
+        await pool.query(
+          `update public.wigofly_conversation_members
+           set last_read_at = $3::timestamptz - interval '1 microsecond',
+               updated_at = now()
+           where conversation_id = $1 and user_id = $2`,
+          [
+            conversationId,
+            user.id,
+            latest.rows[0].at,
+          ],
+        );
+      } else {
+        const message = latest.rows[0].data;
+        message.readBy = (message.readBy || []).filter((id) => id !== user.id);
+        await pool.query(
+          'update public.messages set data = $2::jsonb where id = $1',
+          [latest.rows[0].id, JSON.stringify(message)],
+        );
+      }
     }
     return inboxResponse({
       pool,
@@ -957,6 +1075,7 @@ export function createRelationalMessageWriter({
       conversationId,
       user,
       today,
+      memberStateEnabled: memberStateEnabled(),
     });
   }
 
@@ -985,24 +1104,36 @@ export function createRelationalMessageWriter({
     const client = await pool.connect();
     try {
       await client.query('begin');
-      const context = await conversationContext(client, conversationId, user.id, { lock: true });
+      const context = await conversationContext(
+        client,
+        conversationId,
+        user.id,
+        { lock: !memberStateEnabled() },
+      );
       if (!context) {
         await client.query('rollback');
         return response(404, { error: 'Conversation introuvable' });
       }
-      const conversation = {
-        ...context.conversation,
-        deletedBy: [...new Set([
-          ...(context.conversation.deletedBy || []),
-          user.id,
-        ])],
-      };
-      await client.query(
-        `update public.wigofly_conversations
-         set data = $2::jsonb, updated_at = now()
-         where id = $1`,
-        [conversationId, JSON.stringify(conversation)],
-      );
+      const conversation = memberStateEnabled()
+        ? context.conversation
+        : {
+          ...context.conversation,
+          deletedBy: [...new Set([
+            ...(context.conversation.deletedBy || []),
+            user.id,
+          ])],
+        };
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(client, conversation, { now });
+        await client.query(
+          `update public.wigofly_conversation_members
+           set deleted = true, updated_at = now()
+           where conversation_id = $1 and user_id = $2`,
+          [conversationId, user.id],
+        );
+      } else {
+        await updateConversation(client, conversation);
+      }
       const count = await client.query(
         'select count(*)::int as count from public.messages where conversation_id = $1',
         [conversationId],
@@ -1060,24 +1191,35 @@ export function createRelationalMessageWriter({
     const client = await pool.connect();
     try {
       await client.query('begin');
-      const context = await conversationContext(client, conversationId, user.id, { lock: true });
+      const context = await conversationContext(
+        client,
+        conversationId,
+        user.id,
+        { lock: !memberStateEnabled() },
+      );
       if (!context) {
         await client.query('rollback');
         return response(404, { error: 'Conversation introuvable' });
       }
-      const values = new Set(context.conversation[key] || []);
-      if (active) values.add(user.id);
-      else values.delete(user.id);
-      const conversation = {
-        ...context.conversation,
-        [key]: [...values],
-      };
-      await client.query(
-        `update public.wigofly_conversations
-         set data = $2::jsonb, updated_at = now()
-         where id = $1`,
-        [conversationId, JSON.stringify(conversation)],
-      );
+      if (memberStateEnabled()) {
+        await ensureConversationMembers(client, context.conversation, { now });
+        const column = key === 'pinnedBy' ? 'pinned' : 'archived';
+        await client.query(
+          `update public.wigofly_conversation_members
+           set ${column} = $3, updated_at = now()
+           where conversation_id = $1 and user_id = $2`,
+          [conversationId, user.id, active],
+        );
+      } else {
+        const values = new Set(context.conversation[key] || []);
+        if (active) values.add(user.id);
+        else values.delete(user.id);
+        const conversation = {
+          ...context.conversation,
+          [key]: [...values],
+        };
+        await updateConversation(client, conversation);
+      }
       await client.query('commit');
       return inboxResponse({
         pool,
@@ -1085,6 +1227,7 @@ export function createRelationalMessageWriter({
         conversationId,
         user,
         today,
+        memberStateEnabled: memberStateEnabled(),
       });
     } catch (error) {
       await client.query('rollback').catch(() => {});
@@ -1493,22 +1636,36 @@ async function inboxResponse({
   conversationId,
   user,
   today,
+  memberStateEnabled = false,
 }) {
   const detail = await getConversation({
     pool,
     user,
     id: conversationId,
     today,
+    memberStateEnabled,
   });
+  const memberJoin = memberStateEnabled
+    ? `join public.wigofly_conversation_members member
+         on member.conversation_id = c.id and member.user_id = $1`
+    : '';
+  const membershipFilter = memberStateEnabled
+    ? 'and not member.deleted'
+    : `and c.data->'participantIds' ? $1
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
+  const unreadFilter = memberStateEnabled
+    ? `and m.at > coalesce(member.last_read_at, 'epoch'::timestamptz)`
+    : `and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`;
   const unread = await pool.query(
     `select count(distinct c.id)::int as count
      from public.wigofly_conversations c
+     ${memberJoin}
      join public.messages m on m.conversation_id = c.id
-     where c.data->'participantIds' ? $1
-       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)
+     where true
+       ${membershipFilter}
        and m.from_id <> $1
        and coalesce((m.data->>'hiddenForParticipants')::boolean, false) = false
-       and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`,
+       ${unreadFilter}`,
     [user.id],
   );
   return response(200, {
