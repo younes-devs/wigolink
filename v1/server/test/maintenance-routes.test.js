@@ -36,6 +36,11 @@ async function requestMaintenance(path, { method = 'GET', overrides = {} } = {})
     },
     audit: async (...args) => calls.push(['audit', ...args]),
     save: () => calls.push(['save']),
+    capacity: {
+      async snapshot() {
+        return { status: 'healthy', warnings: [] };
+      },
+    },
     ...overrides,
   }));
   const server = await new Promise((resolve) => {
@@ -61,6 +66,14 @@ test('maintenance expose seulement les compteurs non sensibles', async () => {
       kycStorageConfigured: true,
       profileStorageConfigured: true,
     },
+  });
+});
+
+test('maintenance expose la capacite seulement derriere les protections admin', async () => {
+  const response = await requestMaintenance('/admin/maintenance/capacity');
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, {
+    capacity: { status: 'healthy', warnings: [] },
   });
 });
 

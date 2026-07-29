@@ -10,6 +10,7 @@ export function createMaintenanceRouter({
   migrateMessageMedia,
   migrateKycMedia = null,
   migrateProfileMedia = null,
+  capacity = null,
   audit,
   save,
 }) {
@@ -27,6 +28,28 @@ export function createMaintenanceRouter({
         profileStorageConfigured: !!profileMedia?.enabled,
       },
     });
+  });
+
+  router.get('/admin/maintenance/capacity', auth, adminOnly, async (req, res) => {
+    if (!capacity) {
+      return res.status(503).json({ error: 'Mesure de capacite indisponible' });
+    }
+    try {
+      const result = await capacity.snapshot();
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({ capacity: result });
+    } catch (error) {
+      console.error(JSON.stringify({
+        level: 'error',
+        event: 'maintenance.capacity.failed',
+        requestId: req.requestId || null,
+        message: error?.message || 'unknown_error',
+      }));
+      return res.status(503).json({
+        error: 'Mesure de capacite indisponible',
+        requestId: req.requestId || undefined,
+      });
+    }
   });
 
   router.post('/admin/maintenance/message-media', auth, adminOnly, async (req, res) => {

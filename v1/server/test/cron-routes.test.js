@@ -3,12 +3,13 @@ import express from 'express';
 import test from 'node:test';
 import { createCronRouter } from '../routes/cron.js';
 
-async function requestCron({ authorization, retention }) {
+async function requestCron({ authorization, retention, capacity = null, logger = { error() {}, warn() {} } }) {
   const app = express();
   app.use('/api', createCronRouter({
     secret: 'cron-secret',
     retention,
-    logger: { error() {} },
+    capacity,
+    logger,
   }));
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
@@ -53,6 +54,27 @@ test('cron maintenance execute la retention avec le secret exact', async () => {
     ok: true,
     retention: retentionResult,
   });
+});
+
+test('cron maintenance mesure la capacite et journalise les alertes', async () => {
+  const warnings = [];
+  const capacityResult = {
+    status: 'warning',
+    warnings: [{ level: 'warning', code: 'database_capacity_warning', value: 0.72 }],
+  };
+  const response = await requestCron({
+    authorization: 'Bearer cron-secret',
+    retention: { async run() { return { expiredSessions: 0 }; } },
+    capacity: { async snapshot() { return capacityResult; } },
+    logger: {
+      error() {},
+      warn(...args) { warnings.push(args); },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.capacity, capacityResult);
+  assert.equal(warnings[0][0], 'cron_capacity_warning');
 });
 
 test('cron maintenance transforme une panne en 503', async () => {

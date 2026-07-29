@@ -4,6 +4,7 @@ import { Router } from 'express';
 export function createCronRouter({
   secret,
   retention,
+  capacity = null,
   logger = console,
 }) {
   const router = Router();
@@ -14,8 +15,19 @@ export function createCronRouter({
     }
     try {
       const result = await retention.run();
+      const capacityResult = capacity ? await capacity.snapshot() : null;
+      if (capacityResult?.warnings?.length) {
+        logger.warn('cron_capacity_warning', {
+          status: capacityResult.status,
+          warnings: capacityResult.warnings,
+        });
+      }
       res.setHeader('Cache-Control', 'no-store');
-      return res.json({ ok: true, retention: result });
+      return res.json({
+        ok: true,
+        retention: result,
+        ...(capacityResult ? { capacity: capacityResult } : {}),
+      });
     } catch (error) {
       logger.error('cron_maintenance_failed', {
         requestId: req.requestId || null,

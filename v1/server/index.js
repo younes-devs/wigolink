@@ -122,6 +122,7 @@ import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
 import { createRetentionService } from './services/retention.js';
+import { createCapacityService } from './services/capacity.js';
 import { createTripService } from './services/trips.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
@@ -338,10 +339,14 @@ const retention = createRetentionService({
   getPool: databasePool,
   messageMedia,
 });
+const capacity = createCapacityService({
+  getPool: databasePool,
+});
 
 app.use('/api', createCronRouter({
   secret: process.env.CRON_SECRET,
   retention,
+  capacity,
 }));
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
@@ -925,6 +930,7 @@ app.use('/api', createMaintenanceRouter({
   migrateMessageMedia: migrateInlineMessageMedia,
   migrateKycMedia: migrateInlineKycMedia,
   migrateProfileMedia: migrateInlineProfileMedia,
+  capacity,
   audit,
   save,
 }));
