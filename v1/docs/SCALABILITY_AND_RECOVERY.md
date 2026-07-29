@@ -16,9 +16,37 @@ charge ni une restauration reelle.
 - `GET /api/admin/maintenance/capacity` expose uniquement aux administrateurs la
   taille, les volumes estimes, les connexions et les alertes de capacite.
 
-Le document global `wigofly_app_state` est encore charge au demarrage pour les
-domaines historiques. KYC, suppression de compte et certains ecrans admin
-doivent encore etre migres ensemble avant de supprimer cette dependance.
+Le document global `wigofly_app_state` est charge paresseusement uniquement pour
+les domaines historiques qui ne sont pas encore relationnels. Les parcours
+membres, KYC, export et suppression de compte n'en dependent plus. Certains
+ecrans administratifs historiques restent a migrer avant de supprimer
+definitivement cette table.
+
+## Mesure de reference
+
+Mesure production du 29 juillet 2026, apres prechauffage initial, avec 30
+requetes par parcours et une concurrence de 5 :
+
+| Parcours | p50 | p95 | Erreurs |
+| --- | ---: | ---: | ---: |
+| Navigation | 104 ms | 806 ms | 0 % |
+| Trajets | 120 ms | 206 ms | 0 % |
+| Conversations | 135 ms | 239 ms | 0 % |
+| Messages | 113 ms | 317 ms | 0 % |
+| Operations | 99 ms | 124 ms | 0 % |
+
+Le p95 navigation inclut le demarrage de fonctions supplementaires : un seul
+appel etait prechauffe avant une mesure de concurrence 5. L'outil
+`npm run load:authenticated` prechauffe maintenant chaque niveau de concurrence
+avant la mesure stable. Conserver separement :
+
+- la latence froide du premier appel;
+- le p95 stabilise sous concurrence;
+- le taux d'erreur et le debit.
+
+Au moment de cette mesure, PostgreSQL occupait environ 15,7 Mo, Storage 0,8 Mo,
+avec 13 connexions actives. La latence observee ne vient donc pas d'un manque
+d'espace disque.
 
 ## Seuils
 
@@ -41,17 +69,30 @@ Actions :
 | p95 API > 1 s | Examiner Vercel Logs et les plans `EXPLAIN ANALYZE` |
 | Erreurs > 1 % | Suspendre le deploiement ou revenir au commit stable |
 
+Objectifs avant ouverture :
+
+- p95 stabilise des lectures principales inferieur a 500 ms;
+- p95 froid inferieur a 1,5 s;
+- erreurs inferieures a 1 %;
+- aucune attente dans le pool PostgreSQL;
+- test authentifie apres chaque migration structurelle.
+
 ## Capacite de lancement
 
 Le plan Supabase Free convient au developpement, pas a une ouverture commerciale :
-500 MiB de base, 1 Go de fichiers, ressources partagees et aucune sauvegarde
-automatique garantie. Avant les premiers vrais colis :
+le compute Nano est partage et recommande pour une base de 500 Mo maximum.
+Avant les premiers vrais colis :
 
 1. passer l'organisation Supabase en Pro;
 2. regler `DB_CAPACITY_BYTES=8589934592`;
 3. regler `DB_CONNECTION_BUDGET` sur la limite du pooler du projet;
 4. verifier les sauvegardes quotidiennes dans `Database > Backups`;
 5. conserver un export chiffre hors du compte Supabase.
+
+Le projet Vercel est deja configure avec Fluid Compute et la region `cdg1`,
+proche de la base Supabase a Paris. Le plan Hobby est reserve a un usage
+personnel non commercial. Passer a Pro avant le lancement payant afin d'eviter
+la suspension aux limites d'usage et d'obtenir une exploitation adaptee.
 
 Le PITR devient obligatoire avant des paiements reels ou quand perdre jusqu'a
 24 heures de donnees n'est plus acceptable.

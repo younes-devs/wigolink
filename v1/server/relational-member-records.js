@@ -1,3 +1,5 @@
+import { transactionParticipantFilter } from './relational-sql.js';
+
 export async function relationalMemberRecords({ pool, userId }) {
   const result = await pool.query(
     `select
@@ -14,9 +16,7 @@ export async function relationalMemberRecords({ pool, userId }) {
        coalesce((
          select jsonb_agg(tx.data order by tx.created_at desc)
          from public.wigofly_transactions tx
-         where tx.data->>'senderId' = $1
-            or tx.data->>'travelerId' = $1
-            or tx.data->>'recipientId' = $1
+         where ${transactionParticipantFilter('$1')}
        ), '[]'::jsonb) as transactions,
        coalesce((
          select jsonb_agg(d.data order by d.created_at desc)
@@ -26,11 +26,7 @@ export async function relationalMemberRecords({ pool, userId }) {
               select 1
               from public.wigofly_transactions tx
               where tx.id = d.data->>'txId'
-                and (
-                  tx.data->>'senderId' = $1
-                  or tx.data->>'travelerId' = $1
-                  or tx.data->>'recipientId' = $1
-                )
+                and ${transactionParticipantFilter('$1')}
             )
        ), '[]'::jsonb) as disputes,
        coalesce((
@@ -80,11 +76,7 @@ export async function relationalActiveOperationCount({ pool, userId }) {
   const result = await pool.query(
     `select count(*)::int as count
      from public.wigofly_transactions tx
-     where (
-       tx.data->>'senderId' = $1
-       or tx.data->>'travelerId' = $1
-       or tx.data->>'recipientId' = $1
-     )
+     where ${transactionParticipantFilter('$1')}
        and coalesce(tx.data->>'status', '') not in (
          'released', 'refunded', 'cancelled'
        )`,

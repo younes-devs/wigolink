@@ -133,6 +133,14 @@ create table if not exists public.wigofly_transactions (
 );
 create index if not exists wigofly_transactions_sender_status_idx on public.wigofly_transactions ((data->>'senderId'), (data->>'status'));
 create index if not exists wigofly_transactions_traveler_status_idx on public.wigofly_transactions ((data->>'travelerId'), (data->>'status'));
+create index if not exists wigofly_transactions_participants_idx
+  on public.wigofly_transactions using gin (
+    (array[
+      nullif(data->>'senderId', ''),
+      nullif(data->>'travelerId', ''),
+      nullif(data->>'recipientId', '')
+    ])
+  );
 create index if not exists wigofly_transactions_listing_idx on public.wigofly_transactions ((data->>'listingId'));
 create index if not exists wigofly_transactions_trip_idx on public.wigofly_transactions ((data->>'tripId'));
 

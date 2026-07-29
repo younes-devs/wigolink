@@ -1,3 +1,5 @@
+import { transactionParticipantFilter } from './relational-sql.js';
+
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 const CLOSED_STATUSES = new Set(['released', 'refunded', 'cancelled']);
@@ -19,11 +21,7 @@ export async function listRelationalOperations({
   const params = [user.id, [...CLOSED_STATUSES], limit + 1, offset];
   const result = await pool.query(
     `${operationSelect()}
-     where (
-       tx.data->>'senderId' = $1
-       or tx.data->>'travelerId' = $1
-       or tx.data->>'recipientId' = $1
-     )
+     where ${transactionParticipantFilter('$1')}
        and ((coalesce(tx.data->>'status', '') = any($2::text[])) = $5)
      order by coalesce(
        nullif(tx.data->>'createdAt', '')::bigint,

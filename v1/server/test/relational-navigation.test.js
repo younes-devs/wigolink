@@ -40,6 +40,7 @@ test('navigation relationnelle compte les conversations et actions en SQL', asyn
   assert.deepEqual(calls[0].params, ['u-1']);
   assert.match(calls[0].sql, /count\(distinct c\.id\)/);
   assert.match(calls[0].sql, /wigofly_transactions/);
+  assert.match(calls[0].sql, /@> array\[\$1\]::text\[\]/);
   assert.doesNotMatch(calls[0].sql, /operation_requires_action/);
 });
 

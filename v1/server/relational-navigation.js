@@ -1,3 +1,5 @@
+import { transactionParticipantFilter } from './relational-sql.js';
+
 export function relationalNavigationEnabled(env = process.env) {
   return env.RELATIONAL_MESSAGE_READS === 'true'
     || env.RELATIONAL_MESSAGE_WRITES === 'true'
@@ -37,11 +39,7 @@ export async function relationalNavigationSummary({
        (
          select count(*)::int
          from public.wigofly_transactions tx
-         where (
-           tx.data->>'senderId' = $1
-           or tx.data->>'travelerId' = $1
-           or tx.data->>'recipientId' = $1
-         )
+         where ${transactionParticipantFilter('$1')}
            and coalesce(tx.data->>'status', '') not in (
              'released', 'refunded', 'cancelled'
            )

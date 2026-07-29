@@ -135,6 +135,18 @@ LOAD_TEST_MAX_FAILURE_RATE=0
 Pour une route authentifiee, fournir temporairement `LOAD_TEST_TOKEN` dans le
 terminal, jamais dans un fichier suivi par Git.
 
+Pour une campagne complete, utiliser :
+
+```text
+npm run load:authenticated
+```
+
+Ce script exige `DATABASE_URL`, cree une session de lecture valable 15 minutes,
+ne journalise ni le jeton ni l'identite du membre, puis supprime la session dans
+un bloc `finally`. Lancer d'abord 20 a 30 requetes avec une concurrence de 4 ou
+5. Une charge plus forte en production exige une fenetre annoncee et une
+surveillance simultanee de Vercel Observability et Supabase.
+
 ## Sauvegardes
 
 Avant une ouverture commerciale, activer les sauvegardes automatiques ou le

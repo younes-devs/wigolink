@@ -1,4 +1,5 @@
 import { auditChanges } from './services/audit.js';
+import { transactionParticipantFilter } from './relational-sql.js';
 
 const ACCOUNT_CONFIRMATION_KIND = 'account_confirmation';
 const CLOSED_OPERATION_STATUSES = ['released', 'refunded', 'cancelled'];
@@ -61,13 +62,9 @@ export function createRelationalAccountDeletion({ getPool }) {
 
       const operationResult = await client.query(
         `select count(*)::int as count
-         from public.wigofly_transactions
-         where (
-           data->>'senderId' = $1
-           or data->>'travelerId' = $1
-           or data->>'recipientId' = $1
-         )
-           and coalesce(data->>'status', '') <> all($2::text[])`,
+         from public.wigofly_transactions tx
+         where ${transactionParticipantFilter('$1')}
+           and coalesce(tx.data->>'status', '') <> all($2::text[])`,
         [String(userId), CLOSED_OPERATION_STATUSES],
       );
       const activeTransactionCount = Number(
