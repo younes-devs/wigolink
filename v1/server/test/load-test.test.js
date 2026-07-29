@@ -32,3 +32,30 @@ test('load test borne la concurrence et resume statuts, erreurs et latence', asy
   assert.equal(result.failures, 1);
   assert.deepEqual(result.statuses, { 200: 7, 503: 1 });
 });
+
+test('load test accepte POST, corps JSON et statuts fonctionnels attendus', async () => {
+  const calls = [];
+  const result = await runLoadScenario({
+    baseUrl: 'https://example.test',
+    path: '/api/auth/login',
+    requests: 2,
+    concurrency: 1,
+    method: 'POST',
+    body: '{"email":"member@example.test","password":"wrong"}',
+    acceptedStatuses: [401],
+    async fetchImpl(url, options) {
+      calls.push({ url, options });
+      return {
+        ok: false,
+        status: 401,
+        arrayBuffer: async () => new ArrayBuffer(0),
+      };
+    },
+  });
+
+  assert.equal(result.failures, 0);
+  assert.deepEqual(result.statuses, { 401: 2 });
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
+  assert.match(calls[0].options.body, /member@example\.test/);
+});

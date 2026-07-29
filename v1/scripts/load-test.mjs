@@ -6,6 +6,10 @@ export async function runLoadScenario({
   requests = 100,
   concurrency = 10,
   token = '',
+  method = 'GET',
+  body = null,
+  headers = {},
+  acceptedStatuses = [],
   timeoutMs = 10_000,
   fetchImpl = fetch,
 }) {
@@ -21,12 +25,18 @@ export async function runLoadScenario({
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetchImpl(target, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          method,
+          headers: {
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+            ...headers,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body,
           signal: controller.signal,
         });
         await response.arrayBuffer();
         results.push({
-          ok: response.ok,
+          ok: response.ok || acceptedStatuses.includes(response.status),
           status: response.status,
           durationMs: performance.now() - startedAt,
         });
@@ -90,6 +100,9 @@ async function main() {
     requests: positiveInteger(process.env.LOAD_TEST_REQUESTS, 100),
     concurrency: positiveInteger(process.env.LOAD_TEST_CONCURRENCY, 10),
     token: process.env.LOAD_TEST_TOKEN || '',
+    method: String(process.env.LOAD_TEST_METHOD || 'GET').toUpperCase(),
+    body: process.env.LOAD_TEST_BODY || null,
+    acceptedStatuses: commaSeparatedIntegers(process.env.LOAD_TEST_ACCEPTED_STATUSES),
     timeoutMs: positiveInteger(process.env.LOAD_TEST_TIMEOUT_MS, 10_000),
   });
   console.log(JSON.stringify(result, null, 2));
@@ -98,6 +111,13 @@ async function main() {
   if (result.failureRate > maxFailureRate || result.latencyMs.p95 > maxP95) {
     process.exitCode = 1;
   }
+}
+
+function commaSeparatedIntegers(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => Number.parseInt(item.trim(), 10))
+    .filter(Number.isFinite);
 }
 
 function positiveInteger(value, fallback) {
