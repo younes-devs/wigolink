@@ -1,12 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { persistenceConfig, createPersistence } from '../persistence.js';
-import { securePostgresConfig } from '../postgres-repositories.js';
+import {
+  databasePoolOptions,
+  securePostgresConfig,
+} from '../postgres-repositories.js';
 
 test('postgres : TLS est impose pour les connexions Supabase', () => {
   const config = securePostgresConfig({ connectionString: 'postgresql://user:password@aws-0-eu-west-3.pooler.supabase.com:6543/postgres?sslmode=disable' });
   assert.equal(config.ssl.rejectUnauthorized, false);
   assert.equal(new URL(config.connectionString).searchParams.has('sslmode'), false);
+});
+
+test('postgres : pool serveur borne les connexions par instance', () => {
+  assert.deepEqual(databasePoolOptions({ DB_POOL_MAX: '8' }), {
+    max: 8,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
+    allowExitOnIdle: true,
+  });
+  assert.equal(databasePoolOptions({ DB_POOL_MAX: '200' }).max, 20);
+  assert.equal(databasePoolOptions({ DB_POOL_MAX: '0' }).max, 1);
+  assert.equal(databasePoolOptions({}).max, 5);
 });
 
 test('persistence : JSON par defaut sans DATABASE_URL', () => {

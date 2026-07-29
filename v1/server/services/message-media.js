@@ -59,6 +59,38 @@ export function createMessageMediaService({
     return { storagePath, mime, size: bytes.length };
   }
 
+  async function createSignedUpload({
+    conversationId,
+    attachmentId,
+    mime,
+  }) {
+    if (!enabled) return null;
+    await ensureBucket();
+    const extension = extensionForMime(mime);
+    if (!extension) throw new Error('Type image invalide');
+    const storagePath = `conversations/${safeSegment(conversationId)}/${safeSegment(attachmentId)}.${extension}`;
+    const { data, error } = await storage
+      .from(bucket)
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (error || !data) throw error || new Error('URL upload indisponible');
+    return {
+      attachmentId,
+      storagePath,
+      signedUrl: data.signedUrl,
+      token: data.token,
+    };
+  }
+
+  async function info(storagePath) {
+    if (!enabled || !storagePath) return null;
+    const { data, error } = await storage.from(bucket).info(storagePath);
+    if (error || !data) return null;
+    return {
+      mime: data.contentType || data.metadata?.mimetype || null,
+      size: Number(data.size || data.metadata?.size || 0),
+    };
+  }
+
   async function download(storagePath) {
     if (!enabled || !storagePath) return null;
     const { data, error } = await storage.from(bucket).download(storagePath);
@@ -82,10 +114,19 @@ export function createMessageMediaService({
 
   return {
     enabled,
+    createSignedUpload,
     storeDataUrl,
     download,
+    info,
     remove,
   };
+}
+
+function extensionForMime(mime) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/jpeg') return 'jpg';
+  return null;
 }
 
 function safeSegment(value) {

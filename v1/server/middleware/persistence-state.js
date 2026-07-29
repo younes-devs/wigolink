@@ -33,7 +33,10 @@ export function isRelationalMessageRead(req, relationalMessageReadsEnabled) {
 export function isRelationalMessageWrite(req, relationalMessageWritesEnabled) {
   return relationalMessageWritesEnabled()
     && ['POST', 'DELETE'].includes(req.method)
-    && RELATIONAL_MESSAGE_WRITE_PATH.test(req.path);
+    && (
+      RELATIONAL_MESSAGE_WRITE_PATH.test(req.path)
+      || /^\/api\/conversations\/[^/]+\/attachments\/upload$/.test(req.path)
+    );
 }
 
 export function isRelationalOperationRead(req, relationalOperationReadsEnabled) {

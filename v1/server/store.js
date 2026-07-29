@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { createPostgresPool } from './postgres-repositories.js';
+import {
+  createPostgresPool,
+  databasePoolOptions,
+} from './postgres-repositories.js';
 
 // Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
 // data.json du dev/démo en cours) — voir server/test/.
@@ -106,9 +109,9 @@ if (process.env.DATABASE_URL) {
   try {
   pool = createPostgresPool({
     connectionString: process.env.DATABASE_URL,
-    // Keep state writes and independent session operations from blocking each other.
-    max: 2,
-    idleTimeoutMillis: 5000,
+    // Supabase's transaction pooler multiplexes these short-lived Vercel clients.
+    // Keep this bounded per warm function to avoid a connection storm.
+    ...databasePoolOptions(),
   });
   const result = await pool.query('select state from wigofly_app_state where id = 1');
   if (result.rows[0]?.state) {

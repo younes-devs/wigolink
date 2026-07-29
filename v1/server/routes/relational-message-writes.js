@@ -8,6 +8,16 @@ export function createRelationalMessageWriteRouter({
 }) {
   const router = Router();
 
+  router.post('/conversations/:id/attachments/upload', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.createAttachmentUpload({
+      user: req.user,
+      conversationId: req.params.id,
+      body: req.body,
+    });
+    return res.status(result.status).json(result.body);
+  });
+
   router.post('/conversations/:id/messages', auth, async (req, res, next) => {
     if (!enabled()) return next('route');
     const result = await writer.send({

@@ -27,6 +27,18 @@ export function createPostgresPool({ connectionString, ...options }) {
   return new Pool({ ...options, ...securePostgresConfig({ connectionString }) });
 }
 
+export function databasePoolOptions(env = process.env) {
+  const parsed = Number.parseInt(env.DB_POOL_MAX, 10);
+  return {
+    max: Number.isFinite(parsed)
+      ? Math.max(1, Math.min(20, parsed))
+      : 5,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
+    allowExitOnIdle: true,
+  };
+}
+
 export function createPostgresAuditLogRepository({ pool, findUser, publicUser }) {
   return {
     async append({ actorId, action, targetType, targetId, meta = {} }) {

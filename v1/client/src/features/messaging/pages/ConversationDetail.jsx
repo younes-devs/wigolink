@@ -388,12 +388,15 @@ export default function ConversationDetail() {
       sessionStorage.removeItem(`draft:${id}`);
     }
     try {
+      const serverAttachment = outgoingAttachment
+        ? await uploadMessageAttachment(id, outgoingAttachment)
+        : null;
       const data = await api(`/conversations/${id}/messages`, {
         method: 'POST',
         body: {
           text: bodyText,
           clientId,
-          attachments: outgoingAttachment ? [outgoingAttachment] : [],
+          attachments: serverAttachment ? [serverAttachment] : [],
           location: outgoingLocation,
         },
       });
@@ -693,4 +696,37 @@ export default function ConversationDetail() {
       />
     </div>
   );
+}
+
+async function uploadMessageAttachment(conversationId, attachment) {
+  if (!attachment?.dataUrl) return attachment;
+  const blob = await fetch(attachment.dataUrl).then((response) => response.blob());
+  const data = await api(`/conversations/${conversationId}/attachments/upload`, {
+    method: 'POST',
+    body: {
+      mime: blob.type || 'image/jpeg',
+      name: attachment.name,
+      size: blob.size,
+    },
+  });
+  const upload = data.upload;
+  if (!upload?.signedUrl || !upload?.storagePath || !upload?.attachmentId) {
+    throw new Error(t('messages.attachment.failed'));
+  }
+  const form = new FormData();
+  form.append('cacheControl', '86400');
+  form.append('', blob);
+  const response = await fetch(upload.signedUrl, {
+    method: 'PUT',
+    body: form,
+  });
+  if (!response.ok) throw new Error(t('messages.attachment.failed'));
+  return {
+    id: upload.attachmentId,
+    type: 'image',
+    name: String(attachment.name || 'image').slice(0, 80),
+    mime: upload.mime,
+    size: blob.size,
+    storagePath: upload.storagePath,
+  };
 }

@@ -253,6 +253,64 @@ export function createRelationalMessageWriter({
     }
   }
 
+  async function createAttachmentUpload({ user, conversationId, body = {} }) {
+    if (!messageMedia?.enabled) {
+      return response(503, {
+        error: 'Le stockage des images est temporairement indisponible',
+      });
+    }
+    const context = await conversationContext(
+      getPool(),
+      conversationId,
+      user.id,
+    );
+    if (!context) {
+      return response(404, { error: 'Conversation introuvable' });
+    }
+    if (isBlocked(context.conversation, user, context.other)) {
+      return response(403, {
+        code: 'conversation_blocked',
+        error: 'Cette conversation est bloquee.',
+      });
+    }
+    const mime = String(body.mime || '').toLowerCase();
+    if (!DIRECT_UPLOAD_MIMES.has(mime)) {
+      return response(400, { error: 'Type image invalide' });
+    }
+    const declaredSize = Number(body.size || 0);
+    if (
+      !Number.isFinite(declaredSize)
+      || declaredSize <= 0
+      || declaredSize > DIRECT_UPLOAD_MAX_BYTES
+    ) {
+      return response(400, { error: 'Image trop volumineuse' });
+    }
+    const attachmentId = newId('att');
+    try {
+      const upload = await messageMedia.createSignedUpload({
+        conversationId,
+        attachmentId,
+        mime,
+      });
+      return response(200, {
+        upload: {
+          attachmentId: upload.attachmentId,
+          storagePath: upload.storagePath,
+          signedUrl: upload.signedUrl,
+          mime,
+          maxBytes: DIRECT_UPLOAD_MAX_BYTES,
+        },
+      });
+    } catch (error) {
+      logger.error('relational_message_upload_url_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return response(503, {
+        error: 'Upload temporairement indisponible. Reessayez.',
+      });
+    }
+  }
+
   async function remove({ user, conversationId, messageId, today }) {
     const pool = getPool();
     const client = await pool.connect();
@@ -583,6 +641,7 @@ export function createRelationalMessageWriter({
   return {
     archive,
     attachment,
+    createAttachmentUpload,
     markRead,
     markUnread,
     pin,
@@ -626,8 +685,9 @@ function prepareMessage({ body, conversation, operation, validPhotos, now }) {
   }
   if (
     attachments.length > 0
-    && !validPhotos(attachments.map((attachment) =>
-      attachment?.dataUrl || attachment
+    && !attachments.every((attachment) => (
+      isDirectAttachment(attachment, conversation.id)
+      || validPhotos([attachment?.dataUrl || attachment])
     ))
   ) {
     return response(400, { error: 'Piece jointe invalide' });
@@ -660,6 +720,27 @@ async function storeAttachments({
   const storagePaths = [];
   try {
     const normalized = await Promise.all(attachments.map(async (attachment, index) => {
+      if (isDirectAttachment(attachment, conversationId)) {
+        const stored = await messageMedia?.info(attachment.storagePath);
+        if (
+          !stored
+          || !DIRECT_UPLOAD_MIMES.has(stored.mime || attachment.mime)
+          || stored.size <= 0
+          || stored.size > DIRECT_UPLOAD_MAX_BYTES
+        ) {
+          throw new Error('Upload direct invalide');
+        }
+        storagePaths.push(attachment.storagePath);
+        return {
+          id: attachment.id,
+          type: 'image',
+          name: String(attachment.name || `image-${index + 1}`).slice(0, 80),
+          mime: stored.mime || attachment.mime,
+          storagePath: attachment.storagePath,
+          url: `/conversations/${conversationId}/messages/${messageId}/attachments/${attachment.id}`,
+          size: stored.size,
+        };
+      }
       const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
       const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
       const attachmentId = newId('att');
@@ -700,6 +781,11 @@ async function storeAttachments({
         error: 'Le stockage des images est temporairement indisponible',
       });
     }
+    if (attachments.some((attachment) => (
+      isDirectAttachment(attachment, conversationId)
+    ))) {
+      return response(400, { error: 'Upload direct invalide' });
+    }
     return {
       attachments: attachments.map((attachment, index) => {
         const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
@@ -716,6 +802,26 @@ async function storeAttachments({
       storagePaths: [],
     };
   }
+}
+
+const DIRECT_UPLOAD_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+const DIRECT_UPLOAD_MAX_BYTES = 700 * 1024;
+
+function isDirectAttachment(attachment, conversationId) {
+  if (!attachment || typeof attachment !== 'object') return false;
+  const id = String(attachment.id || '');
+  const mime = String(attachment.mime || '');
+  const path = String(attachment.storagePath || '');
+  if (!/^att-[a-zA-Z0-9-]{8,100}$/.test(id)) return false;
+  if (!DIRECT_UPLOAD_MIMES.has(mime)) return false;
+  const escapedConversation = String(conversationId)
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 100);
+  return path.startsWith(`conversations/${escapedConversation}/${id}.`);
 }
 
 async function persistSafetyAttempt({

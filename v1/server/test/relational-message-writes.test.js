@@ -30,6 +30,8 @@ function createHarness({
   existing = null,
   attachment = null,
   foundMessage = null,
+  mediaEnabled = false,
+  mediaInfo = null,
 } = {}) {
   const queries = [];
   const mediaRemoved = [];
@@ -82,7 +84,18 @@ function createHarness({
     analyzeSafety: () => ({ blocked: false, categories: [], severity: 'none' }),
     safetyError: () => ({ error: 'blocked' }),
     messageMedia: {
-      enabled: false,
+      enabled: mediaEnabled,
+      async createSignedUpload({ conversationId, attachmentId, mime }) {
+        return {
+          attachmentId,
+          storagePath: `conversations/${conversationId}/${attachmentId}.jpg`,
+          signedUrl: 'https://storage.example.test/upload',
+          mime,
+        };
+      },
+      async info() {
+        return mediaInfo;
+      },
       async remove(path) {
         mediaRemoved.push(path);
       },
@@ -118,6 +131,52 @@ test('ecritures messages relationnelles : option inactive par defaut', () => {
   assert.equal(
     relationalMessageWritesEnabled({ RELATIONAL_MESSAGE_WRITES: 'true' }),
     true,
+  );
+});
+
+test('upload direct signe seulement pour un participant et un type image', async () => {
+  const harness = createHarness({ mediaEnabled: true });
+  const result = await harness.writer.createAttachmentUpload({
+    user,
+    conversationId: 'conv-1',
+    body: { mime: 'image/jpeg', size: 42_000 },
+  });
+
+  assert.equal(result.status, 200);
+  assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
+  assert.equal(result.body.upload.maxBytes, 700 * 1024);
+});
+
+test('message direct conserve uniquement la reference storage verifiee', async () => {
+  const harness = createHarness({
+    mediaEnabled: true,
+    mediaInfo: { mime: 'image/jpeg', size: 42_000 },
+  });
+  const result = await harness.writer.send({
+    user,
+    conversationId: 'conv-1',
+    body: {
+      clientId: 'client-direct',
+      attachments: [{
+        id: 'att-12345678',
+        name: 'preuve.jpg',
+        mime: 'image/jpeg',
+        storagePath: 'conversations/conv-1/att-12345678.jpg',
+      }],
+    },
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.message.attachments[0].size, 42_000);
+  assert.equal(result.body.message.attachments[0].dataUrl, undefined);
+  const insert = harness.queries.find(({ sql }) =>
+    sql.includes('insert into public.messages')
+  );
+  const persisted = JSON.parse(insert.params[7]);
+  assert.equal(
+    persisted.attachments[0].storagePath,
+    'conversations/conv-1/att-12345678.jpg',
   );
 });
 
