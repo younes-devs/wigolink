@@ -16,6 +16,7 @@ export function createAdminActionService({
   persistUser = null,
   persistKyc = null,
   persistKycDecision = null,
+  adminMemberMutations = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -23,6 +24,17 @@ export function createAdminActionService({
   }
 
   async function recordCaseAccess(actor, userId, body = {}) {
+    const section = String(body.section || 'overview').slice(0, 40);
+    if (adminMemberMutations) {
+      const found = await adminMemberMutations.recordCaseAccess({
+        actorId: actor.id,
+        userId,
+        section,
+      });
+      return found
+        ? response(200, { ok: true })
+        : response(404, { error: 'Membre introuvable' });
+    }
     const user = findUser(userId);
     if (!user) {
       return response(404, { error: 'Membre introuvable' });
@@ -32,31 +44,49 @@ export function createAdminActionService({
       'admin.member_case.view',
       'user',
       user.id,
-      {
-        section: String(body.section || 'overview').slice(0, 40),
-      },
+      { section },
     );
     save();
     return response(200, { ok: true });
   }
 
   async function changeRole(actor, userId, body = {}) {
-    const target = findUser(userId);
-    if (!target || target.deletedAt) {
-      return response(404, { error: 'Compte introuvable' });
-    }
     const role = String(body.role || '').toLowerCase();
     if (!['admin', 'member'].includes(role)) {
       return response(400, { error: 'Role invalide' });
     }
 
     const becomesAdmin = role === 'admin';
-    if (!becomesAdmin && target.id === actor.id) {
+    if (!becomesAdmin && String(userId) === String(actor.id)) {
       return response(400, {
         error:
           'Vous ne pouvez pas retirer votre propre acces '
           + 'administrateur.',
       });
+    }
+    if (adminMemberMutations) {
+      const result = await adminMemberMutations.changeRole({
+        actorId: actor.id,
+        userId,
+        becomesAdmin,
+        at: now(),
+      });
+      if (result.kind === 'not_found') {
+        return response(404, { error: 'Compte introuvable' });
+      }
+      if (result.kind === 'last_admin') {
+        return response(400, {
+          error: 'Au moins un administrateur doit rester actif.',
+        });
+      }
+      return response(200, {
+        user: userView(result.user),
+        ...(result.kind === 'unchanged' ? { unchanged: true } : {}),
+      });
+    }
+    const target = findUser(userId);
+    if (!target || target.deletedAt) {
+      return response(404, { error: 'Compte introuvable' });
     }
     const activeAdmins = db.users.filter(
       (user) => user.isAdmin && !user.deletedAt,
@@ -92,17 +122,6 @@ export function createAdminActionService({
   }
 
   async function moderateUser(actor, userId, body = {}) {
-    const target = findUser(userId);
-    if (!target || target.deletedAt) {
-      return response(404, { error: 'Compte introuvable' });
-    }
-    if (target.isAdmin) {
-      return response(400, {
-        error:
-          'Un administrateur ne peut pas etre sanctionne '
-          + 'depuis cet ecran.',
-      });
-    }
     const action = String(body.action || '').trim();
     const reason = String(body.reason || '').trim().slice(0, 500);
     if (!['warn', 'suspend', 'restore'].includes(action)) {
@@ -115,11 +134,45 @@ export function createAdminActionService({
     }
 
     const timestamp = now();
+    const durationHours = action === 'suspend'
+      ? Math.max(1, Math.min(24 * 30, Number(body.durationHours || 24)))
+      : null;
+    if (adminMemberMutations) {
+      const result = await adminMemberMutations.moderateUser({
+        actorId: actor.id,
+        userId,
+        action,
+        reason,
+        durationHours,
+        at: timestamp,
+      });
+      if (result.kind === 'not_found') {
+        return response(404, { error: 'Compte introuvable' });
+      }
+      if (result.kind === 'admin_target') {
+        return response(400, {
+          error:
+            'Un administrateur ne peut pas etre sanctionne '
+            + 'depuis cet ecran.',
+        });
+      }
+      return response(200, {
+        ok: true,
+        user: userView(result.user),
+      });
+    }
+    const target = findUser(userId);
+    if (!target || target.deletedAt) {
+      return response(404, { error: 'Compte introuvable' });
+    }
+    if (target.isAdmin) {
+      return response(400, {
+        error:
+          'Un administrateur ne peut pas etre sanctionne '
+          + 'depuis cet ecran.',
+      });
+    }
     if (action === 'suspend') {
-      const durationHours = Math.max(
-        1,
-        Math.min(24 * 30, Number(body.durationHours || 24)),
-      );
       target.suspendedUntil = timestamp + durationHours * 3600e3;
       target.suspensionReason = reason;
       target.suspendedAt = timestamp;

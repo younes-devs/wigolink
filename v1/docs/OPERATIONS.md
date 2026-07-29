@@ -56,6 +56,14 @@ decision admin conserve atomiquement le dossier, le statut membre et son
 historique. Une suppression de compte anonymise le compte mais ne supprime pas
 automatiquement les preuves KYC.
 
+`RELATIONAL_ADMIN_MEMBERS=true` sert la liste et les dossiers membres depuis
+les tables relationnelles, avec recherche et pagination bornees.
+`RELATIONAL_ADMIN_ACTIONS=true` active ensuite les roles, suspensions,
+restaurations et traces d'acces transactionnels. La mutation et son audit sont
+valides ensemble. Un verrou transactionnel PostgreSQL serialise les changements
+de role afin que deux requetes concurrentes ne puissent jamais retirer le
+dernier administrateur.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

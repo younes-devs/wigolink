@@ -76,6 +76,10 @@ import {
   relationalAdminUsers,
   relationalAdminUsersByIds,
 } from './relational-admin-members.js';
+import {
+  createRelationalAdminMemberMutations,
+  relationalAdminActionsEnabled,
+} from './relational-admin-actions.js';
 import { relationalId } from './relational-id.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
@@ -230,6 +234,7 @@ app.use(createPersistenceState({
   relationalAuthEnabled,
   relationalKycEnabled,
   relationalAdminMembersEnabled,
+  relationalAdminActionsEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -263,6 +268,9 @@ const relationalAuthRepositories = createRelationalAuthRepositories({
   getPool: databasePool,
 });
 const relationalKycRepository = createRelationalKycRepository({
+  getPool: databasePool,
+});
+const relationalAdminMemberMutations = createRelationalAdminMemberMutations({
   getPool: databasePool,
 });
 const authRepositories = relationalAuthEnabled()
@@ -1183,6 +1191,9 @@ const adminActionService = createAdminActionService({
     : null,
   persistKycDecision: relationalKycEnabled()
     ? (record) => kycRepository.commitDecision(record)
+    : null,
+  adminMemberMutations: relationalAdminActionsEnabled()
+    ? relationalAdminMemberMutations
     : null,
 });
 

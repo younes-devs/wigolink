@@ -8,6 +8,7 @@ import {
   isRelationalMaintenanceRequest,
   isRelationalKycRequest,
   isRelationalAdminMembersRequest,
+  isRelationalAdminActionRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -206,6 +207,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/admin/users/u-1/case-file',
     }, enabled),
     true,
+  );
+  assert.equal(
+    isRelationalAdminActionRequest({
+      method: 'POST',
+      path: '/api/admin/users/u-1/role',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAdminActionRequest({
+      method: 'GET',
+      path: '/api/admin/users/u-1/role',
+    }, enabled),
+    false,
   );
   assert.equal(
     isRelationalKycRequest({

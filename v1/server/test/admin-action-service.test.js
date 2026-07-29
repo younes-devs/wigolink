@@ -12,6 +12,7 @@ function createHarness({
   rejectedCount = 0,
   sessionUserId = null,
   whitelist = [],
+  adminMemberMutations = null,
 } = {}) {
   const audits = [];
   const notifications = [];
@@ -65,6 +66,7 @@ function createHarness({
       saves += 1;
     },
     newId: (prefix) => `${prefix}-1`,
+    adminMemberMutations,
     now: () => NOW,
   });
   return {
@@ -95,6 +97,56 @@ test('accès dossier admin est audité avant sauvegarde', async () => {
     (await service.recordCaseAccess(users[0], 'missing')).status,
     404,
   );
+});
+
+test('actions membres peuvent etre deleguees au stockage relationnel', async () => {
+  const member = { id: 'member', isAdmin: true };
+  const calls = [];
+  const adminMemberMutations = {
+    async recordCaseAccess(input) {
+      calls.push(['access', input]);
+      return true;
+    },
+    async changeRole(input) {
+      calls.push(['role', input]);
+      return { kind: 'ok', user: member };
+    },
+    async moderateUser(input) {
+      calls.push(['safety', input]);
+      return {
+        kind: 'ok',
+        user: { id: 'member', suspendedUntil: NOW + 3600e3 },
+      };
+    },
+  };
+  const harness = createHarness({ adminMemberMutations });
+  const actor = { id: 'admin', isAdmin: true };
+
+  assert.equal(
+    (await harness.service.recordCaseAccess(actor, 'member')).status,
+    200,
+  );
+  assert.equal(
+    (await harness.service.changeRole(actor, 'member', {
+      role: 'admin',
+    })).status,
+    200,
+  );
+  assert.equal(
+    (await harness.service.moderateUser(actor, 'member', {
+      action: 'suspend',
+      reason: 'Comportement dangereux',
+      durationHours: 1,
+    })).status,
+    200,
+  );
+  assert.deepEqual(calls.map(([type]) => type), [
+    'access',
+    'role',
+    'safety',
+  ]);
+  assert.equal(harness.saves(), 0);
+  assert.equal(harness.audits.length, 0);
 });
 
 test('rôles protègent auto-destitution et dernier admin', async () => {

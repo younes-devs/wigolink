@@ -138,6 +138,19 @@ export function isRelationalAdminMembersRequest(
     && /^\/api\/admin\/users(?:\/[^/]+\/case-file)?$/.test(req.path);
 }
 
+export function isRelationalAdminActionRequest(
+  req,
+  relationalAdminActionsEnabled,
+) {
+  return relationalAdminActionsEnabled()
+    && req.method === 'POST'
+    && (
+      /^\/api\/admin\/users\/[^/]+\/(?:case-file\/access|role|safety)$/.test(
+        req.path,
+      )
+    );
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -156,6 +169,7 @@ export function createPersistenceState({
   relationalAuthEnabled = () => false,
   relationalKycEnabled = () => false,
   relationalAdminMembersEnabled = () => false,
+  relationalAdminActionsEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -183,6 +197,7 @@ export function createPersistenceState({
       || isRelationalMaintenanceRequest(req, relationalAuthEnabled)
       || isRelationalKycRequest(req, relationalKycEnabled)
       || isRelationalAdminMembersRequest(req, relationalAdminMembersEnabled)
+      || isRelationalAdminActionRequest(req, relationalAdminActionsEnabled)
     ) {
       return next();
     }
