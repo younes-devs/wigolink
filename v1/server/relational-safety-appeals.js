@@ -1,3 +1,5 @@
+import { relationalId } from './relational-id.js';
+
 export function relationalSafetyAppealsEnabled(env = process.env) {
   return env.RELATIONAL_SAFETY_APPEALS === 'true';
 }
@@ -12,7 +14,8 @@ export function createRelationalSafetyAppeals({ getPool }) {
   };
 
   return {
-    async submit({ id, userId, reason, at }) {
+    async submit({ userId, reason, at }) {
+      const id = relationalId('appeal');
       try {
         return await transaction(pool(), async (client) => {
           const existing = await client.query(

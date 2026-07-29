@@ -166,6 +166,24 @@ export function isRelationalSafetyAppealRequest(
     );
 }
 
+export function isGlobalStateFreeRequest(req, lazyGlobalStateEnabled) {
+  if (!lazyGlobalStateEnabled()) return false;
+  if (
+    req.method === 'GET'
+    && (
+      req.path === '/api/health'
+      || req.path === '/api/config'
+      || /^\/api\/locations(?:\/[^/]+)?$/.test(req.path)
+      || req.path === '/api/admin/observability'
+      || req.path === '/api/admin/maintenance/capacity'
+      || req.path === '/api/realtime'
+    )
+  ) {
+    return true;
+  }
+  return req.method === 'POST' && req.path === '/api/realtime/session';
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -186,6 +204,7 @@ export function createPersistenceState({
   relationalAdminMembersEnabled = () => false,
   relationalAdminActionsEnabled = () => false,
   relationalSafetyAppealsEnabled = () => false,
+  lazyGlobalStateEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -215,6 +234,7 @@ export function createPersistenceState({
       || isRelationalAdminMembersRequest(req, relationalAdminMembersEnabled)
       || isRelationalAdminActionRequest(req, relationalAdminActionsEnabled)
       || isRelationalSafetyAppealRequest(req, relationalSafetyAppealsEnabled)
+      || isGlobalStateFreeRequest(req, lazyGlobalStateEnabled)
     ) {
       return next();
     }

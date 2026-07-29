@@ -7,6 +7,7 @@ import {
   createPostgresPool,
   databasePoolOptions,
 } from './postgres-repositories.js';
+import { lazyGlobalStateEnabled } from './config/runtime.js';
 
 // Configurable pour isoler les tests automatisés sur leur propre fichier (jamais le
 // data.json du dev/démo en cours) — voir server/test/.
@@ -104,6 +105,7 @@ let persistentSessionsEnabled = false;
 let databaseError = null;
 let stateLoadedAt = 0;
 const READ_CACHE_MS = Math.max(250, Math.min(10_000, Number(process.env.STATE_READ_CACHE_MS) || 1_500));
+const LAZY_GLOBAL_STATE = lazyGlobalStateEnabled();
 
 if (process.env.DATABASE_URL) {
   try {
@@ -113,12 +115,20 @@ if (process.env.DATABASE_URL) {
     // Keep this bounded per warm function to avoid a connection storm.
     ...databasePoolOptions(),
   });
-  const result = await pool.query('select state from wigofly_app_state where id = 1');
-  if (result.rows[0]?.state) {
+  const result = await pool.query(
+    LAZY_GLOBAL_STATE
+      ? 'select 1 as present from wigofly_app_state where id = 1'
+      : 'select state from wigofly_app_state where id = 1',
+  );
+  if (!result.rows[0] && process.env.NODE_ENV === 'production') {
+    throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
+  }
+  if (LAZY_GLOBAL_STATE) {
+    db = emptyState();
+    stateLoadedAt = 0;
+  } else if (result.rows[0]?.state) {
     db = result.rows[0].state;
     stateLoadedAt = Date.now();
-  } else if (process.env.NODE_ENV === 'production') {
-    throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
   }
   databaseEnabled = true;
   const sessionTable = await pool.query("select to_regclass('public.wigofly_sessions') as name");

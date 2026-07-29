@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadRuntimeConfig } from '../config/runtime.js';
+import {
+  lazyGlobalStateEnabled,
+  loadRuntimeConfig,
+} from '../config/runtime.js';
 
 test('runtime config fournit des valeurs locales sûres par défaut', () => {
   assert.deepEqual(loadRuntimeConfig({}), {
@@ -46,4 +49,10 @@ test('runtime config autorise les drapeaux de test hors production', () => {
   });
 
   assert.equal(config.isProduction, false);
+});
+
+test('chargement global paresseux exige une activation explicite', () => {
+  assert.equal(lazyGlobalStateEnabled({}), false);
+  assert.equal(lazyGlobalStateEnabled({ LAZY_GLOBAL_STATE: 'true' }), true);
+  assert.equal(lazyGlobalStateEnabled({ LAZY_GLOBAL_STATE: 'false' }), false);
 });

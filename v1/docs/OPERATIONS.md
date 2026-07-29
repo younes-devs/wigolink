@@ -70,6 +70,13 @@ creation, son audit, la decision admin et une eventuelle levee de suspension
 sont transactionnels. Executer le backfill avant activation pour conserver les
 anciens recours dans les dossiers membres.
 
+`LAZY_GLOBAL_STATE=true` evite de telecharger `wigofly_app_state` au demarrage
+de chaque fonction Vercel. Les routes relationnelles et les endpoints sans etat
+utilisent directement leurs tables ciblees; le document historique est charge
+uniquement lorsqu'une route encore non migree en a besoin. Ne l'activer qu'une
+fois `RELATIONAL_AUTH`, les lectures/ecritures metier, KYC et les actions admin
+actives.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

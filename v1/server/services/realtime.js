@@ -27,7 +27,7 @@ export function createRealtimeService({
   }
 
   async function publish(userId, payload) {
-    const user = findUser(userId);
+    const user = await findUser(userId);
     if (!config || !user?.realtimeChannel) return false;
 
     try {

@@ -23,3 +23,7 @@ export function loadRuntimeConfig(env = process.env) {
     supabaseRealtimeOrigin,
   };
 }
+
+export function lazyGlobalStateEnabled(env = process.env) {
+  return env.LAZY_GLOBAL_STATE === 'true';
+}

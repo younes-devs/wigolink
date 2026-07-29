@@ -91,7 +91,10 @@ import { createDatabaseAvailability } from './middleware/database-availability.j
 import { createPersistenceState } from './middleware/persistence-state.js';
 import { createSessionAuth } from './middleware/session-auth.js';
 import { createRelationalReadAuth } from './middleware/relational-read-auth.js';
-import { loadRuntimeConfig } from './config/runtime.js';
+import {
+  lazyGlobalStateEnabled,
+  loadRuntimeConfig,
+} from './config/runtime.js';
 import { createCorsOptions } from './config/cors-options.js';
 import { createObservability } from './observability.js';
 import { createSystemRouter } from './routes/system.js';
@@ -196,7 +199,7 @@ app.use(cors(createCorsOptions({
   appOrigins: APP_ORIGINS,
 })));
 app.use(createSecurityHeaders({
-  newRequestId: () => newId('req'),
+  newRequestId: () => relationalId('req'),
   supabaseUrl: SUPABASE_URL,
   supabaseRealtimeOrigin: SUPABASE_REALTIME_ORIGIN,
 }));
@@ -240,6 +243,7 @@ app.use(createPersistenceState({
   relationalAdminMembersEnabled,
   relationalAdminActionsEnabled,
   relationalSafetyAppealsEnabled,
+  lazyGlobalStateEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -351,7 +355,9 @@ const realtime = createRealtimeService({
   publishableKey: String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim(),
   secretKey: String(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
   newToken,
-  findUser,
+  findUser: relationalAuthEnabled()
+    ? authRepositories.users.findById
+    : findUser,
 });
 const messageMedia = createMessageMediaService({
   url: SUPABASE_URL,
@@ -1179,7 +1185,9 @@ app.use('/api', createAdminRecordsRouter({
 
 const adminActionService = createAdminActionService({
   db,
-  findUser,
+  findUser: relationalSafetyAppealsEnabled()
+    ? authRepositories.users.findById
+    : findUser,
   findKycUser: relationalKycEnabled()
     ? authRepositories.users.findById
     : findUser,

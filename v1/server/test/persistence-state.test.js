@@ -10,6 +10,7 @@ import {
   isRelationalAdminMembersRequest,
   isRelationalAdminActionRequest,
   isRelationalSafetyAppealRequest,
+  isGlobalStateFreeRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -231,6 +232,27 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     true,
   );
   assert.equal(
+    isGlobalStateFreeRequest({
+      method: 'POST',
+      path: '/api/realtime/session',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isGlobalStateFreeRequest({
+      method: 'GET',
+      path: '/api/locations/suggest',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isGlobalStateFreeRequest({
+      method: 'GET',
+      path: '/api/rules',
+    }, enabled),
+    false,
+  );
+  assert.equal(
     isRelationalSafetyAppealRequest({
       method: 'GET',
       path: '/api/admin/safety',
@@ -347,6 +369,21 @@ test('persistence state contourne le document global pour les lectures relationn
 
   assert.equal(nextCalls, 2);
   assert.deepEqual(events, []);
+});
+
+test('persistence state ne charge pas le document pour une route sans etat', () => {
+  const { events, middleware } = createMiddleware({
+    lazyGlobalStateEnabled: () => true,
+  });
+  const res = createResponse(events);
+
+  middleware(
+    { method: 'GET', path: '/api/health' },
+    res,
+    () => events.push('next'),
+  );
+
+  assert.deepEqual(events, ['next']);
 });
 
 test('persistence state contourne le document global pour les ecritures de messages relationnelles', () => {

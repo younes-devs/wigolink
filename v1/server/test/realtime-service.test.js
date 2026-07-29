@@ -79,6 +79,23 @@ test('realtime publie un evenement sur le canal Supabase encode', async () => {
   });
 });
 
+test('realtime accepte une recherche membre asynchrone', async () => {
+  const { requests, service } = createHarness({
+    async findUser() {
+      return {
+        id: 'u-async',
+        realtimeChannel: 'wigofly:async',
+      };
+    },
+  });
+
+  assert.equal(
+    await service.publish('u-async', { type: 'message' }),
+    true,
+  );
+  assert.equal(requests.length, 1);
+});
+
 test('realtime ignore les membres sans canal et absorbe une panne reseau', async () => {
   const failure = new Error('Supabase indisponible');
   const { errors, requests, service, users } = createHarness({

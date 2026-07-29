@@ -219,7 +219,6 @@ export function createAdminActionService({
     }
     if (safetyAppealRepository) {
       const result = await safetyAppealRepository.submit({
-        id: newId('appeal'),
         userId: user.id,
         reason,
         at: now(),
