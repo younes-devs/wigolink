@@ -5,7 +5,7 @@ export function relationalTripWritesEnabled(env = process.env) {
 export function createRelationalTripWriter({
   getPool,
   getTrip,
-  newId,
+  newId = relationalId,
   today,
   now = Date.now,
   logger = console,
@@ -81,3 +81,4 @@ export function createRelationalTripWriter({
 function response(status, body) {
   return { status, body };
 }
+import { relationalId } from './relational-id.js';

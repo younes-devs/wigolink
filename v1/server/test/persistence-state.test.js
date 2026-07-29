@@ -6,6 +6,7 @@ import {
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalOperationRead,
+  isRelationalOperationWrite,
   isRelationalTripWrite,
   isRelationalTripRead,
 } from '../middleware/persistence-state.js';
@@ -120,6 +121,27 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     false,
   );
   assert.equal(
+    isRelationalOperationWrite({
+      method: 'POST',
+      path: '/api/operations/tx-1/pay',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalOperationWrite({
+      method: 'POST',
+      path: '/api/trips/t-1/accept',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalOperationWrite({
+      method: 'DELETE',
+      path: '/api/operations/tx-1/pay',
+    }, enabled),
+    false,
+  );
+  assert.equal(
     isRelationalTripWrite({
       method: 'POST',
       path: '/api/saved-trips/t-1',
@@ -218,6 +240,24 @@ test('persistence state contourne le document global pour les ecritures de messa
   );
 
   assert.equal(nextCalls, 2);
+  assert.deepEqual(events, []);
+});
+
+test('persistence state contourne le verrou global pour les operations relationnelles', () => {
+  let nextCalls = 0;
+  const { events, middleware } = createMiddleware({
+    relationalOperationWritesEnabled: () => true,
+  });
+
+  middleware(
+    { method: 'POST', path: '/api/operations/tx-1/confirm-delivery' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+
+  assert.equal(nextCalls, 1);
   assert.deepEqual(events, []);
 });
 

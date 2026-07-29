@@ -1,3 +1,5 @@
+import { relationalId } from './relational-id.js';
+
 const SAFETY_WINDOW_MS = 10 * 60 * 1000;
 const SAFETY_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SAFETY_COOLDOWN_MS = 30 * 60 * 1000;
@@ -18,7 +20,7 @@ export function createRelationalMessageWriter({
   allowInlineMediaFallback = true,
   notificationFor,
   broadcastConversation,
-  newId,
+  newId = relationalId,
   now = Date.now,
   logger = console,
 }) {
