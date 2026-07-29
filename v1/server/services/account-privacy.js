@@ -14,7 +14,9 @@ export function createAccountPrivacyService({
   auditChange,
   save,
   loadRelationalRecords = null,
+  loadRelationalMessages = null,
   countRelationalActiveOperations = null,
+  deleteRelationalAccount = null,
   now = Date.now,
   confirmationTtlMs = DEFAULT_CONFIRMATION_TTL_MS,
 }) {
@@ -31,12 +33,12 @@ export function createAccountPrivacyService({
     } catch (error) {
       return { status: 503, error: error.message };
     }
-    confirmations.set(user.id, {
+    await confirmations.set(user.id, {
       type: 'delete_account',
       code,
       expires: now() + confirmationTtlMs,
     });
-    save();
+    await save();
     return {
       value: {
         ok: true,
@@ -67,7 +69,9 @@ export function createAccountPrivacyService({
           transaction.recipientId,
         ].includes(userId)
       )),
-      messages: await messages.listFromUser(userId),
+      messages: loadRelationalMessages
+        ? await loadRelationalMessages(userId)
+        : await messages.listFromUser(userId),
       disputes: relational?.disputes
         || db.disputes.filter((dispute) => dispute.openedBy === userId),
       kyc: kycSubmissions.map((submission) => ({
@@ -84,8 +88,20 @@ export function createAccountPrivacyService({
   }
 
   async function deleteAccount({ user, body }) {
-    const pending = confirmations.get(user.id);
     const code = String(body?.code || '').trim();
+    if (deleteRelationalAccount) {
+      const result = await deleteRelationalAccount({
+        userId: user.id,
+        code,
+        now: now(),
+      });
+      if (result.account) Object.assign(user, result.account);
+      return result.status
+        ? { status: result.status, error: result.error }
+        : { value: { ok: true } };
+    }
+
+    const pending = await confirmations.get(user.id);
     if (!pending || pending.type !== 'delete_account' || pending.expires < now()) {
       return {
         status: 400,
@@ -125,7 +141,7 @@ export function createAccountPrivacyService({
     user.passwordHash = null;
     user.provider = 'deleted';
     user.deletedAt = now();
-    confirmations.remove(userId);
+    await confirmations.remove(userId);
     await clearUserSessions(userId);
     await auditChange({
       actorId: userId,
@@ -138,7 +154,7 @@ export function createAccountPrivacyService({
       fields: ['name', 'email', 'phone', 'city', 'provider'],
       meta: { recordEmpty: true },
     });
-    save();
+    await save();
     return { value: { ok: true } };
   }
 

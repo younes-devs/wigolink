@@ -310,7 +310,14 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       method: 'POST',
       path: '/api/profile/delete',
     }, enabled),
-    false,
+    true,
+  );
+  assert.equal(
+    isRelationalAccountRequest({
+      method: 'GET',
+      path: '/api/profile/export',
+    }, enabled),
+    true,
   );
   assert.equal(
     isRelationalMaintenanceRequest({

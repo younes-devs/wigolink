@@ -286,6 +286,38 @@ test('account privacy utilise les dossiers relationnels pour export et suppressi
   assert.match(blocked.error, /2 transaction/);
 });
 
+test('account privacy delegue la suppression atomique au stockage relationnel', async () => {
+  const user = member();
+  const { service, events } = createHarness({
+    async deleteRelationalAccount(payload) {
+      events.push('delete:relational');
+      assert.deepEqual(payload, {
+        userId: user.id,
+        code: '123456',
+        now: 10_000,
+      });
+      return {
+        account: {
+          ...user,
+          name: 'Compte supprimé',
+          email: 'deleted-u-1@wigofly.invalid',
+          deletedAt: 10_000,
+        },
+      };
+    },
+  });
+
+  const result = await service.deleteAccount({
+    user,
+    body: { code: ' 123456 ' },
+  });
+
+  assert.deepEqual(events, ['delete:relational']);
+  assert.equal(user.name, 'Compte supprimé');
+  assert.equal(user.email, 'deleted-u-1@wigofly.invalid');
+  assert.deepEqual(result, { value: { ok: true } });
+});
+
 test('account privacy anonymise le compte mais conserve les preuves KYC', async () => {
   const user = member();
   let auditPayload;

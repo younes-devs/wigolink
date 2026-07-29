@@ -138,6 +138,10 @@ import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
 import { createAccountPrivacyService } from './services/account-privacy.js';
+import {
+  createRelationalAccountDeletion,
+  relationalAccountMessages,
+} from './relational-account-privacy.js';
 import { createRealtimeService } from './services/realtime.js';
 import { createConversationInboxService } from './services/conversation-inbox.js';
 import { createConversationMessageService } from './services/conversation-messages.js';
@@ -726,7 +730,9 @@ app.use('/api/profile', createProfileRouter({
 // ---------- RGPD : export et suppression de compte (PRD §6) ----------
 const accountPrivacyService = createAccountPrivacyService({
   db,
-  confirmations: repositories.accountConfirmations,
+  confirmations: relationalAuthEnabled()
+    ? authRepositories.confirmations
+    : repositories.accountConfirmations,
   messages: repositories.messages,
   kyc: kycRepository,
   rateLimit,
@@ -743,6 +749,12 @@ const accountPrivacyService = createAccountPrivacyService({
       userId,
     })
     : null,
+  loadRelationalMessages: usesDatabase()
+    ? (userId) => relationalAccountMessages({
+      pool: databasePool(),
+      userId,
+    })
+    : null,
   loadSafetyState: relationalSafetyAppealsEnabled()
     ? (query) => relationalSafetyAppeals.safetyState(query)
     : null,
@@ -751,6 +763,9 @@ const accountPrivacyService = createAccountPrivacyService({
       pool: databasePool(),
       userId,
     })
+    : null,
+  deleteRelationalAccount: relationalAuthEnabled()
+    ? createRelationalAccountDeletion({ getPool: databasePool })
     : null,
 });
 
