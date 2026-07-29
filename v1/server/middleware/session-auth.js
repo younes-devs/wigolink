@@ -6,6 +6,7 @@ export function createSessionAuth({
   getPersistentSession,
   deletePersistentSession,
   findUser,
+  persistUser = null,
   canAccessApp,
   save,
   now = Date.now,
@@ -37,7 +38,7 @@ export function createSessionAuth({
       const token = bearerToken(req);
       const userId = (await activeSession(token))?.userId;
       if (!userId) return res.status(401).json({ error: 'Non authentifié' });
-      req.user = findUser(userId);
+      req.user = await findUser(userId);
       if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
       if (req.user.suspendedUntil && req.user.suspendedUntil > now()) {
         return res.status(403).json({
@@ -46,6 +47,13 @@ export function createSessionAuth({
         });
       }
       if (!canAccessApp(req.user)) return denyUnverifiedSession(req, res);
+      attachUserPersistence({
+        req,
+        res,
+        user: req.user,
+        persistUser,
+        logger,
+      });
       return next();
     } catch (error) {
       logger.error('Echec de verification de session', error);
@@ -60,7 +68,7 @@ export function createSessionAuth({
     const session = await activeSession(token);
     const userId = session?.userId;
     if (!userId) return res.status(401).json({ error: 'Non authentifie' });
-    req.user = findUser(session?.userId);
+    req.user = await findUser(session?.userId);
     if (req.user?.suspendedUntil && req.user.suspendedUntil > now()) {
       return res.status(403).json({
         code: 'account_suspended',
@@ -78,5 +86,50 @@ export function createSessionAuth({
     activeSession,
     auth,
     authRealtime,
+  };
+}
+
+function attachUserPersistence({
+  req,
+  res,
+  user,
+  persistUser,
+  logger,
+}) {
+  if (typeof persistUser !== 'function' || req.userPersistenceAttached) return;
+  req.userPersistenceAttached = true;
+  const before = structuredClone(user);
+  const nativeJson = res.json.bind(res);
+  const nativeSend = res.send.bind(res);
+  let settled = false;
+
+  const settle = async (deliver) => {
+    if (settled) return;
+    settled = true;
+    try {
+      await persistUser(user, before);
+      deliver();
+    } catch (error) {
+      logger.error('Echec de persistance utilisateur', error);
+      if (!res.headersSent) {
+        res.statusCode = 503;
+        res.send = nativeSend;
+        nativeJson({
+          error: 'Sauvegarde du compte temporairement indisponible.',
+        });
+      }
+    }
+  };
+
+  res.json = (body) => {
+    void settle(() => {
+      res.send = nativeSend;
+      nativeJson(body);
+    });
+    return res;
+  };
+  res.send = (body) => {
+    void settle(() => nativeSend(body));
+    return res;
   };
 }

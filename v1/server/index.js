@@ -63,6 +63,11 @@ import {
   relationalPublicProfileReadsEnabled,
   relationalPublicReviews,
 } from './relational-public-profiles.js';
+import {
+  createRelationalAuthRepositories,
+  relationalAuthEnabled,
+} from './relational-auth-repositories.js';
+import { relationalId } from './relational-id.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
 import { createDatabaseAvailability } from './middleware/database-availability.js';
@@ -210,6 +215,7 @@ app.use(createPersistenceState({
   relationalOperationWritesEnabled,
   relationalNavigationEnabled,
   relationalPublicProfileReadsEnabled,
+  relationalAuthEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -239,6 +245,16 @@ const publicUser = (u) =>
 
 const findUser = (id) => db.users.find((u) => u.id === id);
 const { repositories } = createPersistence({ db, save, newId, findUser, publicUser, pool: databasePool() });
+const relationalAuthRepositories = createRelationalAuthRepositories({
+  getPool: databasePool,
+});
+const authRepositories = relationalAuthEnabled()
+  ? relationalAuthRepositories
+  : {
+      users: repositories.users,
+      verifications: repositories.authVerifications,
+      resets: repositories.authResets,
+    };
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
   messages: true,
@@ -261,7 +277,12 @@ const canAccessApp = (user) => !!user && (user.emailVerified === true || user.pr
 const sessionAuth = createSessionAuth({
   getPersistentSession,
   deletePersistentSession,
-  findUser,
+  findUser: relationalAuthEnabled()
+    ? authRepositories.users.findById
+    : findUser,
+  persistUser: relationalAuthEnabled()
+    ? authRepositories.users.updateChanged
+    : null,
   canAccessApp,
   save,
 });
@@ -460,7 +481,8 @@ const findByEmail = (email) => repositories.users.findByEmail(email);
 
 function makeUser({ name, email, phone, provider, emailVerified, passwordHash, cguAcceptedAt, registerIp }) {
   return {
-    id: newId('u'), name: name.trim(), email: normEmail(email), phone: phone || '',
+    id: relationalAuthEnabled() ? relationalId('u') : newId('u'),
+    name: name.trim(), email: normEmail(email), phone: phone || '',
     passwordHash: passwordHash || null, provider, emailVerified: !!emailVerified,
     city: '', kycStatus: 'none', rating: null, ratingCount: 0, completed: 0, cancelRate: 0,
     // Plafonds progressifs (PRD §0.3) : nouveau compte = 100 €, 1 transaction active
@@ -486,11 +508,14 @@ async function openSession(res, user, req, { rememberMe = false } = {}) {
   const token = newToken();
   const sessionDurationMs = rememberMe ? REMEMBER_SESSION_DURATION_MS : SESSION_DURATION_MS;
   const sessionExpiresAt = Date.now() + sessionDurationMs;
-  await createPersistentSession({ token, userId: user.id, expiresAt: sessionExpiresAt });
   if (req) {
     user.lastIp = clientIp(req);
     user.lastLoginAt = Date.now();
   }
+  if (typeof authRepositories.users.update === 'function') {
+    await authRepositories.users.update(user);
+  }
+  await createPersistentSession({ token, userId: user.id, expiresAt: sessionExpiresAt });
   save();
   res.json({ token, user: publicUser(user), sessionExpiresAt, sessionDurationDays: rememberMe ? 30 : 1 });
 }
@@ -513,8 +538,8 @@ async function deliverAuthCode(email, code, purpose, lang = 'fr') {
 }
 
 app.use('/api/auth', createAuthRegistrationRouter({
-  users: repositories.users,
-  verifications: repositories.authVerifications,
+  users: authRepositories.users,
+  verifications: authRepositories.verifications,
   validRegistration,
   makeUser,
   hashPassword,
@@ -530,9 +555,9 @@ app.use('/api/auth', createAuthRegistrationRouter({
 
 app.use('/api/auth', createAuthAccessRouter({
   auth,
-  users: repositories.users,
-  verifications: repositories.authVerifications,
-  resets: repositories.authResets,
+  users: authRepositories.users,
+  verifications: authRepositories.verifications,
+  resets: authRepositories.resets,
   normalizeEmail: normEmail,
   rateLimit,
   verifyPassword,

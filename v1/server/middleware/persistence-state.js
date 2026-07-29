@@ -10,6 +10,7 @@ const RELATIONAL_MESSAGE_PATH = /^\/api\/conversations(?:\/[^/]+(?:\/messages)?)
 const RELATIONAL_MESSAGE_WRITE_PATH = /^\/api\/conversations\/[^/]+(?:\/messages(?:\/[^/]+)?|\/(?:read|unread|archive|pin|typing))?$/;
 const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[^/]+\/attachments\/[^/]+$/;
 const RELATIONAL_OPERATION_WRITE_PATH = /^(?:\/api\/trips\/[^/]+\/accept|\/api\/operations\/[^/]+\/(?:pay|pickup-code|delivery-code|confirm-pickup|confirm-delivery|confirm|reject|cancel|dispute|evidence))$/;
+const RELATIONAL_AUTH_PATH = /^\/api\/auth\/(?:register|verify-email|resend-code|login|forgot|reset|logout)$/;
 
 export function isRelationalTripRead(req, relationalTripReadsEnabled) {
   return relationalTripReadsEnabled()
@@ -91,6 +92,11 @@ export function isRelationalPublicProfileRequest(
     && /^\/api\/transactions\/[^/]+\/rate$/.test(req.path);
 }
 
+export function isRelationalAuthRequest(req, relationalAuthEnabled) {
+  return relationalAuthEnabled()
+    && RELATIONAL_AUTH_PATH.test(req.path);
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -106,6 +112,7 @@ export function createPersistenceState({
   relationalOperationWritesEnabled = () => false,
   relationalNavigationEnabled = () => false,
   relationalPublicProfileReadsEnabled = () => false,
+  relationalAuthEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -128,6 +135,7 @@ export function createPersistenceState({
         relationalPublicProfileReadsEnabled,
         relationalOperationWritesEnabled,
       )
+      || isRelationalAuthRequest(req, relationalAuthEnabled)
     ) {
       return next();
     }

@@ -108,6 +108,6 @@ function timestampFor(row) {
 }
 
 function expiryFor(value) {
-  const raw = Number(value?.expiresAt || value?.expires_at || 0);
+  const raw = Number(value?.expires || value?.expiresAt || value?.expires_at || 0);
   return Number.isFinite(raw) && raw > 0 ? new Date(raw) : null;
 }

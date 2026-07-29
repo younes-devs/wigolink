@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import {
   createPersistenceState,
+  isRelationalAuthRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -205,6 +206,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/conversations/c-1/messages',
     }, enabled),
     true,
+  );
+  assert.equal(
+    isRelationalAuthRequest({
+      method: 'POST',
+      path: '/api/auth/login',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAuthRequest({
+      method: 'POST',
+      path: '/api/profile',
+    }, enabled),
+    false,
   );
   assert.equal(
     isRelationalMessageWrite({

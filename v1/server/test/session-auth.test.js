@@ -6,12 +6,19 @@ function createResponse() {
   return {
     statusCode: 200,
     body: undefined,
+    headersSent: false,
     status(code) {
       this.statusCode = code;
       return this;
     },
     json(body) {
       this.body = body;
+      this.headersSent = true;
+      return this;
+    },
+    send(body) {
+      this.body = body;
+      this.headersSent = true;
       return this;
     },
   };
@@ -21,6 +28,8 @@ function createHarness({
   sessions = new Map(),
   users = new Map(),
   getPersistentSession,
+  findUser,
+  persistUser,
 } = {}) {
   const deletedTokens = [];
   const logs = [];
@@ -31,7 +40,8 @@ function createHarness({
       deletedTokens.push(token);
       sessions.delete(token);
     },
-    findUser: (id) => users.get(id),
+    findUser: findUser || ((id) => users.get(id)),
+    persistUser,
     canAccessApp: (user) => !!user && (
       user.emailVerified === true || user.provider === 'google'
     ),
@@ -118,6 +128,57 @@ test('session auth attache le membre valide a la requete', async () => {
   assert.equal(nextCalled, true);
   assert.equal(req.user, user);
   assert.equal(res.statusCode, 200);
+});
+
+test('session auth accepte une recherche utilisateur asynchrone', async () => {
+  const user = { id: 'u-1', emailVerified: true };
+  const sessions = new Map([
+    ['valid-token', { userId: user.id, expiresAt: 2_000 }],
+  ]);
+  const users = new Map([[user.id, user]]);
+  const harness = createHarness({
+    sessions,
+    users,
+    findUser: async (id) => users.get(id),
+  });
+  const req = request('valid-token');
+  const res = createResponse();
+
+  await harness.sessionAuth.auth(req, res, () => {});
+
+  assert.equal(req.user, user);
+});
+
+test('session auth persiste uniquement apres une mutation du membre', async () => {
+  const user = { id: 'u-1', emailVerified: true, name: 'Avant' };
+  const sessions = new Map([
+    ['valid-token', { userId: user.id, expiresAt: 2_000 }],
+  ]);
+  const users = new Map([[user.id, user]]);
+  let persisted;
+  let resolvePersistence;
+  const persistence = new Promise((resolve) => {
+    resolvePersistence = resolve;
+  });
+  const harness = createHarness({
+    sessions,
+    users,
+    async persistUser(after, before) {
+      persisted = { after: { ...after }, before };
+      resolvePersistence();
+    },
+  });
+  const res = createResponse();
+
+  await harness.sessionAuth.auth(request('valid-token'), res, () => {
+    user.name = 'Apres';
+    res.json({ ok: true });
+  });
+  await persistence;
+
+  assert.equal(persisted.before.name, 'Avant');
+  assert.equal(persisted.after.name, 'Apres');
+  assert.deepEqual(res.body, { ok: true });
 });
 
 test('session auth refuse un compte suspendu avec la reponse HTTP existante', async () => {

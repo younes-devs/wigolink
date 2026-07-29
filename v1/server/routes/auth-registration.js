@@ -37,7 +37,7 @@ export function createAuthRegistrationRouter({
         error: 'Vous devez accepter les Conditions Générales d\'Utilisation',
       });
     }
-    if (users.findByEmail(email)) {
+    if (await users.findByEmail(email)) {
       return res.status(400).json({
         error: 'Un compte existe déjà avec cet email',
       });
@@ -58,8 +58,17 @@ export function createAuthRegistrationRouter({
     } catch (error) {
       return res.status(503).json({ error: error.message });
     }
-    users.append(user);
-    verifications.set(user.email, {
+    try {
+      await users.append(user);
+    } catch (error) {
+      if (error?.code === '23505') {
+        return res.status(400).json({
+          error: 'Un compte existe déjà avec cet email',
+        });
+      }
+      throw error;
+    }
+    await verifications.set(user.email, {
       code,
       expires: now() + codeTtlMs,
       rememberMe: rememberMe === true,
@@ -79,7 +88,7 @@ export function createAuthRegistrationRouter({
         error: 'Trop de tentatives — demandez un nouveau code',
       });
     }
-    const pending = verifications.get(email);
+    const pending = await verifications.get(email);
     if (!pending || pending.expires < now()) {
       return res.status(400).json({
         error: 'Code expiré — demandez un nouvel envoi',
@@ -88,11 +97,12 @@ export function createAuthRegistrationRouter({
     if (pending.code !== String(req.body.code || '').trim()) {
       return res.status(400).json({ error: 'Code incorrect' });
     }
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (!user) return res.status(404).json({ error: 'Compte introuvable' });
 
     user.emailVerified = true;
-    verifications.remove(email);
+    if (typeof users.update === 'function') await users.update(user);
+    await verifications.remove(email);
     return openSession(res, user, req, {
       rememberMe: req.body.rememberMe === true || pending.rememberMe === true,
     });
@@ -105,17 +115,17 @@ export function createAuthRegistrationRouter({
         error: 'Trop de demandes — réessayez plus tard',
       });
     }
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (!user) return res.status(404).json({ error: 'Compte introuvable' });
 
-    const previous = verifications.get(email);
+    const previous = await verifications.get(email);
     const code = newCode();
     try {
       await deliverCode(email, code, 'verify', req.lang);
     } catch (error) {
       return res.status(503).json({ error: error.message });
     }
-    verifications.set(email, {
+    await verifications.set(email, {
       code,
       expires: now() + codeTtlMs,
       rememberMe: previous?.rememberMe === true,

@@ -34,7 +34,7 @@ export function createAuthAccessRouter({
         error: 'Trop de tentatives — réessayez dans 10 minutes',
       });
     }
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (!user || !verifyPassword(req.body.password || '', user.passwordHash)) {
       return res.status(401).json({
         error: 'Email ou mot de passe incorrect',
@@ -63,7 +63,7 @@ export function createAuthAccessRouter({
       } catch (error) {
         return res.status(503).json({ error: error.message });
       }
-      verifications.set(email, {
+      await verifications.set(email, {
         code,
         expires: now() + codeTtlMs,
         rememberMe: req.body.rememberMe === true,
@@ -88,7 +88,7 @@ export function createAuthAccessRouter({
         error: 'Trop de demandes — réessayez plus tard',
       });
     }
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     let code = null;
     if (user) {
       code = newCode();
@@ -97,7 +97,7 @@ export function createAuthAccessRouter({
       } catch (error) {
         return res.status(503).json({ error: error.message });
       }
-      resets.set(email, {
+      await resets.set(email, {
         code,
         expires: now() + codeTtlMs,
       });
@@ -116,7 +116,7 @@ export function createAuthAccessRouter({
         error: 'Trop de tentatives — refaites une demande',
       });
     }
-    const reset = resets.get(email);
+    const reset = await resets.get(email);
     if (!reset || reset.expires < now()) {
       return res.status(400).json({
         error: 'Code expiré — refaites une demande',
@@ -130,11 +130,12 @@ export function createAuthAccessRouter({
         error: 'Mot de passe : 8 caractères minimum',
       });
     }
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (!user) return res.status(404).json({ error: 'Compte introuvable' });
 
     user.passwordHash = hashPassword(req.body.password);
-    resets.remove(email);
+    if (typeof users.update === 'function') await users.update(user);
+    await resets.remove(email);
     await clearUserSessions(user.id);
     if (!canAccessApp(user)) {
       save();
