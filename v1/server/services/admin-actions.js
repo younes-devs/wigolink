@@ -17,6 +17,7 @@ export function createAdminActionService({
   persistKyc = null,
   persistKycDecision = null,
   adminMemberMutations = null,
+  safetyAppealRepository = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -205,7 +206,7 @@ export function createAdminActionService({
 
   async function submitAppeal(token, body = {}) {
     const session = await activeSession(token);
-    const user = session ? findUser(session.userId) : null;
+    const user = session ? await findUser(session.userId) : null;
     if (!user) {
       return response(401, { error: 'Non authentifie' });
     }
@@ -215,6 +216,20 @@ export function createAdminActionService({
         error:
           'Expliquez votre recours en au moins 10 caracteres.',
       });
+    }
+    if (safetyAppealRepository) {
+      const result = await safetyAppealRepository.submit({
+        id: newId('appeal'),
+        userId: user.id,
+        reason,
+        at: now(),
+      });
+      if (result.kind === 'duplicate') {
+        return response(409, {
+          error: 'Un recours est deja en cours de traitement.',
+        });
+      }
+      return response(200, { ok: true, appeal: result.appeal });
     }
     db.safetyAppeals = db.safetyAppeals || [];
     const existing = db.safetyAppeals.find(
@@ -250,22 +265,35 @@ export function createAdminActionService({
   }
 
   async function reviewAppeal(actor, appealId, body = {}) {
+    const decision = String(body.decision || 'reject');
+    if (!['approve', 'reject'].includes(decision)) {
+      return response(400, { error: 'Decision invalide' });
+    }
+    const decisionReason =
+      String(body.reason || '').trim().slice(0, 500) || null;
+    if (safetyAppealRepository) {
+      const result = await safetyAppealRepository.review({
+        actorId: actor.id,
+        appealId,
+        decision,
+        reason: decisionReason,
+        at: now(),
+      });
+      return result.kind === 'not_found'
+        ? response(404, { error: 'Recours introuvable' })
+        : response(200, { ok: true, appeal: result.appeal });
+    }
     const appeal = (db.safetyAppeals || []).find(
       (item) => item.id === appealId,
     );
     if (!appeal || appeal.status !== 'open') {
       return response(404, { error: 'Recours introuvable' });
     }
-    const decision = String(body.decision || 'reject');
-    if (!['approve', 'reject'].includes(decision)) {
-      return response(400, { error: 'Decision invalide' });
-    }
 
     appeal.status = decision === 'approve' ? 'accepted' : 'rejected';
     appeal.reviewedAt = now();
     appeal.reviewedBy = actor.id;
-    appeal.decisionReason =
-      String(body.reason || '').trim().slice(0, 500) || null;
+    appeal.decisionReason = decisionReason;
     const user = findUser(appeal.userId);
     if (decision === 'approve' && user) {
       user.suspendedUntil = null;

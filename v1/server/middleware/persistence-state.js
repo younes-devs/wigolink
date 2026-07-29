@@ -151,6 +151,21 @@ export function isRelationalAdminActionRequest(
     );
 }
 
+export function isRelationalSafetyAppealRequest(
+  req,
+  relationalSafetyAppealsEnabled,
+) {
+  return relationalSafetyAppealsEnabled()
+    && (
+      (req.method === 'POST' && req.path === '/api/safety/appeals')
+      || (
+        req.method === 'POST'
+        && /^\/api\/admin\/safety\/appeals\/[^/]+$/.test(req.path)
+      )
+      || (req.method === 'GET' && req.path === '/api/admin/safety')
+    );
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -170,6 +185,7 @@ export function createPersistenceState({
   relationalKycEnabled = () => false,
   relationalAdminMembersEnabled = () => false,
   relationalAdminActionsEnabled = () => false,
+  relationalSafetyAppealsEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -198,6 +214,7 @@ export function createPersistenceState({
       || isRelationalKycRequest(req, relationalKycEnabled)
       || isRelationalAdminMembersRequest(req, relationalAdminMembersEnabled)
       || isRelationalAdminActionRequest(req, relationalAdminActionsEnabled)
+      || isRelationalSafetyAppealRequest(req, relationalSafetyAppealsEnabled)
     ) {
       return next();
     }

@@ -55,6 +55,32 @@ from public.wigofly_app_state, jsonb_array_elements(coalesce(state->'reviewQueue
 where item ? 'id'
 on conflict (id) do update set data = excluded.data, updated_at = now();
 
+with ranked_appeals as (
+  select item,
+    row_number() over (
+      partition by item->>'userId', coalesce(item->>'status', 'open')
+      order by coalesce((item->>'createdAt')::bigint, 0) desc
+    ) as status_rank
+  from public.wigofly_app_state,
+    jsonb_array_elements(coalesce(state->'safetyAppeals', '[]'::jsonb)) item
+  where item ? 'id' and item ? 'userId'
+)
+insert into public.wigofly_review_queue (id, data, created_at, updated_at)
+select item->>'id',
+  item || jsonb_build_object(
+    'type', 'safety_appeal',
+    'refId', item->>'id',
+    'status', case
+      when coalesce(item->>'status', 'open') = 'open' and status_rank > 1
+      then 'superseded'
+      else coalesce(item->>'status', 'open')
+    end
+  ),
+  to_timestamp(coalesce((item->>'createdAt')::double precision, extract(epoch from now()))),
+  now()
+from ranked_appeals
+on conflict (id) do update set data = excluded.data, updated_at = now();
+
 insert into public.wigofly_kyc_submissions (id, data, created_at, updated_at)
 select item->>'id', item, to_timestamp(coalesce((item->>'createdAt')::double precision, extract(epoch from now()))), now()
 from public.wigofly_app_state, jsonb_array_elements(coalesce(state->'kycSubmissions', '[]'::jsonb)) item

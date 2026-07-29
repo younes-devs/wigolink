@@ -80,6 +80,10 @@ import {
   createRelationalAdminMemberMutations,
   relationalAdminActionsEnabled,
 } from './relational-admin-actions.js';
+import {
+  createRelationalSafetyAppeals,
+  relationalSafetyAppealsEnabled,
+} from './relational-safety-appeals.js';
 import { relationalId } from './relational-id.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
@@ -235,6 +239,7 @@ app.use(createPersistenceState({
   relationalKycEnabled,
   relationalAdminMembersEnabled,
   relationalAdminActionsEnabled,
+  relationalSafetyAppealsEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -271,6 +276,9 @@ const relationalKycRepository = createRelationalKycRepository({
   getPool: databasePool,
 });
 const relationalAdminMemberMutations = createRelationalAdminMemberMutations({
+  getPool: databasePool,
+});
+const relationalSafetyAppeals = createRelationalSafetyAppeals({
   getPool: databasePool,
 });
 const authRepositories = relationalAuthEnabled()
@@ -713,6 +721,9 @@ const accountPrivacyService = createAccountPrivacyService({
       pool: databasePool(),
       userId,
     })
+    : null,
+  loadSafetyState: relationalSafetyAppealsEnabled()
+    ? (query) => relationalSafetyAppeals.safetyState(query)
     : null,
   countRelationalActiveOperations: usesDatabase()
     ? (userId) => relationalActiveOperationCount({
@@ -1194,6 +1205,9 @@ const adminActionService = createAdminActionService({
     : null,
   adminMemberMutations: relationalAdminActionsEnabled()
     ? relationalAdminMemberMutations
+    : null,
+  safetyAppealRepository: relationalSafetyAppealsEnabled()
+    ? relationalSafetyAppeals
     : null,
 });
 

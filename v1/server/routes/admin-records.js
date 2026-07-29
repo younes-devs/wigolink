@@ -38,8 +38,8 @@ export function createAdminRecordsRouter({
     );
   });
 
-  router.get('/admin/safety', ...protect, (_req, res) => {
-    res.json(adminRecords.safety());
+  router.get('/admin/safety', ...protect, async (_req, res) => {
+    res.json(await adminRecords.safety());
   });
 
   return router;

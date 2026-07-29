@@ -56,7 +56,13 @@ export async function relationalMemberRecords({ pool, userId }) {
            order by at desc
            limit 100
          ) n
-       ), '[]'::jsonb) as notifications`,
+       ), '[]'::jsonb) as notifications,
+       coalesce((
+         select jsonb_agg(queue.data order by queue.created_at desc)
+         from public.wigofly_review_queue queue
+         where queue.data->>'type' = 'safety_appeal'
+           and queue.data->>'userId' = $1
+       ), '[]'::jsonb) as safety_appeals`,
     [userId],
   );
   const row = result.rows[0] || {};
@@ -66,6 +72,7 @@ export async function relationalMemberRecords({ pool, userId }) {
     transactions: asArray(row.transactions),
     disputes: asArray(row.disputes),
     notifications: asArray(row.notifications),
+    safetyAppeals: asArray(row.safety_appeals),
   };
 }
 

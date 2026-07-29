@@ -178,6 +178,9 @@ create table if not exists public.wigofly_review_queue (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_review_queue_status_created_idx on public.wigofly_review_queue ((data->>'status'), created_at desc);
+create unique index if not exists wigofly_review_queue_open_safety_user_idx
+  on public.wigofly_review_queue ((data->>'userId'))
+  where data->>'type' = 'safety_appeal' and data->>'status' = 'open';
 
 create table if not exists public.wigofly_kyc_submissions (
   id text primary key,

@@ -18,6 +18,7 @@ test('dossier membre relationnel charge chaque collection par son identifiant', 
             transactions: [{ id: 'tx-1' }],
             disputes: [{ id: 'd-1' }],
             notifications: [{ id: 'n-1' }],
+            safety_appeals: [{ id: 'appeal-1' }],
           }],
         };
       },
@@ -27,10 +28,15 @@ test('dossier membre relationnel charge chaque collection par son identifiant', 
 
   assert.deepEqual(records.transactions.map(({ id }) => id), ['tx-1']);
   assert.deepEqual(records.disputes.map(({ id }) => id), ['d-1']);
+  assert.deepEqual(
+    records.safetyAppeals.map(({ id }) => id),
+    ['appeal-1'],
+  );
   assert.deepEqual(calls[0].params, ['u-1']);
   assert.match(calls[0].sql, /wigofly_trips/);
   assert.match(calls[0].sql, /wigofly_transactions/);
   assert.match(calls[0].sql, /notifications/);
+  assert.match(calls[0].sql, /safety_appeal/);
 });
 
 test('compteur actif relationnel exclut tous les etats fermes', async () => {

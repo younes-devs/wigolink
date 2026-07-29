@@ -13,6 +13,7 @@ function createHarness({
   sessionUserId = null,
   whitelist = [],
   adminMemberMutations = null,
+  safetyAppealRepository = null,
 } = {}) {
   const audits = [];
   const notifications = [];
@@ -67,6 +68,7 @@ function createHarness({
     },
     newId: (prefix) => `${prefix}-1`,
     adminMemberMutations,
+    safetyAppealRepository,
     now: () => NOW,
   });
   return {
@@ -97,6 +99,48 @@ test('accès dossier admin est audité avant sauvegarde', async () => {
     (await service.recordCaseAccess(users[0], 'missing')).status,
     404,
   );
+});
+
+test('recours peut etre delegue au stockage relationnel', async () => {
+  const calls = [];
+  const appeal = {
+    id: 'appeal-rel',
+    userId: 'member',
+    status: 'open',
+  };
+  const safetyAppealRepository = {
+    async submit(input) {
+      calls.push(['submit', input]);
+      return { kind: 'ok', appeal };
+    },
+    async review(input) {
+      calls.push(['review', input]);
+      return {
+        kind: 'ok',
+        appeal: { ...appeal, status: 'accepted' },
+      };
+    },
+  };
+  const member = { id: 'member' };
+  const harness = createHarness({
+    users: [member],
+    sessionUserId: member.id,
+    safetyAppealRepository,
+  });
+  const submitted = await harness.service.submitAppeal('session', {
+    reason: 'Une explication suffisamment longue',
+  });
+  const reviewed = await harness.service.reviewAppeal(
+    { id: 'admin' },
+    appeal.id,
+    { decision: 'approve', reason: 'Recours accepte' },
+  );
+
+  assert.equal(submitted.status, 200);
+  assert.equal(reviewed.body.appeal.status, 'accepted');
+  assert.deepEqual(calls.map(([type]) => type), ['submit', 'review']);
+  assert.equal(harness.saves(), 0);
+  assert.equal(harness.audits.length, 0);
 });
 
 test('actions membres peuvent etre deleguees au stockage relationnel', async () => {

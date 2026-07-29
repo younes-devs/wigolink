@@ -64,6 +64,12 @@ valides ensemble. Un verrou transactionnel PostgreSQL serialise les changements
 de role afin que deux requetes concurrentes ne puissent jamais retirer le
 dernier administrateur.
 
+`RELATIONAL_SAFETY_APPEALS=true` deplace les recours de suspension dans
+`wigofly_review_queue`. Un membre ne peut avoir qu'un recours ouvert; sa
+creation, son audit, la decision admin et une eventuelle levee de suspension
+sont transactionnels. Executer le backfill avant activation pour conserver les
+anciens recours dans les dossiers membres.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

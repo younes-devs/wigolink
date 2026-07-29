@@ -14,6 +14,7 @@ function createHarness({
   auditLogs = [],
   safetyAppeals = [],
   loadRelationalRecords = null,
+  loadSafetyState = null,
 } = {}) {
   const db = {
     users,
@@ -56,6 +57,7 @@ function createHarness({
     kycSlaMs: 5_000,
     now: () => NOW,
     loadRelationalRecords,
+    loadSafetyState,
   });
   return { service };
 }
@@ -265,7 +267,7 @@ test('file KYC calcule SLA et détail auditable', async () => {
   assert.equal((await service.kycDetail('missing')).status, 404);
 });
 
-test('sécurité exclut admins et enrichit les recours', () => {
+test('sécurité exclut admins et enrichit les recours', async () => {
   const users = [{
     id: 'admin',
     name: 'Admin',
@@ -291,7 +293,7 @@ test('sécurité exclut admins et enrichit les recours', () => {
   }];
   const { service } = createHarness({ users, safetyAppeals });
 
-  const result = service.safety();
+  const result = await service.safety();
 
   assert.deepEqual(result.riskyUsers.map((user) => user.id), [
     'suspended',
@@ -299,6 +301,31 @@ test('sécurité exclut admins et enrichit les recours', () => {
   ]);
   assert.equal(result.riskyUsers[1].messageSafetyAttempts, 2);
   assert.equal(result.appeals[0].user.id, 'suspended');
+});
+
+test('securite prefere les membres et recours relationnels', async () => {
+  const { service } = createHarness({
+    loadSafetyState: async ({ currentTime, attemptCutoff }) => {
+      assert.equal(currentTime, NOW);
+      assert.equal(attemptCutoff, NOW - 1_000);
+      return {
+        users: [{
+          id: 'u-1',
+          suspendedUntil: NOW + 10_000,
+        }],
+        appeals: [{
+          id: 'appeal-1',
+          userId: 'u-1',
+          user: { id: 'u-1', name: 'Relationnel' },
+        }],
+      };
+    },
+  });
+
+  const result = await service.safety();
+
+  assert.equal(result.riskyUsers[0].id, 'u-1');
+  assert.equal(result.appeals[0].user.name, 'Relationnel');
 });
 
 test('audit admin transmet la limite au dépôt', async () => {

@@ -13,6 +13,7 @@ export function createAdminRecordService({
   kycSlaMs,
   loadMessageArchive = null,
   loadRelationalRecords = null,
+  loadSafetyState = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -274,7 +275,7 @@ export function createAdminRecordService({
         .filter((notification) => notification.userId === user.id)
         .sort((a, b) => b.at - a.at)
         .slice(0, 100),
-      safetyAppeals: (db.safetyAppeals || [])
+      safetyAppeals: (relationalRecords?.safetyAppeals || db.safetyAppeals || [])
         .filter((appeal) => appeal.userId === user.id)
         .sort((a, b) => b.createdAt - a.createdAt),
       auditLogs,
@@ -423,8 +424,21 @@ export function createAdminRecordService({
     return kycMedia.viewUrl(photo);
   }
 
-  function safety() {
+  async function safety() {
     const currentTime = now();
+    if (loadSafetyState) {
+      const state = await loadSafetyState({
+        currentTime,
+        attemptCutoff: currentTime - messageSafetyWindowMs,
+      });
+      return {
+        riskyUsers: state.users.map(userView),
+        appeals: state.appeals.map((appeal) => ({
+          ...appeal,
+          user: userView(appeal.user),
+        })),
+      };
+    }
     const riskyUsers = db.users
       .filter(
         (user) =>
