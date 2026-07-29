@@ -333,6 +333,15 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     }, enabled),
     true,
   );
+  for (const request of [
+    { method: 'POST', path: '/api/conversations' },
+    { method: 'POST', path: '/api/conversations/c-1/report' },
+    { method: 'POST', path: '/api/conversations/c-1/block' },
+    { method: 'GET', path: '/api/blocked-users' },
+    { method: 'POST', path: '/api/blocked-users/u-2/unblock' },
+  ]) {
+    assert.equal(isRelationalMessageWrite(request, enabled), true);
+  }
 });
 
 test('persistence state laisse passer le stockage local immediatement', () => {
@@ -406,8 +415,22 @@ test('persistence state contourne le document global pour les ecritures de messa
       nextCalls += 1;
     },
   );
+  middleware(
+    { method: 'POST', path: '/api/conversations/c-1/report' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
+  middleware(
+    { method: 'GET', path: '/api/blocked-users' },
+    createResponse(events),
+    () => {
+      nextCalls += 1;
+    },
+  );
 
-  assert.equal(nextCalls, 2);
+  assert.equal(nextCalls, 4);
   assert.deepEqual(events, []);
 });
 

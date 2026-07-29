@@ -14,6 +14,7 @@ const MONITORED_TABLES = [
   'wigofly_matching_offers',
   'wigofly_saved_trips',
   'wigofly_conversations',
+  'wigofly_conversation_reports',
   'messages',
   'notifications',
   'audit_logs',
@@ -225,4 +226,3 @@ function isoOrNull(value) {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
-

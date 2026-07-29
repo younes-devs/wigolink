@@ -6,6 +6,13 @@ const SAFETY_COOLDOWN_MS = 30 * 60 * 1000;
 const SAFETY_STRIKE_LIMIT = 3;
 const LOCATION_EXPIRY_MINUTES = new Set([30, 120]);
 const MESSAGE_UPLOAD_TTL_MS = 2 * 60 * 60 * 1000;
+const REPORT_REASON_CODES = new Set([
+  'external_payment',
+  'abuse',
+  'suspicious',
+  'off_platform',
+  'other',
+]);
 
 export function relationalMessageWritesEnabled(env = process.env) {
   return env.RELATIONAL_MESSAGE_WRITES === 'true';
@@ -343,6 +350,428 @@ export function createRelationalMessageWriter({
     }
   }
 
+  async function createConversation({ user, body = {}, today }) {
+    const pool = getPool();
+    const client = await pool.connect();
+    let conversationId;
+    try {
+      await client.query('begin');
+      const tripId = cleanId(body.tripId);
+      const operationId = cleanId(body.operationId);
+      let otherId = cleanId(body.userId);
+
+      if (tripId) {
+        const tripResult = await client.query(
+          'select data from public.wigofly_trips where id = $1 limit 1',
+          [tripId],
+        );
+        const trip = tripResult.rows[0]?.data;
+        if (!trip) {
+          await client.query('rollback');
+          return response(404, { error: 'Trajet introuvable' });
+        }
+        otherId = cleanId(trip.travelerId);
+      }
+
+      if (operationId) {
+        const operationResult = await client.query(
+          'select data from public.wigofly_transactions where id = $1 limit 1',
+          [operationId],
+        );
+        const operation = operationResult.rows[0]?.data;
+        if (!operation || !operationPartyIds(operation).includes(user.id)) {
+          await client.query('rollback');
+          return response(404, { error: 'Operation introuvable' });
+        }
+        otherId = operation.senderId === user.id
+          ? cleanId(operation.travelerId)
+          : cleanId(operation.senderId);
+      }
+
+      if (!otherId || otherId === user.id) {
+        await client.query('rollback');
+        return response(400, { error: 'Destinataire invalide' });
+      }
+      const recipient = await client.query(
+        'select 1 from public.wigofly_users where id = $1 limit 1',
+        [otherId],
+      );
+      if (!recipient.rowCount) {
+        await client.query('rollback');
+        return response(400, { error: 'Destinataire invalide' });
+      }
+
+      const participantIds = [user.id, otherId].sort();
+      const conversationKey = JSON.stringify([
+        participantIds,
+        tripId || null,
+        operationId || null,
+      ]);
+      await client.query(
+        'select pg_advisory_xact_lock(hashtext($1))',
+        [conversationKey],
+      );
+      const existing = await client.query(
+        `select id, data
+         from public.wigofly_conversations
+         where data->'participantIds' = $1::jsonb
+           and coalesce(data->>'tripId', '') = $2
+           and coalesce(data->>'operationId', '') = $3
+         limit 1
+         for update`,
+        [
+          JSON.stringify(participantIds),
+          tripId || '',
+          operationId || '',
+        ],
+      );
+      const createdAt = now();
+      if (existing.rows[0]) {
+        conversationId = existing.rows[0].id;
+        const conversation = {
+          ...existing.rows[0].data,
+          deletedBy: (existing.rows[0].data.deletedBy || [])
+            .filter((id) => id !== user.id),
+        };
+        await updateConversation(client, conversation);
+      } else {
+        const conversation = {
+          id: newId('conv'),
+          participantIds,
+          tripId: tripId || null,
+          operationId: operationId || null,
+          createdAt,
+          lastMessageAt: createdAt,
+          archivedBy: [],
+          pinnedBy: [],
+          deletedBy: [],
+          blockedBy: [],
+        };
+        conversationId = conversation.id;
+        await client.query(
+          `insert into public.wigofly_conversations
+             (id, data, created_at, updated_at)
+           values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
+          [conversation.id, JSON.stringify(conversation), createdAt],
+        );
+      }
+      await client.query('commit');
+      const detail = await getConversation({
+        pool,
+        user,
+        id: conversationId,
+        today,
+      });
+      return response(200, { conversation: detail?.conversation || null });
+    } catch (error) {
+      await client.query('rollback').catch(() => {});
+      logger.error('relational_conversation_create_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return response(503, {
+        error: 'Conversation temporairement indisponible. Reessayez.',
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async function reportConversation({
+    user,
+    conversationId,
+    body = {},
+    today,
+  }) {
+    const reasonCode = REPORT_REASON_CODES.has(String(body.reasonCode || 'other').trim())
+      ? String(body.reasonCode || 'other').trim()
+      : 'other';
+    const reason = String(body.reason || '').trim().slice(0, 500);
+    const comment = String(body.comment || '').trim().slice(0, 500);
+    if (!reason) return response(400, { error: 'Motif requis' });
+
+    const pool = getPool();
+    const client = await pool.connect();
+    let report;
+    try {
+      await client.query('begin');
+      const context = await conversationContext(
+        client,
+        conversationId,
+        user.id,
+        { lock: true },
+      );
+      if (!context) {
+        await client.query('rollback');
+        return response(404, { error: 'Conversation introuvable' });
+      }
+      await client.query(
+        'select pg_advisory_xact_lock(hashtext($1))',
+        [`conversation-report:${conversationId}`],
+      );
+      const createdAt = now();
+      report = {
+        id: newId('cr'),
+        conversationId,
+        reporterId: user.id,
+        reasonCode,
+        reason,
+        comment,
+        at: createdAt,
+      };
+      await client.query(
+        `insert into public.wigofly_conversation_reports
+           (id, conversation_id, reporter_id, reason_code, reason, comment, data, created_at)
+         values ($1, $2, $3, $4, $5, $6, $7::jsonb, to_timestamp($8 / 1000.0))`,
+        [
+          report.id,
+          conversationId,
+          user.id,
+          reasonCode,
+          reason,
+          comment || null,
+          JSON.stringify(report),
+          createdAt,
+        ],
+      );
+      const conversation = {
+        ...context.conversation,
+        reportedBy: [...new Set([
+          ...(context.conversation.reportedBy || []),
+          user.id,
+        ])],
+        reportCount: Number(context.conversation.reportCount || 0) + 1,
+        latestReportAt: createdAt,
+      };
+      await updateConversation(client, conversation);
+      const queued = await client.query(
+        `select 1 from public.wigofly_review_queue
+         where data->>'type' = 'conversation'
+           and data->>'refId' = $1
+           and coalesce(data->>'status', 'pending') = 'pending'
+         limit 1`,
+        [conversationId],
+      );
+      if (!queued.rowCount) {
+        const item = {
+          id: newId('rq'),
+          type: 'conversation',
+          refId: conversationId,
+          status: 'pending',
+          createdAt,
+        };
+        await client.query(
+          `insert into public.wigofly_review_queue (id, data, created_at, updated_at)
+           values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
+          [item.id, JSON.stringify(item), createdAt],
+        );
+      }
+      await client.query(
+        `insert into public.audit_logs
+           (actor_id, action, target_type, target_id, meta)
+         values ($1, 'conversation.report', 'conversation', $2, $3::jsonb)`,
+        [
+          user.id,
+          conversationId,
+          JSON.stringify({
+            reportId: report.id,
+            reason,
+            reasonCode,
+          }),
+        ],
+      );
+      await client.query('commit');
+      const detail = await getConversation({
+        pool,
+        user,
+        id: conversationId,
+        today,
+      });
+      return response(200, {
+        ok: true,
+        report,
+        conversation: detail?.conversation || null,
+      });
+    } catch (error) {
+      await client.query('rollback').catch(() => {});
+      logger.error('relational_conversation_report_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return response(503, {
+        error: 'Signalement temporairement indisponible. Reessayez.',
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async function blockConversation({
+    user,
+    conversationId,
+    blocked = true,
+    today,
+  }) {
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const context = await conversationContext(
+        client,
+        conversationId,
+        user.id,
+        { lock: true },
+      );
+      if (!context) {
+        await client.query('rollback');
+        return response(404, { error: 'Conversation introuvable' });
+      }
+      const otherId = context.conversation.participantIds
+        ?.find((id) => id !== user.id);
+      if (!otherId) {
+        await client.query('rollback');
+        return response(400, { error: 'Participant introuvable' });
+      }
+      const memberResult = await client.query(
+        'select data from public.wigofly_users where id = $1 for update',
+        [user.id],
+      );
+      const member = memberResult.rows[0]?.data;
+      if (!member) {
+        await client.query('rollback');
+        return response(404, { error: 'Compte introuvable' });
+      }
+      const blockedIds = new Set(member.blockedUserIds || []);
+      if (blocked) blockedIds.add(otherId);
+      else blockedIds.delete(otherId);
+      member.blockedUserIds = [...blockedIds];
+      const conversation = {
+        ...context.conversation,
+        blockedBy: blocked
+          ? [...new Set([...(context.conversation.blockedBy || []), user.id])]
+          : (context.conversation.blockedBy || []).filter((id) => id !== user.id),
+      };
+      await client.query(
+        `update public.wigofly_users
+         set data = $2::jsonb, updated_at = now()
+         where id = $1`,
+        [user.id, JSON.stringify(member)],
+      );
+      await updateConversation(client, conversation);
+      await insertConversationAudit(client, {
+        actorId: user.id,
+        action: blocked ? 'conversation.block' : 'conversation.unblock',
+        targetType: 'conversation',
+        targetId: conversationId,
+        meta: { otherId },
+      });
+      await client.query('commit');
+      const detail = await getConversation({
+        pool,
+        user: member,
+        id: conversationId,
+        today,
+      });
+      return response(200, {
+        ok: true,
+        blocked,
+        conversation: detail?.conversation || null,
+      });
+    } catch (error) {
+      await client.query('rollback').catch(() => {});
+      logger.error('relational_conversation_block_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return response(503, {
+        error: 'Blocage temporairement indisponible. Reessayez.',
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async function listBlocked({ user }) {
+    const memberResult = await getPool().query(
+      'select data from public.wigofly_users where id = $1 limit 1',
+      [user.id],
+    );
+    const blockedIds = memberResult.rows[0]?.data?.blockedUserIds || [];
+    if (!blockedIds.length) return response(200, { users: [] });
+    const usersResult = await getPool().query(
+      'select id, data from public.wigofly_users where id = any($1::text[])',
+      [blockedIds],
+    );
+    const byId = new Map(usersResult.rows.map((row) => [row.id, row.data]));
+    return response(200, {
+      users: blockedIds
+        .map((id) => publicUser(byId.get(id)))
+        .filter(Boolean),
+    });
+  }
+
+  async function unblockUser({ user, otherId }) {
+    const safeOtherId = cleanId(otherId);
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const memberResult = await client.query(
+        'select data from public.wigofly_users where id = $1 for update',
+        [user.id],
+      );
+      const member = memberResult.rows[0]?.data;
+      const blockedIds = new Set(member?.blockedUserIds || []);
+      if (!member || !safeOtherId || !blockedIds.has(safeOtherId)) {
+        await client.query('rollback');
+        return response(404, { error: 'Compte bloque introuvable' });
+      }
+      blockedIds.delete(safeOtherId);
+      member.blockedUserIds = [...blockedIds];
+      await client.query(
+        `update public.wigofly_users
+         set data = $2::jsonb, updated_at = now()
+         where id = $1`,
+        [user.id, JSON.stringify(member)],
+      );
+      await client.query(
+        `update public.wigofly_conversations
+         set data = jsonb_set(
+           data,
+           '{blockedBy}',
+           coalesce((
+             select jsonb_agg(value)
+             from jsonb_array_elements_text(
+               coalesce(data->'blockedBy', '[]'::jsonb)
+             ) value
+             where value <> $1
+           ), '[]'::jsonb),
+           true
+         ),
+         updated_at = now()
+         where data->'participantIds' ? $1
+           and data->'participantIds' ? $2`,
+        [user.id, safeOtherId],
+      );
+      await insertConversationAudit(client, {
+        actorId: user.id,
+        action: 'user.unblock',
+        targetType: 'user',
+        targetId: safeOtherId,
+        meta: {},
+      });
+      await client.query('commit');
+      return response(200, { ok: true });
+    } catch (error) {
+      await client.query('rollback').catch(() => {});
+      logger.error('relational_user_unblock_failed', {
+        message: error?.message || 'unknown_error',
+      });
+      return response(503, {
+        error: 'Deblocage temporairement indisponible. Reessayez.',
+      });
+    } finally {
+      client.release();
+    }
+  }
+
   async function remove({ user, conversationId, messageId, today }) {
     const pool = getPool();
     const client = await pool.connect();
@@ -673,14 +1102,19 @@ export function createRelationalMessageWriter({
   return {
     archive,
     attachment,
+    blockConversation,
+    createConversation,
     createAttachmentUpload,
+    listBlocked,
     markRead,
     markUnread,
     pin,
+    reportConversation,
     remove,
     removeConversation,
     send,
     typing,
+    unblockUser,
   };
 }
 
@@ -1146,6 +1580,68 @@ async function removeStoredMedia(messageMedia, paths = []) {
 
 function isUniqueViolation(error) {
   return error?.code === '23505';
+}
+
+async function updateConversation(client, conversation) {
+  await client.query(
+    `update public.wigofly_conversations
+     set data = $2::jsonb, updated_at = now()
+     where id = $1`,
+    [conversation.id, JSON.stringify(conversation)],
+  );
+}
+
+async function insertConversationAudit(client, {
+  actorId,
+  action,
+  targetType,
+  targetId,
+  meta,
+}) {
+  await client.query(
+    `insert into public.audit_logs
+       (actor_id, action, target_type, target_id, meta)
+     values ($1, $2, $3, $4, $5::jsonb)`,
+    [
+      actorId,
+      action,
+      targetType,
+      targetId,
+      JSON.stringify(meta || {}),
+    ],
+  );
+}
+
+function operationPartyIds(operation) {
+  return [
+    operation?.senderId,
+    operation?.travelerId,
+    operation?.recipientId,
+  ].filter(Boolean);
+}
+
+function cleanId(value) {
+  return String(value || '').trim().slice(0, 120) || null;
+}
+
+function publicUser(user) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    city: user.city,
+    kycStatus: user.kycStatus,
+    rating: user.rating,
+    ratingCount: user.ratingCount,
+    completed: user.completed,
+    cancelRate: user.cancelRate,
+    badges: user.badges,
+    photoUrl: user.photoUrl || null,
+    isAdmin: !!user.isAdmin,
+    createdAt: user.createdAt,
+    onboardingDone: !!user.settings?.onboardingDone,
+    emailVerified: !!user.emailVerified,
+  };
 }
 
 function response(status, body) {

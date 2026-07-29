@@ -46,10 +46,21 @@ export function isRelationalMessageRead(req, relationalMessageReadsEnabled) {
 
 export function isRelationalMessageWrite(req, relationalMessageWritesEnabled) {
   return relationalMessageWritesEnabled()
-    && ['POST', 'DELETE'].includes(req.method)
     && (
-      RELATIONAL_MESSAGE_WRITE_PATH.test(req.path)
-      || /^\/api\/conversations\/[^/]+\/attachments\/upload$/.test(req.path)
+      (
+        ['POST', 'DELETE'].includes(req.method)
+        && (
+          RELATIONAL_MESSAGE_WRITE_PATH.test(req.path)
+          || /^\/api\/conversations\/[^/]+\/attachments\/upload$/.test(req.path)
+          || /^\/api\/conversations\/[^/]+\/(?:report|block)$/.test(req.path)
+        )
+      )
+      || (req.method === 'POST' && req.path === '/api/conversations')
+      || (req.method === 'GET' && req.path === '/api/blocked-users')
+      || (
+        req.method === 'POST'
+        && /^\/api\/blocked-users\/[^/]+\/unblock$/.test(req.path)
+      )
     );
 }
 

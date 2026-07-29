@@ -8,6 +8,53 @@ export function createRelationalMessageWriteRouter({
 }) {
   const router = Router();
 
+  router.post('/conversations', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.createConversation({
+      user: req.user,
+      body: req.body,
+      today: today(),
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post('/conversations/:id/report', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.reportConversation({
+      user: req.user,
+      conversationId: req.params.id,
+      body: req.body,
+      today: today(),
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post('/conversations/:id/block', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.blockConversation({
+      user: req.user,
+      conversationId: req.params.id,
+      blocked: req.body?.blocked !== false,
+      today: today(),
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.get('/blocked-users', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.listBlocked({ user: req.user });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post('/blocked-users/:id/unblock', auth, async (req, res, next) => {
+    if (!enabled()) return next('route');
+    const result = await writer.unblockUser({
+      user: req.user,
+      otherId: req.params.id,
+    });
+    return res.status(result.status).json(result.body);
+  });
+
   router.post('/conversations/:id/attachments/upload', auth, async (req, res, next) => {
     if (!enabled()) return next('route');
     const result = await writer.createAttachmentUpload({

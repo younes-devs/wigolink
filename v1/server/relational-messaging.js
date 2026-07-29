@@ -141,11 +141,19 @@ export async function relationalAdminMessageArchive({
   const safeOffset = boundedOffset(offset);
   const safeLimit = boundedLimit(limit);
   const conversationsResult = await pool.query(
-    `select c.data as conversation, count(m.id)::int as message_count
+    `select
+       c.data as conversation,
+       count(m.id)::int as message_count,
+       coalesce(reports.data, '[]'::jsonb) as reports
      from public.wigofly_conversations c
      left join public.messages m on m.conversation_id = c.id
+     left join lateral (
+       select jsonb_agg(report.data order by report.created_at desc) as data
+       from public.wigofly_conversation_reports report
+       where report.conversation_id = c.id
+     ) reports on true
      where c.data->'participantIds' ? $1
-     group by c.id, c.data, c.created_at
+     group by c.id, c.data, c.created_at, reports.data
      order by coalesce(
        (c.data->>'lastMessageAt')::bigint,
        extract(epoch from c.created_at) * 1000
@@ -164,6 +172,7 @@ export async function relationalAdminMessageArchive({
   return {
     conversations: conversationsResult.rows.map((row) => ({
       ...(row.conversation || {}),
+      reports: Array.isArray(row.reports) ? row.reports : [],
       messageCount: Number(row.message_count || 0),
     })),
     messages: messagesResult.rows.map((row) => row.data),

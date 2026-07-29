@@ -298,3 +298,168 @@ test('ecritures messages relationnelles : suppression logique conserve la preuve
     true,
   );
 });
+
+function createActionHarness(handler = async () => ({ rows: [], rowCount: 1 })) {
+  const queries = [];
+  let sequence = 0;
+  const query = async (sql, params = []) => {
+    queries.push({ sql, params });
+    return handler(sql, params);
+  };
+  const client = { query, release() {} };
+  const pool = {
+    query,
+    async connect() {
+      return client;
+    },
+  };
+  const writer = createRelationalMessageWriter({
+    getPool: () => pool,
+    getConversation: async ({ id }) => ({
+      conversation: { id, participantIds: ['u-1', 'u-2'] },
+    }),
+    validPhotos: () => true,
+    analyzeSafety: () => ({ blocked: false, categories: [], severity: 'none' }),
+    safetyError: () => ({ error: 'blocked' }),
+    messageMedia: { enabled: false },
+    notificationFor: async () => null,
+    broadcastConversation() {},
+    newId(prefix) {
+      sequence += 1;
+      return `${prefix}-${sequence}`;
+    },
+    now: () => 2_000,
+    logger: { error() {} },
+  });
+  return { queries, writer };
+}
+
+test('creation relationnelle dedoublonne sous verrou sans charger l etat global', async () => {
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select 1 from public.wigofly_users')) {
+      return { rows: [{ '?column?': 1 }], rowCount: 1 };
+    }
+    if (sql.includes('select id, data') && sql.includes('wigofly_conversations')) {
+      return { rows: [], rowCount: 0 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+  const result = await harness.writer.createConversation({
+    user,
+    body: { userId: 'u-2' },
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.ok(harness.queries.some(({ sql }) => sql.includes('pg_advisory_xact_lock')));
+  const insert = harness.queries.find(({ sql }) =>
+    sql.includes('insert into public.wigofly_conversations')
+  );
+  const stored = JSON.parse(insert.params[1]);
+  assert.deepEqual(stored.participantIds, ['u-1', 'u-2']);
+  assert.deepEqual(stored.deletedBy, []);
+});
+
+test('signalement relationnel conserve la preuve et la file de revue atomiquement', async () => {
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select c.data as conversation')) {
+      return { rows: [contextRow], rowCount: 1 };
+    }
+    if (sql.includes('select 1 from public.wigofly_review_queue')) {
+      return { rows: [], rowCount: 0 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+  const result = await harness.writer.reportConversation({
+    user,
+    conversationId: 'conv-1',
+    body: {
+      reasonCode: 'abuse',
+      reason: 'Insultes',
+      comment: 'Historique a verifier',
+    },
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.report.reasonCode, 'abuse');
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('insert into public.wigofly_conversation_reports')
+  ));
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('insert into public.wigofly_review_queue')
+  ));
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes("'conversation.report'")
+  ));
+  assert.ok(harness.queries.some(({ sql }) => sql === 'commit'));
+});
+
+test('blocage relationnel met a jour membre, conversation et audit ensemble', async () => {
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select c.data as conversation')) {
+      return { rows: [contextRow], rowCount: 1 };
+    }
+    if (sql.includes('select data from public.wigofly_users')) {
+      return { rows: [{ data: { ...user, blockedUserIds: [] } }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+  const result = await harness.writer.blockConversation({
+    user,
+    conversationId: 'conv-1',
+    blocked: true,
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.blocked, true);
+  const memberUpdate = harness.queries.find(({ sql }) =>
+    sql.includes('update public.wigofly_users')
+  );
+  assert.deepEqual(JSON.parse(memberUpdate.params[1]).blockedUserIds, ['u-2']);
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('update public.wigofly_conversations')
+  ));
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes('insert into public.audit_logs')
+  ));
+});
+
+test('comptes bloques relationnels restent bornes au membre et debloquables', async () => {
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select data from public.wigofly_users')) {
+      return {
+        rows: [{ data: { ...user, blockedUserIds: ['u-2'] } }],
+        rowCount: 1,
+      };
+    }
+    if (sql.includes('select id, data from public.wigofly_users')) {
+      return {
+        rows: [{ id: 'u-2', data: { id: 'u-2', name: 'Karim' } }],
+        rowCount: 1,
+      };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+
+  const listed = await harness.writer.listBlocked({ user });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(listed.body.users.map(({ id }) => id), ['u-2']);
+
+  const unblocked = await harness.writer.unblockUser({
+    user,
+    otherId: 'u-2',
+  });
+  assert.equal(unblocked.status, 200);
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes("jsonb_array_elements_text")
+  ));
+  assert.ok(harness.queries.some(({ sql }) =>
+    sql.includes("'user.unblock'")
+    || (
+      sql.includes('insert into public.audit_logs')
+      && sql.includes('$2')
+    )
+  ));
+});

@@ -86,6 +86,7 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
           rows: [{
             conversation: row.conversation,
             message_count: 3,
+            reports: [{ id: 'cr-1', reason: 'Signalement conserve' }],
           }],
         };
       }
@@ -110,7 +111,9 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
   });
 
   assert.equal(archive.conversations[0].messageCount, 3);
+  assert.equal(archive.conversations[0].reports[0].id, 'cr-1');
   assert.equal(archive.messages[0].hiddenForParticipants, true);
   assert.equal(archive.total, 3);
+  assert.match(calls[0].sql, /wigofly_conversation_reports/);
   assert.match(calls[1].sql, /count\(\*\) over\(\)/);
 });

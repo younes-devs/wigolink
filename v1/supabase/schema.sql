@@ -163,6 +163,54 @@ create index if not exists wigofly_conversations_last_message_idx on public.wigo
 create index if not exists wigofly_conversations_operation_idx on public.wigofly_conversations ((data->>'operationId'));
 create index if not exists wigofly_conversations_participants_idx on public.wigofly_conversations using gin ((data->'participantIds'));
 
+create table if not exists public.wigofly_conversation_reports (
+  id text primary key,
+  conversation_id text not null references public.wigofly_conversations(id),
+  reporter_id text not null,
+  reason_code text not null,
+  reason text not null,
+  comment text,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists wigofly_conversation_reports_conversation_at_idx
+  on public.wigofly_conversation_reports (conversation_id, created_at desc);
+create index if not exists wigofly_conversation_reports_reporter_at_idx
+  on public.wigofly_conversation_reports (reporter_id, created_at desc);
+alter table public.wigofly_conversation_reports enable row level security;
+insert into public.wigofly_conversation_reports (
+  id,
+  conversation_id,
+  reporter_id,
+  reason_code,
+  reason,
+  comment,
+  data,
+  created_at
+)
+select
+  report->>'id',
+  conversation.id,
+  report->>'reporterId',
+  coalesce(nullif(report->>'reasonCode', ''), 'other'),
+  coalesce(report->>'reason', ''),
+  nullif(report->>'comment', ''),
+  report,
+  to_timestamp(
+    case
+      when coalesce(report->>'at', '') ~ '^[0-9]+([.][0-9]+)?$'
+      then (report->>'at')::double precision / 1000.0
+      else extract(epoch from conversation.created_at)
+    end
+  )
+from public.wigofly_conversations conversation
+cross join lateral jsonb_array_elements(
+  coalesce(conversation.data->'reports', '[]'::jsonb)
+) report
+where report ? 'id'
+  and report ? 'reporterId'
+on conflict (id) do nothing;
+
 create table if not exists public.wigofly_disputes (
   id text primary key,
   data jsonb not null,
@@ -243,7 +291,8 @@ create unique index if not exists messages_client_id_unique_idx
 
 revoke all on table public.wigofly_users, public.wigofly_trips, public.wigofly_listings,
   public.wigofly_transactions, public.wigofly_matching_offers, public.wigofly_saved_trips,
-  public.wigofly_conversations, public.wigofly_disputes, public.wigofly_review_queue,
+  public.wigofly_conversations, public.wigofly_conversation_reports,
+  public.wigofly_disputes, public.wigofly_review_queue,
   public.wigofly_kyc_submissions, public.wigofly_kyc_decisions, public.wigofly_custom_whitelist,
   public.wigofly_runtime_records from anon, authenticated;
 

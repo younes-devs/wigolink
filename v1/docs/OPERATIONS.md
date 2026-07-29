@@ -70,6 +70,12 @@ creation, son audit, la decision admin et une eventuelle levee de suspension
 sont transactionnels. Executer le backfill avant activation pour conserver les
 anciens recours dans les dossiers membres.
 
+Les signalements de conversation sont conserves sans limite fonctionnelle dans
+`wigofly_conversation_reports`, indexes par conversation et par auteur. La
+conversation active ne garde qu'un compteur et la date du dernier signalement:
+son enregistrement reste petit, tandis que l'historique complet demeure
+consultable dans le dossier administrateur.
+
 `LAZY_GLOBAL_STATE=true` evite de telecharger `wigofly_app_state` au demarrage
 de chaque fonction Vercel. Les routes relationnelles et les endpoints sans etat
 utilisent directement leurs tables ciblees; le document historique est charge
