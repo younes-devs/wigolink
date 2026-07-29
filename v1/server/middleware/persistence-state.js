@@ -11,6 +11,18 @@ const RELATIONAL_MESSAGE_WRITE_PATH = /^\/api\/conversations\/[^/]+(?:\/messages
 const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[^/]+\/attachments\/[^/]+$/;
 const RELATIONAL_OPERATION_WRITE_PATH = /^(?:\/api\/trips\/[^/]+\/accept|\/api\/operations\/[^/]+\/(?:pay|pickup-code|delivery-code|confirm-pickup|confirm-delivery|confirm|reject|cancel|dispute|evidence))$/;
 const RELATIONAL_AUTH_PATH = /^\/api\/auth\/(?:register|verify-email|resend-code|login|forgot|reset|logout)$/;
+const RELATIONAL_ACCOUNT_PATHS = new Set([
+  '/api/profile',
+  '/api/profile/photo',
+  '/api/profile/password',
+  '/api/profile/email/change/request',
+  '/api/profile/email/change/confirm',
+  '/api/settings',
+  '/api/onboarding/complete',
+  '/api/notifications',
+  '/api/notifications/read',
+  '/api/training/complete',
+]);
 
 export function isRelationalTripRead(req, relationalTripReadsEnabled) {
   return relationalTripReadsEnabled()
@@ -97,6 +109,11 @@ export function isRelationalAuthRequest(req, relationalAuthEnabled) {
     && RELATIONAL_AUTH_PATH.test(req.path);
 }
 
+export function isRelationalAccountRequest(req, relationalAuthEnabled) {
+  return relationalAuthEnabled()
+    && RELATIONAL_ACCOUNT_PATHS.has(req.path);
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -136,6 +153,7 @@ export function createPersistenceState({
         relationalOperationWritesEnabled,
       )
       || isRelationalAuthRequest(req, relationalAuthEnabled)
+      || isRelationalAccountRequest(req, relationalAuthEnabled)
     ) {
       return next();
     }

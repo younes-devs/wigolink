@@ -25,7 +25,7 @@ export function createAccountEmailService({
     if (newEmail === user.email) {
       return { status: 400, error: 'Utilisez une adresse email differente' };
     }
-    if (findByEmail(newEmail)) {
+    if (await findByEmail(newEmail)) {
       return {
         status: 400,
         error: 'Un compte utilise deja cette adresse email',
@@ -47,7 +47,7 @@ export function createAccountEmailService({
     } catch (error) {
       return { status: 503, error: error.message };
     }
-    confirmations.set(user.id, {
+    await confirmations.set(user.id, {
       type: 'change_email',
       newEmail,
       code,
@@ -63,7 +63,7 @@ export function createAccountEmailService({
   }
 
   async function confirmChange({ user, body }) {
-    const pending = confirmations.get(user.id);
+    const pending = await confirmations.get(user.id);
     const code = String(body?.code || '').trim();
     if (!pending || pending.type !== 'change_email' || pending.expires < now()) {
       return {
@@ -74,7 +74,7 @@ export function createAccountEmailService({
     if (pending.code !== code) {
       return { status: 400, error: 'Code incorrect' };
     }
-    if (findByEmail(pending.newEmail)) {
+    if (await findByEmail(pending.newEmail)) {
       return {
         status: 400,
         error: 'Cette adresse email est deja utilisee',
@@ -84,7 +84,7 @@ export function createAccountEmailService({
     const previousEmail = user.email;
     user.email = pending.newEmail;
     user.emailVerified = true;
-    confirmations.remove(user.id);
+    await confirmations.remove(user.id);
     await clearUserSessions(user.id);
     await auditChange({
       actorId: user.id,

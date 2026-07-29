@@ -114,3 +114,22 @@ test('auth relationnelle : lit aussi les anciennes cles avant de les migrer', as
   assert.equal(calls[0].params[0], 'password_reset');
   assert.equal(calls[0].params[1][1], 'member@example.test');
 });
+
+test('auth relationnelle : conserve l identifiant opaque des confirmations de compte', async () => {
+  const calls = [];
+  const repositories = createRelationalAuthRepositories({
+    getPool: () => poolWith((sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [], rowCount: 1 };
+    }),
+  });
+
+  await repositories.confirmations.set('u-1', {
+    type: 'change_email',
+    code: '123456',
+    expires: 20_000,
+  });
+
+  assert.equal(calls[0].params[0], 'account_confirmation');
+  assert.equal(calls[0].params[1], 'u-1');
+});

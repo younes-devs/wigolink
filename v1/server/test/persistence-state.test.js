@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createPersistenceState,
   isRelationalAuthRequest,
+  isRelationalAccountRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -218,6 +219,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     isRelationalAuthRequest({
       method: 'POST',
       path: '/api/profile',
+    }, enabled),
+    false,
+  );
+  assert.equal(
+    isRelationalAccountRequest({
+      method: 'POST',
+      path: '/api/profile/email/change/confirm',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAccountRequest({
+      method: 'POST',
+      path: '/api/profile/delete',
     }, enabled),
     false,
   );

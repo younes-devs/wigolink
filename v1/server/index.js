@@ -254,6 +254,7 @@ const authRepositories = relationalAuthEnabled()
       users: repositories.users,
       verifications: repositories.authVerifications,
       resets: repositories.authResets,
+      confirmations: repositories.accountConfirmations,
     };
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
@@ -620,10 +621,12 @@ app.use('/api/kyc', createKycRouter({
 
 // ---------- Profil ----------
 const accountEmailService = createAccountEmailService({
-  confirmations: repositories.accountConfirmations,
+  confirmations: authRepositories.confirmations,
   normalizeEmail: normEmail,
   emailPattern: EMAIL_RE,
-  findByEmail,
+  findByEmail: relationalAuthEnabled()
+    ? authRepositories.users.findByEmail
+    : findByEmail,
   verifyPassword,
   rateLimit,
   newCode: sixDigitCode,

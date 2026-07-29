@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 
 const EMAIL_VERIFICATION_KIND = 'email_verification';
 const PASSWORD_RESET_KIND = 'password_reset';
+const ACCOUNT_CONFIRMATION_KIND = 'account_confirmation';
 
 export function relationalAuthEnabled(env = process.env) {
   return env.RELATIONAL_AUTH === 'true';
@@ -25,6 +26,11 @@ export function createRelationalAuthRepositories({ getPool }) {
     resets: createRuntimeRepository({
       pool,
       kind: PASSWORD_RESET_KIND,
+    }),
+    confirmations: createRuntimeRepository({
+      pool,
+      kind: ACCOUNT_CONFIRMATION_KIND,
+      hashId: false,
     }),
   };
 }
@@ -99,10 +105,10 @@ function createRelationalUserRepository({ pool }) {
   };
 }
 
-function createRuntimeRepository({ pool, kind }) {
+function createRuntimeRepository({ pool, kind, hashId = true }) {
   return {
     async get(id) {
-      const ids = runtimeIds(id);
+      const ids = runtimeIds(id, { hashId });
       const result = await pool().query(
         `select id, data
          from public.wigofly_runtime_records
@@ -115,7 +121,7 @@ function createRuntimeRepository({ pool, kind }) {
     },
 
     async set(id, value) {
-      const ids = runtimeIds(id);
+      const ids = runtimeIds(id, { hashId });
       const expires = finiteExpiry(value);
       await pool().query(
         `insert into public.wigofly_runtime_records
@@ -141,14 +147,15 @@ function createRuntimeRepository({ pool, kind }) {
       await pool().query(
         `delete from public.wigofly_runtime_records
          where kind = $1 and id = any($2::text[])`,
-        [kind, runtimeIds(id)],
+        [kind, runtimeIds(id, { hashId })],
       );
     },
   };
 }
 
-function runtimeIds(value) {
+function runtimeIds(value, { hashId }) {
   const normalized = normalizeEmail(value);
+  if (!hashId) return [normalized, normalized];
   const hashed = crypto.createHash('sha256').update(normalized).digest('hex');
   return [hashed, normalized];
 }
