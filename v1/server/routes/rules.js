@@ -9,16 +9,25 @@ export function createRulesRouter({
 }) {
   const router = Router();
 
-  router.get('/', (req, res) => {
-    res.json({
-      whitelist: getWhitelist().map((category) => (
-        localizeCategory(category, req.lang)
-      )),
-      blacklist: blacklist.map((category) => (
-        localizeCategory(category, req.lang)
-      )),
-      customs: localizeCustoms(customs, req.lang),
-    });
+  router.get('/', async (req, res, next) => {
+    try {
+      const whitelist = await getWhitelist();
+      res.set(
+        'Cache-Control',
+        'public, s-maxage=60, stale-while-revalidate=300',
+      );
+      res.json({
+        whitelist: whitelist.map((category) => (
+          localizeCategory(category, req.lang)
+        )),
+        blacklist: blacklist.map((category) => (
+          localizeCategory(category, req.lang)
+        )),
+        customs: localizeCustoms(customs, req.lang),
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   return router;

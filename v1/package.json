@@ -24,6 +24,9 @@
     "migrate:locations:write": "node --env-file-if-exists=.env.local scripts/migrate-smart-location-search.mjs --write",
     "load:test": "node scripts/load-test.mjs",
     "load:authenticated": "node scripts/authenticated-load-test.mjs",
+    "fixture:scalability": "node scripts/scalability-fixture.mjs",
+    "fixture:scalability:cleanup": "node scripts/scalability-fixture.mjs --cleanup",
+    "explain:scalability": "node scripts/explain-scalability.mjs",
     "audit:production": "node scripts/audit-production.mjs"
   },
   "keywords": [],

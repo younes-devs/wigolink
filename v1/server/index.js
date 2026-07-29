@@ -59,6 +59,8 @@ import {
   relationalMemberRecords,
 } from './relational-member-records.js';
 import { relationalAdminOperationState } from './relational-admin-operations.js';
+import { relationalAuditLogs } from './relational-audit-logs.js';
+import { relationalCustomWhitelist } from './relational-rules.js';
 import { createRelationalAdminReview } from './relational-admin-review.js';
 import {
   rateRelationalOperation,
@@ -790,7 +792,14 @@ app.use('/api/training', createTrainingRouter({
 
 // ---------- Référentiels ----------
 app.use('/api/rules', createRulesRouter({
-  getWhitelist: combinedWhitelist,
+  getWhitelist: usesDatabase()
+    ? async () => [
+      ...WHITELIST,
+      ...await relationalCustomWhitelist({
+        pool: databasePool(),
+      }),
+    ]
+    : combinedWhitelist,
   blacklist: BLACKLIST,
   customs: CUSTOMS,
   localizeCategory,
@@ -1191,6 +1200,12 @@ const adminRecordService = createAdminRecordService({
     : null,
   kycMedia,
   auditLogsRepository: repositories.auditLogs,
+  loadAuditLogs: usesDatabase()
+    ? ({ limit }) => relationalAuditLogs({
+      pool: databasePool(),
+      limit,
+    })
+    : null,
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
   kycSlaMs: KYC_SLA_MS,
   loadMessageArchive: relationalMessageWritesEnabled()

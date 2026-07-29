@@ -147,6 +147,43 @@ un bloc `finally`. Lancer d'abord 20 a 30 requetes avec une concurrence de 4 ou
 5. Une charge plus forte en production exige une fenetre annoncee et une
 surveillance simultanee de Vercel Observability et Supabase.
 
+## Jeu de donnees de charge
+
+Ne jamais mesurer la scalabilite uniquement avec les quelques comptes de
+production. Le generateur cree un volume synthetique coherent dans une base de
+staging separee :
+
+```powershell
+$env:SCALABILITY_DATABASE_URL='postgresql://...base-staging...'
+$env:SCALABILITY_FIXTURE_CONFIRM='STAGING_ONLY'
+npm run fixture:scalability -- --profile=medium --run-id=release-20260729
+```
+
+Le profil `medium` cree 10 000 membres, 100 000 trajets, 50 000 operations,
+20 000 conversations et 500 000 messages. `small` sert aux verifications
+rapides; `large` exige une base de staging dimensionnee.
+
+Nettoyage cible du meme jeu :
+
+```powershell
+npm run fixture:scalability:cleanup -- --run-id=release-20260729
+```
+
+Le script exige `SCALABILITY_DATABASE_URL`, refuse `NODE_ENV=production` et
+`VERCEL_ENV=production`, et ne supprime que les lignes portant exactement le
+`fixtureRun` demande.
+
+Verifier ensuite les plans des lectures critiques :
+
+```powershell
+$env:SCALABILITY_MAX_QUERY_MS='250'
+npm run explain:scalability -- --run-id=release-20260729
+```
+
+Le rapport contient la latence PostgreSQL, les types de noeuds du plan et les
+scans sequentiels suspects. La commande echoue si une requete depasse le seuil;
+elle doit etre verte avant une campagne HTTP authentifiee sur le staging.
+
 ## Sauvegardes
 
 Avant une ouverture commerciale, activer les sauvegardes automatiques ou le

@@ -9,6 +9,7 @@ import {
   isRelationalKycRequest,
   isRelationalAdminMembersRequest,
   isRelationalAdminActionRequest,
+  isRelationalAdminAuditRequest,
   isRelationalSafetyAppealRequest,
   isGlobalStateFreeRequest,
   isRelationalMessageRead,
@@ -250,7 +251,14 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       method: 'GET',
       path: '/api/rules',
     }, enabled),
-    false,
+    true,
+  );
+  assert.equal(
+    isRelationalAdminAuditRequest({
+      method: 'GET',
+      path: '/api/admin/audit-logs',
+    }, enabled),
+    true,
   );
   assert.equal(
     isRelationalSafetyAppealRequest({

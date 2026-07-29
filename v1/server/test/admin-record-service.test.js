@@ -15,6 +15,7 @@ function createHarness({
   safetyAppeals = [],
   loadRelationalRecords = null,
   loadSafetyState = null,
+  loadAuditLogs = null,
 } = {}) {
   const db = {
     users,
@@ -58,6 +59,7 @@ function createHarness({
     now: () => NOW,
     loadRelationalRecords,
     loadSafetyState,
+    loadAuditLogs,
   });
   return { service };
 }
@@ -337,4 +339,21 @@ test('audit admin transmet la limite au dépôt', async () => {
     await service.auditLogs({ limit: '1' }),
     { logs: [{ id: 'one' }] },
   );
+});
+
+test('audit admin prefere la lecture relationnelle bornee', async () => {
+  const calls = [];
+  const { service } = createHarness({
+    auditLogs: [{ id: 'historical' }],
+    loadAuditLogs: async ({ limit }) => {
+      calls.push(limit);
+      return [{ id: 'relational' }];
+    },
+  });
+
+  assert.deepEqual(
+    await service.auditLogs({ limit: '25' }),
+    { logs: [{ id: 'relational' }] },
+  );
+  assert.deepEqual(calls, ['25']);
 });

@@ -9,6 +9,7 @@ export function createAdminRecordService({
   countVerifiedUsers = null,
   kycMedia = null,
   auditLogsRepository,
+  loadAuditLogs = null,
   messageSafetyWindowMs,
   kycSlaMs,
   loadMessageArchive = null,
@@ -308,9 +309,9 @@ export function createAdminRecordService({
 
   async function auditLogs(query = {}) {
     return {
-      logs: await auditLogsRepository.list({
-        limit: query.limit,
-      }),
+      logs: loadAuditLogs
+        ? await loadAuditLogs({ limit: query.limit })
+        : await auditLogsRepository.list({ limit: query.limit }),
     };
   }
 

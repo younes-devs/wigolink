@@ -32,6 +32,7 @@ async function requestRules({ lang = 'fr', getWhitelist }) {
     const response = await fetch(`http://127.0.0.1:${address.port}/api/rules`);
     return {
       status: response.status,
+      cacheControl: response.headers.get('cache-control'),
       body: await response.json(),
     };
   } finally {
@@ -51,6 +52,10 @@ test('rules routes localisent le catalogue et ne revelent pas les tables i18n', 
   });
 
   assert.equal(response.status, 200);
+  assert.equal(
+    response.cacheControl,
+    'public, s-maxage=60, stale-while-revalidate=300',
+  );
   assert.equal(response.body.whitelist[0].label, 'زيت أركان مختوم');
   assert.equal(response.body.blacklist[0].label, 'مكمّلات غذائية / كبسولات');
   assert.equal(response.body.customs['MA-EU'].label, 'المغرب ← أوروبا (بلجيكا)');
@@ -66,7 +71,7 @@ test('rules routes chargent la whitelist dynamique a chaque requete publique', a
     maxQty: '1 kg',
   };
   const response = await requestRules({
-    getWhitelist() {
+    async getWhitelist() {
       calls += 1;
       return [customCategory];
     },

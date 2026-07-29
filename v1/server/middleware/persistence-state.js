@@ -165,6 +165,12 @@ export function isRelationalAdminActionRequest(
     );
 }
 
+export function isRelationalAdminAuditRequest(req, relationalAuthEnabled) {
+  return relationalAuthEnabled()
+    && req.method === 'GET'
+    && req.path === '/api/admin/audit-logs';
+}
+
 export function isRelationalSafetyAppealRequest(
   req,
   relationalSafetyAppealsEnabled,
@@ -191,6 +197,7 @@ export function isGlobalStateFreeRequest(req, lazyGlobalStateEnabled) {
       || req.path === '/api/admin/observability'
       || req.path === '/api/admin/maintenance/capacity'
       || req.path === '/api/realtime'
+      || req.path === '/api/rules'
     )
   ) {
     return true;
@@ -247,6 +254,7 @@ export function createPersistenceState({
       || isRelationalKycRequest(req, relationalKycEnabled)
       || isRelationalAdminMembersRequest(req, relationalAdminMembersEnabled)
       || isRelationalAdminActionRequest(req, relationalAdminActionsEnabled)
+      || isRelationalAdminAuditRequest(req, relationalAuthEnabled)
       || isRelationalSafetyAppealRequest(req, relationalSafetyAppealsEnabled)
       || isGlobalStateFreeRequest(req, lazyGlobalStateEnabled)
     ) {
