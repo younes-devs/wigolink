@@ -252,7 +252,7 @@ test('file KYC calcule SLA et détail auditable', async () => {
   }];
   const { service } = createHarness({ users, kyc, decisions });
 
-  const list = service.kycList({ status: 'pending', q: 'alice' });
+  const list = await service.kycList({ status: 'pending', q: 'alice' });
   const detail = await service.kycDetail('kyc-new');
 
   assert.equal(list.submissions[0].overdue, true);

@@ -12,6 +12,7 @@ const RELATIONAL_MESSAGE_MEDIA_PATH = /^\/api\/conversations\/[^/]+\/messages\/[
 const RELATIONAL_OPERATION_WRITE_PATH = /^(?:\/api\/trips\/[^/]+\/accept|\/api\/operations\/[^/]+\/(?:pay|pickup-code|delivery-code|confirm-pickup|confirm-delivery|confirm|reject|cancel|dispute|evidence))$/;
 const RELATIONAL_AUTH_PATH = /^\/api\/auth\/(?:register|verify-email|resend-code|login|forgot|reset|logout)$/;
 const RELATIONAL_ACCOUNT_PATHS = new Set([
+  '/api/me',
   '/api/profile',
   '/api/profile/photo',
   '/api/profile/password',
@@ -120,6 +121,14 @@ export function isRelationalMaintenanceRequest(req, relationalAuthEnabled) {
     && req.path === '/api/cron/maintenance';
 }
 
+export function isRelationalKycRequest(req, relationalKycEnabled) {
+  return relationalKycEnabled()
+    && (
+      req.path === '/api/kyc/submit'
+      || /^\/api\/admin\/kyc(?:\/[^/]+(?:\/decide)?)?$/.test(req.path)
+    );
+}
+
 export function createPersistenceState({
   db,
   usesDatabase,
@@ -136,6 +145,7 @@ export function createPersistenceState({
   relationalNavigationEnabled = () => false,
   relationalPublicProfileReadsEnabled = () => false,
   relationalAuthEnabled = () => false,
+  relationalKycEnabled = () => false,
   snapshotRelationalTripState,
   syncRelationalTripState,
   logger = console,
@@ -161,6 +171,7 @@ export function createPersistenceState({
       || isRelationalAuthRequest(req, relationalAuthEnabled)
       || isRelationalAccountRequest(req, relationalAuthEnabled)
       || isRelationalMaintenanceRequest(req, relationalAuthEnabled)
+      || isRelationalKycRequest(req, relationalKycEnabled)
     ) {
       return next();
     }

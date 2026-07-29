@@ -1,7 +1,9 @@
 export function createAdminRecordService({
   db,
   findUser,
+  findKycUser = findUser,
   kycRepository,
+  countVerifiedUsers = null,
   kycMedia = null,
   auditLogsRepository,
   messageSafetyWindowMs,
@@ -131,8 +133,7 @@ export function createAdminRecordService({
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
     );
-    const kycRecords = kycRepository
-      .listForUser(user.id)
+    const kycRecords = (await kycRepository.listForUser(user.id))
       .sort((a, b) => b.submittedAt - a.submittedAt);
     const kyc = await Promise.all(kycRecords.map(async (submission) => ({
         id: submission.id,
@@ -255,7 +256,7 @@ export function createAdminRecordService({
         kycImagesAvailable: kyc.some(
           (submission) => !submission.documentsPurged,
         ),
-        note: 'Les documents KYC peuvent etre purges a l issue de la duree de conservation applicable. La trace de decision reste auditable.',
+        note: 'Les documents KYC et la trace de decision restent disponibles selon la politique de conservation juridique applicable.',
       },
     };
   }
@@ -286,9 +287,9 @@ export function createAdminRecordService({
     };
   }
 
-  function kycSummary(submission) {
-    const user = findUser(submission.userId);
-    const priorRejects = kycRepository.rejectedCountForUser(
+  async function kycSummary(submission) {
+    const user = await findKycUser(submission.userId);
+    const priorRejects = await kycRepository.rejectedCountForUser(
       submission.userId,
       { before: submission.submittedAt },
     );
@@ -318,12 +319,14 @@ export function createAdminRecordService({
     };
   }
 
-  function kycList(query = {}) {
+  async function kycList(query = {}) {
     const filter = query.status || 'pending';
     const q = String(query.q || '').toLowerCase().trim();
-    const list = kycRepository.list({ filter, q });
-    const pending = kycRepository.pending();
-    const reviewed = kycRepository.reviewed();
+    const [list, pending, reviewed] = await Promise.all([
+      kycRepository.list({ filter, q }),
+      kycRepository.pending(),
+      kycRepository.reviewed(),
+    ]);
     const avgReviewMs = reviewed.length
       ? reviewed.reduce(
         (sum, submission) =>
@@ -331,17 +334,18 @@ export function createAdminRecordService({
         0,
       ) / reviewed.length
       : null;
+    const verified = countVerifiedUsers
+      ? await countVerifiedUsers()
+      : db.users.filter((user) => user.kycStatus === 'verified').length;
     return {
-      submissions: list.map(kycSummary),
+      submissions: await Promise.all(list.map(kycSummary)),
       stats: {
         pending: pending.length,
         overdue: pending.filter(
           (submission) =>
             now() - submission.submittedAt > kycSlaMs,
         ).length,
-        verified: db.users.filter(
-          (user) => user.kycStatus === 'verified',
-        ).length,
+        verified,
         avgReviewHours:
           avgReviewMs !== null
             ? Math.round(avgReviewMs / 3600e3 * 10) / 10
@@ -351,18 +355,17 @@ export function createAdminRecordService({
   }
 
   async function kycDetail(id) {
-    const submission = kycRepository.findSubmission(id);
+    const submission = await kycRepository.findSubmission(id);
     if (!submission) {
       return response(404, { error: 'Demande introuvable' });
     }
-    const user = findUser(submission.userId);
-    const history = kycRepository
-      .historyForUser(submission.userId)
-      .map((decision) => ({
+    const user = await findKycUser(submission.userId);
+    const historyRecords = await kycRepository.historyForUser(submission.userId);
+    const history = await Promise.all(historyRecords.map(async (decision) => ({
         ...decision,
         adminName:
-          findUser(decision.adminId)?.name || decision.adminId,
-      }));
+          (await findKycUser(decision.adminId))?.name || decision.adminId,
+      })));
     return response(200, {
       submission: {
         ...submission,
@@ -379,7 +382,7 @@ export function createAdminRecordService({
             city: user.city,
           }
           : null,
-        priorRejects: kycRepository.rejectedCountForUser(
+        priorRejects: await kycRepository.rejectedCountForUser(
           submission.userId,
           { before: submission.submittedAt },
         ),

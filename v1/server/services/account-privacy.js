@@ -51,6 +51,7 @@ export function createAccountPrivacyService({
     const relational = loadRelationalRecords
       ? await loadRelationalRecords(userId)
       : null;
+    const kycSubmissions = await kyc.listForUser(userId);
     return {
       exportedAt: new Date(now()).toISOString(),
       user: userSafe,
@@ -69,7 +70,7 @@ export function createAccountPrivacyService({
       messages: await messages.listFromUser(userId),
       disputes: relational?.disputes
         || db.disputes.filter((dispute) => dispute.openedBy === userId),
-      kyc: kyc.listForUser(userId).map((submission) => ({
+      kyc: kycSubmissions.map((submission) => ({
         id: submission.id,
         submittedAt: submission.submittedAt,
         status: submission.status,
@@ -125,7 +126,6 @@ export function createAccountPrivacyService({
     user.provider = 'deleted';
     user.deletedAt = now();
     confirmations.remove(userId);
-    kyc.purgeSensitiveForUser(userId);
     await clearUserSessions(userId);
     await auditChange({
       actorId: userId,

@@ -27,8 +27,8 @@ export function createAdminRecordsRouter({
     res.json(await adminRecords.auditLogs(req.query));
   });
 
-  router.get('/admin/kyc', ...protect, (req, res) => {
-    res.json(adminRecords.kycList(req.query));
+  router.get('/admin/kyc', ...protect, async (req, res) => {
+    res.json(await adminRecords.kycList(req.query));
   });
 
   router.get('/admin/kyc/:id', ...protect, async (req, res) => {

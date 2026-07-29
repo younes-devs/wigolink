@@ -49,6 +49,13 @@ remise/livraison, annulation, litige et preuves. PostgreSQL verrouille seulement
 la ligne concernee avec `FOR UPDATE`; une relance de demande sur le meme trajet
 retourne l'operation active existante au lieu d'en creer une seconde.
 
+`RELATIONAL_KYC=true` active le depot, la consultation et les decisions KYC
+relationnels. Ne l'activer qu'apres `npm run migrate:relational:verify`.
+La soumission et le statut membre sont ecrits dans une meme transaction; une
+decision admin conserve atomiquement le dossier, le statut membre et son
+historique. Une suppression de compte anonymise le compte mais ne supprime pas
+automatiquement les preuves KYC.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

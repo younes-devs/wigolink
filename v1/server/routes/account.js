@@ -7,7 +7,7 @@ export function createAccountRouter({
 }) {
   const router = Router();
 
-  router.get('/me', auth, (req, res) => {
+  router.get('/me', auth, async (req, res) => {
     res.json({
       user: publicUser(req.user),
       email: req.user.email,
@@ -17,7 +17,7 @@ export function createAccountRouter({
       maxActive: req.user.maxActive,
       trainingDone: !!req.user.trainingDone,
       kycStatus: req.user.kycStatus,
-      kyc: kycUserView(req.user),
+      kyc: await kycUserView(req.user),
     });
   });
 

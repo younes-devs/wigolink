@@ -1,6 +1,7 @@
 export function createAdminActionService({
   db,
   findUser,
+  findKycUser = findUser,
   activeSession,
   userView,
   reviewQueue,
@@ -10,7 +11,11 @@ export function createAdminActionService({
   notify,
   audit,
   save,
+  saveKyc = save,
   newId,
+  persistUser = null,
+  persistKyc = null,
+  persistKycDecision = null,
   now = Date.now,
 }) {
   function response(status, body) {
@@ -249,7 +254,7 @@ export function createAdminActionService({
   }
 
   async function decideKyc(actor, submissionId, body = {}) {
-    const submission = kycRepository.findSubmission(submissionId);
+    const submission = await kycRepository.findSubmission(submissionId);
     if (!submission) {
       return response(404, { error: 'Demande introuvable' });
     }
@@ -272,7 +277,7 @@ export function createAdminActionService({
       });
     }
 
-    const user = findUser(submission.userId);
+    const user = await findKycUser(submission.userId);
     if (!user) {
       return response(404, { error: 'Utilisateur introuvable' });
     }
@@ -281,62 +286,55 @@ export function createAdminActionService({
     submission.reviewedBy = actor.id;
     submission.reviewedAt = now();
     submission.decisionReason = cleanReason;
+    let notification;
 
     if (decision === 'approve') {
       submission.status = 'approved';
       user.kycStatus = 'verified';
-      await notify(
-        [user.id],
-        { key: 'kyc.verified' },
-        null,
-        'security',
-      );
+      notification = { key: 'kyc.verified' };
     } else if (decision === 'reject') {
       submission.status = 'rejected';
-      const rejectedCount = kycRepository.rejectedCountForUser(
+      const rejectedCount = await kycRepository.rejectedCountForUser(
         user.id,
       );
       if (rejectedCount >= maxKycAttempts) {
         user.kycStatus = 'refused';
-        await notify(
-          [user.id],
-          { key: 'kyc.refusedFinal' },
-          null,
-          'security',
-        );
+        notification = { key: 'kyc.refusedFinal' };
       } else {
         user.kycStatus = 'rejected';
-        await notify(
-          [user.id],
-          {
-            key: 'kyc.rejected',
-            params: { reason: cleanReason },
-          },
-          null,
-          'security',
-        );
+        notification = {
+          key: 'kyc.rejected',
+          params: { reason: cleanReason },
+        };
       }
     } else {
       submission.status = 'refused';
       user.kycStatus = 'refused';
-      await notify(
-        [user.id],
-        {
-          key: 'kyc.refused',
-          params: { reason: cleanReason },
-        },
-        null,
-        'security',
-      );
+      notification = {
+        key: 'kyc.refused',
+        params: { reason: cleanReason },
+      };
     }
 
-    kycRepository.appendDecision({
+    const decisionRecord = {
       submissionId: submission.id,
       userId: user.id,
       adminId: actor.id,
       decision,
       reason: cleanReason,
-    });
+    };
+    if (persistKycDecision) {
+      await persistKycDecision({
+        submission,
+        user,
+        decision: decisionRecord,
+      });
+    } else {
+      await kycRepository.appendDecision(decisionRecord);
+      if (persistKyc) await persistKyc(submission);
+      if (persistUser) await persistUser(user);
+    }
+    await notify([user.id], notification, null, 'security');
     await audit(
       actor.id,
       `kyc.${decision}`,
@@ -348,7 +346,7 @@ export function createAdminActionService({
         reason: cleanReason,
       },
     );
-    save();
+    await saveKyc();
     return response(200, {
       ok: true,
       status: user.kycStatus,

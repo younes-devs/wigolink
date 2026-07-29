@@ -9,6 +9,7 @@ export function createKycRouter({
   kycUserView,
   validPhotos,
   maxAttempts,
+  persistUser = null,
   validateSubmission = validateKycSubmission,
 }) {
   const router = Router();
@@ -31,7 +32,7 @@ export function createKycRouter({
       return res.status(validation.status).json({ error: validation.error });
     }
 
-    const rejectedCount = kycRepository.rejectedCountForUser(req.user.id);
+    const rejectedCount = await kycRepository.rejectedCountForUser(req.user.id);
     if (rejectedCount >= maxAttempts) {
       return res.status(403).json({
         error: 'Nombre maximum de tentatives atteint — contactez le support',
@@ -49,14 +50,21 @@ export function createKycRouter({
           idFrontPhoto: validation.value.idFrontPhoto,
           idBackPhoto: validation.value.idBackPhoto,
         };
-      kycRepository.appendSubmission({
+      const submissionData = {
         userId: req.user.id,
         ...validation.value,
         ...storedPhotos,
-      });
+      };
+      const previousUser = { ...req.user };
       req.user.kycStatus = 'pending';
+      if (typeof kycRepository.submitForUser === 'function') {
+        await kycRepository.submitForUser(submissionData, req.user);
+      } else {
+        await kycRepository.appendSubmission(submissionData);
+        if (persistUser) await persistUser(req.user, previousUser);
+      }
       await save();
-      return res.json({ kyc: kycUserView(req.user) });
+      return res.json({ kyc: await kycUserView(req.user) });
     } catch {
       return res.status(503).json({
         error: 'Le stockage securise des documents est temporairement indisponible',

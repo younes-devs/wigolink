@@ -286,7 +286,7 @@ test('account privacy utilise les dossiers relationnels pour export et suppressi
   assert.match(blocked.error, /2 transaction/);
 });
 
-test('account privacy service anonymise, purge, invalide, audite puis sauvegarde', async () => {
+test('account privacy anonymise le compte mais conserve les preuves KYC', async () => {
   const user = member();
   let auditPayload;
   const { service, db, events, confirmations } = createHarness({
@@ -319,7 +319,6 @@ test('account privacy service anonymise, purge, invalide, audite puis sauvegarde
   assert.deepEqual(events, [
     'confirmation:get',
     'confirmation:remove',
-    'kyc:purge',
     'sessions',
     'audit',
     'save',

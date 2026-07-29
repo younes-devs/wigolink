@@ -60,7 +60,7 @@ export function createAdminFraudService({
       (transactions) => ({ transactionCount: transactions.length }),
     );
     const disputesByUser = relational?.disputeCounts || disputeCounts();
-    const kycRejections = kycRepository.rejectionCountsByUser();
+    const kycRejections = await kycRepository.rejectionCountsByUser();
     const humanMembers = members();
     return {
       linkedAccounts:
@@ -191,7 +191,7 @@ export function createAdminFraudService({
       );
 
     const kycRepeatRejections = Object.entries(
-      kycRepository.rejectionCountsByUser(),
+      await kycRepository.rejectionCountsByUser(),
     )
       .filter(([, count]) => count >= 2)
       .map(([userId, count]) => {

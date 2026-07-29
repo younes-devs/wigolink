@@ -6,6 +6,7 @@ import {
   isRelationalAuthRequest,
   isRelationalAccountRequest,
   isRelationalMaintenanceRequest,
+  isRelationalKycRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -188,6 +189,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     isRelationalTripMutation({
       method: 'POST',
       path: '/api/trips',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalKycRequest({
+      method: 'POST',
+      path: '/api/kyc/submit',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalKycRequest({
+      method: 'POST',
+      path: '/api/admin/kyc/kyc-1/decide',
     }, enabled),
     true,
   );

@@ -67,6 +67,10 @@ import {
   createRelationalAuthRepositories,
   relationalAuthEnabled,
 } from './relational-auth-repositories.js';
+import {
+  createRelationalKycRepository,
+  relationalKycEnabled,
+} from './relational-kyc.js';
 import { relationalId } from './relational-id.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
@@ -219,6 +223,7 @@ app.use(createPersistenceState({
   relationalNavigationEnabled,
   relationalPublicProfileReadsEnabled,
   relationalAuthEnabled,
+  relationalKycEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -251,6 +256,9 @@ const { repositories } = createPersistence({ db, save, newId, findUser, publicUs
 const relationalAuthRepositories = createRelationalAuthRepositories({
   getPool: databasePool,
 });
+const relationalKycRepository = createRelationalKycRepository({
+  getPool: databasePool,
+});
 const authRepositories = relationalAuthEnabled()
   ? relationalAuthRepositories
   : {
@@ -259,6 +267,9 @@ const authRepositories = relationalAuthEnabled()
       resets: repositories.authResets,
       confirmations: repositories.accountConfirmations,
     };
+const kycRepository = relationalKycEnabled()
+  ? relationalKycRepository
+  : repositories.kyc;
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
   messages: true,
@@ -611,8 +622,8 @@ app.use('/api', createAccountSettingsRouter({
 const MAX_KYC_ATTEMPTS = 3; // au-delà de 3 rejets, passage automatique en 'refused'
 
 // Vue KYC côté utilisateur : sa demande active, sans exposer les décisions internes.
-function kycUserView(user) {
-  const mine = repositories.kyc.listForUser(user.id);
+async function kycUserView(user) {
+  const mine = await kycRepository.listForUser(user.id);
   const latest = mine[0] || null;
   const rejectedCount = mine.filter((s) => s.status === 'rejected').length;
   return {
@@ -627,9 +638,12 @@ function kycUserView(user) {
 
 app.use('/api/kyc', createKycRouter({
   auth,
-  kycRepository: repositories.kyc,
+  kycRepository,
   kycMedia,
-  save,
+  save: relationalKycEnabled() ? async () => {} : save,
+  persistUser: relationalKycEnabled()
+    ? (user, before) => authRepositories.users.updateChanged(user, before)
+    : null,
   kycUserView,
   validPhotos,
   maxAttempts: MAX_KYC_ATTEMPTS,
@@ -671,7 +685,7 @@ const accountPrivacyService = createAccountPrivacyService({
   db,
   confirmations: repositories.accountConfirmations,
   messages: repositories.messages,
-  kyc: repositories.kyc,
+  kyc: kycRepository,
   rateLimit,
   newCode: sixDigitCode,
   deliverCode: deliverAuthCode,
@@ -1050,7 +1064,7 @@ const adminFraudService = createAdminFraudService({
   db,
   findUser,
   messagesRepository: repositories.messages,
-  kycRepository: repositories.kyc,
+  kycRepository,
   loadRelationalFraudState: usesDatabase()
     ? () => relationalAdminFraudState({
       pool: databasePool(),
@@ -1089,7 +1103,13 @@ app.use('/api', createAdminOperationsRouter({
 const adminRecordService = createAdminRecordService({
   db,
   findUser,
-  kycRepository: repositories.kyc,
+  findKycUser: relationalKycEnabled()
+    ? authRepositories.users.findById
+    : findUser,
+  kycRepository,
+  countVerifiedUsers: relationalKycEnabled()
+    ? () => kycRepository.verifiedUserCount()
+    : null,
   kycMedia,
   auditLogsRepository: repositories.auditLogs,
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
@@ -1119,16 +1139,29 @@ app.use('/api', createAdminRecordsRouter({
 const adminActionService = createAdminActionService({
   db,
   findUser,
+  findKycUser: relationalKycEnabled()
+    ? authRepositories.users.findById
+    : findUser,
   activeSession,
   userView: adminRecordService.userView,
   reviewQueue: repositories.reviewQueue,
   customWhitelist: repositories.customWhitelist,
-  kycRepository: repositories.kyc,
+  kycRepository,
   maxKycAttempts: MAX_KYC_ATTEMPTS,
   notify,
   audit,
   save,
+  saveKyc: relationalKycEnabled() ? async () => {} : save,
   newId,
+  persistUser: relationalKycEnabled()
+    ? (user) => authRepositories.users.update(user)
+    : null,
+  persistKyc: relationalKycEnabled()
+    ? (submission) => kycRepository.updateSubmission(submission)
+    : null,
+  persistKycDecision: relationalKycEnabled()
+    ? (record) => kycRepository.commitDecision(record)
+    : null,
 });
 
 app.use('/api', createAdminActionsRouter({
