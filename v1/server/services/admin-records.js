@@ -2,6 +2,9 @@ export function createAdminRecordService({
   db,
   findUser,
   findKycUser = findUser,
+  loadUsers = null,
+  loadUser = null,
+  loadUsersByIds = null,
   kycRepository,
   countVerifiedUsers = null,
   kycMedia = null,
@@ -54,7 +57,14 @@ export function createAdminRecordService({
     };
   }
 
-  function users(query = {}) {
+  async function users(query = {}) {
+    if (loadUsers) {
+      const result = await loadUsers(query);
+      return {
+        users: result.users.map(userView),
+        adminCount: result.adminCount,
+      };
+    }
     const needle = String(query.q || '').trim().toLowerCase();
     const members = db.users
       .filter(
@@ -118,6 +128,22 @@ export function createAdminRecordService({
           (message) => conversationIds.has(message.conversationId),
         )
         .sort((a, b) => b.at - a.at);
+    const relatedUserIds = new Set([user.id]);
+    for (const conversation of conversations) {
+      for (const id of conversation.participantIds || []) relatedUserIds.add(id);
+    }
+    for (const message of allMessages) {
+      if (message.from) relatedUserIds.add(message.from);
+    }
+    const relatedUsers = loadUsersByIds
+      ? await loadUsersByIds([...relatedUserIds])
+      : [];
+    const usersById = new Map([
+      ...(db.users || []).map((member) => [member.id, member]),
+      ...relatedUsers.map((member) => [member.id, member]),
+      [user.id, user],
+    ]);
+    const caseUser = (id) => usersById.get(id) || null;
     const messageTotal = relationalArchive?.total ?? allMessages.length;
     const transactions = (relationalRecords?.transactions || db.transactions)
       .filter(
@@ -172,9 +198,9 @@ export function createAdminRecordService({
         return {
           id: message.id,
           conversationId: message.conversationId,
-          from: caseParticipant(findUser(message.from)),
+          from: caseParticipant(caseUser(message.from)),
           to: recipientIds
-            .map((id) => caseParticipant(findUser(id)))
+            .map((id) => caseParticipant(caseUser(id)))
             .filter(Boolean),
           text: message.text || '',
           type: message.type || 'text',
@@ -230,7 +256,7 @@ export function createAdminRecordService({
         tripId: conversation.tripId || null,
         operationId: conversation.operationId || null,
         participants: conversation.participantIds
-          .map((id) => caseParticipant(findUser(id))),
+          .map((id) => caseParticipant(caseUser(id))),
         reports: conversation.reports || [],
         messageCount: conversation.messageCount
           ?? allMessages.filter(
@@ -262,7 +288,7 @@ export function createAdminRecordService({
   }
 
   async function caseFile(id, query = {}) {
-    const user = findUser(id);
+    const user = loadUser ? await loadUser(id) : findUser(id);
     if (!user) {
       return response(404, { error: 'Membre introuvable' });
     }

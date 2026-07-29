@@ -60,7 +60,7 @@ function createHarness({
   return { service };
 }
 
-test('admin users filtre, trie et ne projette aucun secret', () => {
+test('admin users filtre, trie et ne projette aucun secret', async () => {
   const users = [
     {
       id: 'member',
@@ -83,7 +83,7 @@ test('admin users filtre, trie et ne projette aucun secret', () => {
   ];
   const { service } = createHarness({ users });
 
-  const result = service.users();
+  const result = await service.users();
 
   assert.deepEqual(result.users.map((user) => user.id), [
     'admin-deleted',
@@ -93,7 +93,7 @@ test('admin users filtre, trie et ne projette aucun secret', () => {
   assert.equal('passwordHash' in result.users[1], false);
   assert.equal('sessionToken' in result.users[1], false);
   assert.deepEqual(
-    service.users({ q: 'paris' }).users.map((user) => user.id),
+    (await service.users({ q: 'paris' })).users.map((user) => user.id),
     ['member'],
   );
 });

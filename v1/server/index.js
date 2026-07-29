@@ -71,6 +71,11 @@ import {
   createRelationalKycRepository,
   relationalKycEnabled,
 } from './relational-kyc.js';
+import {
+  relationalAdminMembersEnabled,
+  relationalAdminUsers,
+  relationalAdminUsersByIds,
+} from './relational-admin-members.js';
 import { relationalId } from './relational-id.js';
 import { adminOnly } from './middleware/admin-only.js';
 import { createSecurityHeaders } from './middleware/security-headers.js';
@@ -224,6 +229,7 @@ app.use(createPersistenceState({
   relationalPublicProfileReadsEnabled,
   relationalAuthEnabled,
   relationalKycEnabled,
+  relationalAdminMembersEnabled,
   snapshotRelationalTripState,
   syncRelationalTripState,
 }));
@@ -1103,6 +1109,22 @@ app.use('/api', createAdminOperationsRouter({
 const adminRecordService = createAdminRecordService({
   db,
   findUser,
+  loadUsers: relationalAdminMembersEnabled()
+    ? (query) => relationalAdminUsers({
+      pool: databasePool(),
+      q: query.q,
+      limit: 100,
+    })
+    : null,
+  loadUser: relationalAdminMembersEnabled()
+    ? authRepositories.users.findById
+    : null,
+  loadUsersByIds: relationalAdminMembersEnabled()
+    ? (ids) => relationalAdminUsersByIds({
+      pool: databasePool(),
+      ids,
+    })
+    : null,
   findKycUser: relationalKycEnabled()
     ? authRepositories.users.findById
     : findUser,

@@ -7,6 +7,7 @@ import {
   isRelationalAccountRequest,
   isRelationalMaintenanceRequest,
   isRelationalKycRequest,
+  isRelationalAdminMembersRequest,
   isRelationalMessageRead,
   isRelationalMessageWrite,
   isRelationalNavigationRead,
@@ -196,6 +197,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     isRelationalKycRequest({
       method: 'POST',
       path: '/api/kyc/submit',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAdminMembersRequest({
+      method: 'GET',
+      path: '/api/admin/users/u-1/case-file',
     }, enabled),
     true,
   );

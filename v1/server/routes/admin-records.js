@@ -12,8 +12,8 @@ export function createAdminRecordsRouter({
     return res.status(result.status).json(result.body);
   }
 
-  router.get('/admin/users', ...protect, (req, res) => {
-    res.json(adminRecords.users(req.query));
+  router.get('/admin/users', ...protect, async (req, res) => {
+    res.json(await adminRecords.users(req.query));
   });
 
   router.get('/admin/users/:id/case-file', ...protect, async (req, res) => {

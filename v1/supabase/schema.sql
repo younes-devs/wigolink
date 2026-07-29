@@ -78,6 +78,8 @@ create index if not exists messages_sender_at_idx on public.messages (from_id, a
 -- Normalized application records. Every entity keeps its full historical payload in
 -- data while the indexes below support the query patterns used by the API. This
 -- permits a gradual, verified migration away from the single app-state document.
+create extension if not exists pg_trgm;
+
 create table if not exists public.wigofly_users (
   id text primary key,
   data jsonb not null,
@@ -86,6 +88,19 @@ create table if not exists public.wigofly_users (
 );
 create unique index if not exists wigofly_users_email_idx on public.wigofly_users ((lower(data->>'email'))) where data ? 'email';
 create index if not exists wigofly_users_kyc_idx on public.wigofly_users ((data->>'kycStatus'));
+create index if not exists wigofly_users_admin_created_idx
+  on public.wigofly_users (
+    (coalesce((data->>'isAdmin')::boolean, false)),
+    (coalesce((data->>'createdAt')::bigint, 0)) desc
+  );
+create index if not exists wigofly_users_search_trgm_idx
+  on public.wigofly_users using gin (
+    (lower(
+      coalesce(data->>'name', '') || ' '
+      || coalesce(data->>'email', '') || ' '
+      || coalesce(data->>'city', '')
+    )) gin_trgm_ops
+  );
 
 create table if not exists public.wigofly_trips (
   id text primary key,
@@ -96,7 +111,6 @@ create table if not exists public.wigofly_trips (
 create index if not exists wigofly_trips_traveler_date_idx on public.wigofly_trips ((data->>'travelerId'), (data->>'date'));
 create index if not exists wigofly_trips_route_date_idx on public.wigofly_trips ((lower(data->>'from')), (lower(data->>'to')), (data->>'date'));
 create index if not exists wigofly_trips_feed_idx on public.wigofly_trips ((coalesce(data->>'status', 'published')), (coalesce(data->>'departureDate', data->>'date')));
-create extension if not exists pg_trgm;
 create index if not exists wigofly_trips_from_location_idx on public.wigofly_trips ((data->>'fromLocationId')) where data ? 'fromLocationId';
 create index if not exists wigofly_trips_to_location_idx on public.wigofly_trips ((data->>'toLocationId')) where data ? 'toLocationId';
 create index if not exists wigofly_trips_from_trgm_idx on public.wigofly_trips using gin ((data->>'from') gin_trgm_ops);
