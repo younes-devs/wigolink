@@ -171,6 +171,15 @@ export function isRelationalAdminAuditRequest(req, relationalAuthEnabled) {
     && req.path === '/api/admin/audit-logs';
 }
 
+export function isRelationalAdminDashboardRequest(
+  req,
+  relationalAdminDashboardEnabled,
+) {
+  return relationalAdminDashboardEnabled()
+    && req.method === 'GET'
+    && /^\/api\/admin\/(?:overview|ops|kpis|fraud)$/.test(req.path);
+}
+
 export function isRelationalSafetyAppealRequest(
   req,
   relationalSafetyAppealsEnabled,
@@ -224,6 +233,7 @@ export function createPersistenceState({
   relationalKycEnabled = () => false,
   relationalAdminMembersEnabled = () => false,
   relationalAdminActionsEnabled = () => false,
+  relationalAdminDashboardEnabled = () => false,
   relationalSafetyAppealsEnabled = () => false,
   lazyGlobalStateEnabled = () => false,
   snapshotRelationalTripState,
@@ -255,6 +265,10 @@ export function createPersistenceState({
       || isRelationalAdminMembersRequest(req, relationalAdminMembersEnabled)
       || isRelationalAdminActionRequest(req, relationalAdminActionsEnabled)
       || isRelationalAdminAuditRequest(req, relationalAuthEnabled)
+      || isRelationalAdminDashboardRequest(
+        req,
+        relationalAdminDashboardEnabled,
+      )
       || isRelationalSafetyAppealRequest(req, relationalSafetyAppealsEnabled)
       || isGlobalStateFreeRequest(req, lazyGlobalStateEnabled)
     ) {

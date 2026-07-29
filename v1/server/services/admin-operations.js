@@ -8,27 +8,30 @@ export function createAdminOperationsService({
   localeForLang,
   kycSlaMs,
   loadRelationalOperationState = null,
+  loadRelationalKpis = null,
   now = Date.now,
 }) {
   async function summary() {
     const relational = loadRelationalOperationState
       ? await loadRelationalOperationState()
       : null;
-    const historicalReviewOpen = repositories.reviewQueue.open();
     const reviewOpen = relational
-      ? [
-        ...historicalReviewOpen.filter((item) => item.type !== 'dispute'),
-        ...relational.reviewQueue,
-      ]
-      : historicalReviewOpen;
+      ? relational.reviewQueue
+      : repositories.reviewQueue.open();
     const reviewDisputes = reviewOpen.filter((item) => item.type === 'dispute');
     const reviewListings = reviewOpen.filter((item) => item.type === 'listing');
     const reviewConversations = reviewOpen.filter((item) => item.type === 'conversation');
-    const pendingKyc = repositories.kyc.pending();
+    const pendingKyc = relational
+      ? relational.pendingKyc
+      : await repositories.kyc.pending();
     const overdueKyc = pendingKyc.filter((submission) => now() - submission.submittedAt > kycSlaMs);
     const operationDisputes = relational?.disputes || db.disputes;
-    const openDisputes = operationDisputes.filter((dispute) => dispute.status === 'open');
-    const flaggedMessages = await repositories.messages.flagged();
+    const openDisputes = relational
+      ? relational.stats.openDisputes
+      : operationDisputes.filter((dispute) => dispute.status === 'open').length;
+    const flaggedMessageCount = relational
+      ? relational.stats.flaggedMessages
+      : (await repositories.messages.flagged()).length;
     const simulatedHeld = relational
       ? relational.stats.escrowHeld
       : db.transactions
@@ -87,8 +90,8 @@ export function createAdminOperationsService({
         conversationReports: reviewConversations.length,
         kycPending: pendingKyc.length,
         kycOverdue: overdueKyc.length,
-        openDisputes: openDisputes.length,
-        flaggedMessages: flaggedMessages.length,
+        openDisputes,
+        flaggedMessages: flaggedMessageCount,
         escrowHeld: simulatedHeld,
         riskSignals: riskCount,
       },
@@ -104,18 +107,21 @@ export function createAdminOperationsService({
             createdAt: item.createdAt,
             refId: item.refId,
             label: item.type === 'listing'
-              ? db.listings.find((listing) => listing.id === item.refId)?.title
+              ? item.listing?.title
+                || db.listings.find((listing) => listing.id === item.refId)?.title
               : item.type === 'dispute'
-                ? operationDisputes.find((dispute) => dispute.id === item.refId)?.reason
-                : adminConversationModerationView(
-                  db.conversations.find((conversation) => conversation.id === item.refId),
-                )?.reports?.[0]?.reason,
+                ? item.dispute?.reason
+                  || operationDisputes.find((dispute) => dispute.id === item.refId)?.reason
+                : item.conversation?.reports?.[0]?.reason
+                  || adminConversationModerationView(
+                    db.conversations.find((conversation) => conversation.id === item.refId),
+                  )?.reports?.[0]?.reason,
           })),
         kyc: pendingKyc
           .sort((left, right) => left.submittedAt - right.submittedAt)
           .slice(0, 5)
           .map((submission) => {
-            const user = findUser(submission.userId);
+            const user = submission.user || findUser(submission.userId);
             return {
               id: submission.id,
               legalName: submission.legalName,
@@ -133,50 +139,52 @@ export function createAdminOperationsService({
       ? await loadRelationalOperationState()
       : null;
     const operationDisputes = relational?.disputes || db.disputes;
-    const historicalReviewOpen = repositories.reviewQueue.open();
     const reviewQueue = relational
-      ? [
-        ...historicalReviewOpen.filter((item) => item.type !== 'dispute'),
-        ...relational.reviewQueue,
-      ]
-      : historicalReviewOpen;
+      ? relational.reviewQueue
+      : repositories.reviewQueue.open();
     return {
       reviewQueue: reviewQueue.map((item) => ({
         ...item,
         listing: item.type === 'listing'
-          ? db.listings.find((listing) => listing.id === item.refId)
+          ? item.listing
+            || db.listings.find((listing) => listing.id === item.refId)
           : null,
         dispute: item.type === 'dispute'
           ? (() => {
-            const dispute = operationDisputes.find((candidate) => candidate.id === item.refId);
+            const dispute = item.dispute
+              || operationDisputes.find((candidate) => candidate.id === item.refId);
             return dispute ? disputeView(dispute) : null;
           })()
           : null,
         conversation: item.type === 'conversation'
-          ? adminConversationModerationView(
-            db.conversations.find((conversation) => conversation.id === item.refId),
-          )
+          ? item.conversation
+            || adminConversationModerationView(
+              db.conversations.find((conversation) => conversation.id === item.refId),
+            )
           : null,
       })),
       stats: {
-        users: db.users.length,
-        listings: db.listings.length,
+        users: relational?.stats.users ?? db.users.length,
+        listings: relational?.stats.listings ?? db.listings.length,
         transactions: relational?.stats.transactions ?? db.transactions.length,
         released: relational?.stats.released
           ?? db.transactions.filter((transaction) => transaction.status === 'released').length,
         disputed: relational?.stats.disputed
           ?? db.transactions.filter((transaction) => transaction.status === 'disputed').length,
-        flaggedMessages: (await repositories.messages.flagged()).length,
+        flaggedMessages: relational?.stats.flaggedMessages
+          ?? (await repositories.messages.flagged()).length,
         escrowHeld: relational?.stats.escrowHeld ?? db.transactions
           .filter((transaction) => ['held', 'frozen'].includes(transaction.escrow?.state))
           .reduce((total, transaction) => total + transaction.escrow.amount, 0),
       },
       disputes: operationDisputes,
-      customWhitelist: repositories.customWhitelist.all(),
+      customWhitelist: relational?.customWhitelist
+        ?? repositories.customWhitelist.all(),
     };
   }
 
   async function kpis(lang) {
+    if (loadRelationalKpis) return loadRelationalKpis(lang);
     const currentTime = now();
     const dayMs = 864e5;
     const released = db.transactions.filter((transaction) => transaction.status === 'released');

@@ -89,6 +89,11 @@ uniquement lorsqu'une route encore non migree en a besoin. Ne l'activer qu'une
 fois `RELATIONAL_AUTH`, les lectures/ecritures metier, KYC et les actions admin
 actives.
 
+Les lectures du tableau de bord admin (`overview`, `ops`, `kpis` et `fraud`)
+utilisent des agregats SQL et des listes bornees. Les onglets Fraude, Membres et
+Securite sont charges uniquement a leur ouverture. Ils ne doivent jamais etre
+remplaces par une lecture complete de `wigofly_app_state`.
+
 ## Images de conversation
 
 Les nouvelles images sont stockees dans le bucket prive

@@ -5,7 +5,7 @@ import { SkeletonList, SkeletonStatGrid } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { t, useLang } from '../../../i18n.js';
 import {
-  AccessPanel, CategoriesPanel, ConversationReviewCard, FraudPanel, KpiPanel, KycPanel,
+  AccessPanel, ConversationReviewCard, FraudPanel, KycPanel,
   ListingReviewCard, MembersPanel, OpsPanel, SafetyPanel,
 } from '../components/AdminPanels.jsx';
 
@@ -13,6 +13,12 @@ import {
 // pour qu'un admin sache qu'il y a quelque chose à regarder sans devoir cliquer à l'aveugle.
 function fraudSignalCount(f) {
   if (!f) return 0;
+  if (!Array.isArray(f.linkedAccounts)) {
+    return Object.values(f).reduce(
+      (total, value) => total + (Number(value) || 0),
+      0,
+    );
+  }
   return f.linkedAccounts.length + f.repeatPairs.length + f.flaggedMessaging.length
     + f.abnormalCancel.length + f.disputeProne.length + f.kycRepeatRejections.length;
 }
@@ -21,12 +27,11 @@ export default function Admin() {
   useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('ops'); // ops | review | kyc | kpis | fraud | safety | categories | access
+  const [tab, setTab] = useState('ops');
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
-  const [kycPending, setKycPending] = useState(null);
   const [team, setTeam] = useState(null);
   const [safety, setSafety] = useState(null);
   const toast = useToast();
@@ -49,14 +54,15 @@ export default function Admin() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadOps(); }, [loadOps]);
-  // Chargés au montage (pas seulement à l'ouverture de l'onglet) pour pouvoir afficher un
-  // badge de compte sur les boutons "Fraude" et "Identités" — un admin ne devrait pas avoir
-  // à cliquer à l'aveugle pour découvrir qu'il y a quelque chose à traiter. Requête légère,
-  // découplée du fetch propre à KycPanel (filtres/recherche) qui reste inchangé.
-  useEffect(() => { loadFraud(); }, [loadFraud]);
-  useEffect(() => { loadTeam(); }, [loadTeam]);
-  useEffect(() => { loadSafety(); }, [loadSafety]);
-  useEffect(() => { api('/admin/kyc?status=pending').then((d) => setKycPending(d.stats?.pending ?? 0)).catch(() => {}); }, []);
+  useEffect(() => {
+    if (tab === 'fraud' && !fraud) loadFraud();
+  }, [tab, fraud, loadFraud]);
+  useEffect(() => {
+    if (['members', 'access'].includes(tab) && !team) loadTeam();
+  }, [tab, team, loadTeam]);
+  useEffect(() => {
+    if (tab === 'safety' && !safety) loadSafety();
+  }, [tab, safety, loadSafety]);
 
   const decide = async (id, decision, extra = {}) => {
     await api(`/admin/review/${id}`, { method: 'POST', body: { decision, ...extra } });
@@ -77,7 +83,9 @@ export default function Admin() {
     );
   }
 
-  const { stats, reviewQueue, customWhitelist } = data;
+  const { stats, reviewQueue } = data;
+  const fraudBadgeCount = fraudSignalCount(fraud || ops?.risk);
+  const kycPending = ops?.health?.kycPending || 0;
 
   return (
     <div>
@@ -95,7 +103,7 @@ export default function Admin() {
           {t('admin.tab.identities')} {kycPending > 0 ? `(${kycPending})` : ''}
         </button>
         <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
-          {t('admin.tab.fraud')} {fraudSignalCount(fraud) > 0 ? `(${fraudSignalCount(fraud)})` : ''}
+          {t('admin.tab.fraud')} {fraudBadgeCount > 0 ? `(${fraudBadgeCount})` : ''}
         </button>
         <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}>
           {t('admin.tab.safety')} {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
@@ -161,10 +169,8 @@ export default function Admin() {
       )}
 
       {tab === 'kyc' && <KycPanel />}
-      {tab === 'kpis' && <KpiPanel />}
       {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
       {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
-      {tab === 'categories' && <CategoriesPanel customWhitelist={customWhitelist} reload={load} />}
       {tab === 'members' && <MembersPanel data={team} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
     </div>

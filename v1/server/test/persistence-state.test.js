@@ -10,6 +10,7 @@ import {
   isRelationalAdminMembersRequest,
   isRelationalAdminActionRequest,
   isRelationalAdminAuditRequest,
+  isRelationalAdminDashboardRequest,
   isRelationalSafetyAppealRequest,
   isGlobalStateFreeRequest,
   isRelationalMessageRead,
@@ -259,6 +260,20 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
       path: '/api/admin/audit-logs',
     }, enabled),
     true,
+  );
+  assert.equal(
+    isRelationalAdminDashboardRequest({
+      method: 'GET',
+      path: '/api/admin/overview',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAdminDashboardRequest({
+      method: 'POST',
+      path: '/api/admin/overview',
+    }, enabled),
+    false,
   );
   assert.equal(
     isRelationalSafetyAppealRequest({

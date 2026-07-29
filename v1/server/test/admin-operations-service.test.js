@@ -99,3 +99,23 @@ test('admin operations kpis garde les calculs bornes et la langue demandee', asy
   assert.equal(result.kpis.desintermediationRate.value, 0.1);
   assert.equal(result.kpis.avgMatchHours.value, 24);
 });
+
+test('admin operations kpis prefere le calcul relationnel', async () => {
+  const expected = { totals: { users: 50 }, kpis: {} };
+  const relationalService = createAdminOperationsService({
+    db: {},
+    repositories: {},
+    adminFraud: {},
+    findUser: () => null,
+    adminConversationModerationView: () => null,
+    disputeView: (value) => value,
+    localeForLang: () => 'fr-FR',
+    kycSlaMs: 24 * 3600e3,
+    loadRelationalKpis: async (lang) => {
+      assert.equal(lang, 'fr');
+      return expected;
+    },
+  });
+
+  assert.deepEqual(await relationalService.kpis('fr'), expected);
+});

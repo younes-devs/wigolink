@@ -58,7 +58,10 @@ import {
   relationalActiveOperationCount,
   relationalMemberRecords,
 } from './relational-member-records.js';
-import { relationalAdminOperationState } from './relational-admin-operations.js';
+import {
+  relationalAdminKpis,
+  relationalAdminOperationState,
+} from './relational-admin-operations.js';
 import { relationalAuditLogs } from './relational-audit-logs.js';
 import { relationalCustomWhitelist } from './relational-rules.js';
 import { createRelationalAdminReview } from './relational-admin-review.js';
@@ -251,6 +254,9 @@ app.use(createPersistenceState({
   relationalKycEnabled,
   relationalAdminMembersEnabled,
   relationalAdminActionsEnabled,
+  relationalAdminDashboardEnabled: () => (
+    usesDatabase() && relationalAuthEnabled()
+  ),
   relationalSafetyAppealsEnabled,
   lazyGlobalStateEnabled,
   snapshotRelationalTripState,
@@ -1162,6 +1168,12 @@ const adminOperationsService = createAdminOperationsService({
   loadRelationalOperationState: usesDatabase()
     ? () => relationalAdminOperationState({
       pool: databasePool(),
+    })
+    : null,
+  loadRelationalKpis: usesDatabase()
+    ? (lang) => relationalAdminKpis({
+      pool: databasePool(),
+      locale: localeForLang(lang),
     })
     : null,
 });

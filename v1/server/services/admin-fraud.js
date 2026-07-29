@@ -56,6 +56,7 @@ export function createAdminFraudService({
     const relational = loadRelationalFraudState
       ? await loadRelationalFraudState()
       : null;
+    if (relational?.summary) return relational.summary;
     const pairCounts = relational?.repeatPairs || Object.values(transactionPairs()).map(
       (transactions) => ({ transactionCount: transactions.length }),
     );
@@ -86,6 +87,7 @@ export function createAdminFraudService({
     const relational = loadRelationalFraudState
       ? await loadRelationalFraudState()
       : null;
+    if (relational?.details) return relational.details;
     const linkedAccounts = [
       ...groupedMembers('phone').map(
         ([value, users]) => ({ signal: 'phone', value, users }),

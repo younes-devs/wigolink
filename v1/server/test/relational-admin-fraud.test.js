@@ -7,18 +7,49 @@ test('fraude relationnelle utilise des agregats bornes', async () => {
   const responses = [
     {
       rows: [{
+        signal: 'phone',
+        value: '0600000000',
+        users: [
+          { id: 'u-1', name: 'Alice' },
+          { id: 'u-2', name: 'Bob' },
+        ],
+      }],
+    },
+    {
+      rows: [{
         first_user_id: 'u-1',
         second_user_id: 'u-2',
+        first_name: 'Alice',
+        second_name: 'Bob',
         transaction_count: 4,
         disputed_count: 2,
         total_value_eur: 42.5,
       }],
     },
+    { rows: [{ user_id: 'u-1', name: 'Alice', count: 3 }] },
+    {
+      rows: [{
+        data: {
+          id: 'u-3',
+          name: 'Charlie',
+          completed: 4,
+          cancelRate: 0.5,
+        },
+      }],
+    },
     {
       rows: [
-        { user_id: 'u-1', dispute_count: 3 },
-        { user_id: 'u-2', dispute_count: 2 },
+        { user_id: 'u-1', name: 'Alice', dispute_count: 3 },
+        { user_id: 'u-2', name: 'Bob', dispute_count: 2 },
       ],
+    },
+    {
+      rows: [{
+        user_id: 'u-2',
+        name: 'Bob',
+        current_status: 'rejected',
+        rejection_count: 2,
+      }],
     },
   ];
   const result = await relationalAdminFraudState({
@@ -30,18 +61,24 @@ test('fraude relationnelle utilise des agregats bornes', async () => {
     },
   });
 
-  assert.deepEqual(result.repeatPairs, [{
-    firstUserId: 'u-1',
-    secondUserId: 'u-2',
+  assert.deepEqual(result.details.repeatPairs, [{
+    users: [
+      { id: 'u-1', name: 'Alice' },
+      { id: 'u-2', name: 'Bob' },
+    ],
     transactionCount: 4,
     disputedCount: 2,
     totalValueEur: 42.5,
   }]);
-  assert.deepEqual(result.disputeCounts, {
-    'u-1': 3,
-    'u-2': 2,
+  assert.deepEqual(result.summary, {
+    linkedAccounts: 1,
+    repeatPairs: 1,
+    flaggedMessaging: 1,
+    abnormalCancel: 1,
+    disputeProne: 2,
+    kycRepeatRejections: 1,
   });
-  assert.match(calls[0], /having count\(\*\) >= 2/);
-  assert.match(calls[0], /limit 500/);
-  assert.match(calls[1], /select distinct user_id/);
+  assert.match(calls[0], /member_signals/);
+  assert.match(calls[1], /having count\(\*\) >= 2/);
+  assert.match(calls[4], /select distinct user_id/);
 });
