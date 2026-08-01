@@ -1255,6 +1255,7 @@ const adminRecordService = createAdminRecordService({
     ? (userId) => relationalMemberRecords({
       pool: databasePool(),
       userId,
+      limit: 100,
     })
     : null,
 });

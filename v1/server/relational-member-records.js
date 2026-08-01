@@ -1,33 +1,57 @@
 import { transactionParticipantFilter } from './relational-sql.js';
 
-export async function relationalMemberRecords({ pool, userId }) {
-  const result = await pool.query(
+export async function relationalMemberRecords({ pool, userId, limit = null }) {
+  const boundedLimit = limit === null
+    ? null
+    : Math.max(1, Math.min(500, Number(limit) || 100));
+  const [result, totalsResult] = await Promise.all([
+    pool.query(
     `select
        coalesce((
          select jsonb_agg(t.data order by t.created_at desc)
-         from public.wigofly_trips t
-         where t.data->>'travelerId' = $1
+         from (
+           select data, created_at
+           from public.wigofly_trips
+           where data->>'travelerId' = $1
+           order by created_at desc
+           limit $2
+         ) t
        ), '[]'::jsonb) as trips,
        coalesce((
          select jsonb_agg(l.data order by l.created_at desc)
-         from public.wigofly_listings l
-         where l.data->>'senderId' = $1
+         from (
+           select data, created_at
+           from public.wigofly_listings
+           where data->>'senderId' = $1
+           order by created_at desc
+           limit $2
+         ) l
        ), '[]'::jsonb) as listings,
        coalesce((
          select jsonb_agg(tx.data order by tx.created_at desc)
-         from public.wigofly_transactions tx
-         where ${transactionParticipantFilter('$1')}
+         from (
+           select data, created_at
+           from public.wigofly_transactions tx
+           where ${transactionParticipantFilter('$1')}
+           order by created_at desc
+           limit $2
+         ) tx
        ), '[]'::jsonb) as transactions,
        coalesce((
          select jsonb_agg(d.data order by d.created_at desc)
-         from public.wigofly_disputes d
-         where d.data->>'openedBy' = $1
-            or exists (
-              select 1
-              from public.wigofly_transactions tx
-              where tx.id = d.data->>'txId'
-                and ${transactionParticipantFilter('$1')}
-            )
+         from (
+           select data, created_at
+           from public.wigofly_disputes d
+           where d.data->>'openedBy' = $1
+              or exists (
+                select 1
+                from public.wigofly_transactions tx
+                where tx.id = d.data->>'txId'
+                  and ${transactionParticipantFilter('$1')}
+              )
+           order by created_at desc
+           limit $2
+         ) d
        ), '[]'::jsonb) as disputes,
        coalesce((
          select jsonb_agg(
@@ -50,18 +74,47 @@ export async function relationalMemberRecords({ pool, userId }) {
            from public.notifications
            where user_id = $1
            order by at desc
-           limit 100
+           limit $2
          ) n
        ), '[]'::jsonb) as notifications,
        coalesce((
          select jsonb_agg(queue.data order by queue.created_at desc)
-         from public.wigofly_review_queue queue
-         where queue.data->>'type' = 'safety_appeal'
-           and queue.data->>'userId' = $1
+         from (
+           select data, created_at
+           from public.wigofly_review_queue
+           where data->>'type' = 'safety_appeal'
+             and data->>'userId' = $1
+           order by created_at desc
+           limit $2
+         ) queue
        ), '[]'::jsonb) as safety_appeals`,
-    [userId],
-  );
+    [userId, boundedLimit],
+    ),
+    boundedLimit === null ? Promise.resolve(null) : pool.query(
+      `select
+         (select count(*)::int from public.wigofly_trips
+          where data->>'travelerId' = $1) as trips,
+         (select count(*)::int from public.wigofly_listings
+          where data->>'senderId' = $1) as listings,
+         (select count(*)::int from public.wigofly_transactions tx
+          where ${transactionParticipantFilter('$1')}) as transactions,
+         (select count(*)::int from public.wigofly_disputes d
+          where d.data->>'openedBy' = $1
+             or exists (
+               select 1 from public.wigofly_transactions tx
+               where tx.id = d.data->>'txId'
+                 and ${transactionParticipantFilter('$1')}
+             )) as disputes,
+         (select count(*)::int from public.notifications
+          where user_id = $1) as notifications,
+         (select count(*)::int from public.wigofly_review_queue
+          where data->>'type' = 'safety_appeal'
+            and data->>'userId' = $1) as safety_appeals`,
+      [userId],
+    ),
+  ]);
   const row = result.rows[0] || {};
+  const totals = totalsResult?.rows[0] || null;
   return {
     trips: asArray(row.trips),
     listings: asArray(row.listings),
@@ -69,6 +122,14 @@ export async function relationalMemberRecords({ pool, userId }) {
     disputes: asArray(row.disputes),
     notifications: asArray(row.notifications),
     safetyAppeals: asArray(row.safety_appeals),
+    totals: totals ? {
+      trips: Number(totals.trips || 0),
+      listings: Number(totals.listings || 0),
+      transactions: Number(totals.transactions || 0),
+      disputes: Number(totals.disputes || 0),
+      notifications: Number(totals.notifications || 0),
+      safetyAppeals: Number(totals.safety_appeals || 0),
+    } : null,
   };
 }
 

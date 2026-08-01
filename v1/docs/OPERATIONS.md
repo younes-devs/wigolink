@@ -196,6 +196,11 @@ d'audit, y compris l'archive de messages d'un membre. La commande echoue si
 une requete depasse le seuil; elle doit etre
 verte avant une campagne HTTP authentifiee sur le staging.
 
+Le dossier membre admin charge au maximum 100 lignes recentes par categorie
+et affiche des totaux calcules en SQL. Les donnees plus anciennes restent en
+base et les messages sont accessibles page par page. L'export de donnees du
+membre n'applique pas cette limite d'affichage.
+
 ## Sauvegardes
 
 Avant une ouverture commerciale, activer les sauvegardes automatiques ou le

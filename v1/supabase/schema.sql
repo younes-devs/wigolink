@@ -115,6 +115,7 @@ create table if not exists public.wigofly_trips (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_trips_traveler_date_idx on public.wigofly_trips ((data->>'travelerId'), (data->>'date'));
+create index if not exists wigofly_trips_traveler_created_idx on public.wigofly_trips ((data->>'travelerId'), created_at desc, id asc);
 create index if not exists wigofly_trips_route_date_idx on public.wigofly_trips ((lower(data->>'from')), (lower(data->>'to')), (data->>'date'));
 create index if not exists wigofly_trips_feed_idx on public.wigofly_trips ((coalesce(data->>'status', 'published')), (coalesce(data->>'departureDate', data->>'date')));
 create index if not exists wigofly_trips_from_location_idx on public.wigofly_trips ((data->>'fromLocationId')) where data ? 'fromLocationId';
@@ -129,6 +130,7 @@ create table if not exists public.wigofly_listings (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_listings_sender_status_idx on public.wigofly_listings ((data->>'senderId'), (data->>'status'));
+create index if not exists wigofly_listings_sender_created_idx on public.wigofly_listings ((data->>'senderId'), created_at desc, id asc);
 create index if not exists wigofly_listings_route_status_idx on public.wigofly_listings ((lower(data->>'from')), (lower(data->>'to')), (data->>'status'));
 
 create table if not exists public.wigofly_transactions (
@@ -258,6 +260,7 @@ create table if not exists public.wigofly_disputes (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_disputes_tx_status_idx on public.wigofly_disputes ((data->>'txId'), (data->>'status'));
+create index if not exists wigofly_disputes_opened_created_idx on public.wigofly_disputes ((data->>'openedBy'), created_at desc, id asc);
 
 create table if not exists public.wigofly_review_queue (
   id text primary key,
@@ -266,6 +269,9 @@ create table if not exists public.wigofly_review_queue (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_review_queue_status_created_idx on public.wigofly_review_queue ((data->>'status'), created_at desc);
+create index if not exists wigofly_review_queue_safety_user_created_idx
+  on public.wigofly_review_queue ((data->>'userId'), created_at desc, id asc)
+  where data->>'type' = 'safety_appeal';
 create unique index if not exists wigofly_review_queue_open_safety_user_idx
   on public.wigofly_review_queue ((data->>'userId'))
   where data->>'type' = 'safety_appeal' and data->>'status' = 'open';

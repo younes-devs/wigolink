@@ -297,6 +297,18 @@ export function createAdminRecordService({
       safetyAppeals: (relationalRecords?.safetyAppeals || db.safetyAppeals || [])
         .filter((appeal) => appeal.userId === user.id)
         .sort((a, b) => b.createdAt - a.createdAt),
+      recordTotals: relationalRecords?.totals || {
+        trips: (relationalRecords?.trips || db.trips).filter(
+          (trip) => trip.travelerId === user.id,
+        ).length,
+        listings: (relationalRecords?.listings || db.listings).filter(
+          (listing) => listing.senderId === user.id,
+        ).length,
+        transactions: transactions.length,
+        disputes: (relationalRecords?.disputes || db.disputes).filter(
+          (dispute) => transactionIds.has(dispute.txId),
+        ).length,
+      },
       auditLogs,
       retention: {
         kycImagesAvailable: kyc.some(
