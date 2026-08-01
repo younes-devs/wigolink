@@ -291,6 +291,24 @@ function createKycRepository({ db, newId, findUser }) {
       return submissions().filter((s) => s.reviewedAt);
     },
 
+    stats({ now = Date.now(), slaMs = 0 } = {}) {
+      const all = submissions();
+      const pending = all.filter((submission) => submission.status === 'pending');
+      const reviewed = all.filter((submission) => submission.reviewedAt);
+      return {
+        pending: pending.length,
+        overdue: pending.filter(
+          (submission) => now - submission.submittedAt > slaMs,
+        ).length,
+        avgReviewMs: reviewed.length
+          ? reviewed.reduce(
+            (sum, submission) => sum + submission.reviewedAt - submission.submittedAt,
+            0,
+          ) / reviewed.length
+          : null,
+      };
+    },
+
     list({ filter = 'pending', q = '' } = {}) {
       const statusMap = { pending: 'pending', verified: 'approved', rejected: 'rejected', refused: 'refused' };
       let list = [...submissions()];
@@ -312,7 +330,8 @@ function createKycRepository({ db, newId, findUser }) {
     historyForUser(userId) {
       return decisions()
         .filter((d) => d.userId === userId)
-        .sort((a, b) => b.at - a.at);
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 100);
     },
 
     appendDecision({ submissionId, userId, adminId, decision, reason, at = Date.now() }) {

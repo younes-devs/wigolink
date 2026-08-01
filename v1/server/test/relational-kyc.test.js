@@ -63,6 +63,46 @@ test('KYC relationnel liste et compte uniquement le membre demande', async () =>
   assert.deepEqual(calls[1].params, ['u-1', 20]);
 });
 
+test('KYC relationnel agrege la file sans charger les dossiers complets', async () => {
+  const calls = [];
+  const repository = createRelationalKycRepository({
+    getPool: () => directPool((sql, params) => {
+      calls.push({ sql, params });
+      return {
+        rows: [{ pending: 320, overdue: 18, avg_review_ms: '7200000' }],
+      };
+    }),
+  });
+
+  const stats = await repository.stats({ now: 20_000, slaMs: 5_000 });
+
+  assert.deepEqual(stats, {
+    pending: 320,
+    overdue: 18,
+    avgReviewMs: 7_200_000,
+  });
+  assert.deepEqual(calls[0].params, [15_000]);
+  assert.match(calls[0].sql, /count\(\*\) filter/);
+  assert.doesNotMatch(calls[0].sql, /select id, data/);
+});
+
+test('KYC relationnel retire les photos de la file et borne l historique', async () => {
+  const calls = [];
+  const repository = createRelationalKycRepository({
+    getPool: () => directPool((sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [] };
+    }),
+  });
+
+  await repository.list({ filter: 'pending' });
+  await repository.historyForUser('u-1');
+
+  assert.match(calls[0].sql, /- 'selfiePhoto'/);
+  assert.match(calls[0].sql, /- 'idFrontPhoto'/);
+  assert.match(calls[1].sql, /limit 100/);
+});
+
 test('soumission KYC et statut membre sont atomiques', async () => {
   const calls = [];
   const repository = createRelationalKycRepository({

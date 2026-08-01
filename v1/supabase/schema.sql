@@ -293,6 +293,8 @@ create table if not exists public.wigofly_kyc_decisions (
   updated_at timestamptz not null default now()
 );
 create index if not exists wigofly_kyc_decisions_submission_idx on public.wigofly_kyc_decisions ((data->>'submissionId'));
+create index if not exists wigofly_kyc_decisions_user_at_idx
+  on public.wigofly_kyc_decisions ((data->>'userId'), ((data->>'at')::bigint) desc, id asc);
 
 create table if not exists public.wigofly_custom_whitelist (
   id text primary key,

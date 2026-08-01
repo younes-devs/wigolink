@@ -143,11 +143,47 @@ export function createRelationalKycRepository({ getPool }) {
       return result.rows.map(hydrate);
     },
 
+    async stats({ now = Date.now(), slaMs = 0 } = {}) {
+      const overdueBefore = Number(now) - Math.max(0, Number(slaMs) || 0);
+      const result = await pool().query(
+        `select
+           count(*) filter (
+             where data->>'status' = 'pending'
+           )::int as pending,
+           count(*) filter (
+             where data->>'status' = 'pending'
+               and coalesce((data->>'submittedAt')::bigint, 0) < $1
+           )::int as overdue,
+           avg(
+             case
+               when nullif(data->>'reviewedAt', '') is not null
+               then (data->>'reviewedAt')::bigint
+                  - (data->>'submittedAt')::bigint
+             end
+           ) as avg_review_ms
+         from public.wigofly_kyc_submissions`,
+        [overdueBefore],
+      );
+      const row = result.rows[0] || {};
+      return {
+        pending: Number(row.pending || 0),
+        overdue: Number(row.overdue || 0),
+        avgReviewMs: row.avg_review_ms === null
+          || row.avg_review_ms === undefined
+          ? null
+          : Number(row.avg_review_ms),
+      };
+    },
+
     async list({ filter = 'pending', q = '' } = {}) {
       const status = filter === 'all' ? null : STATUS_BY_FILTER[filter] || 'pending';
       const needle = String(q || '').trim().toLowerCase();
       const result = await pool().query(
-        `select submission.id, submission.data
+        `select submission.id,
+                submission.data
+                  - 'selfiePhoto'
+                  - 'idFrontPhoto'
+                  - 'idBackPhoto' as data
          from public.wigofly_kyc_submissions submission
          left join public.wigofly_users member
            on member.id = submission.data->>'userId'
@@ -186,7 +222,8 @@ export function createRelationalKycRepository({ getPool }) {
         `select id, data
          from public.wigofly_kyc_decisions
          where data->>'userId' = $1
-         order by coalesce((data->>'at')::bigint, 0) desc`,
+         order by coalesce((data->>'at')::bigint, 0) desc
+         limit 100`,
         [String(userId)],
       );
       return result.rows.map(hydrate);

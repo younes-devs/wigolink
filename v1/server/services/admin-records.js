@@ -389,33 +389,37 @@ export function createAdminRecordService({
   async function kycList(query = {}) {
     const filter = query.status || 'pending';
     const q = String(query.q || '').toLowerCase().trim();
-    const [list, pending, reviewed] = await Promise.all([
+    const [list, aggregate] = await Promise.all([
       kycRepository.list({ filter, q }),
-      kycRepository.pending(),
-      kycRepository.reviewed(),
+      kycRepository.stats
+        ? kycRepository.stats({ now: now(), slaMs: kycSlaMs })
+        : Promise.all([
+          kycRepository.pending(),
+          kycRepository.reviewed(),
+        ]).then(([pending, reviewed]) => ({
+          pending: pending.length,
+          overdue: pending.filter(
+            (submission) => now() - submission.submittedAt > kycSlaMs,
+          ).length,
+          avgReviewMs: reviewed.length
+            ? reviewed.reduce(
+              (sum, submission) => sum + submission.reviewedAt - submission.submittedAt,
+              0,
+            ) / reviewed.length
+            : null,
+        })),
     ]);
-    const avgReviewMs = reviewed.length
-      ? reviewed.reduce(
-        (sum, submission) =>
-          sum + (submission.reviewedAt - submission.submittedAt),
-        0,
-      ) / reviewed.length
-      : null;
     const verified = countVerifiedUsers
       ? await countVerifiedUsers()
       : db.users.filter((user) => user.kycStatus === 'verified').length;
     return {
       submissions: await Promise.all(list.map(kycSummary)),
       stats: {
-        pending: pending.length,
-        overdue: pending.filter(
-          (submission) =>
-            now() - submission.submittedAt > kycSlaMs,
-        ).length,
+        pending: aggregate.pending,
+        overdue: aggregate.overdue,
         verified,
-        avgReviewHours:
-          avgReviewMs !== null
-            ? Math.round(avgReviewMs / 3600e3 * 10) / 10
+        avgReviewHours: aggregate.avgReviewMs !== null
+            ? Math.round(aggregate.avgReviewMs / 3600e3 * 10) / 10
             : null,
       },
     };
