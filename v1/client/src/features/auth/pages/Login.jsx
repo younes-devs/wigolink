@@ -88,17 +88,14 @@ export default function Login() {
   });
 
   const submitGoogle = (credential) => run(async () => {
-    if (mode === 'register' && !cguAccepted) {
-      throw new Error(t('err.cgu.required'));
-    }
     try {
       const data = await api('/auth/google', {
         method: 'POST',
         body: {
           credential,
           rememberMe,
-          allowRegistration: mode === 'register',
-          cguAccepted: mode === 'register' && cguAccepted,
+          allowRegistration: true,
+          cguAccepted: true,
         },
       });
       finishAuth(data);
@@ -203,6 +200,19 @@ export default function Login() {
 
           {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
           {hint && <div className="alert alert-teal"><Icon name="mail" size={17} />{hint}</div>}
+
+          {(mode === 'login' || mode === 'register') && (
+            <div className="auth-google-block">
+              <GoogleSignInButton
+                mode={mode}
+                disabled={busy}
+                onCredential={submitGoogle}
+                onError={showGoogleError}
+              />
+              <GoogleConsent />
+              <div className="auth-sep">{t('auth.or.email')}</div>
+            </div>
+          )}
 
           {mode === 'login' && (
             <div className="auth-form">
@@ -312,18 +322,6 @@ export default function Login() {
                 {busy ? <span className="spinner" /> : t('auth.register.submit')}
               </button>
             </div>
-          )}
-
-          {(mode === 'login' || mode === 'register') && (
-            <>
-              <div className="auth-sep">{t('auth.or.email')}</div>
-              <GoogleSignInButton
-                mode={mode}
-                disabled={busy || (mode === 'register' && !cguAccepted)}
-                onCredential={submitGoogle}
-                onError={showGoogleError}
-              />
-            </>
           )}
 
           {mode === 'verify' && (
@@ -494,6 +492,19 @@ function CguText() {
         return part;
       })}
     </span>
+  );
+}
+
+function GoogleConsent() {
+  const parts = t('auth.google.consent').split(/(\{cgu\}|\{privacy\})/);
+  return (
+    <p className="auth-google-consent">
+      {parts.map((part, index) => {
+        if (part === '{cgu}') return <Link key={index} to="/cgu" target="_blank">{t('auth.cgu.link')}</Link>;
+        if (part === '{privacy}') return <Link key={index} to="/confidentialite" target="_blank">{t('auth.privacy.link')}</Link>;
+        return part;
+      })}
+    </p>
   );
 }
 

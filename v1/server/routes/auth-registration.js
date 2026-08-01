@@ -157,7 +157,10 @@ export function createAuthRegistrationRouter({
       return res.status(401).json({ error: 'Authentification Google invalide.' });
     }
 
-    let user = await users.findByEmail(identity.email);
+    let user = typeof users.findByGoogleSubject === 'function'
+      ? await users.findByGoogleSubject(identity.subject)
+      : null;
+    if (!user) user = await users.findByEmail(identity.email);
     if (!user) {
       if (req.body.allowRegistration !== true) {
         return res.status(404).json({

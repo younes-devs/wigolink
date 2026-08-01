@@ -61,11 +61,12 @@ export default function GoogleSignInButton({
         containerRef.current.replaceChildren();
         google.accounts.id.renderButton(containerRef.current, {
           type: 'standard',
-          theme: 'outline',
+          theme: 'filled_black',
           size: 'large',
           shape: 'rectangular',
           text: mode === 'register' ? 'signup_with' : 'continue_with',
           width: Math.min(400, Math.max(240, containerRef.current.clientWidth)),
+          logo_alignment: 'left',
           locale: document.documentElement.lang || 'fr',
         });
       })

@@ -145,7 +145,9 @@ export function createAuthAccessRouter({
         message: 'Mot de passe mis a jour. Verifiez maintenant votre adresse email pour acceder a l application.',
       });
     }
-    return openSession(res, user, req);
+    return openSession(res, user, req, {
+      rememberMe: req.body.rememberMe === true,
+    });
   });
 
   router.post('/logout', auth, async (req, res) => {

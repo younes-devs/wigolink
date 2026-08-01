@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
-import { Avatar, Icon } from '../../../Icons.jsx';
+import { Avatar, GoogleLogo, Icon } from '../../../Icons.jsx';
 import { getTheme, setTheme } from '../../../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../../../i18n.js';
 
@@ -11,7 +11,7 @@ const SUPPORT_EMAIL = 'support@wigolink.com';
 
 export default function Settings() {
   useLang();
-  const { user, logout } = useAuth();
+  const { user, login, logout } = useAuth();
   const [me, setMe] = useState(null);
   const [section, setSection] = useState('');
   const [modal, setModal] = useState('');
@@ -19,6 +19,11 @@ export default function Settings() {
   useEffect(() => { api('/me').then(setMe).catch(() => {}); }, []);
 
   const closeModal = () => setModal('');
+  const completePasswordSetup = (data) => {
+    login(data.token, data.user);
+    setMe((current) => ({ ...current, user: data.user, hasPassword: true }));
+    closeModal();
+  };
   const account = me?.user || user;
 
   if (section) {
@@ -36,7 +41,8 @@ export default function Settings() {
         <h1>{detail.title}</h1>
         {detail.content}
         {modal === 'password' && <PasswordModal onClose={closeModal} onDone={logout} />}
-        {modal === 'email' && <EmailModal email={me?.email} provider={me?.provider} onClose={closeModal} onDone={logout} />}
+        {modal === 'setPassword' && <PasswordSetupModal email={me?.email} onClose={closeModal} onDone={completePasswordSetup} />}
+        {modal === 'email' && <EmailModal email={me?.email} onClose={closeModal} onDone={logout} />}
         {modal === 'delete' && <DeleteAccountModal email={me?.email} onClose={closeModal} onDone={logout} />}
       </div>
     );
@@ -72,13 +78,14 @@ function SettingsEntry({ icon, title, sub, onClick }) {
 }
 
 function AccountSecurity({ me, onOpen }) {
-  const isGoogle = me?.provider === 'google';
+  const googleConnected = me?.googleConnected || me?.provider === 'google';
+  const hasPassword = me?.hasPassword === true;
   return (
     <div className="settings-card settings-detail-card">
       <Link to="/verification" className="settings-inline-row link-row"><span className="settings-row-icon"><Icon name="shieldCheck" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.kyc')}</span><span className="settings-row-sub">{t('settings.account.kyc.sub')}</span></span><Icon name="arrowRight" size={16} /></Link>
-      {!isGoogle && <button className="settings-inline-row" onClick={() => onOpen('password')}><span className="settings-row-icon"><Icon name="key" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.password')}</span><span className="settings-row-sub">{t('settings.account.password.sub')}</span></span><Icon name="arrowRight" size={16} /></button>}
-      {!isGoogle && <button className="settings-inline-row" onClick={() => onOpen('email')}><span className="settings-row-icon"><Icon name="mail" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.email')}</span><span className="settings-row-sub">{t('settings.account.email.sub')}</span></span><Icon name="arrowRight" size={16} /></button>}
-      {isGoogle && <div className="settings-inline-row is-static"><span className="settings-row-icon"><Icon name="mail" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.email.address')}</span><span className="settings-row-sub">{t('settings.account.email.google')}</span></span></div>}
+      {googleConnected && <div className="settings-inline-row is-static"><span className="settings-row-icon"><GoogleLogo size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.google.connected')}</span><span className="settings-row-sub">{t('settings.account.google.connected.sub')}</span></span><Icon name="check" size={16} /></div>}
+      <button className="settings-inline-row" onClick={() => onOpen(hasPassword ? 'password' : 'setPassword')}><span className="settings-row-icon"><Icon name="key" size={17} /></span><span className="grow"><span className="settings-row-title">{t(hasPassword ? 'settings.account.password' : 'settings.account.password.create')}</span><span className="settings-row-sub">{t(hasPassword ? 'settings.account.password.sub' : 'settings.account.password.create.sub')}</span></span><Icon name="arrowRight" size={16} /></button>
+      {hasPassword ? <button className="settings-inline-row" onClick={() => onOpen('email')}><span className="settings-row-icon"><Icon name="mail" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.email')}</span><span className="settings-row-sub">{t('settings.account.email.sub')}</span></span><Icon name="arrowRight" size={16} /></button> : <div className="settings-inline-row is-static"><span className="settings-row-icon"><Icon name="mail" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.email.address')}</span><span className="settings-row-sub">{t('settings.account.email.password.required')}</span></span></div>}
       <button className="settings-inline-row settings-danger-row" onClick={() => onOpen('delete')}><span className="settings-row-icon"><Icon name="trash" size={17} /></span><span className="grow"><span className="settings-row-title">{t('settings.account.delete')}</span><span className="settings-row-sub">{t('settings.account.delete.sub')}</span></span><Icon name="arrowRight" size={16} /></button>
     </div>
   );
@@ -158,11 +165,37 @@ function PasswordModal({ onClose, onDone }) {
   return <ActionModal title={t('settings.password.title')} icon="key" onClose={onClose}><p className="muted">{t('settings.password.intro')}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.password.current')}</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" /><label>{t('settings.password.new')}</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /><button className="btn btn-primary" disabled={busy || currentPassword.length === 0 || password.length < 8} onClick={submit}>{busy ? <span className="spinner" /> : t('settings.password.save')}</button></ActionModal>;
 }
 
-function EmailModal({ email, provider, onClose, onDone }) {
+function PasswordSetupModal({ email, onClose, onDone }) {
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const request = async () => {
+    setError(''); setBusy(true);
+    try { await api('/auth/forgot', { method: 'POST', body: { email } }); setSent(true); }
+    catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  };
+  const confirmPassword = async () => {
+    if (password !== confirm) { setError(t('err.pwd.mismatch')); return; }
+    setError(''); setBusy(true);
+    try {
+      const data = await api('/auth/reset', {
+        method: 'POST',
+        body: { email, code, password, rememberMe: true },
+      });
+      onDone(data);
+    } catch (err) { setError(err.message); setBusy(false); }
+  };
+  return <ActionModal title={t('settings.password.create.title')} icon="key" onClose={onClose}>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}{!sent ? <><p className="muted">{t('settings.password.create.intro', { email })}</p><button className="btn btn-primary" disabled={busy} onClick={request}>{busy ? <span className="spinner" /> : t('settings.password.create.send')}</button></> : <><p className="muted">{t('settings.password.create.sent', { email })}</p><label>{t('settings.email.code')}</label><input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" /><label>{t('settings.password.new')}</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /><label>{t('auth.password.confirm')}</label><input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" /><button className="btn btn-primary" disabled={busy || code.length !== 6 || password.length < 8 || !confirm} onClick={confirmPassword}>{busy ? <span className="spinner" /> : t('settings.password.create.confirm')}</button></>}</ActionModal>;
+}
+
+function EmailModal({ email, onClose, onDone }) {
   const [newEmail, setNewEmail] = useState(''); const [currentPassword, setCurrentPassword] = useState(''); const [code, setCode] = useState(''); const [sent, setSent] = useState(false); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const request = async () => { setError(''); setBusy(true); try { await api('/profile/email/change/request', { method: 'POST', body: { newEmail, currentPassword } }); setSent(true); } catch (err) { setError(err.message); } finally { setBusy(false); } };
   const confirm = async () => { setError(''); setBusy(true); try { await api('/profile/email/change/confirm', { method: 'POST', body: { code } }); onDone(); } catch (err) { setError(err.message); setBusy(false); } };
-  if (provider === 'google') return null;
   return <ActionModal title={t('settings.email.title')} icon="mail" onClose={onClose}>{!sent ? <><p className="muted">{t('settings.email.intro')}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.email.new')}</label><input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder={email} autoComplete="email" /><label>{t('settings.password.current')}</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" /><button className="btn btn-primary" disabled={busy || !newEmail || !currentPassword} onClick={request}>{busy ? <span className="spinner" /> : t('settings.email.send')}</button></> : <><p className="muted">{t('settings.email.sent', { email: newEmail })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.email.code')}</label><input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" /><button className="btn btn-primary" disabled={busy || code.length !== 6} onClick={confirm}>{busy ? <span className="spinner" /> : t('settings.email.confirm')}</button></>}</ActionModal>;
 }
 

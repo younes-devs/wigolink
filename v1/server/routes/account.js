@@ -12,6 +12,8 @@ export function createAccountRouter({
       user: publicUser(req.user),
       email: req.user.email,
       provider: req.user.provider,
+      googleConnected: !!req.user.googleSubject,
+      hasPassword: !!req.user.passwordHash,
       phone: req.user.phone,
       maxValue: req.user.maxValue,
       maxActive: req.user.maxActive,

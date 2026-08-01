@@ -12,6 +12,9 @@ function createDependencies(overrides = {}) {
       findByEmail(email) {
         return usersByEmail.get(String(email || '').trim().toLowerCase()) || null;
       },
+      findByGoogleSubject(subject) {
+        return [...usersByEmail.values()].find((user) => user.googleSubject === String(subject || '').trim()) || null;
+      },
       append(user) {
         events.push('user:append');
         usersByEmail.set(user.email, user);
@@ -447,4 +450,37 @@ test('auth google lie un compte existant mais refuse un sujet Google different',
     body: { credential: 'signed-token' },
   });
   assert.equal(rejected.status, 401);
+});
+
+test('auth google retrouve le meme compte apres un changement d email', async () => {
+  const existing = {
+    id: 'u-existing',
+    email: 'nouveau@example.test',
+    provider: 'google',
+    emailVerified: true,
+    googleSubject: 'google-subject',
+  };
+  const harness = createDependencies({
+    async verifyGoogleCredential() {
+      return {
+        subject: 'google-subject',
+        email: 'ancien@example.test',
+        name: 'Membre Google',
+      };
+    },
+    async openSession(res, user) {
+      res.json({ token: 'session-token', userId: user.id });
+    },
+  });
+  harness.usersByEmail.set(existing.email, existing);
+
+  const response = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: { credential: 'signed-token' },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.userId, existing.id);
+  assert.equal(existing.email, 'nouveau@example.test');
 });

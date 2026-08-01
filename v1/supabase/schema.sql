@@ -87,6 +87,7 @@ create table if not exists public.wigolink_users (
   updated_at timestamptz not null default now()
 );
 create unique index if not exists wigolink_users_email_idx on public.wigolink_users ((lower(data->>'email'))) where data ? 'email';
+create unique index if not exists wigolink_users_google_subject_idx on public.wigolink_users ((data->>'googleSubject')) where data ? 'googleSubject';
 create index if not exists wigolink_users_kyc_idx on public.wigolink_users ((data->>'kycStatus'));
 create index if not exists wigolink_users_admin_created_idx
   on public.wigolink_users (

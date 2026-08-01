@@ -101,7 +101,7 @@ export default function Profile() {
           </div>
           <div className="profile-id">
             <h1>{user.name}</h1>
-            <div className="muted">{me?.email}{me?.provider === 'google' ? ` · ${t('profile.google')}` : ''}</div>
+            <div className="muted">{me?.email}{me?.googleConnected || me?.provider === 'google' ? ` · ${t('profile.google')}` : ''}</div>
             <div className="muted" style={{ fontSize: 12 }}>
               {user.city ? `${user.city} · ` : ''}{memberSince ? t('profile.member.since', { date: memberSince }) : ''}
             </div>

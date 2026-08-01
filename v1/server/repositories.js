@@ -105,6 +105,12 @@ function createUserRepository({ db }) {
       const normalized = String(email || '').trim().toLowerCase();
       return ensure().find((user) => user.email === normalized) || null;
     },
+
+    findByGoogleSubject(subject) {
+      const normalized = String(subject || '').trim();
+      if (!normalized) return null;
+      return ensure().find((user) => user.googleSubject === normalized) || null;
+    },
   };
 }
 

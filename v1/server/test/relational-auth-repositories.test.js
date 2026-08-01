@@ -34,6 +34,21 @@ test('auth relationnelle : recherche un utilisateur sans charger l etat global',
   assert.deepEqual(calls[0].params, ['member@example.test']);
 });
 
+test('auth relationnelle : recherche un utilisateur par sujet Google stable', async () => {
+  const calls = [];
+  const user = { id: 'u-1', googleSubject: 'google-123' };
+  const repositories = createRelationalAuthRepositories({
+    getPool: () => poolWith((sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [{ data: user }] };
+    }),
+  });
+
+  assert.equal(await repositories.users.findByGoogleSubject(' google-123 '), user);
+  assert.match(calls[0].sql, /googleSubject/);
+  assert.deepEqual(calls[0].params, ['google-123']);
+});
+
 test('auth relationnelle : insere et met a jour une seule ligne utilisateur', async () => {
   const calls = [];
   const user = { id: 'u-1', email: 'member@example.test', createdAt: 1_000 };

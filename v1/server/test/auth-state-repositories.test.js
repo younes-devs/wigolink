@@ -23,14 +23,16 @@ function authRepositories(db = {}) {
   };
 }
 
-test('user repository ajoute et recherche un email normalise', () => {
+test('user repository recherche un email normalise et un sujet Google stable', () => {
   const db = {};
   const { users } = authRepositories(db);
-  const user = { id: 'u-1', email: 'membre@example.test' };
+  const user = { id: 'u-1', email: 'membre@example.test', googleSubject: 'google-123' };
 
   assert.equal(users.findByEmail('membre@example.test'), null);
   assert.equal(users.append(user), user);
   assert.equal(users.findByEmail('  MEMBRE@example.test '), user);
+  assert.equal(users.findByGoogleSubject(' google-123 '), user);
+  assert.equal(users.findByGoogleSubject(''), null);
   assert.deepEqual(db.users, [user]);
 });
 

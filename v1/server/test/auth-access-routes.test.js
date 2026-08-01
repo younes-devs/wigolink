@@ -313,6 +313,7 @@ test('auth reset consomme le code, invalide les sessions puis reconnecte', async
       email: user.email,
       code: ' 123456 ',
       password: 'nouveau-secret',
+      rememberMe: true,
     },
     dependencies,
   });
@@ -329,7 +330,7 @@ test('auth reset consomme le code, invalide les sessions puis reconnecte', async
   ]);
   assert.deepEqual(response.body, {
     token: 'token-normal',
-    rememberMe: false,
+    rememberMe: true,
   });
 });
 

@@ -62,6 +62,19 @@ function createRelationalUserRepository({ pool }) {
       return result.rows[0]?.data || null;
     },
 
+    async findByGoogleSubject(subject) {
+      const normalized = String(subject || '').trim();
+      if (!normalized) return null;
+      const result = await pool().query(
+        `select data
+         from public.wigolink_users
+         where data->>'googleSubject' = $1
+         limit 1`,
+        [normalized],
+      );
+      return result.rows[0]?.data || null;
+    },
+
     async append(user) {
       await pool().query(
         `insert into public.wigolink_users (id, data, created_at, updated_at)
