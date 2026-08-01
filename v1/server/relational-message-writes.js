@@ -29,7 +29,6 @@ export function createRelationalMessageWriter({
   safetyError,
   messageMedia,
   allowInlineMediaFallback = true,
-  notificationFor,
   broadcastConversation,
   memberStateEnabled = () => false,
   newId = relationalId,
@@ -234,14 +233,6 @@ export function createRelationalMessageWriter({
           [conversationId, user.id],
         );
       }
-      await insertNotifications({
-        client,
-        conversation,
-        user,
-        notificationFor,
-        newId,
-        now,
-      });
       await client.query('commit');
 
       broadcastConversation(conversation, {
@@ -1565,35 +1556,6 @@ async function persistSafetyAttempt({
     }
   }
   return { cooldownUntil, highCount };
-}
-
-async function insertNotifications({
-  client,
-  conversation,
-  user,
-  notificationFor,
-  newId,
-  now,
-}) {
-  for (const userId of conversation.participantIds || []) {
-    if (userId === user.id) continue;
-    const payload = await notificationFor(userId, user.name, client);
-    if (!payload) continue;
-    await client.query(
-      `insert into public.notifications
-         (id, user_id, tx_id, type, section, key, params, text, read, at)
-       values ($1, $2, $3, 'messages', 'messages', $4, $5::jsonb, $6, false, to_timestamp($7 / 1000.0))`,
-      [
-        newId('n'),
-        userId,
-        conversation.operationId || null,
-        payload.key,
-        JSON.stringify(payload.params || {}),
-        payload.text,
-        now(),
-      ],
-    );
-  }
 }
 
 async function existingMessage(pool, conversationId, userId, clientId) {

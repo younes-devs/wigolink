@@ -417,7 +417,7 @@ function createNotificationRepository({ db, newId, now, retentionMs }) {
   const isVisible = (notification) => isNotificationVisible(notification, {
     now,
     retentionMs,
-  });
+  }) && notification?.key !== 'chat.message';
 
   const sortedForUser = (userId) => ensure()
     .filter((n) => n.userId === userId && isVisible(n))

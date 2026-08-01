@@ -20,7 +20,6 @@ export function createConversationMessageService({
   registerSafetyAttempt,
   safetyError,
   reviewQueue,
-  notify,
   audit,
   save,
   broadcastConversation,
@@ -356,18 +355,6 @@ export function createConversationMessageService({
     conversation.lastMessageAt = message.at;
     conversation.archivedBy = (conversation.archivedBy || [])
       .filter((participantId) => participantId !== user.id);
-    await notify(
-      conversation.participantIds.filter((participantId) =>
-        participantId !== user.id
-      ),
-      {
-        key: 'chat.message',
-        params: { name: user.name },
-      },
-      conversation.operationId || null,
-      'messages',
-      'messages',
-    );
     save();
     broadcastConversation(conversation, {
       type: 'message',

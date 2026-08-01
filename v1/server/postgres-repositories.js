@@ -111,6 +111,7 @@ export function createPostgresNotificationRepository({
          from notifications
          where user_id = $1
            and at >= to_timestamp($2 / 1000.0)
+           and key is distinct from 'chat.message'
          order by at desc
          limit $3`,
         [userId, cutoff(), safeLimit]
@@ -124,7 +125,8 @@ export function createPostgresNotificationRepository({
          from notifications
          where user_id = $1
            and read = false
-           and at >= to_timestamp($2 / 1000.0)`,
+           and at >= to_timestamp($2 / 1000.0)
+           and key is distinct from 'chat.message'`,
         [userId, cutoff()]
       );
       return Number(result.rows[0]?.count || 0);

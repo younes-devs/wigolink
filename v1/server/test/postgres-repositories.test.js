@@ -152,6 +152,7 @@ test('postgres notifications : list, unread et markAllRead utilisent le scope ut
 
   assert.match(calls[0].sql, /where user_id = \$1/);
   assert.match(calls[0].sql, /at >= to_timestamp\(\$2/);
+  assert.match(calls[0].sql, /key is distinct from 'chat\.message'/);
   assert.deepEqual(calls[0].params, [
     'u-fatima',
     now - 10 * 24 * 60 * 60 * 1000,
@@ -164,6 +165,7 @@ test('postgres notifications : list, unread et markAllRead utilisent le scope ut
     'u-fatima',
     now - 10 * 24 * 60 * 60 * 1000,
   ]);
+  assert.match(calls[1].sql, /key is distinct from 'chat\.message'/);
   assert.deepEqual(calls[2].params, [
     'u-fatima',
     now - 10 * 24 * 60 * 60 * 1000,

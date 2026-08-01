@@ -925,24 +925,6 @@ const relationalMessageWriter = createRelationalMessageWriter({
   safetyError: messageSafetyError,
   messageMedia,
   allowInlineMediaFallback: !IS_PRODUCTION,
-  async notificationFor(userId, senderName, client) {
-    const result = await client.query(
-      'select data from public.wigolink_users where id = $1',
-      [userId],
-    );
-    const recipient = result.rows[0]?.data;
-    const enabled = recipient?.settings?.notifications?.messages
-      ?? DEFAULT_NOTIFICATION_SETTINGS.messages;
-    if (!enabled) return null;
-    const keyed = {
-      key: 'chat.message',
-      params: { name: senderName },
-    };
-    return {
-      ...keyed,
-      text: renderNotification('fr', keyed),
-    };
-  },
   broadcastConversation,
   memberStateEnabled: relationalConversationMembersEnabled,
 });
@@ -1044,7 +1026,6 @@ const conversationMessageService = createConversationMessageService({
   registerSafetyAttempt: registerMessageSafetyAttempt,
   safetyError: messageSafetyError,
   reviewQueue: repositories.reviewQueue,
-  notify,
   audit,
   save,
   broadcastConversation,

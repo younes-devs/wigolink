@@ -137,11 +137,6 @@ function createHarness({
         return { status: 200, body: Buffer.from('image'), contentType: 'image/jpeg' };
       },
     },
-    notificationFor: async () => ({
-      key: 'chat.message',
-      params: { name: 'Younes' },
-      text: 'Nouveau message',
-    }),
     broadcastConversation(_conversation, event) {
       broadcasts.push(event);
     },
@@ -248,6 +243,10 @@ test('ecritures messages relationnelles : insere un message idempotent avec un i
   assert.deepEqual(
     harness.broadcasts.map(({ type }) => type),
     ['message'],
+  );
+  assert.equal(
+    harness.queries.some(({ sql }) => sql.includes('insert into public.notifications')),
+    false,
   );
 });
 
@@ -410,7 +409,6 @@ function createActionHarness(handler = async () => ({ rows: [], rowCount: 1 })) 
     analyzeSafety: () => ({ blocked: false, categories: [], severity: 'none' }),
     safetyError: () => ({ error: 'blocked' }),
     messageMedia: { enabled: false },
-    notificationFor: async () => null,
     broadcastConversation() {},
     newId(prefix) {
       sequence += 1;

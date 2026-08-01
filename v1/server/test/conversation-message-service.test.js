@@ -124,9 +124,6 @@ function createHarness(overrides = {}) {
         queue.push(item);
       },
     },
-    async notify(...args) {
-      events.push(['notify', ...args]);
-    },
     async audit(...args) {
       events.push(['audit', ...args]);
     },
@@ -275,7 +272,7 @@ test('conversation messages audite et persiste une tentative interdite', async (
   assert.equal(events[0][2], 'message.safety_blocked');
 });
 
-test('conversation messages est idempotent par clientId sans notifier deux fois', async () => {
+test('conversation messages est idempotent par clientId sans notification generale', async () => {
   const { db, events, service, users } = createHarness();
   const first = await service.sendMessage('conv-1', users[0], {
     text: 'Bonjour',
@@ -291,13 +288,12 @@ test('conversation messages est idempotent par clientId sans notifier deux fois'
   assert.equal(first.body.message.id, second.body.message.id);
   assert.equal(db.messages.length, 1);
   assert.deepEqual(events.map(([type]) => type), [
-    'notify',
     'save',
     'broadcast',
   ]);
 });
 
-test('conversation messages normalise une image puis notifie, sauvegarde et diffuse', async () => {
+test('conversation messages normalise une image puis sauvegarde et diffuse', async () => {
   const { db, events, service, users } = createHarness();
   const result = await service.sendMessage('conv-1', users[0], {
     attachments: [{
@@ -312,7 +308,6 @@ test('conversation messages normalise une image puis notifie, sauvegarde et diff
   assert.equal(result.body.message.attachments[0].name, 'preuve.png');
   assert.deepEqual(db.conversations[0].archivedBy, []);
   assert.deepEqual(events.map(([type]) => type), [
-    'notify',
     'save',
     'broadcast',
   ]);

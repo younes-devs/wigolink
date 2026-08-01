@@ -43,13 +43,20 @@ test('notification repository masque les expirees des listes et compteurs utilis
     read: false,
     at: NOW - NOTIFICATION_RETENTION_MS - 1,
   };
+  const chatMessage = {
+    id: 'n-chat-message',
+    userId: 'u-1',
+    key: 'chat.message',
+    read: false,
+    at: NOW,
+  };
   const other = {
     id: 'n-other',
     userId: 'u-2',
     read: false,
     at: NOW,
   };
-  const stored = [recent, expired, other];
+  const stored = [recent, expired, chatMessage, other];
   const repository = notificationRepository(stored);
 
   assert.deepEqual(repository.listForUser('u-1'), [recent]);
@@ -57,5 +64,6 @@ test('notification repository masque les expirees des listes et compteurs utilis
   assert.equal(repository.markAllRead('u-1'), 1);
   assert.equal(recent.read, true);
   assert.equal(expired.read, false);
-  assert.equal(stored.length, 3, 'l historique reste disponible pour l administration');
+  assert.equal(chatMessage.read, false);
+  assert.equal(stored.length, 4, 'l historique reste disponible pour l administration');
 });
