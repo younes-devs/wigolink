@@ -1,6 +1,6 @@
-# Wigofly
+# Wigolink
 
-Wigofly met en relation des voyageurs et des expediteurs pour transporter des
+Wigolink met en relation des voyageurs et des expediteurs pour transporter des
 documents ou des colis sur un trajet publie.
 
 Le produit actif suit ce parcours:
