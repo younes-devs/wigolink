@@ -120,52 +120,6 @@ export function createMessageMediaService({
     return selected.length;
   }
 
-  async function copyFromBucket(sourceBucket) {
-    const source = String(sourceBucket || '').trim();
-    if (!enabled || !source || source === bucket) return { copied: 0, skipped: 0 };
-    await ensureBucket();
-
-    const paths = await listFilesRecursively(source);
-    let copied = 0;
-    let skipped = 0;
-    for (const storagePath of paths) {
-      const { data, error: downloadError } = await storage.from(source).download(storagePath);
-      if (downloadError || !data) throw downloadError || new Error(`Media introuvable: ${storagePath}`);
-      const bytes = Buffer.from(await data.arrayBuffer());
-      const { error: uploadError } = await storage.from(bucket).upload(storagePath, bytes, {
-        cacheControl: '86400',
-        contentType: data.type || 'application/octet-stream',
-        upsert: false,
-      });
-      if (uploadError && !isDuplicateObject(uploadError)) throw uploadError;
-      if (uploadError) skipped += 1;
-      else copied += 1;
-    }
-    return { copied, skipped, total: paths.length };
-  }
-
-  async function listFilesRecursively(sourceBucket, prefix = '') {
-    const files = [];
-    let offset = 0;
-    const limit = 100;
-    while (true) {
-      const { data, error } = await storage.from(sourceBucket).list(prefix, {
-        limit,
-        offset,
-        sortBy: { column: 'name', order: 'asc' },
-      });
-      if (error) throw error;
-      for (const entry of data || []) {
-        const path = prefix ? `${prefix}/${entry.name}` : entry.name;
-        if (entry.id) files.push(path);
-        else files.push(...await listFilesRecursively(sourceBucket, path));
-      }
-      if (!data || data.length < limit) break;
-      offset += data.length;
-    }
-    return files;
-  }
-
   return {
     enabled,
     createSignedUpload,
@@ -174,7 +128,6 @@ export function createMessageMediaService({
     info,
     remove,
     removePaths,
-    copyFromBucket,
   };
 }
 
@@ -199,12 +152,6 @@ function isMissingBucket(error) {
 }
 
 function isDuplicateBucket(error) {
-  return Number(error?.statusCode || error?.status) === 409
-    || errorText(error).includes('already exists')
-    || errorText(error).includes('duplicate');
-}
-
-function isDuplicateObject(error) {
   return Number(error?.statusCode || error?.status) === 409
     || errorText(error).includes('already exists')
     || errorText(error).includes('duplicate');
