@@ -165,8 +165,11 @@ npm run fixture:scalability -- --profile=medium --run-id=release-20260729
 ```
 
 Le profil `medium` cree 10 000 membres, 100 000 trajets, 50 000 operations,
-20 000 conversations et 500 000 messages. `small` sert aux verifications
-rapides; `large` exige une base de staging dimensionnee.
+20 000 conversations, 500 000 messages et 50 000 favoris. Une partie des
+conversations, operations et favoris est volontairement concentree sur un
+compte afin de mesurer le pire cas d'un membre avec un gros historique.
+`small` sert aux verifications rapides; `large` exige une base de staging
+dimensionnee.
 
 Nettoyage cible du meme jeu :
 
@@ -174,9 +177,9 @@ Nettoyage cible du meme jeu :
 npm run fixture:scalability:cleanup -- --run-id=release-20260729
 ```
 
-Le script exige `SCALABILITY_DATABASE_URL`, refuse `NODE_ENV=production` et
-`VERCEL_ENV=production`, et ne supprime que les lignes portant exactement le
-`fixtureRun` demande.
+Le script exige `SCALABILITY_DATABASE_URL`, refuse `NODE_ENV=production`,
+`VERCEL_ENV=production` et toute URL identique a `DATABASE_URL`. Il ne supprime
+que les lignes portant exactement le `fixtureRun` demande.
 
 Verifier ensuite les plans des lectures critiques :
 
@@ -186,8 +189,10 @@ npm run explain:scalability -- --run-id=release-20260729
 ```
 
 Le rapport contient la latence PostgreSQL, les types de noeuds du plan et les
-scans sequentiels suspects. La commande echoue si une requete depasse le seuil;
-elle doit etre verte avant une campagne HTTP authentifiee sur le staging.
+scans sequentiels suspects. Il mesure aussi les pages suivantes par curseur des
+conversations, messages, operations et favoris. La commande echoue si une
+requete depasse le seuil; elle doit etre verte avant une campagne HTTP
+authentifiee sur le staging.
 
 ## Sauvegardes
 

@@ -33,10 +33,36 @@ export async function explainScalability({
   runId,
   maxQueryMs = 250,
 } = {}) {
+  const scenarios = scalabilityScenarios({ runId });
+
+  const results = [];
+  for (const scenario of scenarios) {
+    const response = await pool.query(
+      `explain (analyze, buffers, format json) ${scenario.sql}`,
+      scenario.params,
+    );
+    const summary = summarizePlan(response.rows[0]['QUERY PLAN']);
+    results.push({
+      name: scenario.name,
+      ...summary,
+      passesLatency: summary.executionMs <= maxQueryMs,
+    });
+  }
+  return {
+    runId,
+    maxQueryMs,
+    passed: results.every((result) => result.passesLatency),
+    results,
+  };
+}
+
+export function scalabilityScenarios({ runId, now = Date.now() }) {
   const userId = `${runId}-u-1`;
   const conversationId = `${runId}-c-1`;
-  const today = new Date().toISOString().slice(0, 10);
-  const scenarios = [
+  const today = new Date(now).toISOString().slice(0, 10);
+  const cursorAt = now - 60 * 60 * 1000;
+  const cursorTime = new Date(cursorAt).toISOString();
+  return [
     {
       name: 'trips-feed',
       params: [today, userId],
@@ -70,11 +96,54 @@ export async function explainScalability({
         limit 50`,
     },
     {
+      name: 'conversation-inbox-next',
+      params: [userId, cursorAt, `${runId}-c-0`],
+      sql: `select c.id
+        from public.wigofly_conversation_members member
+        join public.wigofly_conversations c
+          on c.id = member.conversation_id
+        where member.user_id = $1
+          and not member.deleted
+          and (
+            coalesce(
+              (c.data->>'lastMessageAt')::bigint,
+              extract(epoch from c.created_at) * 1000
+            ) < $2
+            or (
+              coalesce(
+                (c.data->>'lastMessageAt')::bigint,
+                extract(epoch from c.created_at) * 1000
+              ) = $2 and c.id > $3
+            )
+          )
+        order by
+          coalesce(
+            (c.data->>'lastMessageAt')::bigint,
+            extract(epoch from c.created_at) * 1000
+          ) desc,
+          c.id asc
+        limit 50`,
+    },
+    {
       name: 'message-page',
       params: [conversationId],
       sql: `select m.data
         from public.messages m
         where m.conversation_id = $1
+          and coalesce(
+            (m.data->>'hiddenForParticipants')::boolean,
+            false
+          ) = false
+        order by m.at desc
+        limit 51`,
+    },
+    {
+      name: 'message-page-next',
+      params: [conversationId, cursorTime],
+      sql: `select m.data
+        from public.messages m
+        where m.conversation_id = $1
+          and m.at < $2::timestamptz
           and coalesce(
             (m.data->>'hiddenForParticipants')::boolean,
             false
@@ -99,6 +168,47 @@ export async function explainScalability({
         limit 51`,
     },
     {
+      name: 'operations-member-next',
+      params: [userId, cursorAt, `${runId}-tx-0`],
+      sql: `select tx.id
+        from public.wigofly_transactions tx
+        where array[
+          nullif(tx.data->>'senderId', ''),
+          nullif(tx.data->>'travelerId', ''),
+          nullif(tx.data->>'recipientId', '')
+        ] @> array[$1]::text[]
+          and (
+            coalesce(
+              nullif(tx.data->>'createdAt', '')::bigint,
+              extract(epoch from tx.created_at) * 1000
+            ) < $2
+            or (
+              coalesce(
+                nullif(tx.data->>'createdAt', '')::bigint,
+                extract(epoch from tx.created_at) * 1000
+              ) = $2 and tx.id > $3
+            )
+          )
+        order by coalesce(
+          nullif(tx.data->>'createdAt', '')::bigint,
+          extract(epoch from tx.created_at) * 1000
+        ) desc, tx.id asc
+        limit 51`,
+    },
+    {
+      name: 'saved-trips-member-next',
+      params: [userId, cursorTime, `${runId}-saved-0`],
+      sql: `select saved.id
+        from public.wigofly_saved_trips saved
+        where saved.data->>'userId' = $1
+          and (
+            saved.created_at < $2::timestamptz
+            or (saved.created_at = $2::timestamptz and saved.id > $3)
+          )
+        order by saved.created_at desc, saved.id asc
+        limit 51`,
+    },
+    {
       name: 'audit-latest',
       params: [],
       sql: `select log.id, member.data
@@ -108,26 +218,6 @@ export async function explainScalability({
         limit 200`,
     },
   ];
-
-  const results = [];
-  for (const scenario of scenarios) {
-    const response = await pool.query(
-      `explain (analyze, buffers, format json) ${scenario.sql}`,
-      scenario.params,
-    );
-    const summary = summarizePlan(response.rows[0]['QUERY PLAN']);
-    results.push({
-      name: scenario.name,
-      ...summary,
-      passesLatency: summary.executionMs <= maxQueryMs,
-    });
-  }
-  return {
-    runId,
-    maxQueryMs,
-    passed: results.every((result) => result.passesLatency),
-    results,
-  };
 }
 
 function visit(node, output) {

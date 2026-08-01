@@ -45,6 +45,20 @@ test('jeu de charge expose des profils bornes et un nettoyage cible', () => {
   assert.equal(config.profileName, 'medium');
   assert.equal(config.profile.users, 10_000);
   assert.equal(config.profile.messages, 500_000);
+  assert.equal(config.profile.savedTrips, 50_000);
   assert.equal(config.runId, 'release-20260729');
   assert.equal(config.cleanup, true);
+});
+
+test('jeu de charge refuse la meme base que l application', () => {
+  assert.throws(
+    () => fixtureConfig({
+      env: {
+        ...validEnv,
+        DATABASE_URL: validEnv.SCALABILITY_DATABASE_URL,
+      },
+      argv: [],
+    }),
+    /distincte de DATABASE_URL/,
+  );
 });

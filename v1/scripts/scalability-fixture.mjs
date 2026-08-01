@@ -10,6 +10,7 @@ const PROFILES = Object.freeze({
     operations: 5_000,
     conversations: 2_000,
     messages: 50_000,
+    savedTrips: 5_000,
   },
   medium: {
     users: 10_000,
@@ -17,6 +18,7 @@ const PROFILES = Object.freeze({
     operations: 50_000,
     conversations: 20_000,
     messages: 500_000,
+    savedTrips: 50_000,
   },
   large: {
     users: 50_000,
@@ -24,6 +26,7 @@ const PROFILES = Object.freeze({
     operations: 250_000,
     conversations: 100_000,
     messages: 2_000_000,
+    savedTrips: 250_000,
   },
 });
 
@@ -46,6 +49,12 @@ export function fixtureConfig({
     throw new Error(
       'SCALABILITY_DATABASE_URL est requis et doit viser la base de staging.',
     );
+  }
+  if (
+    env.DATABASE_URL
+    && normalizedDatabaseUrl(connectionString) === normalizedDatabaseUrl(env.DATABASE_URL)
+  ) {
+    throw new Error('La base de charge doit etre distincte de DATABASE_URL.');
   }
   const profileName = argumentValue(argv, '--profile') || 'small';
   const profile = PROFILES[profileName];
@@ -168,8 +177,14 @@ async function seedFixture(client, { runId, profile }) {
        jsonb_build_object(
          'id', $1 || '-c-' || item,
          'participantIds', jsonb_build_array(
-           $1 || '-u-' || (((item - 1) % $3::int) + 1),
-           $1 || '-u-' || ((item % $3::int) + 1)
+           case when item % 10 = 0
+             then $1 || '-u-1'
+             else $1 || '-u-' || (((item - 1) % $3::int) + 1)
+           end,
+           case when item % 10 = 0
+             then $1 || '-u-2'
+             else $1 || '-u-' || ((item % $3::int) + 1)
+           end
          ),
          'tripId', $1 || '-t-' || (((item - 1) % $4::int) + 1),
          'createdAt', floor(extract(epoch from now()) * 1000)::bigint,
@@ -234,7 +249,10 @@ async function seedFixture(client, { runId, profile }) {
        $1 || '-tx-' || item,
        jsonb_build_object(
          'id', $1 || '-tx-' || item,
-         'senderId', $1 || '-u-' || (((item - 1) % $4::int) + 1),
+         'senderId', case when item % 10 = 0
+           then $1 || '-u-1'
+           else $1 || '-u-' || (((item - 1) % $4::int) + 1)
+         end,
          'travelerId', $1 || '-u-' || ((item % $4::int) + 1),
          'recipientId', $1 || '-u-' || (((item + 1) % $4::int) + 1),
          'tripId', $1 || '-t-' || (((item - 1) % $3::int) + 1),
@@ -247,6 +265,28 @@ async function seedFixture(client, { runId, profile }) {
        now()
      from generate_series(1, $2::int) item`,
     [runId, profile.operations, profile.trips, profile.users],
+  );
+
+  await client.query(
+    `insert into public.wigofly_saved_trips
+       (id, data, created_at, updated_at)
+     select
+       $1 || '-saved-' || item,
+       jsonb_build_object(
+         'id', $1 || '-saved-' || item,
+         'userId', case when item % 10 = 0
+           then $1 || '-u-1'
+           else $1 || '-u-' || (((item - 1) % $4::int) + 1)
+         end,
+         'tripId', $1 || '-t-' || item,
+         'createdAt',
+           floor(extract(epoch from now() - item * interval '1 second') * 1000)::bigint,
+         'fixtureRun', $1
+       ),
+       now() - item * interval '1 second',
+       now()
+     from generate_series(1, $2::int) item`,
+    [runId, profile.savedTrips],
   );
 }
 
@@ -266,6 +306,7 @@ async function cleanupFixture(client, runId) {
     runId,
   );
   for (const [name, table] of [
+    ['savedTrips', 'wigofly_saved_trips'],
     ['operations', 'wigofly_transactions'],
     ['conversations', 'wigofly_conversations'],
     ['trips', 'wigofly_trips'],
@@ -290,11 +331,24 @@ async function analyzeFixture(client) {
     'wigofly_users',
     'wigofly_trips',
     'wigofly_transactions',
+    'wigofly_saved_trips',
     'wigofly_conversations',
     'wigofly_conversation_members',
     'messages',
   ]) {
     await client.query(`analyze public.${table}`);
+  }
+}
+
+function normalizedDatabaseUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    parsed.password = '';
+    parsed.username = '';
+    parsed.search = '';
+    return parsed.toString();
+  } catch {
+    return String(value || '').trim();
   }
 }
 

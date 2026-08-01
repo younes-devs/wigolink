@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { summarizePlan } from '../../scripts/explain-scalability.mjs';
+import {
+  scalabilityScenarios,
+  summarizePlan,
+} from '../../scripts/explain-scalability.mjs';
 
 test('resume explain extrait latence, noeuds et scans suspects', () => {
   const summary = summarizePlan([{
@@ -28,4 +31,20 @@ test('resume explain extrait latence, noeuds et scans suspects', () => {
     relation: 'messages',
     estimatedRows: 500_000,
   }]);
+});
+
+test('scenarios de charge couvrent les pages profondes sans offset', () => {
+  const scenarios = scalabilityScenarios({
+    runId: 'load-test',
+    now: Date.parse('2026-08-01T12:00:00.000Z'),
+  });
+  const names = scenarios.map(({ name }) => name);
+
+  assert.ok(names.includes('conversation-inbox-next'));
+  assert.ok(names.includes('message-page-next'));
+  assert.ok(names.includes('operations-member-next'));
+  assert.ok(names.includes('saved-trips-member-next'));
+  for (const scenario of scenarios.filter(({ name }) => name.endsWith('-next'))) {
+    assert.doesNotMatch(scenario.sql, /\boffset\b/i);
+  }
 });
