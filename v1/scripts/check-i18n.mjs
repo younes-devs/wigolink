@@ -133,7 +133,7 @@ const allowedVisible = [
   /^Casablanca\s*(?:→|->)\s*Bruxelles$/,
   /^Bruxelles\s*(?:→|->)\s*Casablanca$/,
   /^(?:kg|Kg|EUR|NPS)$/,
-  /^support@wigolink\.app$/,
+  /^support@wigolink\.com$/,
 ];
 const allowedAttribute = [
   ...allowedVisible,

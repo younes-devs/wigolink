@@ -60,7 +60,7 @@ export default function Kyc() {
           )}
           <p className="muted mt center">
             {t('kyc.refused.text')}
-            <a href="mailto:support@wigolink.app" style={{ color: 'var(--accent)', fontWeight: 600 }}> support@wigolink.app</a>.
+            <a href="mailto:support@wigolink.com" style={{ color: 'var(--accent)', fontWeight: 600 }}> support@wigolink.com</a>.
           </p>
         </div>
       )}
@@ -145,7 +145,7 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       <div className="card">
         <div className="alert alert-danger" style={{ marginBottom: 0 }}>
           <Icon name="alert" size={17} />
-          {t('kyc.maxattempts')} <a href="mailto:support@wigolink.app">support@wigolink.app</a>.
+          {t('kyc.maxattempts')} <a href="mailto:support@wigolink.com">support@wigolink.com</a>.
         </div>
       </div>
     );
