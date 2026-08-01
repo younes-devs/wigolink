@@ -127,6 +127,46 @@ test('relational reads transmet les filtres des trajets et le scope mine', async
   });
 });
 
+test('relational reads sert le catalogue public sans appeler auth', async () => {
+  let authCalls = 0;
+  const harness = createDependencies({
+    auth(_req, res) {
+      authCalls += 1;
+      res.status(401).json({ error: 'Authentification requise' });
+    },
+    async listTrips(payload) {
+      harness.calls.push(['trips', payload]);
+      return {
+        trips: [{
+          id: 't-public',
+          from: 'Oujda',
+          to: 'Bruxelles',
+          date: '2026-08-20',
+          traveler: { id: 'u-2', name: 'Karim', email: 'private@example.com' },
+        }],
+      };
+    },
+  });
+  const response = await requestRoute({
+    path: '/public/trips?q=wjda&limit=12',
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(authCalls, 0);
+  assert.deepEqual(harness.calls[0], [
+    'trips',
+    {
+      pool: harness.pool,
+      user: null,
+      query: { q: 'wjda', limit: '12' },
+      today: '2026-07-25',
+    },
+  ]);
+  assert.equal(response.body.trips[0].id, 't-public');
+  assert.equal('email' in response.body.trips[0].traveler, false);
+});
+
 test('relational reads construit l apercu depuis feed et mes trajets', async () => {
   const harness = createDependencies({
     async listTrips(payload) {

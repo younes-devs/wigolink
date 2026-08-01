@@ -1,16 +1,19 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setToken } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { t, useLang } from '../../../i18n.js';
 import AuthJourneyLoop from '../components/AuthJourneyLoop.jsx';
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
+import { safeReturnPath } from '../../../app/authNavigation.js';
 
 // Authentication: login, registration, email verification, password reset and appeal.
 export default function Login() {
   useLang();
   const { login } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mode, setMode] = useState('login');
   const [authMethod, setAuthMethod] = useState('');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', code: '' });
@@ -45,7 +48,11 @@ export default function Login() {
     }
   };
 
-  const finishAuth = (data) => login(data.token, data.user);
+  const finishAuth = (data) => {
+    login(data.token, data.user);
+    const requestedPath = new URLSearchParams(location.search).get('retour');
+    navigate(safeReturnPath(requestedPath), { replace: true });
+  };
 
   const submitLogin = () => run(async () => {
     try {

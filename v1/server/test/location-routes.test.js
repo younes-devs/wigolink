@@ -61,11 +61,25 @@ test('location routes expose fiche et statistiques du catalogue', async () => {
   assert.equal(catalog.body.catalog.locations, 482);
 });
 
-test('location routes restent protegees par authentification', async () => {
+test('les suggestions publiques restent disponibles sans authentification', async () => {
+  let authCalls = 0;
   const response = await requestLocation('/locations/suggest?q=wjda', {
+    auth(_req, res) {
+      authCalls += 1;
+      res.status(401).json({ error: 'Authentification requise' });
+    },
+    suggest() {
+      return [{ id: 'ma-2540483', name: 'Oujda', countryCode: 'MA' }];
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(authCalls, 0);
+  assert.equal(response.body.locations[0].name, 'Oujda');
+
+  const privateLocation = await requestLocation('/locations/ma-2540483', {
     auth(_req, res) {
       res.status(401).json({ error: 'Authentification requise' });
     },
   });
-  assert.equal(response.status, 401);
+  assert.equal(privateLocation.status, 401);
 });

@@ -228,6 +228,14 @@ test('trip service sert feed, apercu et detail disponible', () => {
   assert.deepEqual(overview.myTrips.map(({ id }) => id), ['t-own']);
   assert.equal(service.detail('t-own', users[0]).body.trip.activeOperations, 0);
   assert.equal(service.detail('missing', users[0]).status, 404);
+  assert.deepEqual(
+    service.publicList({ excludeMine: '1' }).trips.map(({ id }) => id),
+    ['t-own', 't-other'],
+  );
+  const publicPage = service.publicList({ limit: 1 });
+  assert.deepEqual(publicPage.trips.map(({ id }) => id), ['t-own']);
+  assert.equal(publicPage.page.hasMore, true);
+  assert.equal(publicPage.page.nextOffset, 1);
 });
 
 test('trip service nettoie, ajoute idempotemment et retire les favoris', () => {

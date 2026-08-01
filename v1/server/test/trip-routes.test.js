@@ -93,6 +93,43 @@ test('trip routes transmet lecture et mutation au service', async () => {
   ]);
 });
 
+test('trip routes sert le catalogue public sans authentification', async () => {
+  let authCalls = 0;
+  const calls = [];
+  const response = await requestTrip({
+    path: '/public/trips?q=oujda',
+    auth(_req, res) {
+      authCalls += 1;
+      res.status(401).json({ error: 'Authentification requise' });
+    },
+    trips: {
+      publicList(query) {
+        calls.push(query);
+        return {
+          trips: [{
+            id: 't-public',
+            travelerId: 'u-2',
+            from: 'Oujda',
+            to: 'Bruxelles',
+            date: '2026-08-20',
+            email: 'not-public@example.com',
+            saved: true,
+            traveler: { id: 'u-2', name: 'Karim', email: 'private@example.com' },
+          }],
+        };
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(authCalls, 0);
+  assert.deepEqual(calls, [{ q: 'oujda' }]);
+  assert.equal(response.body.trips[0].saved, false);
+  assert.equal('travelerId' in response.body.trips[0], false);
+  assert.equal('email' in response.body.trips[0], false);
+  assert.equal('email' in response.body.trips[0].traveler, false);
+});
+
 test('trip routes conserve statut service et protege avant appel', async () => {
   const refused = await requestTrip({
     method: 'PATCH',

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { api } from '../../core/api.js';
 import { Icon } from '../../Icons.jsx';
 import Notifications from '../../Notifications.jsx';
 import { t, useLang } from '../../i18n.js';
 import useAdaptiveBottomNav from '../hooks/useAdaptiveBottomNav.js';
+import { loginPath } from '../authNavigation.js';
 import {
   preloadPrimaryRoute,
   preloadPrimaryRoutes,
@@ -12,6 +13,8 @@ import {
 
 export function Header({ user }) {
   useLang();
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
   return (
     <header className="app-header">
       <div className="brand">
@@ -27,6 +30,11 @@ export function Header({ user }) {
           <span className="header-notif">
             <Notifications />
           </span>
+        )}
+        {!user && (
+          <Link className="header-login" to={loginPath(returnTo)}>
+            {t('auth.tab.login')}
+          </Link>
         )}
       </div>
       <div className="tagline">{t('header.tagline')}</div>

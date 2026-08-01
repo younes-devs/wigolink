@@ -120,11 +120,12 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
     "coalesce(t.data->>'departureDate', t.data->>'date') >= $1",
   ];
   if (mine) {
+    if (!user?.id) return emptyTripPage(query.limit);
     params.push(user.id);
     where.push(`t.data->>'travelerId' = $${params.length}`);
   } else {
     where.push("u.data->>'kycStatus' = 'verified'");
-    if (query.excludeMine === '1') {
+    if (query.excludeMine === '1' && user?.id) {
       params.push(user.id);
       where.push(`t.data->>'travelerId' <> $${params.length}`);
     }
@@ -167,7 +168,7 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
       )
     )`);
   }
-  params.push(user.id);
+  params.push(user?.id || null);
   const userParam = `$${params.length}`;
   params.push(limit + 1);
   const limitParam = `$${params.length}`;
@@ -213,6 +214,19 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
         createdAt: timestampCursorValue(last.sort_created_at, last.trip),
         id: last.sort_id || last.trip?.id,
       }) : null,
+    },
+  };
+}
+
+function emptyTripPage(limitValue) {
+  return {
+    trips: [],
+    page: {
+      limit: boundedLimit(limitValue),
+      offset: 0,
+      hasMore: false,
+      nextOffset: null,
+      nextCursor: null,
     },
   };
 }

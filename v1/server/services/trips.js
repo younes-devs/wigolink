@@ -315,6 +315,26 @@ export function createTripService({
     };
   }
 
+  function publicList(query = {}) {
+    const publicQuery = { ...query };
+    delete publicQuery.excludeMine;
+    const limitValue = Number(query.limit || 40);
+    const offsetValue = Number(query.offset || 0);
+    const limit = Math.max(1, Math.min(100, Number.isFinite(limitValue) ? Math.floor(limitValue) : 40));
+    const offset = Math.max(0, Number.isFinite(offsetValue) ? Math.floor(offsetValue) : 0);
+    const matchingTrips = availableTrips(null, publicQuery);
+    return {
+      trips: matchingTrips.slice(offset, offset + limit),
+      page: {
+        limit,
+        offset,
+        hasMore: offset + limit < matchingTrips.length,
+        nextOffset: offset + limit < matchingTrips.length ? offset + limit : null,
+        nextCursor: null,
+      },
+    };
+  }
+
   function overview(user, query = {}) {
     return {
       trips: availableTrips(user, {
@@ -407,6 +427,7 @@ export function createTripService({
     list,
     mine,
     overview,
+    publicList,
     remove,
     saveTrip,
     saved,

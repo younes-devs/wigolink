@@ -33,7 +33,9 @@ export function createTripProjections({
       .map((trip) => ({ ...trip, status: trip.status || (trip.date < today ? 'expired' : 'published') }))
       .filter((trip) => trip.status === 'published' && (trip.departureDate || trip.date) >= today)
       .filter((trip) => findUser(trip.travelerId)?.kycStatus === 'verified');
-    if (query.excludeMine === '1') trips = trips.filter((trip) => trip.travelerId !== user.id);
+    if (query.excludeMine === '1' && user?.id) {
+      trips = trips.filter((trip) => trip.travelerId !== user.id);
+    }
     if (query.from) {
       trips = trips.filter((trip) => locationMatches(trip.from, query.from, {
         locationId: trip.fromLocationId,

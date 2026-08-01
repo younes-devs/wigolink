@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { SkeletonList } from '../../../Skeleton.jsx';
@@ -8,6 +8,8 @@ import { useToast } from '../../../Toast.jsx';
 import { TripTransportIcon } from '../components/TripTransport.jsx';
 import { LocationInput } from '../components/LocationInput.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
+import { useAuth } from '../../../app/authContext.jsx';
+import { loginPath } from '../../../app/authNavigation.js';
 
 const tripOverviewCache = new Map();
 const TRIP_OVERVIEW_CACHE_MS = 30_000;
@@ -36,9 +38,12 @@ function writeTripCache(query, value) {
 
 export default function TripFeedSimple() {
   useLang();
-  const [trips, setTrips] = useState(() => readTripCache('')?.trips || null);
-  const [myTrips, setMyTrips] = useState(() => readTripCache('')?.myTrips || null);
-  const [pages, setPages] = useState(() => readTripCache('')?.pages || {});
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const initialCacheKey = `${user?.id || 'guest'}:`;
+  const [trips, setTrips] = useState(() => readTripCache(initialCacheKey)?.trips || null);
+  const [myTrips, setMyTrips] = useState(() => readTripCache(initialCacheKey)?.myTrips || (user ? null : []));
+  const [pages, setPages] = useState(() => readTripCache(initialCacheKey)?.pages || {});
   const [loadingMore, setLoadingMore] = useState('');
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '' };
@@ -66,11 +71,12 @@ export default function TripFeedSimple() {
     }
     return params.toString();
   }, [deferredFilters]);
+  const cacheKey = `${user?.id || 'guest'}:${query}`;
 
   const load = async ({ force = false } = {}) => {
     const params = new URLSearchParams(query);
     const requestId = ++requestRef.current;
-    const cached = readTripCache(query);
+    const cached = readTripCache(cacheKey);
     if (cached) {
       setTrips(cached.trips);
       setMyTrips(cached.myTrips);
@@ -78,15 +84,17 @@ export default function TripFeedSimple() {
       if (!force && Date.now() - cached.at < TRIP_OVERVIEW_CACHE_MS) return;
     }
     try {
-      const data = await api(`/trips/overview?${params.toString()}`);
+      const data = await api(user
+        ? `/trips/overview?${params.toString()}`
+        : `/public/trips?${params.toString()}`);
       if (requestId !== requestRef.current) return;
       const next = {
         trips: data.trips,
-        myTrips: data.myTrips,
-        pages: data.pages || {},
+        myTrips: user ? data.myTrips : [],
+        pages: user ? (data.pages || {}) : { trips: data.page || {} },
         at: Date.now(),
       };
-      writeTripCache(query, next);
+      writeTripCache(cacheKey, next);
       setTrips(next.trips);
       setMyTrips(next.myTrips);
       setPages(next.pages);
@@ -98,7 +106,7 @@ export default function TripFeedSimple() {
     }
   };
 
-  useEffect(() => { load(); }, [query]);
+  useEffect(() => { load(); }, [cacheKey]);
 
   const loadMore = async (kind) => {
     const page = pages[kind];
@@ -110,14 +118,16 @@ export default function TripFeedSimple() {
       else params.set('offset', String(page.nextOffset));
       params.set('limit', String(page.limit));
       if (kind === 'trips') params.set('excludeMine', '1');
-      const endpoint = kind === 'myTrips' ? '/trips/mine' : '/trips';
+      const endpoint = kind === 'myTrips'
+        ? '/trips/mine'
+        : (user ? '/trips' : '/public/trips');
       const data = await api(`${endpoint}?${params.toString()}`);
       const setItems = kind === 'myTrips' ? setMyTrips : setTrips;
       const nextPage = data.page || {};
       setItems((current) => {
         const merged = mergeById(current || [], data.trips || []);
-        const cached = readTripCache(query) || {};
-        writeTripCache(query, {
+        const cached = readTripCache(cacheKey) || {};
+        writeTripCache(cacheKey, {
           ...cached,
           [kind]: merged,
           pages: { ...(cached.pages || pages), [kind]: nextPage },
@@ -134,6 +144,10 @@ export default function TripFeedSimple() {
   };
 
   const toggleSaved = async (trip) => {
+    if (!user) {
+      navigate(loginPath('/trajets'));
+      return;
+    }
     try {
       if (trip.saved) await api(`/saved-trips/${trip.id}`, { method: 'DELETE' });
       else await api(`/saved-trips/${trip.id}`, { method: 'POST' });
@@ -156,7 +170,7 @@ export default function TripFeedSimple() {
           <h1 className="page-title">{t('trips.title')}</h1>
           <p className="page-sub">{t('trips.subtitle')}</p>
         </div>
-        <Link className="btn btn-primary btn-sm" to="/trajets/nouveau">
+        <Link className="btn btn-primary btn-sm" to={user ? '/trajets/nouveau' : loginPath('/trajets/nouveau')}>
           <Icon name="plus" size={15} />{t('trips.publish.open')}
         </Link>
       </div>
@@ -169,7 +183,7 @@ export default function TripFeedSimple() {
         </button>
         <Link
           className="trip-mobile-publish"
-          to="/trajets/nouveau"
+          to={user ? '/trajets/nouveau' : loginPath('/trajets/nouveau')}
           aria-label={t('trips.publish.open')}
           title={t('trips.publish.open')}
         >
@@ -215,7 +229,7 @@ export default function TripFeedSimple() {
         document.body
       )}
 
-      <div className="trip-mobile-tabs" role="tablist" aria-label={t('trips.mobile.tabs.aria')}>
+      {user && <div className="trip-mobile-tabs" role="tablist" aria-label={t('trips.mobile.tabs.aria')}>
         <button
           type="button"
           role="tab"
@@ -238,9 +252,9 @@ export default function TripFeedSimple() {
           {t('trips.mine')}
           {myTrips?.length > 0 && <span>{myTrips.length}</span>}
         </button>
-      </div>
+      </div>}
 
-      <section
+      {user && <section
         id="my-trips-panel"
         className={`trip-section trip-section-mine${mobileTab !== 'mine' ? ' mobile-tab-hidden' : ''}`}
       >
@@ -286,14 +300,14 @@ export default function TripFeedSimple() {
             </button>
           </div>
         )}
-      </section>
+      </section>}
 
       <section
         id="available-trips-panel"
         className={`trip-section trip-section-available${mobileTab !== 'others' ? ' mobile-tab-hidden' : ''}`}
       >
         <div className="section-head">
-          <h2>{t('trips.others')}</h2>
+          <h2>{t(user ? 'trips.others' : 'trips.available')}</h2>
           {trips?.length > 0 && <span>{trips.length}</span>}
         </div>
       {trips === null && <SkeletonList count={4} />}
@@ -336,7 +350,7 @@ export default function TripFeedSimple() {
               <button className="btn btn-ghost btn-sm" onClick={() => toggleSaved(trip)}>
                 <Icon name={trip.saved ? 'check' : 'star'} size={15} />{trip.saved ? t('trips.saved') : t('trips.save')}
               </button>
-              <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">
+              <Link to={user ? `/trajets/${trip.id}` : loginPath(`/trajets/${trip.id}`)} className="btn btn-primary btn-sm">
                 {t('common.view')} <Icon name="arrowRight" size={15} />
               </Link>
             </div>

@@ -56,6 +56,33 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.ok(calls[0].params.includes('ma-2540483'));
 });
 
+test('feed relationnel : sert une projection publique sans favori ni membre courant', async () => {
+  const calls = [];
+  const result = await listRelationalTrips({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return { rows: [{
+          trip: { id: 't-public', travelerId: 'u-2', from: 'Oujda', to: 'Bruxelles', date: '2026-08-01' },
+          traveler: { id: 'u-2', name: 'Karim', email: 'private@example.com', phone: '+320000', passwordHash: 'secret', kycStatus: 'verified' },
+          saved: false,
+        }] };
+      },
+    },
+    user: null,
+    query: { q: 'wjda', limit: 20 },
+    today: '2026-07-17',
+  });
+
+  assert.equal(result.trips[0].saved, false);
+  assert.equal(result.trips[0].traveler.name, 'Karim');
+  assert.equal('email' in result.trips[0].traveler, false);
+  assert.equal('phone' in result.trips[0].traveler, false);
+  assert.equal('passwordHash' in result.trips[0].traveler, false);
+  assert.ok(calls[0].params.includes(null));
+  assert.doesNotMatch(calls[0].sql, /travelerId' <>/);
+});
+
 test('feed relationnel : poursuit avec un curseur sans parcourir les lignes precedentes', async () => {
   const rows = [
     {

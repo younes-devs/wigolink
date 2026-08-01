@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { publicTripCatalog } from '../services/public-trip-catalog.js';
 
 export function createRelationalReadsRouter({
   auth,
@@ -19,6 +20,25 @@ export function createRelationalReadsRouter({
   logger = console,
 }) {
   const router = Router();
+
+  router.get('/public/trips', async (req, res, next) => {
+    if (!tripReadsEnabled()) return next('route');
+    try {
+      res.set('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
+      const result = await listTrips({
+        pool: getPool(),
+        user: null,
+        query: req.query,
+        today: today(),
+      });
+      return res.json(publicTripCatalog(result));
+    } catch (error) {
+      logger.error('Echec de recherche publique des trajets', error);
+      return res.status(503).json({
+        error: 'Recherche temporairement indisponible. Reessayez.',
+      });
+    }
+  });
 
   router.get('/trips/mine', auth, async (req, res, next) => {
     if (!tripReadsEnabled()) return next('route');

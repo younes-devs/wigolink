@@ -8,7 +8,9 @@ export function createLocationsRouter({
 }) {
   const router = Router();
 
-  router.get('/locations/suggest', auth, (req, res) => {
+  // City names and aliases are public catalogue data used by the guest trip search.
+  router.get('/locations/suggest', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
     const countryCode = String(req.query.country || 'MA').toUpperCase();
     const locations = suggest(req.query.q, {
       countryCode,

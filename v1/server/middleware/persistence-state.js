@@ -1,5 +1,6 @@
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const RELATIONAL_TRIP_PATHS = new Set([
+  '/api/public/trips',
   '/api/trips',
   '/api/trips/mine',
   '/api/trips/overview',
