@@ -8,6 +8,7 @@ import { SkeletonCard } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { t, useLang } from '../../../i18n.js';
 import { warmKycFaceGuidance } from '../services/faceGuidance.js';
+import { dataUrlBlob, uploadSignedBlob } from '../../../core/directUpload.js';
 
 // Page de vérification d'identité (KYC manuel — PRD KYC).
 // Le flux est volontairement immersif pour laisser toute la place aux documents.
@@ -128,7 +129,13 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
   const submit = async () => {
     setBusy(true); setError('');
     try {
-      await api('/kyc/submit', { method: 'POST', body: { ...form, ...photos } });
+      let body = { ...form, ...photos };
+      try {
+        body = await prepareDirectKycSubmission(form, photos);
+      } catch (uploadError) {
+        if (!import.meta.env.DEV) throw uploadError;
+      }
+      await api('/kyc/submit', { method: 'POST', body });
       onDone();
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
@@ -230,6 +237,34 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
       )}
     </div>
   );
+}
+
+async function prepareDirectKycSubmission(form, photos) {
+  const fields = ['selfiePhoto', 'idFrontPhoto', 'idBackPhoto']
+    .filter((field) => !!photos[field]);
+  const blobs = Object.fromEntries(await Promise.all(fields.map(async (field) => (
+    [field, await dataUrlBlob(photos[field])]
+  ))));
+  const reservation = await api('/kyc/uploads', {
+    method: 'POST',
+    body: {
+      photos: Object.fromEntries(fields.map((field) => [field, {
+        mime: blobs[field].type || 'image/jpeg',
+        size: blobs[field].size,
+      }])),
+    },
+  });
+  await Promise.all((reservation.uploads || []).map((upload) => (
+    uploadSignedBlob(upload.signedUrl, blobs[upload.field], '300')
+  )));
+  return {
+    ...form,
+    uploadId: reservation.uploadId,
+    ...Object.fromEntries(fields.map((field) => [field, {
+      uploadId: reservation.uploadId,
+      field,
+    }])),
+  };
 }
 
 function PhotoStep({ cfg, photo, onRetake, onNext, onPrev }) {

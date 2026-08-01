@@ -206,6 +206,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     true,
   );
   assert.equal(
+    isRelationalKycRequest({
+      method: 'POST',
+      path: '/api/kyc/uploads',
+    }, enabled),
+    true,
+  );
+  assert.equal(
     isRelationalAdminMembersRequest({
       method: 'GET',
       path: '/api/admin/users/u-1/case-file',
@@ -339,6 +346,13 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
     isRelationalAccountRequest({
       method: 'POST',
       path: '/api/profile/email/change/confirm',
+    }, enabled),
+    true,
+  );
+  assert.equal(
+    isRelationalAccountRequest({
+      method: 'POST',
+      path: '/api/profile/photo/upload',
     }, enabled),
     true,
   );

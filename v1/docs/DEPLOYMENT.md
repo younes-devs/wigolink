@@ -50,3 +50,12 @@ La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour l
 Les photos de conversation sont stockees dans un bucket Supabase prive au lieu d'etre repetees en base64 dans chaque reponse JSON. Renseigner `SUPABASE_URL` et `SUPABASE_SECRET_KEY`; le serveur cree au premier envoi le bucket `wigofly-message-media`, ou le nom defini par `SUPABASE_MESSAGE_MEDIA_BUCKET`. Le navigateur ne recoit jamais la cle ni le chemin interne: il charge le fichier via une route API authentifiee, avec un cache prive de 24 heures.
 
 Les anciennes images inline restent compatibles. L'API les sert par la meme route authentifiee sans les inclure dans la liste des conversations ou des messages.
+
+## Medias KYC et profil
+
+En production, le navigateur reserve des URLs d'upload signees puis envoie les
+captures KYC et l'avatar directement dans Supabase Storage. L'API ne recoit que
+les references, controle le proprietaire, le type MIME et la taille reelle, puis
+finalise la reservation. Une reservation expire apres 15 minutes et le cron
+retire les objets abandonnes. Le fallback base64 est limite au developpement
+local.

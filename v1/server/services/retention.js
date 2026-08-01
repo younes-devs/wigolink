@@ -4,6 +4,7 @@ const NOTIFICATION_RETENTION_DAYS = 10;
 export function createRetentionService({
   getPool,
   messageMedia,
+  memberMediaUploads = null,
   limit = DEFAULT_LIMIT,
   logger = console,
 }) {
@@ -14,9 +15,9 @@ export function createRetentionService({
     }
 
     const reservations = await pool.query(
-      `select id, data
+      `select kind, id, data
        from public.wigofly_runtime_records
-       where kind = 'message_upload'
+       where kind in ('message_upload', 'member_media_upload')
          and expires_at <= now()
        order by expires_at
        limit $1`,
@@ -27,11 +28,17 @@ export function createRetentionService({
     for (const row of reservations.rows) {
       const path = String(row.data?.storagePath || '');
       try {
-        if (path && messageMedia?.enabled) await messageMedia.remove(path);
+        if (row.kind === 'message_upload' && path && messageMedia?.enabled) {
+          await messageMedia.remove(path);
+        }
+        if (row.kind === 'member_media_upload') {
+          await memberMediaUploads?.cleanupData(row.data);
+        }
         removedReservationIds.push(row.id);
       } catch (error) {
         mediaFailures += 1;
-        logger.error('retention_message_upload_remove_failed', {
+        logger.error('retention_upload_remove_failed', {
+          kind: row.kind,
           id: row.id,
           message: error?.message || 'unknown_error',
         });
@@ -41,7 +48,8 @@ export function createRetentionService({
     if (removedReservationIds.length) {
       await pool.query(
         `delete from public.wigofly_runtime_records
-         where kind = 'message_upload' and id = any($1::text[])`,
+         where kind in ('message_upload', 'member_media_upload')
+           and id = any($1::text[])`,
         [removedReservationIds],
       );
     }
@@ -53,7 +61,7 @@ export function createRetentionService({
       ),
       pool.query(
         `delete from public.wigofly_runtime_records
-         where kind <> 'message_upload'
+         where kind not in ('message_upload', 'member_media_upload')
            and expires_at is not null
            and expires_at <= now()`,
       ),

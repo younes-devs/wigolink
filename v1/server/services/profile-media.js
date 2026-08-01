@@ -63,6 +63,58 @@ export function createProfileMediaService({
     return `${publicUrl}?v=${Date.now()}`;
   }
 
+  async function createSignedUpload({ userId, uploadId, mime }) {
+    if (!enabled) return null;
+    await ensureBucket();
+    const extension = extensionForMime(mime);
+    if (!extension) throw new Error('Type image profil invalide');
+    const storagePath = `users/${safeSegment(userId)}/avatars/${safeSegment(uploadId)}.${extension}`;
+    const { data, error } = await storage
+      .from(bucket)
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (error || !data) throw error || new Error('URL upload profil indisponible');
+    return { mime, storagePath, signedUrl: data.signedUrl };
+  }
+
+  async function info(storagePath) {
+    if (!enabled || !storagePath) return null;
+    const { data, error } = await storage.from(bucket).info(storagePath);
+    if (error || !data) return null;
+    return {
+      mime: data.contentType || data.metadata?.mimetype || null,
+      size: Number(data.size || data.metadata?.size || 0),
+    };
+  }
+
+  function publicUrl(storagePath) {
+    if (!enabled || !storagePath) return null;
+    const { data } = storage.from(bucket).getPublicUrl(storagePath);
+    return data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : null;
+  }
+
+  async function removePaths(paths) {
+    const selected = [...new Set((paths || []).filter(Boolean))];
+    if (!enabled || !selected.length) return;
+    const { error } = await storage.from(bucket).remove(selected);
+    if (error && !isMissingObject(error)) throw error;
+  }
+
+  async function removePublicUrl(userId, value) {
+    if (!enabled || !value) return;
+    try {
+      const parsed = new URL(value);
+      if (parsed.origin !== new URL(baseUrl).origin) return;
+      const marker = `/storage/v1/object/public/${bucket}/`;
+      const index = parsed.pathname.indexOf(marker);
+      if (index < 0) return;
+      const storagePath = decodeURIComponent(parsed.pathname.slice(index + marker.length));
+      if (!storagePath.startsWith(`users/${safeSegment(userId)}/`)) return;
+      await removePaths([storagePath]);
+    } catch {
+      // Legacy inline and external profile URLs have no object to remove here.
+    }
+  }
+
   async function remove(userId) {
     if (!enabled) return;
     await ensureBucket();
@@ -75,9 +127,21 @@ export function createProfileMediaService({
 
   return {
     enabled,
+    createSignedUpload,
+    info,
+    publicUrl,
+    removePaths,
+    removePublicUrl,
     storeDataUrl,
     remove,
   };
+}
+
+function extensionForMime(mime) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/jpeg') return 'jpg';
+  return null;
 }
 
 function parseImageDataUrl(dataUrl) {

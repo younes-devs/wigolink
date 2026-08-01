@@ -153,6 +153,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
+import { createMemberMediaUploadService } from './services/member-media-uploads.js';
 import { createRetentionService } from './services/retention.js';
 import { createCapacityService } from './services/capacity.js';
 import { createTripService } from './services/trips.js';
@@ -393,9 +394,15 @@ const profileMedia = createProfileMediaService({
   secretKey: SUPABASE_SECRET_KEY,
   bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigofly-profile-media').trim(),
 });
+const memberMediaUploads = createMemberMediaUploadService({
+  getPool: databasePool,
+  kycMedia,
+  profileMedia,
+});
 const retention = createRetentionService({
   getPool: databasePool,
   messageMedia,
+  memberMediaUploads,
 });
 const capacity = createCapacityService({
   getPool: databasePool,
@@ -548,7 +555,15 @@ app.use('/api', createRelationalTripWriteRouter({
 const IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
 function validPhotos(photos) {
   if (!Array.isArray(photos)) return false;
-  return photos.every((p) => IMG_RE.test(p) && p.length <= 700 * 1024);
+  return photos.every((photo) => (
+    (typeof photo === 'string' && IMG_RE.test(photo) && photo.length <= 700 * 1024)
+    || (
+      photo
+      && typeof photo === 'object'
+      && /^media-[a-f0-9-]{36}$/.test(String(photo.uploadId || ''))
+      && ['selfiePhoto', 'idFrontPhoto', 'idBackPhoto'].includes(photo.field)
+    )
+  ));
 }
 
 // Liste blanche effective = base statique + catégories promues depuis la zone grise
@@ -699,6 +714,7 @@ app.use('/api/kyc', createKycRouter({
   auth,
   kycRepository,
   kycMedia,
+  memberMediaUploads,
   save: relationalKycEnabled() ? async () => {} : save,
   persistUser: relationalKycEnabled()
     ? (user, before) => authRepositories.users.updateChanged(user, before)
@@ -736,6 +752,7 @@ app.use('/api/profile', createProfileRouter({
   clearUserSessions,
   accountEmail: accountEmailService,
   profileMedia,
+  memberMediaUploads,
   allowInlineMediaFallback: !IS_PRODUCTION,
 }));
 

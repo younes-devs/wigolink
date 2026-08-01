@@ -21,6 +21,8 @@ async function requestProfile({
   hashPassword,
   clearUserSessions,
   accountEmail,
+  profileMedia,
+  memberMediaUploads,
 }) {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
@@ -36,6 +38,8 @@ async function requestProfile({
     hashPassword,
     clearUserSessions,
     accountEmail,
+    profileMedia,
+    memberMediaUploads,
   }));
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
@@ -126,6 +130,77 @@ test('profile route applique, audite, sauvegarde puis projette la modification',
     after: user,
     fields: ['name', 'city', 'phone'],
   });
+});
+
+test('profile photo route finalise un upload direct puis retire l ancien objet', async () => {
+  const user = { id: 'u-1', photoUrl: 'https://cdn.test/old.jpg' };
+  const events = [];
+  const response = await requestProfile({
+    path: '/photo',
+    body: { uploadId: 'media-1' },
+    user,
+    memberMediaUploads: {
+      async claimProfile() {
+        events.push('claim');
+        return { uploadId: 'media-1', url: 'https://cdn.test/new.jpg' };
+      },
+      async complete() { events.push('complete'); },
+    },
+    profileMedia: {
+      async removePublicUrl(_userId, url) { events.push(`remove:${url}`); },
+    },
+    async auditChange() { events.push('audit'); },
+    save() { events.push('save'); },
+    publicUser(candidate) { return { id: candidate.id, photoUrl: candidate.photoUrl }; },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.user.photoUrl, 'https://cdn.test/new.jpg');
+  assert.deepEqual(events, [
+    'claim', 'audit', 'save', 'complete', 'remove:https://cdn.test/old.jpg',
+  ]);
+});
+
+test('profile photo route reserve une URL signee sans recevoir le fichier', async () => {
+  const response = await requestProfile({
+    path: '/photo/upload',
+    body: { mime: 'image/jpeg', size: 1234 },
+    memberMediaUploads: {
+      async reserveProfile(payload) {
+        assert.deepEqual(payload, {
+          userId: 'u-1', mime: 'image/jpeg', size: 1234,
+        });
+        return { uploadId: 'media-1', upload: { signedUrl: 'https://upload.test' } };
+      },
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.uploadId, 'media-1');
+});
+
+test('profile photo route annule l upload direct si la sauvegarde echoue', async () => {
+  const user = { id: 'u-1', photoUrl: 'https://cdn.test/old.jpg' };
+  const events = [];
+  const response = await requestProfile({
+    path: '/photo',
+    body: { uploadId: 'media-1' },
+    user,
+    memberMediaUploads: {
+      async claimProfile() {
+        events.push('claim');
+        return { uploadId: 'media-1', url: 'https://cdn.test/new.jpg' };
+      },
+      async cancel(uploadId) { events.push(`cancel:${uploadId}`); },
+    },
+    profileMedia: {},
+    async auditChange() { events.push('audit'); },
+    async save() { throw new Error('database unavailable'); },
+    publicUser() { assert.fail('aucune projection ne doit etre calculee'); },
+  });
+
+  assert.equal(response.status, 503);
+  assert.equal(user.photoUrl, 'https://cdn.test/old.jpg');
+  assert.deepEqual(events, ['claim', 'audit', 'cancel:media-1']);
 });
 
 test('profile route refuse un nom court sans mutation', async () => {

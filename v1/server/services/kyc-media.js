@@ -77,6 +77,37 @@ export function createKycMediaService({
     }
   }
 
+  async function createSignedUpload({ userId, uploadId, field, mime }) {
+    if (!enabled) return null;
+    await ensureBucket();
+    if (!PHOTO_FIELDS.includes(field)) throw new Error('Champ KYC invalide');
+    const extension = extensionForMime(mime);
+    if (!extension) throw new Error('Type image KYC invalide');
+    const storagePath = `users/${safeSegment(userId)}/pending/${safeSegment(uploadId)}/${field}.${extension}`;
+    const { data, error } = await storage
+      .from(bucket)
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (error || !data) throw error || new Error('URL upload KYC indisponible');
+    return { field, mime, storagePath, signedUrl: data.signedUrl };
+  }
+
+  async function info(storagePath) {
+    if (!enabled || !storagePath) return null;
+    const { data, error } = await storage.from(bucket).info(storagePath);
+    if (error || !data) return null;
+    return {
+      mime: data.contentType || data.metadata?.mimetype || null,
+      size: Number(data.size || data.metadata?.size || 0),
+    };
+  }
+
+  async function removePaths(paths) {
+    const selected = [...new Set((paths || []).filter(Boolean))];
+    if (!enabled || !selected.length) return;
+    const { error } = await storage.from(bucket).remove(selected);
+    if (error && !isMissingBucket(error)) throw error;
+  }
+
   async function viewUrl(photo, { expiresIn = 300 } = {}) {
     if (!photo) return null;
     if (typeof photo === 'string') return photo;
@@ -91,9 +122,19 @@ export function createKycMediaService({
 
   return {
     enabled,
+    createSignedUpload,
+    info,
+    removePaths,
     storeSubmission,
     viewUrl,
   };
+}
+
+function extensionForMime(mime) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/jpeg') return 'jpg';
+  return null;
 }
 
 function parseImageDataUrl(dataUrl) {

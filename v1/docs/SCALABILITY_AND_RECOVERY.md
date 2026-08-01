@@ -9,13 +9,16 @@ charge ni une restauration reelle.
 - PostgreSQL stocke les comptes, sessions, trajets, operations, conversations,
   messages, notifications et journaux deja migres.
 - Supabase Storage stocke les medias hors de PostgreSQL.
-- Les images de messagerie sont envoyees directement vers Storage par URL signee.
+- Les images de messagerie, les captures KYC et les photos de profil sont
+  envoyees directement vers Storage par URL signee. Les fonctions Vercel ne
+  transportent donc plus les fichiers binaires de production.
 - Les fils de messages, boites de reception et listes de trajets sont pagines et
   ne chargent jamais l'historique complet dans une seule reponse.
 - Les pages suivantes des trajets et conversations utilisent un curseur de tri
   stable; leur cout ne grandit pas avec le numero de page.
-- Les corps JSON sont limites a 1 Mo, avec une exception KYC bornee a 3 Mo pour
-  ses trois captures compressees.
+- Les corps JSON sont limites a 1 Mo. L'ancienne exception KYC de 3 Mo reste
+  uniquement compatible avec le developpement local; la production utilise des
+  reservations signees de 15 minutes, liees au membre et verifiees cote serveur.
 - Le pool PostgreSQL est borne par instance Vercel.
 - Le cron quotidien supprime les reservations d'upload abandonnees, sessions,
   codes temporaires et notifications expirees.
@@ -138,15 +141,16 @@ SHA-256, la date, le commit et le projet source.
 
 ### Storage
 
-Activer l'interface S3 Supabase et synchroniser les trois buckets prives avec
+Activer l'interface S3 Supabase et synchroniser les trois buckets avec
 `rclone` ou AWS CLI vers un stockage chiffre distinct :
 
 - `wigofly-message-media`;
 - `wigofly-kyc-media`;
 - `wigofly-profile-media`.
 
-Ne jamais rendre ces sauvegardes publiques. Les documents KYC exigent des acces
-restreints, une journalisation et une politique de conservation juridique
+Les buckets de messagerie et KYC restent prives. Le bucket des avatars est
+public, mais sa sauvegarde ne doit pas l'etre. Les documents KYC exigent des
+acces restreints, une journalisation et une politique de conservation juridique
 validee.
 
 ## Exercice de restauration

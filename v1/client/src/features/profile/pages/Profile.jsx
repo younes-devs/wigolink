@@ -6,6 +6,7 @@ import { TrustBadge, Stars } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { TripTransportIcon, TransportModePicker } from '../../trips/components/TripTransport.jsx';
 import { t, useLang, dateLocale } from '../../../i18n.js';
+import { dataUrlBlob, uploadSignedBlob } from '../../../core/directUpload.js';
 
 const memberFmt = () => new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric' });
 
@@ -54,7 +55,21 @@ export default function Profile() {
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       URL.revokeObjectURL(img.src);
       try {
-        await api('/profile/photo', { method: 'POST', body: { dataUrl } });
+        const blob = await dataUrlBlob(dataUrl);
+        try {
+          const reservation = await api('/profile/photo/upload', {
+            method: 'POST',
+            body: { mime: blob.type || 'image/jpeg', size: blob.size },
+          });
+          await uploadSignedBlob(reservation.upload?.signedUrl, blob, '31536000');
+          await api('/profile/photo', {
+            method: 'POST',
+            body: { uploadId: reservation.uploadId },
+          });
+        } catch (uploadError) {
+          if (!import.meta.env.DEV) throw uploadError;
+          await api('/profile/photo', { method: 'POST', body: { dataUrl } });
+        }
         await refreshUser();
         flash(t('profile.photo.updated'));
       } catch (er) { setErr(er.message); }

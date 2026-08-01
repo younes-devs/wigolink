@@ -12,6 +12,7 @@ const VALID_BODY = {
 };
 
 async function requestKyc({
+  path = '/submit',
   user = { id: 'u-1', kycStatus: 'none' },
   auth,
   kycRepository,
@@ -20,6 +21,7 @@ async function requestKyc({
   validPhotos = (photos) => photos.every((photo) => photo === 'valid-photo'),
   maxAttempts = 3,
   body = VALID_BODY,
+  memberMediaUploads,
 }) {
   const app = express();
   app.use(express.json());
@@ -33,6 +35,7 @@ async function requestKyc({
     kycUserView,
     validPhotos,
     maxAttempts,
+    memberMediaUploads,
   }));
   const server = await new Promise((resolve) => {
     const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
@@ -41,7 +44,7 @@ async function requestKyc({
   try {
     const address = server.address();
     const response = await fetch(
-      `http://127.0.0.1:${address.port}/api/kyc/submit`,
+      `http://127.0.0.1:${address.port}/api/kyc${path}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,6 +108,72 @@ test('KYC route enregistre puis sauvegarde une soumission valide', async () => {
   assert.deepEqual(response.body, {
     kyc: { status: 'pending', attempts: 1 },
   });
+});
+
+test('KYC route consomme une reservation directe sans recevoir les images', async () => {
+  const user = { id: 'u-1', kycStatus: 'none' };
+  let submission;
+  const events = [];
+  const uploadId = 'media-11111111-1111-4111-8111-111111111111';
+  const response = await requestKyc({
+    user,
+    body: {
+      legalName: 'Membre Direct',
+      birthDate: '1990-01-01',
+      documentType: 'passport',
+      uploadId,
+      selfiePhoto: { uploadId, field: 'selfiePhoto' },
+      idFrontPhoto: { uploadId, field: 'idFrontPhoto' },
+    },
+    validPhotos: (photos) => photos.every((photo) => photo?.uploadId === uploadId),
+    memberMediaUploads: {
+      async claimKyc(payload) {
+        events.push('claim');
+        assert.deepEqual(payload.fields, ['selfiePhoto', 'idFrontPhoto']);
+        return {
+          uploadId,
+          photos: {
+            selfiePhoto: { storagePath: 'kyc/selfie.jpg', mime: 'image/jpeg', size: 100 },
+            idFrontPhoto: { storagePath: 'kyc/front.jpg', mime: 'image/jpeg', size: 100 },
+          },
+        };
+      },
+      async complete(id) { events.push(`complete:${id}`); },
+      async cancel() { assert.fail('upload valide ne doit pas etre annule'); },
+    },
+    kycRepository: {
+      async rejectedCountForUser() { return 0; },
+      async appendSubmission(value) { events.push('append'); submission = value; },
+    },
+    async save() { events.push('save'); },
+    async kycUserView() { return { status: 'pending' }; },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(submission.selfiePhoto.storagePath, 'kyc/selfie.jpg');
+  assert.equal(submission.idFrontPhoto.storagePath, 'kyc/front.jpg');
+  assert.deepEqual(events, ['claim', 'append', 'save', `complete:${uploadId}`]);
+});
+
+test('KYC route reserve les URLs signees pour le membre authentifie', async () => {
+  const response = await requestKyc({
+    path: '/uploads',
+    body: {
+      photos: {
+        selfiePhoto: { mime: 'image/jpeg', size: 100 },
+        idFrontPhoto: { mime: 'image/jpeg', size: 100 },
+      },
+    },
+    memberMediaUploads: {
+      async reserveKyc(payload) {
+        assert.equal(payload.userId, 'u-1');
+        assert.equal(payload.photos.selfiePhoto.size, 100);
+        return { uploadId: 'media-1', uploads: [{ field: 'selfiePhoto' }] };
+      },
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.uploadId, 'media-1');
 });
 
 for (const [kycStatus, expectedStatus, error] of [

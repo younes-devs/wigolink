@@ -15,6 +15,7 @@ const RELATIONAL_ACCOUNT_PATHS = new Set([
   '/api/me',
   '/api/profile',
   '/api/profile/photo',
+  '/api/profile/photo/upload',
   '/api/profile/password',
   '/api/profile/email/change/request',
   '/api/profile/email/change/confirm',
@@ -139,6 +140,7 @@ export function isRelationalKycRequest(req, relationalKycEnabled) {
   return relationalKycEnabled()
     && (
       req.path === '/api/kyc/submit'
+      || req.path === '/api/kyc/uploads'
       || /^\/api\/admin\/kyc(?:\/[^/]+(?:\/decide)?)?$/.test(req.path)
     );
 }

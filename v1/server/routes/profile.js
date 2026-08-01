@@ -15,12 +15,31 @@ export function createProfileRouter({
   clearUserSessions,
   accountEmail,
   profileMedia = null,
+  memberMediaUploads = null,
   allowInlineMediaFallback = true,
   validateUpdate = validateProfileUpdate,
   validatePhoto = validateProfilePhoto,
   validatePassword = validatePasswordChange,
 }) {
   const router = Router();
+
+  router.post('/photo/upload', auth, async (req, res) => {
+    try {
+      const value = await memberMediaUploads.reserveProfile({
+        userId: req.user.id,
+        mime: req.body?.mime,
+        size: req.body?.size,
+      });
+      return res.json(value);
+    } catch (error) {
+      const invalid = /invalide|trop lourde/i.test(error?.message || '');
+      return res.status(invalid ? 400 : 503).json({
+        error: invalid
+          ? 'Image invalide ou trop lourde'
+          : 'Le stockage des photos est temporairement indisponible',
+      });
+    }
+  });
 
   router.post('/', auth, async (req, res) => {
     const validation = validateUpdate(req.body);
@@ -45,16 +64,26 @@ export function createProfileRouter({
   });
 
   router.post('/photo', auth, async (req, res) => {
-    const validation = validatePhoto(req.body.dataUrl);
+    const directUpload = String(req.body?.uploadId || '').trim();
+    const validation = directUpload ? { value: undefined } : validatePhoto(req.body.dataUrl);
     if (validation.error) {
       return res.status(validation.status).json({ error: validation.error });
     }
 
-    const before = { hasPhoto: !!req.user.photoUrl };
+    const previousPhotoUrl = req.user.photoUrl || null;
+    const before = { hasPhoto: !!previousPhotoUrl };
+    let claimedUpload = null;
     try {
       if (validation.value === null) {
+        await profileMedia?.removePublicUrl(req.user.id, previousPhotoUrl);
         await profileMedia?.remove(req.user.id);
         req.user.photoUrl = null;
+      } else if (directUpload) {
+        claimedUpload = await memberMediaUploads.claimProfile({
+          userId: req.user.id,
+          uploadId: directUpload,
+        });
+        req.user.photoUrl = claimedUpload.url;
       } else if (profileMedia?.enabled) {
         req.user.photoUrl = await profileMedia.storeDataUrl({
           userId: req.user.id,
@@ -72,17 +101,31 @@ export function createProfileRouter({
         error: 'Le stockage des photos est temporairement indisponible',
       });
     }
-    await auditChange({
-      actorId: req.user.id,
-      action: 'profile.photo.update',
-      targetType: 'user',
-      targetId: req.user.id,
-      subjectUserId: req.user.id,
-      before,
-      after: { hasPhoto: !!req.user.photoUrl },
-      fields: ['hasPhoto'],
-    });
-    save();
+    try {
+      await auditChange({
+        actorId: req.user.id,
+        action: 'profile.photo.update',
+        targetType: 'user',
+        targetId: req.user.id,
+        subjectUserId: req.user.id,
+        before,
+        after: { hasPhoto: !!req.user.photoUrl },
+        fields: ['hasPhoto'],
+      });
+      await save();
+    } catch {
+      req.user.photoUrl = previousPhotoUrl;
+      if (claimedUpload) {
+        await memberMediaUploads.cancel(claimedUpload.uploadId).catch(() => {});
+      }
+      return res.status(503).json({
+        error: 'La photo de profil n a pas pu etre enregistree',
+      });
+    }
+    if (claimedUpload) {
+      await memberMediaUploads.complete(claimedUpload.uploadId).catch(() => {});
+      await profileMedia?.removePublicUrl(req.user.id, previousPhotoUrl);
+    }
     return res.json({ user: publicUser(req.user) });
   });
 

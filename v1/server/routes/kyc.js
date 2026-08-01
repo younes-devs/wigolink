@@ -5,6 +5,7 @@ export function createKycRouter({
   auth,
   kycRepository,
   kycMedia = null,
+  memberMediaUploads = null,
   save,
   kycUserView,
   validPhotos,
@@ -13,6 +14,23 @@ export function createKycRouter({
   validateSubmission = validateKycSubmission,
 }) {
   const router = Router();
+
+  router.post('/uploads', auth, async (req, res) => {
+    try {
+      const value = await memberMediaUploads.reserveKyc({
+        userId: req.user.id,
+        photos: req.body?.photos,
+      });
+      return res.json(value);
+    } catch (error) {
+      const invalid = /invalide|trop lourde/i.test(error?.message || '');
+      return res.status(invalid ? 400 : 503).json({
+        error: invalid
+          ? 'Images KYC invalides'
+          : 'Le stockage securise des documents est temporairement indisponible',
+      });
+    }
+  });
 
   router.post('/submit', auth, async (req, res) => {
     if (req.user.kycStatus === 'verified') {
@@ -31,6 +49,21 @@ export function createKycRouter({
     if (validation.error) {
       return res.status(validation.status).json({ error: validation.error });
     }
+    if (req.body?.uploadId) {
+      const uploadId = String(req.body.uploadId);
+      const directFields = ['selfiePhoto', 'idFrontPhoto', 'idBackPhoto']
+        .filter((field) => !!validation.value[field]);
+      const validDirectReferences = /^media-[a-f0-9-]{36}$/.test(uploadId)
+        && directFields.every((field) => (
+          validation.value[field]
+          && typeof validation.value[field] === 'object'
+          && validation.value[field].uploadId === uploadId
+          && validation.value[field].field === field
+        ));
+      if (!validDirectReferences) {
+        return res.status(400).json({ error: 'Reservation KYC invalide' });
+      }
+    }
 
     const rejectedCount = await kycRepository.rejectedCountForUser(req.user.id);
     if (rejectedCount >= maxAttempts) {
@@ -39,8 +72,18 @@ export function createKycRouter({
       });
     }
 
+    let claimedUpload = null;
+    let persisted = false;
     try {
-      const storedPhotos = kycMedia?.enabled
+      if (req.body?.uploadId) {
+        claimedUpload = await memberMediaUploads.claimKyc({
+          userId: req.user.id,
+          uploadId: req.body.uploadId,
+          fields: ['selfiePhoto', 'idFrontPhoto', 'idBackPhoto']
+            .filter((field) => !!validation.value[field]),
+        });
+      }
+      const storedPhotos = claimedUpload?.photos || (kycMedia?.enabled
         ? await kycMedia.storeSubmission({
           userId: req.user.id,
           photos: validation.value,
@@ -49,7 +92,7 @@ export function createKycRouter({
           selfiePhoto: validation.value.selfiePhoto,
           idFrontPhoto: validation.value.idFrontPhoto,
           idBackPhoto: validation.value.idBackPhoto,
-        };
+        });
       const submissionData = {
         userId: req.user.id,
         ...validation.value,
@@ -63,9 +106,14 @@ export function createKycRouter({
         await kycRepository.appendSubmission(submissionData);
         if (persistUser) await persistUser(req.user, previousUser);
       }
+      persisted = true;
       await save();
+      if (claimedUpload) await memberMediaUploads.complete(claimedUpload.uploadId).catch(() => {});
       return res.json({ kyc: await kycUserView(req.user) });
     } catch {
+      if (claimedUpload && !persisted) {
+        await memberMediaUploads.cancel(claimedUpload.uploadId).catch(() => {});
+      }
       return res.status(503).json({
         error: 'Le stockage securise des documents est temporairement indisponible',
       });
