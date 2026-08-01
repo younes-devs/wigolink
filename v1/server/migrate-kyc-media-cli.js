@@ -17,13 +17,13 @@ const kycMedia = createKycMediaService({
 try {
   await pool.query('begin');
   const result = await pool.query(
-    'select state from public.wigofly_app_state where id = 1 for update',
+    'select state from public.wigolink_app_state where id = 1 for update',
   );
   const state = result.rows[0]?.state;
-  if (!state) throw new Error('Etat Wigofly introuvable.');
+  if (!state) throw new Error('Etat Wigolink introuvable.');
   const migrated = await migrateInlineKycMedia({ state, kycMedia });
   await pool.query(
-    `update public.wigofly_app_state
+    `update public.wigolink_app_state
      set state = $1::jsonb, revision = revision + 1, updated_at = now()
      where id = 1`,
     [JSON.stringify(migrated.state)],
@@ -31,7 +31,7 @@ try {
   for (const submission of migrated.state.kycSubmissions || []) {
     if (!submission?.id) continue;
     await pool.query(
-      `update public.wigofly_kyc_submissions set data = $2::jsonb where id = $1`,
+      `update public.wigolink_kyc_submissions set data = $2::jsonb where id = $1`,
       [submission.id, JSON.stringify(submission)],
     );
   }

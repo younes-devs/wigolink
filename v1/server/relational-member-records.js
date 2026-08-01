@@ -11,7 +11,7 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
          select jsonb_agg(t.data order by t.created_at desc)
          from (
            select data, created_at
-           from public.wigofly_trips
+           from public.wigolink_trips
            where data->>'travelerId' = $1
            order by created_at desc
            limit $2
@@ -21,7 +21,7 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
          select jsonb_agg(l.data order by l.created_at desc)
          from (
            select data, created_at
-           from public.wigofly_listings
+           from public.wigolink_listings
            where data->>'senderId' = $1
            order by created_at desc
            limit $2
@@ -31,7 +31,7 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
          select jsonb_agg(tx.data order by tx.created_at desc)
          from (
            select data, created_at
-           from public.wigofly_transactions tx
+           from public.wigolink_transactions tx
            where ${transactionParticipantFilter('$1')}
            order by created_at desc
            limit $2
@@ -41,11 +41,11 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
          select jsonb_agg(d.data order by d.created_at desc)
          from (
            select data, created_at
-           from public.wigofly_disputes d
+           from public.wigolink_disputes d
            where d.data->>'openedBy' = $1
               or exists (
                 select 1
-                from public.wigofly_transactions tx
+                from public.wigolink_transactions tx
                 where tx.id = d.data->>'txId'
                   and ${transactionParticipantFilter('$1')}
               )
@@ -81,7 +81,7 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
          select jsonb_agg(queue.data order by queue.created_at desc)
          from (
            select data, created_at
-           from public.wigofly_review_queue
+           from public.wigolink_review_queue
            where data->>'type' = 'safety_appeal'
              and data->>'userId' = $1
            order by created_at desc
@@ -92,22 +92,22 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
     ),
     boundedLimit === null ? Promise.resolve(null) : pool.query(
       `select
-         (select count(*)::int from public.wigofly_trips
+         (select count(*)::int from public.wigolink_trips
           where data->>'travelerId' = $1) as trips,
-         (select count(*)::int from public.wigofly_listings
+         (select count(*)::int from public.wigolink_listings
           where data->>'senderId' = $1) as listings,
-         (select count(*)::int from public.wigofly_transactions tx
+         (select count(*)::int from public.wigolink_transactions tx
           where ${transactionParticipantFilter('$1')}) as transactions,
-         (select count(*)::int from public.wigofly_disputes d
+         (select count(*)::int from public.wigolink_disputes d
           where d.data->>'openedBy' = $1
              or exists (
-               select 1 from public.wigofly_transactions tx
+               select 1 from public.wigolink_transactions tx
                where tx.id = d.data->>'txId'
                  and ${transactionParticipantFilter('$1')}
              )) as disputes,
          (select count(*)::int from public.notifications
           where user_id = $1) as notifications,
-         (select count(*)::int from public.wigofly_review_queue
+         (select count(*)::int from public.wigolink_review_queue
           where data->>'type' = 'safety_appeal'
             and data->>'userId' = $1) as safety_appeals`,
       [userId],
@@ -136,7 +136,7 @@ export async function relationalMemberRecords({ pool, userId, limit = null }) {
 export async function relationalActiveOperationCount({ pool, userId }) {
   const result = await pool.query(
     `select count(*)::int as count
-     from public.wigofly_transactions tx
+     from public.wigolink_transactions tx
      where ${transactionParticipantFilter('$1')}
        and coalesce(tx.data->>'status', '') not in (
          'released', 'refunded', 'cancelled'

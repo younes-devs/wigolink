@@ -101,7 +101,7 @@ function main() {
     blocked: result.blocked,
     accepted: result.accepted.map((item) => ({
       ...item,
-      reason: 'Wigofly utilise BrowserRouter en SPA et aucune action serveur/RSC React Router.',
+      reason: 'Wigolink utilise BrowserRouter en SPA et aucune action serveur/RSC React Router.',
     })),
   }, null, 2));
   if (!result.ok) process.exitCode = 1;

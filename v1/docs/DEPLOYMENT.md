@@ -24,10 +24,10 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 7. Ouvrir `/api/health` depuis le domaine final : la reponse doit indiquer `ok: true`, `database: "connected"` et `email: "configured"`. Une reponse `503` precise quelle dependance doit etre configuree sans faire tomber toute la fonction.
 8. Avant de basculer les routes relationnelles, lancer `npm run migrate:relational:plan`, puis `npm run migrate:relational` depuis un environnement ayant `DATABASE_URL`. La migration est idempotente et peut etre relancee sans doublons.
 9. Apres avoir verifie les comptes importes dans Supabase, definir `RELATIONAL_TRIP_READS=true` dans Vercel. Le flux de recherche et "Mes trajets" utilisera alors les tables indexees et paginees; ne l'activer qu'apres l'import.
-10. Definir ensuite `RELATIONAL_MESSAGE_READS=true` dans Vercel. La liste des conversations et les pages de messages seront alors lues depuis les tables indexees `wigofly_conversations` et `messages`. Les ecritures continuent de se synchroniser dans la meme transaction que l'etat historique.
-11. Apres avoir applique la colonne `messages.client_id`, son index unique et verifie les lectures admin, definir `RELATIONAL_MESSAGE_WRITES=true`. Les envois, suppressions visuelles, recus de lecture, archives et epingles sont alors ecrits directement par conversation, sans verrouiller `wigofly_app_state`.
-11a. Appliquer `wigofly_conversation_members`, executer son backfill puis verifier que chaque participant possede une ligne. Definir ensuite `RELATIONAL_CONVERSATION_MEMBERS=true`; les lus/non-lus et preferences ne reecrivent plus les messages ni la ligne partagee de conversation.
-12. Definir `RELATIONAL_OPERATION_READS=true` pour servir les listes et details d'operations depuis les tables indexees. Definir `RELATIONAL_TRIP_WRITES=true` pour ecrire les favoris directement dans `wigofly_saved_trips`.
+10. Definir ensuite `RELATIONAL_MESSAGE_READS=true` dans Vercel. La liste des conversations et les pages de messages seront alors lues depuis les tables indexees `wigolink_conversations` et `messages`. Les ecritures continuent de se synchroniser dans la meme transaction que l'etat historique.
+11. Apres avoir applique la colonne `messages.client_id`, son index unique et verifie les lectures admin, definir `RELATIONAL_MESSAGE_WRITES=true`. Les envois, suppressions visuelles, recus de lecture, archives et epingles sont alors ecrits directement par conversation, sans verrouiller `wigolink_app_state`.
+11a. Appliquer `wigolink_conversation_members`, executer son backfill puis verifier que chaque participant possede une ligne. Definir ensuite `RELATIONAL_CONVERSATION_MEMBERS=true`; les lus/non-lus et preferences ne reecrivent plus les messages ni la ligne partagee de conversation.
+12. Definir `RELATIONAL_OPERATION_READS=true` pour servir les listes et details d'operations depuis les tables indexees. Definir `RELATIONAL_TRIP_WRITES=true` pour ecrire les favoris directement dans `wigolink_saved_trips`.
 13. Apres validation du parcours demande, confirmation, paiement simule, remise, livraison et litige, definir `RELATIONAL_OPERATION_WRITES=true`. Chaque mutation verrouille uniquement le trajet ou l'operation concernee et les retries d'acceptation sont idempotents.
 14. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
 15. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
@@ -53,7 +53,7 @@ des connexions Supabase et de la latence Vercel.
 
 ## Medias de messagerie
 
-Les photos de conversation sont stockees dans un bucket Supabase prive au lieu d'etre repetees en base64 dans chaque reponse JSON. Renseigner `SUPABASE_URL` et `SUPABASE_SECRET_KEY`; le serveur cree au premier envoi le bucket `wigofly-message-media`, ou le nom defini par `SUPABASE_MESSAGE_MEDIA_BUCKET`. Le navigateur ne recoit jamais la cle ni le chemin interne: il charge le fichier via une route API authentifiee, avec un cache prive de 24 heures.
+Les photos de conversation sont stockees dans un bucket Supabase prive au lieu d'etre repetees en base64 dans chaque reponse JSON. Renseigner `SUPABASE_URL` et `SUPABASE_SECRET_KEY`; le serveur cree au premier envoi le bucket `wigolink-message-media`, ou le nom defini par `SUPABASE_MESSAGE_MEDIA_BUCKET`. Le navigateur ne recoit jamais la cle ni le chemin interne: il charge le fichier via une route API authentifiee, avec un cache prive de 24 heures.
 
 Les anciennes images inline restent compatibles. L'API les sert par la meme route authentifiee sans les inclure dans la liste des conversations ou des messages.
 

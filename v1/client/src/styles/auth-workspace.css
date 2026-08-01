@@ -32,12 +32,20 @@ body:has(.auth-page) {
 .auth-hero-brand {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 9px;
   margin: 0;
 }
 .auth-logo {
   width: auto !important;
   height: 31px !important;
   display: block !important;
+}
+.auth-brand-name {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
 }
 .auth-journey {
   width: 100%;

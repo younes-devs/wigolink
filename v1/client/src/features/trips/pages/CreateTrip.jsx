@@ -14,7 +14,7 @@ import {
 import { LocationInput } from '../components/LocationInput.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 
-const DRAFT_KEY = 'wigofly:trip-draft:v1';
+const DRAFT_KEY = 'wigolink:trip-draft:v1';
 
 function defaultDraft() {
   return {

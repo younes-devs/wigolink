@@ -39,7 +39,7 @@ export async function relationalAdminUsers({
       `select id, data,
          case when coalesce((data->>'isAdmin')::boolean, false) then 0 else 1 end as admin_rank,
          coalesce((data->>'createdAt')::bigint, 0) as sort_created_at
-       from public.wigofly_users
+       from public.wigolink_users
        where (
          $1 = ''
          or lower(
@@ -58,7 +58,7 @@ export async function relationalAdminUsers({
     ),
     pool.query(
       `select count(*)::int as count
-       from public.wigofly_users
+       from public.wigolink_users
        where coalesce((data->>'isAdmin')::boolean, false)
          and nullif(data->>'deletedAt', '') is null`,
     ),
@@ -87,7 +87,7 @@ export async function relationalAdminUsersByIds({ pool, ids = [] } = {}) {
   if (!uniqueIds.length) return [];
   const result = await pool.query(
     `select data
-     from public.wigofly_users
+     from public.wigolink_users
      where id = any($1::text[])`,
     [uniqueIds],
   );

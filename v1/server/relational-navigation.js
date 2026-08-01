@@ -13,7 +13,7 @@ export async function relationalNavigationSummary({
   memberStateEnabled = false,
 }) {
   const messageJoin = memberStateEnabled
-    ? `join public.wigofly_conversation_members member
+    ? `join public.wigolink_conversation_members member
          on member.conversation_id = c.id and member.user_id = $1`
     : '';
   const messageMembership = memberStateEnabled
@@ -27,7 +27,7 @@ export async function relationalNavigationSummary({
     `select
        (
          select count(distinct c.id)::int
-         from public.wigofly_conversations c
+         from public.wigolink_conversations c
          ${messageJoin}
          join public.messages m on m.conversation_id = c.id
          where true
@@ -38,7 +38,7 @@ export async function relationalNavigationSummary({
        ) as messages_unread,
        (
          select count(*)::int
-         from public.wigofly_transactions tx
+         from public.wigolink_transactions tx
          where ${transactionParticipantFilter('$1')}
            and coalesce(tx.data->>'status', '') not in (
              'released', 'refunded', 'cancelled'

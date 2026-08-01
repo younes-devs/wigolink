@@ -1,4 +1,4 @@
-# Scalabilite et reprise de Wigofly
+# Scalabilite et reprise de Wigolink
 
 Ce document fixe les garde-fous d'exploitation. Il ne remplace pas les tests de
 charge ni une restauration reelle.
@@ -32,7 +32,7 @@ charge ni une restauration reelle.
   ont ete appliques a la production et verifies dans `pg_indexes` le 1er aout
   2026. Toute nouvelle migration doit conserver cette verification explicite.
 
-Le document global `wigofly_app_state` est charge paresseusement uniquement pour
+Le document global `wigolink_app_state` est charge paresseusement uniquement pour
 les domaines historiques qui ne sont pas encore relationnels. Les parcours
 membres, KYC, export et suppression de compte ainsi que les lectures et
 decisions d'administration n'en dependent plus. La table reste temporairement
@@ -168,9 +168,9 @@ SHA-256, la date, le commit et le projet source.
 Activer l'interface S3 Supabase et synchroniser les trois buckets avec
 `rclone` ou AWS CLI vers un stockage chiffre distinct :
 
-- `wigofly-message-media`;
-- `wigofly-kyc-media`;
-- `wigofly-profile-media`.
+- `wigolink-message-media`;
+- `wigolink-kyc-media`;
+- `wigolink-profile-media`.
 
 Les buckets de messagerie et KYC restent prives. Le bucket des avatars est
 public, mais sa sauvegarde ne doit pas l'etre. Les documents KYC exigent des

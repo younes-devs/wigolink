@@ -131,7 +131,8 @@ export default function Login() {
       <div className="auth-shell">
         <aside className="auth-hero">
           <div className="brand-link auth-hero-brand">
-            <img className="auth-logo" src="/assets/logo-wordmark.png" alt="Wigofly" />
+            <img className="auth-logo" src="/assets/logo-mark-192.png" alt="" />
+            <span className="auth-brand-name">Wigolink</span>
           </div>
 
           <AuthJourneyLoop t={t} />

@@ -11,7 +11,7 @@ export async function relationalCustomWhitelist({
   );
   const result = await pool.query(
     `select data
-     from public.wigofly_custom_whitelist
+     from public.wigolink_custom_whitelist
      order by created_at asc, id asc
      limit $1`,
     [bounded],

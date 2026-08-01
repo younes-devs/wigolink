@@ -16,7 +16,7 @@ export async function ensureConversationMembers(
   const createdAt = finiteTimestamp(conversation.createdAt, now);
   for (const userId of participantIds) {
     await client.query(
-      `insert into public.wigofly_conversation_members (
+      `insert into public.wigolink_conversation_members (
          conversation_id,
          user_id,
          archived,

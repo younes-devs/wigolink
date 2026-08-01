@@ -60,8 +60,8 @@ test('etat admin relationnel utilise agregats et files bornees', async () => {
   assert.equal(result.pendingKyc[0].user.email, 'alice@example.test');
   assert.equal(result.customWhitelist[0].id, 'documents');
   assert.match(calls[0], /count\(\*\)/);
-  assert.match(calls[1], /wigofly_disputes/);
-  assert.match(calls[2], /wigofly_review_queue/);
+  assert.match(calls[1], /wigolink_disputes/);
+  assert.match(calls[2], /wigolink_review_queue/);
 });
 
 test('kpis admin relationnels agregent sans charger les collections', async () => {

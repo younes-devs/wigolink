@@ -137,7 +137,7 @@ test('avis reçus sont triés et restent lisibles si auteur absent', () => {
   assert.equal(result.status, 200);
   assert.deepEqual(
     result.body.reviews.map((review) => review.authorName),
-    ['Membre Wigofly', 'Alice'],
+    ['Membre Wigolink', 'Alice'],
   );
   assert.equal(result.body.rating, 4.5);
   assert.equal(service.reviews('missing').status, 404);

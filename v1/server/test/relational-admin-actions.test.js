@@ -20,10 +20,10 @@ function createPool({
       if (/select count\(\*\)/.test(sql)) {
         return { rows: [{ count: activeAdmins }] };
       }
-      if (/update public\.wigofly_users/.test(sql)) {
+      if (/update public\.wigolink_users/.test(sql)) {
         return { rowCount: 1 };
       }
-      if (/delete from public\.wigofly_custom_whitelist/.test(sql)) {
+      if (/delete from public\.wigolink_custom_whitelist/.test(sql)) {
         return whitelist
           ? { rowCount: 1, rows: [{ data: whitelist }] }
           : { rowCount: 0, rows: [] };
@@ -95,7 +95,7 @@ test('promotion et audit partagent la meme transaction', async () => {
   assert.equal(result.kind, 'ok');
   assert.equal(result.user.isAdmin, true);
   assert.ok(harness.calls.some(({ sql }) => /advisory_xact_lock/.test(sql)));
-  assert.ok(harness.calls.some(({ sql }) => /update public\.wigofly_users/.test(sql)));
+  assert.ok(harness.calls.some(({ sql }) => /update public\.wigolink_users/.test(sql)));
   assert.ok(harness.calls.some(({ sql }) => /insert into public\.audit_logs/.test(sql)));
   assert.ok(harness.calls.some(({ sql }) => sql === 'commit'));
 });
@@ -118,7 +118,7 @@ test('le dernier administrateur ne peut pas etre retire', async () => {
 
   assert.equal(result.kind, 'last_admin');
   assert.equal(
-    harness.calls.some(({ sql }) => /update public\.wigofly_users/.test(sql)),
+    harness.calls.some(({ sql }) => /update public\.wigolink_users/.test(sql)),
     false,
   );
 });
@@ -162,7 +162,7 @@ test('retrait whitelist et audit partagent la meme transaction', async () => {
 
   assert.equal(removed.id, 'documents');
   assert.ok(harness.calls.some(({ sql }) => (
-    /delete from public\.wigofly_custom_whitelist/.test(sql)
+    /delete from public\.wigolink_custom_whitelist/.test(sql)
   )));
   assert.ok(harness.calls.some(({ sql }) => (
     /insert into public\.audit_logs/.test(sql)

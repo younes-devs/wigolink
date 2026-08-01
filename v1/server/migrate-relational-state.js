@@ -1,16 +1,16 @@
 const ARRAY_COLLECTIONS = [
-  ['users', 'wigofly_users'],
-  ['trips', 'wigofly_trips'],
-  ['listings', 'wigofly_listings'],
-  ['transactions', 'wigofly_transactions'],
-  ['matchingOffers', 'wigofly_matching_offers'],
-  ['savedTrips', 'wigofly_saved_trips'],
-  ['conversations', 'wigofly_conversations'],
-  ['disputes', 'wigofly_disputes'],
-  ['reviewQueue', 'wigofly_review_queue'],
-  ['kycSubmissions', 'wigofly_kyc_submissions'],
-  ['kycDecisions', 'wigofly_kyc_decisions'],
-  ['customWhitelist', 'wigofly_custom_whitelist'],
+  ['users', 'wigolink_users'],
+  ['trips', 'wigolink_trips'],
+  ['listings', 'wigolink_listings'],
+  ['transactions', 'wigolink_transactions'],
+  ['matchingOffers', 'wigolink_matching_offers'],
+  ['savedTrips', 'wigolink_saved_trips'],
+  ['conversations', 'wigolink_conversations'],
+  ['disputes', 'wigolink_disputes'],
+  ['reviewQueue', 'wigolink_review_queue'],
+  ['kycSubmissions', 'wigolink_kyc_submissions'],
+  ['kycDecisions', 'wigolink_kyc_decisions'],
+  ['customWhitelist', 'wigolink_custom_whitelist'],
 ];
 
 const MAP_COLLECTIONS = [
@@ -62,7 +62,7 @@ export async function migrateStateToRelational({ state, pool, dryRun = true }) {
     const values = state[collection] && typeof state[collection] === 'object' ? state[collection] : {};
     for (const [id, value] of Object.entries(values)) {
       await pool.query(
-        `insert into public.wigofly_runtime_records (kind, id, data, expires_at, updated_at)
+        `insert into public.wigolink_runtime_records (kind, id, data, expires_at, updated_at)
          values ($1, $2, $3::jsonb, $4, now())
          on conflict (kind, id) do update set data = excluded.data, expires_at = excluded.expires_at, updated_at = now()`,
         [kind, String(id), JSON.stringify(value || {}), expiryFor(value)]

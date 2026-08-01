@@ -35,7 +35,7 @@ export function createRelationalAccountDeletion({ getPool }) {
       await client.query('begin');
       const confirmationResult = await client.query(
         `select data
-         from public.wigofly_runtime_records
+         from public.wigolink_runtime_records
          where kind = $1 and id = $2
          for update`,
         [ACCOUNT_CONFIRMATION_KIND, String(userId).toLowerCase()],
@@ -62,7 +62,7 @@ export function createRelationalAccountDeletion({ getPool }) {
 
       const operationResult = await client.query(
         `select count(*)::int as count
-         from public.wigofly_transactions tx
+         from public.wigolink_transactions tx
          where ${transactionParticipantFilter('$1')}
            and coalesce(tx.data->>'status', '') <> all($2::text[])`,
         [String(userId), CLOSED_OPERATION_STATUSES],
@@ -80,7 +80,7 @@ export function createRelationalAccountDeletion({ getPool }) {
 
       const userResult = await client.query(
         `select data
-         from public.wigofly_users
+         from public.wigolink_users
          where id = $1
          for update`,
         [String(userId)],
@@ -92,18 +92,18 @@ export function createRelationalAccountDeletion({ getPool }) {
       }
       const account = anonymizedAccount(before, { userId, now });
       await client.query(
-        `update public.wigofly_users
+        `update public.wigolink_users
          set data = $2::jsonb, updated_at = now()
          where id = $1`,
         [String(userId), JSON.stringify(account)],
       );
       await client.query(
-        `delete from public.wigofly_runtime_records
+        `delete from public.wigolink_runtime_records
          where kind = $1 and id = $2`,
         [ACCOUNT_CONFIRMATION_KIND, String(userId).toLowerCase()],
       );
       await client.query(
-        `delete from public.wigofly_sessions where user_id = $1`,
+        `delete from public.wigolink_sessions where user_id = $1`,
         [String(userId)],
       );
       await client.query(
@@ -138,7 +138,7 @@ function anonymizedAccount(user, { userId, now }) {
   return {
     ...user,
     name: 'Compte supprimé',
-    email: `deleted-${userId}@wigofly.invalid`,
+    email: `deleted-${userId}@wigolink.invalid`,
     phone: '',
     city: '',
     photoUrl: null,

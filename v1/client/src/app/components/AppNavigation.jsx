@@ -19,9 +19,9 @@ export function Header({ user }) {
           <img
             className="brand-mark"
             src="/assets/logo-mark-192.png"
-            alt="Wigofly"
+            alt="Wigolink"
           />
-          <span>Wigofly</span>
+          <span>Wigolink</span>
         </Link>
         {user && (
           <span className="header-notif">

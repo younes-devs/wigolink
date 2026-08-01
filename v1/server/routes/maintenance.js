@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 
 export function createMaintenanceRouter({
@@ -15,6 +16,30 @@ export function createMaintenanceRouter({
   save,
 }) {
   const router = Router();
+
+  router.post('/internal/rebrand-message-media', async (req, res) => {
+    const expectedToken = String(process.env.REBRAND_MIGRATION_TOKEN || '').trim();
+    const suppliedToken = String(req.get('x-rebrand-token') || '').trim();
+    if (!expectedToken || suppliedToken.length !== expectedToken.length
+      || !timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(expectedToken))) {
+      return res.status(404).json({ error: 'Introuvable' });
+    }
+    if (!messageMedia?.enabled || !messageMedia.copyFromBucket) {
+      return res.status(503).json({ error: 'Stockage indisponible' });
+    }
+    try {
+      const result = await messageMedia.copyFromBucket('wigofly-message-media');
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      console.error(JSON.stringify({
+        level: 'error',
+        event: 'maintenance.rebrand_message_media.failed',
+        requestId: req.requestId || null,
+        message: error?.message || 'unknown_error',
+      }));
+      return res.status(503).json({ error: 'Migration indisponible' });
+    }
+  });
 
   router.get('/admin/maintenance', auth, adminOnly, (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');

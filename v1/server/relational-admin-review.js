@@ -24,7 +24,7 @@ export function createRelationalAdminReview({
       await client.query('begin');
       const item = await lockedRecord(
         client,
-        'wigofly_review_queue',
+        'wigolink_review_queue',
         reviewId,
       );
       if (!item) {
@@ -82,7 +82,7 @@ export function createRelationalAdminReview({
       }
 
       closeReview(item, { actorId, decision, at: now() });
-      await updateRecord(client, 'wigofly_review_queue', item);
+      await updateRecord(client, 'wigolink_review_queue', item);
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => {});
@@ -133,7 +133,7 @@ async function reviewListing({
 }) {
   const listing = await lockedRecord(
     client,
-    'wigofly_listings',
+    'wigolink_listings',
     item.refId,
   );
   if (!listing) {
@@ -149,7 +149,7 @@ async function reviewListing({
   ) {
     const existing = await client.query(
       `select id
-       from public.wigofly_custom_whitelist
+       from public.wigolink_custom_whitelist
        where id = $1
        for update`,
       [listing.categoryId],
@@ -165,7 +165,7 @@ async function reviewListing({
         addedAt,
       };
       await client.query(
-        `insert into public.wigofly_custom_whitelist
+        `insert into public.wigolink_custom_whitelist
            (id, data, created_at, updated_at)
          values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())
          on conflict (id) do nothing`,
@@ -174,7 +174,7 @@ async function reviewListing({
       promoted = true;
     }
   }
-  await updateRecord(client, 'wigofly_listings', listing);
+  await updateRecord(client, 'wigolink_listings', listing);
   return {
     status: 200,
     audit: {
@@ -199,7 +199,7 @@ async function reviewConversation({
 }) {
   const conversation = await lockedRecord(
     client,
-    'wigofly_conversations',
+    'wigolink_conversations',
     item.refId,
   );
   if (!conversation) {
@@ -218,7 +218,7 @@ async function reviewConversation({
     reviewedBy: actorId,
     decision: conversation.moderationStatus,
   }));
-  await updateRecord(client, 'wigofly_conversations', conversation);
+  await updateRecord(client, 'wigolink_conversations', conversation);
   return {
     status: 200,
     audit: {
@@ -240,7 +240,7 @@ async function reviewDispute({
 }) {
   const dispute = await lockedRecord(
     client,
-    'wigofly_disputes',
+    'wigolink_disputes',
     item.refId,
   );
   if (!dispute) {
@@ -248,7 +248,7 @@ async function reviewDispute({
   }
   const transaction = await lockedRecord(
     client,
-    'wigofly_transactions',
+    'wigolink_transactions',
     dispute.txId,
   );
   if (!transaction) {
@@ -279,8 +279,8 @@ async function reviewDispute({
     at: resolvedAt,
   });
 
-  await updateRecord(client, 'wigofly_disputes', dispute);
-  await updateRecord(client, 'wigofly_transactions', transaction);
+  await updateRecord(client, 'wigolink_disputes', dispute);
+  await updateRecord(client, 'wigolink_transactions', transaction);
   return {
     status: 200,
     audit: {

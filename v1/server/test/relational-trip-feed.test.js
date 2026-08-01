@@ -20,7 +20,7 @@ test('feed relationnel : authentifie la session depuis la table utilisateurs', a
     pool: { query(sql, params) { calls.push({ sql, params }); return { rows: [{ data: { id: 'u-1', emailVerified: true } }] }; } },
   });
   assert.equal(user.id, 'u-1');
-  assert.match(calls[0].sql, /wigofly_users/);
+  assert.match(calls[0].sql, /wigolink_users/);
   assert.deepEqual(calls[0].params, ['u-1']);
 });
 
@@ -45,9 +45,9 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.equal(result.trips[0].transportMode, 'plane');
   assert.equal(result.page.limit, 100);
   assert.equal(result.page.offset, 0);
-  assert.match(calls[0].sql, /wigofly_trips/);
-  assert.match(calls[0].sql, /wigofly_users/);
-  assert.match(calls[0].sql, /wigofly_saved_trips/);
+  assert.match(calls[0].sql, /wigolink_trips/);
+  assert.match(calls[0].sql, /wigolink_users/);
+  assert.match(calls[0].sql, /wigolink_saved_trips/);
   const searchTerms = calls[0].params.flatMap((param) => (Array.isArray(param) ? param : []));
   assert.ok(searchTerms.includes('%Oujda%'));
   assert.ok(searchTerms.includes('%wjda%'));
@@ -128,7 +128,7 @@ test('feed relationnel : detail charge trajet, favori et operations sans documen
   assert.equal(result.status, 200);
   assert.equal(result.body.trip.saved, true);
   assert.equal(result.body.trip.activeOperations, 2);
-  assert.match(calls[0].sql, /wigofly_transactions/);
+  assert.match(calls[0].sql, /wigolink_transactions/);
   assert.deepEqual(calls[0].params, ['u-1', 't-1']);
 });
 
@@ -190,7 +190,7 @@ test('feed relationnel : favoris supprime les expires puis retourne une page', a
   });
 
   assert.equal(result.trips[0].saved, true);
-  assert.match(calls[0].sql, /delete from public.wigofly_saved_trips/);
+  assert.match(calls[0].sql, /delete from public.wigolink_saved_trips/);
   assert.match(calls[1].sql, /order by saved_trip.created_at desc/);
   assert.deepEqual(calls[1].params, ['u-1', '2026-07-29', 21, 0]);
 });
@@ -241,9 +241,9 @@ test('feed relationnel : ne synchronise que les ecritures changees', async () =>
     },
   });
   assert.equal(queries.length, 2);
-  assert.ok(queries.every(({ sql }) => sql.includes('insert into public.wigofly_')));
-  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_trips')));
-  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_saved_trips')));
+  assert.ok(queries.every(({ sql }) => sql.includes('insert into public.wigolink_')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigolink_trips')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigolink_saved_trips')));
 });
 
 test('feed relationnel : synchronise aussi les messages de conversation modifies', async () => {
@@ -262,6 +262,6 @@ test('feed relationnel : synchronise aussi les messages de conversation modifies
       messages: [{ id: 'm-1', conversationId: 'conv-1', from: 'u-1', text: 'Apres', at: 2 }],
     },
   });
-  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_conversations')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigolink_conversations')));
   assert.ok(queries.some(({ sql }) => sql.includes('insert into public.messages')));
 });

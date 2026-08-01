@@ -43,7 +43,7 @@ export async function runAuthenticatedLoadTest({
       throw new Error('Aucun membre actif ne permet un test authentifie.');
     }
     await pool.query(
-      `insert into public.wigofly_sessions
+      `insert into public.wigolink_sessions
          (token_hash, user_id, created_at, expires_at)
        values ($1, $2, now(), now() + interval '15 minutes')`,
       [tokenHash, member.userId],
@@ -96,7 +96,7 @@ export async function runAuthenticatedLoadTest({
   } finally {
     if (sessionCreated) {
       await pool.query(
-        'delete from public.wigofly_sessions where token_hash = $1',
+        'delete from public.wigolink_sessions where token_hash = $1',
         [tokenHash],
       ).catch(() => {});
     }
@@ -110,20 +110,20 @@ async function loadTestMember(pool) {
        u.id as user_id,
        (
          select member.conversation_id
-         from public.wigofly_conversation_members member
+         from public.wigolink_conversation_members member
          where member.user_id = u.id
            and not member.deleted
          order by member.updated_at desc
          limit 1
        ) as conversation_id
-     from public.wigofly_users u
+     from public.wigolink_users u
      where coalesce((u.data->>'emailVerified')::boolean, false)
        and coalesce(u.data->>'provider', '') <> 'deleted'
        and coalesce((u.data->>'isAdmin')::boolean, false) = false
      order by (
        exists (
          select 1
-         from public.wigofly_conversation_members member
+         from public.wigolink_conversation_members member
          where member.user_id = u.id
            and not member.deleted
        )
@@ -164,7 +164,7 @@ async function warmRoute({
 async function main() {
   const report = await runAuthenticatedLoadTest({
     databaseUrl: process.env.DATABASE_URL,
-    baseUrl: process.env.LOAD_TEST_URL || 'https://wigofly.vercel.app',
+    baseUrl: process.env.LOAD_TEST_URL || 'https://wigolink.vercel.app',
     requests: positiveInteger(process.env.LOAD_TEST_REQUESTS, 30),
     concurrency: positiveInteger(process.env.LOAD_TEST_CONCURRENCY, 5),
     maxP95Ms: positiveNumber(process.env.LOAD_TEST_MAX_P95_MS, 1_000),

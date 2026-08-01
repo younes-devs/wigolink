@@ -28,7 +28,7 @@ test('migration relationnelle : ecrit les entites et messages en upsert', async 
   assert.equal(result.inserted.runtime, 1);
   assert.equal(result.inserted.messages, 1);
   assert.equal(result.inserted.notifications, 1);
-  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_users')));
-  assert.ok(queries.some(({ sql }) => sql.includes('wigofly_runtime_records')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigolink_users')));
+  assert.ok(queries.some(({ sql }) => sql.includes('wigolink_runtime_records')));
   assert.ok(queries.some(({ sql }) => sql.includes('public.messages')));
 });

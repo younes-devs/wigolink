@@ -8,7 +8,7 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
   const client = {
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
-      if (String(sql).includes('wigofly_review_queue')
+      if (String(sql).includes('wigolink_review_queue')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -21,7 +21,7 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
           }],
         };
       }
-      if (String(sql).includes('wigofly_disputes')
+      if (String(sql).includes('wigolink_disputes')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -33,7 +33,7 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
           }],
         };
       }
-      if (String(sql).includes('wigofly_transactions')
+      if (String(sql).includes('wigolink_transactions')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -80,9 +80,9 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
     body: { ok: true },
   });
   for (const table of [
-    'wigofly_review_queue',
-    'wigofly_disputes',
-    'wigofly_transactions',
+    'wigolink_review_queue',
+    'wigolink_disputes',
+    'wigolink_transactions',
   ]) {
     assert.ok(calls.some(({ sql }) => (
       sql.includes(table) && sql.includes('for update')
@@ -92,7 +92,7 @@ test('resolution admin relationnelle verrouille file, litige et operation', asyn
     )));
   }
   const txUpdate = calls.find(({ sql }) => (
-    sql.includes('update public.wigofly_transactions')
+    sql.includes('update public.wigolink_transactions')
   ));
   const transaction = JSON.parse(txUpdate.params[1]);
   assert.equal(transaction.status, 'released');
@@ -106,7 +106,7 @@ test('revue annonce relationnelle publie et promeut atomiquement', async () => {
   const client = {
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
-      if (String(sql).includes('wigofly_review_queue')
+      if (String(sql).includes('wigolink_review_queue')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -119,7 +119,7 @@ test('revue annonce relationnelle publie et promeut atomiquement', async () => {
           }],
         };
       }
-      if (String(sql).includes('wigofly_listings')
+      if (String(sql).includes('wigolink_listings')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -133,7 +133,7 @@ test('revue annonce relationnelle publie et promeut atomiquement', async () => {
           }],
         };
       }
-      if (String(sql).includes('wigofly_custom_whitelist')
+      if (String(sql).includes('wigolink_custom_whitelist')
         && String(sql).includes('select id')) {
         return { rowCount: 0, rows: [] };
       }
@@ -165,11 +165,11 @@ test('revue annonce relationnelle publie et promeut atomiquement', async () => {
     body: { ok: true },
   });
   const listingUpdate = calls.find(({ sql }) => (
-    sql.includes('update public.wigofly_listings')
+    sql.includes('update public.wigolink_listings')
   ));
   assert.equal(JSON.parse(listingUpdate.params[1]).status, 'published');
   assert.ok(calls.some(({ sql }) => (
-    sql.includes('insert into public.wigofly_custom_whitelist')
+    sql.includes('insert into public.wigolink_custom_whitelist')
   )));
   assert.equal(audits[0][1], 'review.listing.approve');
 });
@@ -179,7 +179,7 @@ test('revue conversation relationnelle conserve auteur et decision', async () =>
   const client = {
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
-      if (String(sql).includes('wigofly_review_queue')
+      if (String(sql).includes('wigolink_review_queue')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -192,7 +192,7 @@ test('revue conversation relationnelle conserve auteur et decision', async () =>
           }],
         };
       }
-      if (String(sql).includes('wigofly_conversations')
+      if (String(sql).includes('wigolink_conversations')
         && String(sql).includes('select data')) {
         return {
           rows: [{
@@ -223,7 +223,7 @@ test('revue conversation relationnelle conserve auteur et decision', async () =>
 
   assert.equal(result.status, 200);
   const conversationUpdate = calls.find(({ sql }) => (
-    sql.includes('update public.wigofly_conversations')
+    sql.includes('update public.wigolink_conversations')
   ));
   const conversation = JSON.parse(conversationUpdate.params[1]);
   assert.equal(conversation.moderationStatus, 'conversation_watch');

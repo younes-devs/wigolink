@@ -42,7 +42,7 @@ function seed() {
         maxValue: 500, maxActive: 3, badges: [], avatar: '🧔', createdAt: now - 90 * 864e5,
       },
       {
-        id: 'u-admin', name: 'Équipe Wigofly', phone: '+32470000000', city: '—',
+        id: 'u-admin', name: 'Équipe Wigolink', phone: '+32470000000', city: '—',
         kycStatus: 'verified', isAdmin: true, rating: null, ratingCount: 0, completed: 0,
         cancelRate: 0, maxValue: 99999, maxActive: 99, badges: [], avatar: '🛡️', createdAt: now - 300 * 864e5,
       },
@@ -117,8 +117,8 @@ if (process.env.DATABASE_URL) {
   });
   const result = await pool.query(
     LAZY_GLOBAL_STATE
-      ? 'select 1 as present from wigofly_app_state where id = 1'
-      : 'select state from wigofly_app_state where id = 1',
+      ? 'select 1 as present from wigolink_app_state where id = 1'
+      : 'select state from wigolink_app_state where id = 1',
   );
   if (!result.rows[0] && process.env.NODE_ENV === 'production') {
     throw new Error('La base Supabase est vide. Executez npm run migrate:supabase avant de demarrer l API.');
@@ -131,18 +131,18 @@ if (process.env.DATABASE_URL) {
     stateLoadedAt = Date.now();
   }
   databaseEnabled = true;
-  const sessionTable = await pool.query("select to_regclass('public.wigofly_sessions') as name");
+  const sessionTable = await pool.query("select to_regclass('public.wigolink_sessions') as name");
   if (!sessionTable.rows[0]?.name) {
     // Les fonctions Vercel ne conservent pas leur memoire entre deux requetes :
     // une table de sessions est donc indispensable pour ne pas perdre la connexion au refresh.
-    await pool.query(`create table if not exists public.wigofly_sessions (
+    await pool.query(`create table if not exists public.wigolink_sessions (
       token_hash text primary key,
       user_id text not null,
       created_at timestamptz not null default now(),
       expires_at timestamptz not null
     )`);
-    await pool.query('create index if not exists wigofly_sessions_user_id_idx on public.wigofly_sessions (user_id)');
-    await pool.query('create index if not exists wigofly_sessions_expires_at_idx on public.wigofly_sessions (expires_at)');
+    await pool.query('create index if not exists wigolink_sessions_user_id_idx on public.wigolink_sessions (user_id)');
+    await pool.query('create index if not exists wigolink_sessions_expires_at_idx on public.wigolink_sessions (expires_at)');
 
   }
 
@@ -151,7 +151,7 @@ if (process.env.DATABASE_URL) {
   for (const [token, session] of Object.entries(db.sessions || {})) {
     if (!session?.userId || !Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) continue;
     await pool.query(
-      `insert into wigofly_sessions (token_hash, user_id, created_at, expires_at)
+      `insert into wigolink_sessions (token_hash, user_id, created_at, expires_at)
        values ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0))
        on conflict (token_hash) do nothing`,
       [hashToken(token), session.userId, session.createdAt || Date.now(), session.expiresAt]
@@ -171,15 +171,15 @@ if (process.env.DATABASE_URL) {
 // Migration : comptes existants sans email/mot de passe (démo : demo1234).
 import { hashPassword } from './auth.js';
 const DEMO_EMAILS = {
-  'u-fatima': 'fatima@demo.wigofly.app',
-  'u-karim': 'karim@demo.wigofly.app',
-  'u-mehdi': 'mehdi@demo.wigofly.app',
-  'u-admin': 'admin@demo.wigofly.app',
+  'u-fatima': 'fatima@demo.wigolink.app',
+  'u-karim': 'karim@demo.wigolink.app',
+  'u-mehdi': 'mehdi@demo.wigolink.app',
+  'u-admin': 'admin@demo.wigolink.app',
 };
 let migrated = false;
 for (const u of db.users) {
   if (!u.email) {
-    u.email = DEMO_EMAILS[u.id] || `${u.id}@demo.wigofly.app`;
+    u.email = DEMO_EMAILS[u.id] || `${u.id}@demo.wigolink.app`;
     u.passwordHash = hashPassword('demo1234');
     u.emailVerified = true;
     u.provider = 'email';
@@ -232,7 +232,7 @@ export async function createPersistentSession({ token, userId, expiresAt, create
     return;
   }
   await pool.query(
-    `insert into wigofly_sessions (token_hash, user_id, created_at, expires_at)
+    `insert into wigolink_sessions (token_hash, user_id, created_at, expires_at)
      values ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0))`,
     [hashToken(token), userId, createdAt, expiresAt]
   );
@@ -243,7 +243,7 @@ export async function getPersistentSession(token) {
   if (!databaseEnabled || !persistentSessionsEnabled) return db.sessions?.[token] || null;
   const result = await pool.query(
     `select user_id, extract(epoch from expires_at) * 1000 as expires_at
-     from wigofly_sessions
+     from wigolink_sessions
      where token_hash = $1 and expires_at > now()`,
     [hashToken(token)]
   );
@@ -257,7 +257,7 @@ export async function deletePersistentSession(token) {
     delete db.sessions[token];
     return;
   }
-  await pool.query('delete from wigofly_sessions where token_hash = $1', [hashToken(token)]);
+  await pool.query('delete from wigolink_sessions where token_hash = $1', [hashToken(token)]);
 }
 
 export async function deletePersistentSessionsForUser(userId) {
@@ -267,7 +267,7 @@ export async function deletePersistentSessionsForUser(userId) {
     }
     return;
   }
-  await pool.query('delete from wigofly_sessions where user_id = $1', [userId]);
+  await pool.query('delete from wigolink_sessions where user_id = $1', [userId]);
 }
 
 function replaceState(next) {
@@ -278,7 +278,7 @@ function replaceState(next) {
 
 export async function refreshDatabaseState() {
   if (!databaseEnabled || Date.now() - stateLoadedAt < READ_CACHE_MS) return;
-  const result = await pool.query('select state from wigofly_app_state where id = 1');
+  const result = await pool.query('select state from wigolink_app_state where id = 1');
   if (!result.rows[0]?.state) throw new Error('Etat applicatif Supabase introuvable.');
   replaceState(result.rows[0].state);
 }
@@ -289,7 +289,7 @@ export async function acquireDatabaseState({ write = false } = {}) {
   try {
     if (write) await client.query('begin');
     const result = await client.query(
-      `select state from wigofly_app_state where id = 1${write ? ' for update' : ''}`
+      `select state from wigolink_app_state where id = 1${write ? ' for update' : ''}`
     );
     if (!result.rows[0]?.state) throw new Error('Etat applicatif Supabase introuvable.');
     replaceState(result.rows[0].state);
@@ -306,7 +306,7 @@ export async function releaseDatabaseState(lock, { commit = false } = {}) {
     if (lock.write) {
       if (commit) {
         await lock.client.query(
-          'update wigofly_app_state set state = $1::jsonb, updated_at = now(), revision = revision + 1 where id = 1',
+          'update wigolink_app_state set state = $1::jsonb, updated_at = now(), revision = revision + 1 where id = 1',
           [JSON.stringify(db)]
         );
         await lock.client.query('commit');

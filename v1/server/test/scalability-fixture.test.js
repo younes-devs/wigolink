@@ -4,7 +4,7 @@ import { fixtureConfig } from '../../scripts/scalability-fixture.mjs';
 
 const validEnv = {
   SCALABILITY_FIXTURE_CONFIRM: 'STAGING_ONLY',
-  SCALABILITY_DATABASE_URL: 'postgres://staging.example.test/wigofly',
+  SCALABILITY_DATABASE_URL: 'postgres://staging.example.test/wigolink',
   NODE_ENV: 'test',
 };
 

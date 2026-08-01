@@ -1,39 +1,39 @@
 const REQUIRED_TABLES = [
-  'wigofly_app_state',
-  'wigofly_users',
-  'wigofly_trips',
-  'wigofly_listings',
-  'wigofly_transactions',
-  'wigofly_matching_offers',
-  'wigofly_saved_trips',
-  'wigofly_conversations',
-  'wigofly_conversation_members',
-  'wigofly_conversation_reports',
-  'wigofly_disputes',
-  'wigofly_review_queue',
-  'wigofly_kyc_submissions',
-  'wigofly_kyc_decisions',
-  'wigofly_custom_whitelist',
-  'wigofly_runtime_records',
-  'wigofly_sessions',
+  'wigolink_app_state',
+  'wigolink_users',
+  'wigolink_trips',
+  'wigolink_listings',
+  'wigolink_transactions',
+  'wigolink_matching_offers',
+  'wigolink_saved_trips',
+  'wigolink_conversations',
+  'wigolink_conversation_members',
+  'wigolink_conversation_reports',
+  'wigolink_disputes',
+  'wigolink_review_queue',
+  'wigolink_kyc_submissions',
+  'wigolink_kyc_decisions',
+  'wigolink_custom_whitelist',
+  'wigolink_runtime_records',
+  'wigolink_sessions',
   'messages',
   'notifications',
   'audit_logs',
 ];
 
 const COLLECTION_TABLES = [
-  ['users', 'wigofly_users'],
-  ['trips', 'wigofly_trips'],
-  ['listings', 'wigofly_listings'],
-  ['transactions', 'wigofly_transactions'],
-  ['matchingOffers', 'wigofly_matching_offers'],
-  ['savedTrips', 'wigofly_saved_trips'],
-  ['conversations', 'wigofly_conversations'],
-  ['disputes', 'wigofly_disputes'],
-  ['reviewQueue', 'wigofly_review_queue'],
-  ['kycSubmissions', 'wigofly_kyc_submissions'],
-  ['kycDecisions', 'wigofly_kyc_decisions'],
-  ['customWhitelist', 'wigofly_custom_whitelist'],
+  ['users', 'wigolink_users'],
+  ['trips', 'wigolink_trips'],
+  ['listings', 'wigolink_listings'],
+  ['transactions', 'wigolink_transactions'],
+  ['matchingOffers', 'wigolink_matching_offers'],
+  ['savedTrips', 'wigolink_saved_trips'],
+  ['conversations', 'wigolink_conversations'],
+  ['disputes', 'wigolink_disputes'],
+  ['reviewQueue', 'wigolink_review_queue'],
+  ['kycSubmissions', 'wigolink_kyc_submissions'],
+  ['kycDecisions', 'wigolink_kyc_decisions'],
+  ['customWhitelist', 'wigolink_custom_whitelist'],
   ['messages', 'messages'],
   ['notifications', 'notifications'],
 ];
@@ -55,7 +55,7 @@ export async function verifyRelationalState(pool) {
     return { ready: false, missingTables, collections: [], orphanMessages: null };
   }
 
-  const stateResult = await pool.query('select state from public.wigofly_app_state where id = 1');
+  const stateResult = await pool.query('select state from public.wigolink_app_state where id = 1');
   const state = stateResult.rows[0]?.state || {};
   const collections = [];
   for (const [collection, table] of COLLECTION_TABLES) {
@@ -74,7 +74,7 @@ export async function verifyRelationalState(pool) {
   const orphanResult = await pool.query(
     `select count(*)::int as count
      from public.messages message
-     left join public.wigofly_conversations conversation
+     left join public.wigolink_conversations conversation
        on conversation.id = message.conversation_id
      where message.conversation_id is not null and conversation.id is null`,
   );

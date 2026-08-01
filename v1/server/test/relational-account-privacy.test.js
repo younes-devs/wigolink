@@ -28,13 +28,13 @@ function createClient({
     async query(sql, params = []) {
       const normalized = String(sql).replace(/\s+/g, ' ').trim();
       calls.push({ sql: normalized, params });
-      if (normalized.includes('from public.wigofly_runtime_records')) {
+      if (normalized.includes('from public.wigolink_runtime_records')) {
         return { rows: confirmation ? [{ data: confirmation }] : [] };
       }
-      if (normalized.includes('from public.wigofly_transactions')) {
+      if (normalized.includes('from public.wigolink_transactions')) {
         return { rows: [{ count: activeOperations }] };
       }
-      if (normalized.includes('from public.wigofly_users')) {
+      if (normalized.includes('from public.wigolink_users')) {
         return { rows: user ? [{ data: user }] : [] };
       }
       return { rows: [], rowCount: 1 };
@@ -90,23 +90,23 @@ test('suppression relationnelle anonymise et journalise dans une transaction', a
   });
 
   assert.equal(result.account.name, 'Compte supprimé');
-  assert.equal(result.account.email, 'deleted-u-1@wigofly.invalid');
+  assert.equal(result.account.email, 'deleted-u-1@wigolink.invalid');
   assert.equal(result.account.passwordHash, null);
   assert.equal(result.account.deletedAt, 10_000);
   assert.equal(calls[0].sql, 'begin');
   assert.equal(calls.at(-2).sql, 'commit');
   assert.equal(calls.at(-1).sql, 'release');
   assert.ok(calls.some(({ sql }) => (
-    sql.startsWith('update public.wigofly_users')
+    sql.startsWith('update public.wigolink_users')
   )));
   assert.ok(calls.some(({ sql }) => (
-    sql.startsWith('delete from public.wigofly_sessions')
+    sql.startsWith('delete from public.wigolink_sessions')
   )));
   assert.ok(calls.some(({ sql }) => (
     sql.startsWith('insert into public.audit_logs')
   )));
   assert.equal(calls.some(({ sql }) => (
-    /delete from public\.(messages|wigofly_kyc|audit_logs)/.test(sql)
+    /delete from public\.(messages|wigolink_kyc|audit_logs)/.test(sql)
   )), false);
 });
 
@@ -124,7 +124,7 @@ test('suppression relationnelle rollback si le code est faux', async () => {
   });
   assert.deepEqual(calls.map(({ sql }) => sql), [
     'begin',
-    'select data from public.wigofly_runtime_records where kind = $1 and id = $2 for update',
+    'select data from public.wigolink_runtime_records where kind = $1 and id = $2 for update',
     'rollback',
     'release',
   ]);
@@ -141,7 +141,7 @@ test('suppression relationnelle rollback si une operation reste active', async (
   assert.equal(result.status, 400);
   assert.match(result.error, /2 transaction/);
   assert.equal(calls.some(({ sql }) => (
-    sql.startsWith('update public.wigofly_users')
+    sql.startsWith('update public.wigolink_users')
   )), false);
   assert.equal(calls.at(-2).sql, 'rollback');
 });

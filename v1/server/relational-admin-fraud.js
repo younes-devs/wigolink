@@ -16,7 +16,7 @@ export async function relationalAdminFraudState({ pool }) {
            'phone'::text as signal,
            data->>'phone' as value,
            data
-         from public.wigofly_users
+         from public.wigolink_users
          where not coalesce((data->>'isAdmin')::boolean, false)
            and nullif(data->>'deletedAt', '') is null
            and nullif(data->>'phone', '') is not null
@@ -25,7 +25,7 @@ export async function relationalAdminFraudState({ pool }) {
            'ip'::text as signal,
            data->>'registerIp' as value,
            data
-         from public.wigofly_users
+         from public.wigolink_users
          where not coalesce((data->>'isAdmin')::boolean, false)
            and nullif(data->>'deletedAt', '') is null
            and nullif(data->>'registerIp', '') is not null
@@ -57,16 +57,16 @@ export async function relationalAdminFraudState({ pool }) {
            where tx.data->>'status' = 'disputed'
               or exists (
                 select 1
-                from public.wigofly_disputes d
+                from public.wigolink_disputes d
                 where d.data->>'txId' = tx.id
               )
          )::int as disputed_count,
          coalesce(sum((tx.data->'escrow'->>'amount')::numeric), 0)::float8
            as total_value_eur
-       from public.wigofly_transactions tx
-       left join public.wigofly_users first_member
+       from public.wigolink_transactions tx
+       left join public.wigolink_users first_member
          on first_member.id = least(tx.data->>'senderId', tx.data->>'travelerId')
-       left join public.wigofly_users second_member
+       left join public.wigolink_users second_member
          on second_member.id = greatest(tx.data->>'senderId', tx.data->>'travelerId')
        where nullif(tx.data->>'senderId', '') is not null
          and nullif(tx.data->>'travelerId', '') is not null
@@ -86,7 +86,7 @@ export async function relationalAdminFraudState({ pool }) {
          member.data->>'name' as name,
          count(*)::int as count
        from public.messages message
-       left join public.wigofly_users member on member.id = message.from_id
+       left join public.wigolink_users member on member.id = message.from_id
        where message.flagged
          and nullif(message.from_id, '') is not null
        group by message.from_id, member.data->>'name'
@@ -96,7 +96,7 @@ export async function relationalAdminFraudState({ pool }) {
     ),
     pool.query(
       `select data
-       from public.wigofly_users
+       from public.wigolink_users
        where not coalesce((data->>'isAdmin')::boolean, false)
          and nullif(data->>'deletedAt', '') is null
          and coalesce((data->>'completed')::int, 0) >= 3
@@ -110,8 +110,8 @@ export async function relationalAdminFraudState({ pool }) {
          participant.user_id,
          member.data->>'name' as name,
          count(*)::int as dispute_count
-       from public.wigofly_disputes dispute
-       join public.wigofly_transactions tx
+       from public.wigolink_disputes dispute
+       join public.wigolink_transactions tx
          on tx.id = dispute.data->>'txId'
        cross join lateral (
          select distinct user_id
@@ -123,7 +123,7 @@ export async function relationalAdminFraudState({ pool }) {
          ) as ids(user_id)
          where nullif(user_id, '') is not null
        ) participant
-       left join public.wigofly_users member on member.id = participant.user_id
+       left join public.wigolink_users member on member.id = participant.user_id
        group by participant.user_id, member.data->>'name'
        having count(*) >= 2
        order by dispute_count desc
@@ -136,8 +136,8 @@ export async function relationalAdminFraudState({ pool }) {
          member.data->>'name' as name,
          member.data->>'kycStatus' as current_status,
          count(*)::int as rejection_count
-       from public.wigofly_kyc_submissions submission
-       left join public.wigofly_users member
+       from public.wigolink_kyc_submissions submission
+       left join public.wigolink_users member
          on member.id = submission.data->>'userId'
        where submission.data->>'status' in ('rejected', 'refused')
        group by

@@ -103,7 +103,7 @@ export function createMemberMediaUploadService({
 
   async function complete(uploadId) {
     await pool().query(
-      `delete from public.wigofly_runtime_records
+      `delete from public.wigolink_runtime_records
        where kind = 'member_media_upload' and id = $1`,
       [String(uploadId)],
     );
@@ -139,7 +139,7 @@ export function createMemberMediaUploadService({
   async function saveReservation({ uploadId, userId, mediaType, uploads }) {
     const data = { userId: String(userId), mediaType, claimed: false, uploads };
     await pool().query(
-      `insert into public.wigofly_runtime_records
+      `insert into public.wigolink_runtime_records
          (kind, id, data, expires_at, updated_at)
        values ('member_media_upload', $1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
       [uploadId, JSON.stringify(data), now() + UPLOAD_TTL_MS],
@@ -148,7 +148,7 @@ export function createMemberMediaUploadService({
 
   async function claim({ userId, uploadId, mediaType }) {
     const result = await pool().query(
-      `update public.wigofly_runtime_records
+      `update public.wigolink_runtime_records
        set data = data || '{"claimed":true}'::jsonb, updated_at = now()
        where kind = 'member_media_upload'
          and id = $1
@@ -165,7 +165,7 @@ export function createMemberMediaUploadService({
 
   async function reservation(uploadId) {
     const result = await pool().query(
-      `select data from public.wigofly_runtime_records
+      `select data from public.wigolink_runtime_records
        where kind = 'member_media_upload' and id = $1`,
       [String(uploadId)],
     );

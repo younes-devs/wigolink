@@ -21,7 +21,7 @@ export function createAccountPrivacyRouter({
     const data = await accountPrivacy.exportData(req.user);
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="wigofly-donnees-${req.user.id}.json"`,
+      `attachment; filename="wigolink-donnees-${req.user.id}.json"`,
     );
     return res.json(data);
   });

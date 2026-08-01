@@ -49,7 +49,7 @@ test('soumission de recours et audit partagent une transaction', async () => {
   assert.equal(result.kind, 'ok');
   assert.equal(result.appeal.status, 'open');
   assert.ok(harness.calls.some(({ sql }) => (
-    /insert into public\.wigofly_review_queue/.test(sql)
+    /insert into public\.wigolink_review_queue/.test(sql)
   )));
   assert.ok(harness.calls.some(({ sql }) => (
     /insert into public\.audit_logs/.test(sql)
@@ -82,7 +82,7 @@ test('un recours ouvert existant est dedoublonne', async () => {
 
   assert.equal(result.kind, 'duplicate');
   assert.equal(
-    harness.calls.some(({ sql }) => /insert into public\.wigofly_review_queue/.test(sql)),
+    harness.calls.some(({ sql }) => /insert into public\.wigolink_review_queue/.test(sql)),
     false,
   );
 });
@@ -101,10 +101,10 @@ test('acceptation ferme le recours et leve la suspension atomiquement', async ()
     messageSafetyBlockedUntil: 9999,
   };
   const harness = createPool((sql) => {
-    if (/wigofly_review_queue[\s\S]+for update/.test(sql)) {
+    if (/wigolink_review_queue[\s\S]+for update/.test(sql)) {
       return { rows: [{ data: structuredClone(appeal) }] };
     }
-    if (/wigofly_users[\s\S]+for update/.test(sql)) {
+    if (/wigolink_users[\s\S]+for update/.test(sql)) {
       return { rows: [{ data: structuredClone(user) }] };
     }
     return { rowCount: 1, rows: [] };
@@ -124,7 +124,7 @@ test('acceptation ferme le recours et leve la suspension atomiquement', async ()
   assert.equal(result.kind, 'ok');
   assert.equal(result.appeal.status, 'accepted');
   const userUpdate = harness.calls.find(({ sql, params }) => (
-    /update public\.wigofly_users/.test(sql) && params.length > 1
+    /update public\.wigolink_users/.test(sql) && params.length > 1
   ));
   assert.equal(JSON.parse(userUpdate.params[1]).suspendedUntil, null);
 });

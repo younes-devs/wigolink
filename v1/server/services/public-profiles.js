@@ -105,7 +105,7 @@ export function createPublicProfileService({
           stars: rating.stars,
           comment: rating.comment || null,
           at: rating.at,
-          authorName: author?.name || 'Membre Wigofly',
+          authorName: author?.name || 'Membre Wigolink',
         });
       }
     }

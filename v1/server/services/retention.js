@@ -25,11 +25,11 @@ export function createRetentionService({
 
     const [sessions, runtime, notifications] = await Promise.all([
       pool.query(
-        `delete from public.wigofly_sessions
+        `delete from public.wigolink_sessions
          where expires_at <= now()`,
       ),
       pool.query(
-        `delete from public.wigofly_runtime_records
+        `delete from public.wigolink_runtime_records
          where kind not in ('message_upload', 'member_media_upload')
            and expires_at is not null
            and expires_at <= now()`,
@@ -66,7 +66,7 @@ async function purgeExpiredUploads({
   for (let round = 0; round < MAX_UPLOAD_ROUNDS; round += 1) {
     const reservations = await pool.query(
       `select kind, id, data
-       from public.wigofly_runtime_records
+       from public.wigolink_runtime_records
        where kind in ('message_upload', 'member_media_upload')
          and expires_at <= now()
        order by expires_at
@@ -108,7 +108,7 @@ async function purgeExpiredUploads({
     }
     if (successfulIds.length) {
       await pool.query(
-        `delete from public.wigofly_runtime_records
+        `delete from public.wigolink_runtime_records
          where kind in ('message_upload', 'member_media_upload')
            and id = any($1::text[])`,
         [successfulIds],

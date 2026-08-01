@@ -18,7 +18,7 @@ export async function relationalPublicProfile({
          from (
            select t.data,
              coalesce(t.data->>'departureDate', t.data->>'date') as departure_date
-           from public.wigofly_trips t
+           from public.wigolink_trips t
            where t.data->>'travelerId' = $1
              and coalesce(t.data->>'status', 'published') = 'published'
              and coalesce(t.data->>'departureDate', t.data->>'date') >= current_date::text
@@ -26,7 +26,7 @@ export async function relationalPublicProfile({
            limit 4
          ) candidate
        ), '[]'::jsonb) as trips
-     from public.wigofly_users u
+     from public.wigolink_users u
      where u.id = $1`,
     [userId],
   );
@@ -56,7 +56,7 @@ export async function relationalPublicProfile({
 
 export async function relationalPublicReviews({ pool, userId, limit = 100 }) {
   const userResult = await pool.query(
-    `select data from public.wigofly_users where id = $1`,
+    `select data from public.wigolink_users where id = $1`,
     [userId],
   );
   const target = userResult.rows[0]?.data;
@@ -65,11 +65,11 @@ export async function relationalPublicReviews({ pool, userId, limit = 100 }) {
     `select
        rating.value as rating,
        author.data->>'name' as author_name
-     from public.wigofly_transactions tx
+     from public.wigolink_transactions tx
      cross join lateral jsonb_array_elements(
        coalesce(tx.data->'ratings', '[]'::jsonb)
      ) rating(value)
-     left join public.wigofly_users author
+     left join public.wigolink_users author
        on author.id = rating.value->>'by'
      where rating.value->>'target' = $1
      order by coalesce((rating.value->>'at')::bigint, 0) desc
@@ -81,7 +81,7 @@ export async function relationalPublicReviews({ pool, userId, limit = 100 }) {
       stars: Number(row.rating?.stars || 0),
       comment: row.rating?.comment || null,
       at: Number(row.rating?.at || 0),
-      authorName: row.author_name || 'Membre Wigofly',
+      authorName: row.author_name || 'Membre Wigolink',
     })),
     rating: target.rating,
     ratingCount: target.ratingCount,
@@ -112,7 +112,7 @@ export async function rateRelationalOperation({
   try {
     await client.query('begin');
     const transactionResult = await client.query(
-      `select data from public.wigofly_transactions
+      `select data from public.wigolink_transactions
        where id = $1 for update`,
       [transactionId],
     );
@@ -134,7 +134,7 @@ export async function rateRelationalOperation({
       return await rollback(client, 400, { error: 'Cible invalide' });
     }
     const targetResult = await client.query(
-      `select data from public.wigofly_users where id = $1 for update`,
+      `select data from public.wigolink_users where id = $1 for update`,
       [targetId],
     );
     const target = targetResult.rows[0]?.data;
@@ -173,8 +173,8 @@ export async function rateRelationalOperation({
       meta: { target: targetId, stars },
       at,
     });
-    await updateRecord(client, 'wigofly_transactions', transaction);
-    await updateRecord(client, 'wigofly_users', target);
+    await updateRecord(client, 'wigolink_transactions', transaction);
+    await updateRecord(client, 'wigolink_users', target);
     await client.query('commit');
     return response(200, { ok: true });
   } catch {

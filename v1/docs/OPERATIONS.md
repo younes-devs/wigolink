@@ -1,4 +1,4 @@
-# Exploitation de Wigofly
+# Exploitation de Wigolink
 
 ## Garde-fous avant deploiement
 
@@ -12,7 +12,7 @@ npm run build
 ```
 
 L'audit autorise temporairement une seule alerte connue de React Router
-(`GHSA-qwww-vcr4-c8h2`). Elle concerne les actions serveur/RSC. Wigofly utilise
+(`GHSA-qwww-vcr4-c8h2`). Elle concerne les actions serveur/RSC. Wigolink utilise
 `BrowserRouter` comme SPA et n'importe aucun runtime serveur React Router. Le
 script echoue automatiquement si ce mode apparait ou si une autre alerte est
 publiee. Cette exception doit etre retiree des qu'une version corrigee compatible
@@ -71,18 +71,18 @@ de role afin que deux requetes concurrentes ne puissent jamais retirer le
 dernier administrateur.
 
 `RELATIONAL_SAFETY_APPEALS=true` deplace les recours de suspension dans
-`wigofly_review_queue`. Un membre ne peut avoir qu'un recours ouvert; sa
+`wigolink_review_queue`. Un membre ne peut avoir qu'un recours ouvert; sa
 creation, son audit, la decision admin et une eventuelle levee de suspension
 sont transactionnels. Executer le backfill avant activation pour conserver les
 anciens recours dans les dossiers membres.
 
 Les signalements de conversation sont conserves sans limite fonctionnelle dans
-`wigofly_conversation_reports`, indexes par conversation et par auteur. La
+`wigolink_conversation_reports`, indexes par conversation et par auteur. La
 conversation active ne garde qu'un compteur et la date du dernier signalement:
 son enregistrement reste petit, tandis que l'historique complet demeure
 consultable dans le dossier administrateur.
 
-`LAZY_GLOBAL_STATE=true` evite de telecharger `wigofly_app_state` au demarrage
+`LAZY_GLOBAL_STATE=true` evite de telecharger `wigolink_app_state` au demarrage
 de chaque fonction Vercel. Les routes relationnelles et les endpoints sans etat
 utilisent directement leurs tables ciblees; le document historique est charge
 uniquement lorsqu'une route encore non migree en a besoin. Ne l'activer qu'une
@@ -92,7 +92,7 @@ actives.
 Les lectures du tableau de bord admin (`overview`, `ops`, `kpis` et `fraud`)
 utilisent des agregats SQL et des listes bornees. Les onglets Fraude, Membres et
 Securite sont charges uniquement a leur ouverture. Ils ne doivent jamais etre
-remplaces par une lecture complete de `wigofly_app_state`.
+remplaces par une lecture complete de `wigolink_app_state`.
 
 ## Images de conversation
 
@@ -129,7 +129,7 @@ npm run load:test
 Variables disponibles :
 
 ```text
-LOAD_TEST_URL=https://wigofly.vercel.app
+LOAD_TEST_URL=https://wigolink.vercel.app
 LOAD_TEST_PATH=/api/health
 LOAD_TEST_REQUESTS=100
 LOAD_TEST_CONCURRENCY=10
@@ -206,8 +206,8 @@ membre n'applique pas cette limite d'affichage.
 Avant une ouverture commerciale, activer les sauvegardes automatiques ou le
 PITR Supabase selon le plan retenu. Tester une restauration dans un projet
 Supabase distinct au moins une fois par trimestre. Les tables prioritaires sont
-`wigofly_app_state`, `audit_logs`, `messages`, `wigofly_kyc_submissions` et
-`wigofly_kyc_decisions`. Ne jamais tester une restauration sur la production.
+`wigolink_app_state`, `audit_logs`, `messages`, `wigolink_kyc_submissions` et
+`wigolink_kyc_decisions`. Ne jamais tester une restauration sur la production.
 
 ## Medias prives
 
@@ -216,9 +216,9 @@ buckets Supabase prives. Configurer `SUPABASE_SECRET_KEY`, puis conserver les
 valeurs suivantes si les noms de buckets par defaut ne conviennent pas :
 
 ```text
-SUPABASE_MESSAGE_MEDIA_BUCKET=wigofly-message-media
-SUPABASE_KYC_MEDIA_BUCKET=wigofly-kyc-media
-SUPABASE_PROFILE_MEDIA_BUCKET=wigofly-profile-media
+SUPABASE_MESSAGE_MEDIA_BUCKET=wigolink-message-media
+SUPABASE_KYC_MEDIA_BUCKET=wigolink-kyc-media
+SUPABASE_PROFILE_MEDIA_BUCKET=wigolink-profile-media
 ```
 
 Apres le deploiement du code, migrer une seule fois les anciennes images encore

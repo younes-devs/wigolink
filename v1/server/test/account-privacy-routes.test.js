@@ -68,7 +68,7 @@ test('account privacy routes servent l export avec son nom de fichier historique
   assert.deepEqual(response.body, exported);
   assert.equal(
     response.disposition,
-    'attachment; filename="wigofly-donnees-u-1.json"',
+    'attachment; filename="wigolink-donnees-u-1.json"',
   );
 });
 

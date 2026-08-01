@@ -41,7 +41,7 @@ test('profile media stocke un avatar public cacheable sans base64', async () => 
     dataUrl: 'data:image/webp;base64,QUJD',
   });
 
-  assert.match(url, /^https:\/\/cdn\.test\/wigofly-profile-media\/users\/u-1\/avatar\.webp\?v=/);
+  assert.match(url, /^https:\/\/cdn\.test\/wigolink-profile-media\/users\/u-1\/avatar\.webp\?v=/);
   assert.equal(harness.uploads[0].options.cacheControl, '31536000');
   assert.equal(harness.uploads[0].bytes.length, 3);
   assert.deepEqual(harness.removals[0].paths, [

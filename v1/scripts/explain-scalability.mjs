@@ -67,8 +67,8 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'trips-feed',
       params: [today, userId],
       sql: `select t.id
-        from public.wigofly_trips t
-        join public.wigofly_users u
+        from public.wigolink_trips t
+        join public.wigolink_users u
           on u.id = t.data->>'travelerId'
         where coalesce(t.data->>'status', 'published') = 'published'
           and coalesce(t.data->>'departureDate', t.data->>'date') >= $1
@@ -83,8 +83,8 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'conversation-inbox',
       params: [userId],
       sql: `select c.id
-        from public.wigofly_conversation_members member
-        join public.wigofly_conversations c
+        from public.wigolink_conversation_members member
+        join public.wigolink_conversations c
           on c.id = member.conversation_id
         where member.user_id = $1
           and not member.deleted
@@ -99,8 +99,8 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'conversation-inbox-next',
       params: [userId, cursorAt, `${runId}-c-0`],
       sql: `select c.id
-        from public.wigofly_conversation_members member
-        join public.wigofly_conversations c
+        from public.wigolink_conversation_members member
+        join public.wigolink_conversations c
           on c.id = member.conversation_id
         where member.user_id = $1
           and not member.deleted
@@ -156,7 +156,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       params: [userId, cursorTime, `${runId}-m-0`],
       sql: `select m.id, m.conversation_id, m.at
         from public.messages m
-        join public.wigofly_conversations c on c.id = m.conversation_id
+        join public.wigolink_conversations c on c.id = m.conversation_id
         where c.data->'participantIds' ? $1
           and (m.at, m.id) < ($2::timestamptz, $3)
         order by m.at desc, m.id desc
@@ -166,7 +166,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'operations-member',
       params: [userId],
       sql: `select tx.id
-        from public.wigofly_transactions tx
+        from public.wigolink_transactions tx
         where array[
           nullif(tx.data->>'senderId', ''),
           nullif(tx.data->>'travelerId', ''),
@@ -182,7 +182,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'operations-member-next',
       params: [userId, cursorAt, `${runId}-tx-0`],
       sql: `select tx.id
-        from public.wigofly_transactions tx
+        from public.wigolink_transactions tx
         where array[
           nullif(tx.data->>'senderId', ''),
           nullif(tx.data->>'travelerId', ''),
@@ -210,7 +210,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'saved-trips-member-next',
       params: [userId, cursorTime, `${runId}-saved-0`],
       sql: `select saved.id
-        from public.wigofly_saved_trips saved
+        from public.wigolink_saved_trips saved
         where saved.data->>'userId' = $1
           and (
             saved.created_at < $2::timestamptz
@@ -224,7 +224,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       params: [],
       sql: `select log.id, member.data
         from public.audit_logs log
-        left join public.wigofly_users member on member.id = log.actor_id
+        left join public.wigolink_users member on member.id = log.actor_id
         order by log.at desc
         limit 200`,
     },
@@ -233,7 +233,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       params: [cursorTime, 9_223_372_036_854_775_807n],
       sql: `select log.id, member.data
         from public.audit_logs log
-        left join public.wigofly_users member on member.id = log.actor_id
+        left join public.wigolink_users member on member.id = log.actor_id
         where (log.at, log.id) < ($1::timestamptz, $2::bigint)
         order by log.at desc, log.id desc
         limit 201`,
@@ -242,7 +242,7 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
       name: 'admin-members-next',
       params: [0, now, `${runId}-u-0`],
       sql: `select member.id
-        from public.wigofly_users member
+        from public.wigolink_users member
         where (
           case when coalesce((member.data->>'isAdmin')::boolean, false) then 0 else 1 end > $1
           or (

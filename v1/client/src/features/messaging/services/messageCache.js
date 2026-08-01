@@ -1,4 +1,4 @@
-const DATABASE_NAME = 'wigofly-messaging';
+const DATABASE_NAME = 'wigolink-messaging';
 const STORE_NAME = 'cache';
 const DATABASE_VERSION = 1;
 

@@ -33,7 +33,7 @@ test('message safety catches a contact split across chat bubbles', () => {
 });
 
 test('message safety preserves ordinary coordination messages', () => {
-  for (const text of ['Bonjour, ou se fait la remise ?', 'Le colis pese 3 kg et le prix est 15 EUR.', 'Je confirme le rendez-vous demain.', 'Je vais signaler ce probleme a Wigofly.']) {
+  for (const text of ['Bonjour, ou se fait la remise ?', 'Le colis pese 3 kg et le prix est 15 EUR.', 'Je confirme le rendez-vous demain.', 'Je vais signaler ce probleme a Wigolink.']) {
     assert.equal(analyzeMessageSafety(text).blocked, false, text);
   }
   assert.equal(normalizeSafetyText('Été ٠٦'), 'ete 06');

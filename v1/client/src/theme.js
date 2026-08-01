@@ -1,6 +1,6 @@
 // Gestion du thème clair/sombre (PRD UI/UX U9). Le thème initial est posé par un script
 // inline dans index.html (avant le rendu) ; ce module ne gère que la bascule manuelle.
-const KEY = 'wigofly_theme';
+const KEY = 'wigolink_theme';
 const THEME_COLORS = { light: '#0a6cf5', dark: '#0e1116' };
 
 export function getTheme() {

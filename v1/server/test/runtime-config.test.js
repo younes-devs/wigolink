@@ -17,11 +17,11 @@ test('runtime config fournit des valeurs locales sûres par défaut', () => {
 test('runtime config normalise les origines CORS et Supabase', () => {
   assert.deepEqual(loadRuntimeConfig({
     NODE_ENV: 'production',
-    APP_ORIGIN: ' https://wigofly.app,https://admin.wigofly.app, ',
+    APP_ORIGIN: ' https://wigolink.app,https://admin.wigolink.app, ',
     SUPABASE_URL: 'https://project.supabase.co/',
   }), {
     isProduction: true,
-    appOrigins: ['https://wigofly.app', 'https://admin.wigofly.app'],
+    appOrigins: ['https://wigolink.app', 'https://admin.wigolink.app'],
     supabaseUrl: 'https://project.supabase.co',
     supabaseRealtimeOrigin: 'wss://project.supabase.co',
   });

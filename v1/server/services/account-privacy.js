@@ -134,7 +134,7 @@ export function createAccountPrivacyService({
 
     const beforeDeletion = { ...user };
     user.name = 'Compte supprimé';
-    user.email = `deleted-${userId}@wigofly.invalid`;
+    user.email = `deleted-${userId}@wigolink.invalid`;
     user.phone = '';
     user.city = '';
     user.photoUrl = null;

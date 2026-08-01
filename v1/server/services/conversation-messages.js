@@ -47,7 +47,7 @@ export function createConversationMessageService({
       conversation: conversationView(conversation, userId),
       warningKey: message.flagged ? 'messages.safety.keepInside' : null,
       warning: message.flagged
-        ? 'Gardez les echanges et le paiement dans Wigofly pour rester protege.'
+        ? 'Gardez les echanges et le paiement dans Wigolink pour rester protege.'
         : null,
     };
   }

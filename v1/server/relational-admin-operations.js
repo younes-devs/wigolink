@@ -14,17 +14,17 @@ export async function relationalAdminOperationState({ pool }) {
   ] = await Promise.all([
     pool.query(
       `select
-         (select count(*)::int from public.wigofly_users) as users,
-         (select count(*)::int from public.wigofly_listings) as listings,
-         (select count(*)::int from public.wigofly_transactions) as transactions,
+         (select count(*)::int from public.wigolink_users) as users,
+         (select count(*)::int from public.wigolink_listings) as listings,
+         (select count(*)::int from public.wigolink_transactions) as transactions,
          (select count(*)::int
-            from public.wigofly_transactions
+            from public.wigolink_transactions
            where data->>'status' = 'released') as released,
          (select count(*)::int
-            from public.wigofly_transactions
+            from public.wigolink_transactions
            where data->>'status' = 'disputed') as disputed,
          (select count(*)::int
-            from public.wigofly_disputes
+            from public.wigolink_disputes
            where coalesce(data->>'status', 'open') = 'open') as open_disputes,
          (select count(*)::int from public.messages where flagged) as flagged_messages,
          (select coalesce(sum(
@@ -34,11 +34,11 @@ export async function relationalAdminOperationState({ pool }) {
               else 0
             end
           ), 0)::float8
-            from public.wigofly_transactions) as escrow_held`,
+            from public.wigolink_transactions) as escrow_held`,
     ),
     pool.query(
       `select data
-         from public.wigofly_disputes
+         from public.wigolink_disputes
         order by created_at desc
         limit $1`,
       [DISPUTE_LIMIT],
@@ -51,19 +51,19 @@ export async function relationalAdminOperationState({ pool }) {
          conversation.data as conversation,
          trip.data as trip,
          operation.data as operation
-       from public.wigofly_review_queue queue
-       left join public.wigofly_listings listing
+       from public.wigolink_review_queue queue
+       left join public.wigolink_listings listing
          on queue.data->>'type' = 'listing'
         and listing.id = queue.data->>'refId'
-       left join public.wigofly_disputes dispute
+       left join public.wigolink_disputes dispute
          on queue.data->>'type' = 'dispute'
         and dispute.id = queue.data->>'refId'
-       left join public.wigofly_conversations conversation
+       left join public.wigolink_conversations conversation
          on queue.data->>'type' = 'conversation'
         and conversation.id = queue.data->>'refId'
-       left join public.wigofly_trips trip
+       left join public.wigolink_trips trip
          on trip.id = conversation.data->>'tripId'
-       left join public.wigofly_transactions operation
+       left join public.wigolink_transactions operation
          on operation.id = conversation.data->>'operationId'
        where coalesce(queue.data->>'status', 'open') = 'open'
        order by queue.created_at desc
@@ -72,8 +72,8 @@ export async function relationalAdminOperationState({ pool }) {
     ),
     pool.query(
       `select submission.data, member.data as member
-         from public.wigofly_kyc_submissions submission
-         left join public.wigofly_users member
+         from public.wigolink_kyc_submissions submission
+         left join public.wigolink_users member
            on member.id = submission.data->>'userId'
         where submission.data->>'status' = 'pending'
         order by coalesce(
@@ -85,7 +85,7 @@ export async function relationalAdminOperationState({ pool }) {
     ),
     pool.query(
       `select data
-         from public.wigofly_custom_whitelist
+         from public.wigolink_custom_whitelist
         order by created_at desc
         limit $1`,
       [WHITELIST_LIMIT],
@@ -129,22 +129,22 @@ export async function relationalAdminKpis({
   const [totalsResult, monthlyResult] = await Promise.all([
     pool.query(
       `select
-         (select count(*)::int from public.wigofly_users) as users,
-         (select count(*)::int from public.wigofly_transactions) as transactions,
+         (select count(*)::int from public.wigolink_users) as users,
+         (select count(*)::int from public.wigolink_transactions) as transactions,
          (select count(*)::int
-            from public.wigofly_transactions
+            from public.wigolink_transactions
            where data->>'status' = 'released') as released,
-         (select count(*)::int from public.wigofly_disputes) as disputes,
+         (select count(*)::int from public.wigolink_disputes) as disputes,
          (select count(*)::int
-            from public.wigofly_transactions
+            from public.wigolink_transactions
            where data->>'status' in ('in_transit', 'released', 'disputed', 'refunded'))
            as disputable,
          (select count(*)::int
-            from public.wigofly_disputes
+            from public.wigolink_disputes
            where data->>'status' = 'resolved'
              and nullif(data->>'resolvedAt', '') is not null) as resolved,
          (select count(*)::int
-            from public.wigofly_disputes
+            from public.wigolink_disputes
            where data->>'status' = 'resolved'
              and nullif(data->>'resolvedAt', '') is not null
              and nullif(data->>'resolvedAt', '')::bigint
@@ -153,14 +153,14 @@ export async function relationalAdminKpis({
          (select count(*)::int
             from (
               select data->>'travelerId'
-              from public.wigofly_transactions
+              from public.wigolink_transactions
               where nullif(data->>'travelerId', '') is not null
               group by data->>'travelerId'
             ) travelers) as traveler_count,
          (select count(*)::int
             from (
               select data->>'travelerId'
-              from public.wigofly_transactions
+              from public.wigolink_transactions
               where nullif(data->>'travelerId', '') is not null
               group by data->>'travelerId'
               having count(*) >= 2
@@ -170,7 +170,7 @@ export async function relationalAdminKpis({
          (select min(coalesce(
             nullif(data->>'createdAt', '')::bigint,
             extract(epoch from created_at) * 1000
-          ))::float8 from public.wigofly_transactions) as first_transaction_at,
+          ))::float8 from public.wigolink_transactions) as first_transaction_at,
          (select avg(
             (
               coalesce(
@@ -183,8 +183,8 @@ export async function relationalAdminKpis({
               )
             ) / 3600000.0
           )::float8
-            from public.wigofly_transactions tx
-            join public.wigofly_listings listing
+            from public.wigolink_transactions tx
+            join public.wigolink_listings listing
               on listing.id = tx.data->>'listingId'
            where coalesce(
              nullif(tx.data->>'createdAt', '')::bigint,
@@ -200,7 +200,7 @@ export async function relationalAdminKpis({
          bucket,
          count(tx.id)::int as count
        from generate_series(5, 0, -1) bucket
-       left join public.wigofly_transactions tx
+       left join public.wigolink_transactions tx
          on tx.data->>'status' = 'released'
         and nullif(tx.data->'escrow'->>'releasedAt', '') is not null
         and nullif(tx.data->'escrow'->>'releasedAt', '')::bigint
@@ -366,7 +366,7 @@ async function reviewUsers({ pool, rows, messagesByConversation }) {
   if (ids.size === 0) return new Map();
   const result = await pool.query(
     `select id, data
-       from public.wigofly_users
+       from public.wigolink_users
       where id = any($1::text[])`,
     [[...ids]],
   );

@@ -8,11 +8,11 @@ function harness() {
   const pool = {
     async query(sql, params = []) {
       const normalized = String(sql).replace(/\s+/g, ' ').trim();
-      if (normalized.startsWith('insert into public.wigofly_runtime_records')) {
+      if (normalized.startsWith('insert into public.wigolink_runtime_records')) {
         records.set(params[0], JSON.parse(params[1]));
         return { rowCount: 1, rows: [] };
       }
-      if (normalized.startsWith('update public.wigofly_runtime_records')) {
+      if (normalized.startsWith('update public.wigolink_runtime_records')) {
         const data = records.get(params[0]);
         if (!data || data.claimed || data.userId !== params[1] || data.mediaType !== params[2]) {
           return { rowCount: 0, rows: [] };
@@ -20,11 +20,11 @@ function harness() {
         data.claimed = true;
         return { rowCount: 1, rows: [{ data }] };
       }
-      if (normalized.startsWith('select data from public.wigofly_runtime_records')) {
+      if (normalized.startsWith('select data from public.wigolink_runtime_records')) {
         const data = records.get(params[0]);
         return { rows: data ? [{ data }] : [], rowCount: data ? 1 : 0 };
       }
-      if (normalized.startsWith('delete from public.wigofly_runtime_records')) {
+      if (normalized.startsWith('delete from public.wigolink_runtime_records')) {
         return { rowCount: records.delete(params[0]) ? 1 : 0, rows: [] };
       }
       throw new Error(`SQL inattendu: ${normalized}`);

@@ -33,8 +33,8 @@ test('dossier membre relationnel charge chaque collection par son identifiant', 
     ['appeal-1'],
   );
   assert.deepEqual(calls[0].params, ['u-1', null]);
-  assert.match(calls[0].sql, /wigofly_trips/);
-  assert.match(calls[0].sql, /wigofly_transactions/);
+  assert.match(calls[0].sql, /wigolink_trips/);
+  assert.match(calls[0].sql, /wigolink_transactions/);
   assert.match(calls[0].sql, /@> array\[\$1\]::text\[\]/);
   assert.match(calls[0].sql, /notifications/);
   assert.match(calls[0].sql, /safety_appeal/);

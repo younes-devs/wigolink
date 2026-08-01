@@ -19,7 +19,7 @@ const ADMIN_LOADERS = {
   nl: () => import('./locales/admin.nl.js'),
 };
 const RTL_LANGS = new Set(['ar']);
-const KEY = 'wigofly_lang';
+const KEY = 'wigolink_lang';
 
 export const LANGS = [
   { code: 'fr', label: 'Français' },

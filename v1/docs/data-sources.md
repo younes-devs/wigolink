@@ -2,14 +2,14 @@
 
 ## Référentiel géographique
 
-Les localités marocaines utilisées par la recherche Wigofly proviennent de
+Les localités marocaines utilisées par la recherche Wigolink proviennent de
 [GeoNames](https://www.geonames.org/), distribué sous licence
 [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 - Export pays : `MA.zip`
 - Sélection : lieux habités de 500 habitants ou plus et sièges administratifs
-- Alias complémentaires : variantes usuelles maintenues par Wigofly
+- Alias complémentaires : variantes usuelles maintenues par Wigolink
 - Mise à jour : relancer `scripts/import-geonames-country.mjs` avec le nouvel export
 
-Wigofly ajoute une normalisation, des alias et un classement de pertinence. Ces
-transformations ne signifient pas que GeoNames approuve ou certifie Wigofly.
+Wigolink ajoute une normalisation, des alias et un classement de pertinence. Ces
+transformations ne signifient pas que GeoNames approuve ou certifie Wigolink.

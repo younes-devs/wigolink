@@ -1,4 +1,4 @@
-const ADMIN_ROLE_LOCK = 'wigofly:admin-roles';
+const ADMIN_ROLE_LOCK = 'wigolink:admin-roles';
 
 export function relationalAdminActionsEnabled(env = process.env) {
   return env.RELATIONAL_ADMIN_ACTIONS === 'true';
@@ -19,7 +19,7 @@ export function createRelationalAdminMemberMutations({ getPool }) {
         `insert into public.audit_logs
            (actor_id, action, target_type, target_id, meta)
          select $1, 'admin.member_case.view', 'user', member.id, $3::jsonb
-         from public.wigofly_users member
+         from public.wigolink_users member
          where member.id = $2
          returning id`,
         [
@@ -45,7 +45,7 @@ export function createRelationalAdminMemberMutations({ getPool }) {
         if (!becomesAdmin && target.isAdmin) {
           const active = await client.query(
             `select count(*)::int as count
-             from public.wigofly_users
+             from public.wigolink_users
              where coalesce((data->>'isAdmin')::boolean, false)
                and nullif(data->>'deletedAt', '') is null`,
           );
@@ -113,7 +113,7 @@ export function createRelationalAdminMemberMutations({ getPool }) {
     async removeWhitelist({ actorId, categoryId }) {
       return transaction(pool(), async (client) => {
         const result = await client.query(
-          `delete from public.wigofly_custom_whitelist
+          `delete from public.wigolink_custom_whitelist
            where id = $1
            returning data`,
           [String(categoryId)],
@@ -154,7 +154,7 @@ async function transaction(pool, operation) {
 async function lockedUser(client, userId) {
   const result = await client.query(
     `select data
-     from public.wigofly_users
+     from public.wigolink_users
      where id = $1
      for update`,
     [String(userId)],
@@ -164,7 +164,7 @@ async function lockedUser(client, userId) {
 
 async function updateUser(client, user) {
   const result = await client.query(
-    `update public.wigofly_users
+    `update public.wigolink_users
      set data = $2::jsonb, updated_at = now()
      where id = $1`,
     [String(user.id), JSON.stringify(user)],

@@ -90,7 +90,7 @@ test('realtime session renvoie seulement la cle publique et le canal du membre',
       },
       ensureChannel(user) {
         receivedUser = user;
-        return 'wigofly:member';
+        return 'wigolink:member';
       },
     },
   });
@@ -101,7 +101,7 @@ test('realtime session renvoie seulement la cle publique et le canal du membre',
     enabled: true,
     url: 'https://project.supabase.co',
     publishableKey: 'public-key',
-    channel: 'wigofly:member',
+    channel: 'wigolink:member',
   });
 });
 

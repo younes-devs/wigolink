@@ -51,7 +51,7 @@ function createHarness({
       return { rows: [], rowCount: 0 };
     }
     if (
-      sql.includes('from public.wigofly_runtime_records')
+      sql.includes('from public.wigolink_runtime_records')
       && sql.includes("kind = 'message_upload'")
       && sql.includes('expires_at > now()')
     ) {
@@ -181,7 +181,7 @@ test('upload direct signe seulement pour un participant et un type image', async
   assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
   assert.equal(result.body.upload.maxBytes, 700 * 1024);
   const reservation = harness.queries.find(({ sql }) => (
-    sql.includes('insert into public.wigofly_runtime_records')
+    sql.includes('insert into public.wigolink_runtime_records')
   ));
   assert.equal(reservation.params[0], result.body.upload.attachmentId);
 });
@@ -327,7 +327,7 @@ test('lecture relationnelle met a jour une seule ligne participant', async () =>
 
   assert.equal(result.status, 200);
   assert.ok(harness.queries.some(({ sql }) =>
-    sql.includes('update public.wigofly_conversation_members member')
+    sql.includes('update public.wigolink_conversation_members member')
     && sql.includes('last_read_at')
   ));
   assert.equal(harness.queries.some(({ sql }) =>
@@ -349,7 +349,7 @@ test('non lu relationnel place le curseur juste avant le dernier message recu', 
 
   assert.equal(result.status, 200);
   const update = harness.queries.find(({ sql }) =>
-    sql.includes('update public.wigofly_conversation_members')
+    sql.includes('update public.wigolink_conversation_members')
     && sql.includes("interval '1 microsecond'")
   );
   assert.ok(update);
@@ -424,10 +424,10 @@ function createActionHarness(handler = async () => ({ rows: [], rowCount: 1 })) 
 
 test('creation relationnelle dedoublonne sous verrou sans charger l etat global', async () => {
   const harness = createActionHarness(async (sql) => {
-    if (sql.includes('select 1 from public.wigofly_users')) {
+    if (sql.includes('select 1 from public.wigolink_users')) {
       return { rows: [{ '?column?': 1 }], rowCount: 1 };
     }
-    if (sql.includes('select id, data') && sql.includes('wigofly_conversations')) {
+    if (sql.includes('select id, data') && sql.includes('wigolink_conversations')) {
       return { rows: [], rowCount: 0 };
     }
     return { rows: [], rowCount: 1 };
@@ -441,7 +441,7 @@ test('creation relationnelle dedoublonne sous verrou sans charger l etat global'
   assert.equal(result.status, 200);
   assert.ok(harness.queries.some(({ sql }) => sql.includes('pg_advisory_xact_lock')));
   const insert = harness.queries.find(({ sql }) =>
-    sql.includes('insert into public.wigofly_conversations')
+    sql.includes('insert into public.wigolink_conversations')
   );
   const stored = JSON.parse(insert.params[1]);
   assert.deepEqual(stored.participantIds, ['u-1', 'u-2']);
@@ -453,7 +453,7 @@ test('signalement relationnel conserve la preuve et la file de revue atomiquemen
     if (sql.includes('select c.data as conversation')) {
       return { rows: [contextRow], rowCount: 1 };
     }
-    if (sql.includes('select 1 from public.wigofly_review_queue')) {
+    if (sql.includes('select 1 from public.wigolink_review_queue')) {
       return { rows: [], rowCount: 0 };
     }
     return { rows: [], rowCount: 1 };
@@ -472,10 +472,10 @@ test('signalement relationnel conserve la preuve et la file de revue atomiquemen
   assert.equal(result.status, 200);
   assert.equal(result.body.report.reasonCode, 'abuse');
   assert.ok(harness.queries.some(({ sql }) =>
-    sql.includes('insert into public.wigofly_conversation_reports')
+    sql.includes('insert into public.wigolink_conversation_reports')
   ));
   assert.ok(harness.queries.some(({ sql }) =>
-    sql.includes('insert into public.wigofly_review_queue')
+    sql.includes('insert into public.wigolink_review_queue')
   ));
   assert.ok(harness.queries.some(({ sql }) =>
     sql.includes("'conversation.report'")
@@ -488,7 +488,7 @@ test('blocage relationnel met a jour membre, conversation et audit ensemble', as
     if (sql.includes('select c.data as conversation')) {
       return { rows: [contextRow], rowCount: 1 };
     }
-    if (sql.includes('select data from public.wigofly_users')) {
+    if (sql.includes('select data from public.wigolink_users')) {
       return { rows: [{ data: { ...user, blockedUserIds: [] } }], rowCount: 1 };
     }
     return { rows: [], rowCount: 1 };
@@ -503,11 +503,11 @@ test('blocage relationnel met a jour membre, conversation et audit ensemble', as
   assert.equal(result.status, 200);
   assert.equal(result.body.blocked, true);
   const memberUpdate = harness.queries.find(({ sql }) =>
-    sql.includes('update public.wigofly_users')
+    sql.includes('update public.wigolink_users')
   );
   assert.deepEqual(JSON.parse(memberUpdate.params[1]).blockedUserIds, ['u-2']);
   assert.ok(harness.queries.some(({ sql }) =>
-    sql.includes('update public.wigofly_conversations')
+    sql.includes('update public.wigolink_conversations')
   ));
   assert.ok(harness.queries.some(({ sql }) =>
     sql.includes('insert into public.audit_logs')
@@ -516,13 +516,13 @@ test('blocage relationnel met a jour membre, conversation et audit ensemble', as
 
 test('comptes bloques relationnels restent bornes au membre et debloquables', async () => {
   const harness = createActionHarness(async (sql) => {
-    if (sql.includes('select data from public.wigofly_users')) {
+    if (sql.includes('select data from public.wigolink_users')) {
       return {
         rows: [{ data: { ...user, blockedUserIds: ['u-2'] } }],
         rowCount: 1,
       };
     }
-    if (sql.includes('select id, data from public.wigofly_users')) {
+    if (sql.includes('select id, data from public.wigolink_users')) {
       return {
         rows: [{ id: 'u-2', data: { id: 'u-2', name: 'Karim' } }],
         rowCount: 1,

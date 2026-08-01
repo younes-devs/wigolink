@@ -1,12 +1,12 @@
 import { t } from '../i18n.js';
 
-let token = localStorage.getItem('wigofly_token') || null;
+let token = localStorage.getItem('wigolink_token') || null;
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 
 export function setToken(t) {
   token = t;
-  if (t) localStorage.setItem('wigofly_token', t);
-  else localStorage.removeItem('wigofly_token');
+  if (t) localStorage.setItem('wigolink_token', t);
+  else localStorage.removeItem('wigolink_token');
 }
 
 export function getToken() {

@@ -33,7 +33,7 @@ test('verification relationnelle compare la source et detecte les messages orphe
       }
       if (sql.includes('select state')) return { rows: [{ state: source }] };
       if (sql.includes('left join')) return { rows: [{ count: 1 }] };
-      if (sql.includes('wigofly_trips')) return { rows: [{ count: 1 }] };
+      if (sql.includes('wigolink_trips')) return { rows: [{ count: 1 }] };
       return { rows: [{ count: 1 }] };
     },
   };

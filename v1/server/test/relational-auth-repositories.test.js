@@ -30,7 +30,7 @@ test('auth relationnelle : recherche un utilisateur sans charger l etat global',
   });
 
   assert.equal(await repositories.users.findByEmail(' MEMBER@example.test '), user);
-  assert.match(calls[0].sql, /wigofly_users/);
+  assert.match(calls[0].sql, /wigolink_users/);
   assert.deepEqual(calls[0].params, ['member@example.test']);
 });
 
@@ -47,8 +47,8 @@ test('auth relationnelle : insere et met a jour une seule ligne utilisateur', as
   await repositories.users.append(user);
   await repositories.users.update({ ...user, emailVerified: true });
 
-  assert.match(calls[0].sql, /insert into public\.wigofly_users/);
-  assert.match(calls[1].sql, /update public\.wigofly_users/);
+  assert.match(calls[0].sql, /insert into public\.wigolink_users/);
+  assert.match(calls[1].sql, /update public\.wigolink_users/);
   assert.equal(calls[0].params[0], user.id);
   assert.equal(JSON.parse(calls[1].params[1]).emailVerified, true);
 });
@@ -93,7 +93,7 @@ test('auth relationnelle : masque l email dans la cle des codes temporaires', as
     expires: 20_000,
   });
 
-  assert.match(calls[0].sql, /wigofly_runtime_records/);
+  assert.match(calls[0].sql, /wigolink_runtime_records/);
   assert.equal(calls[0].params[0], 'email_verification');
   assert.equal(calls[0].params[1], expectedId);
   assert.ok(calls[0].params[3] instanceof Date);

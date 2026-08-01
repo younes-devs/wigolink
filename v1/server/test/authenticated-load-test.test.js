@@ -8,7 +8,7 @@ function testPool() {
     calls,
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
-      if (String(sql).includes('from public.wigofly_users')) {
+      if (String(sql).includes('from public.wigolink_users')) {
         return {
           rows: [{ user_id: 'u-load', conversation_id: 'conv-load' }],
         };
@@ -45,8 +45,8 @@ test('charge authentifiee cree puis retire toujours sa session temporaire', asyn
   assert.ok(requested.every(({ authorization }) => (
     /^Bearer [A-Za-z0-9_-]+$/.test(authorization)
   )));
-  assert.match(pool.calls[1].sql, /insert into public\.wigofly_sessions/);
-  assert.match(pool.calls.at(-1).sql, /delete from public\.wigofly_sessions/);
+  assert.match(pool.calls[1].sql, /insert into public\.wigolink_sessions/);
+  assert.match(pool.calls.at(-1).sql, /delete from public\.wigolink_sessions/);
   assert.equal(pool.calls[1].params[0], pool.calls.at(-1).params[0]);
 });
 
@@ -68,5 +68,5 @@ test('charge authentifiee nettoie la session apres une erreur HTTP', async () =>
     }),
     /Prechauffage refuse/,
   );
-  assert.match(pool.calls.at(-1).sql, /delete from public\.wigofly_sessions/);
+  assert.match(pool.calls.at(-1).sql, /delete from public\.wigolink_sessions/);
 });

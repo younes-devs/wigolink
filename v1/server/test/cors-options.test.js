@@ -39,10 +39,10 @@ test('CORS accepte toute origine et les requêtes sans origine hors production',
 test('CORS accepte uniquement les origines configurées en production', () => {
   const options = createCorsOptions({
     isProduction: true,
-    appOrigins: ['https://wigofly.app', 'https://admin.wigofly.app'],
+    appOrigins: ['https://wigolink.app', 'https://admin.wigolink.app'],
   });
 
-  assert.deepEqual(evaluateOrigin(options, 'https://wigofly.app'), {
+  assert.deepEqual(evaluateOrigin(options, 'https://wigolink.app'), {
     error: null,
     allowed: true,
   });

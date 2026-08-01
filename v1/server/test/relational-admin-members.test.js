@@ -28,7 +28,7 @@ test('admin relationnel recherche les membres avec une limite bornee', async () 
   assert.equal(result.users[0].id, 'u-1');
   assert.equal(result.adminCount, 2);
   assert.deepEqual(calls[0].params, ['alice', 101]);
-  assert.match(calls[0].sql, /wigofly_users/);
+  assert.match(calls[0].sql, /wigolink_users/);
   assert.equal(result.page.hasMore, false);
 });
 

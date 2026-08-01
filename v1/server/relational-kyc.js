@@ -24,7 +24,7 @@ export function createRelationalKycRepository({ getPool }) {
     async listForUser(userId) {
       const result = await pool().query(
         `select id, data
-         from public.wigofly_kyc_submissions
+         from public.wigolink_kyc_submissions
          where data->>'userId' = $1
          order by coalesce((data->>'submittedAt')::bigint, 0) desc`,
         [String(userId)],
@@ -38,7 +38,7 @@ export function createRelationalKycRepository({ getPool }) {
         : Number.MAX_SAFE_INTEGER;
       const result = await pool().query(
         `select count(*)::int as count
-         from public.wigofly_kyc_submissions
+         from public.wigolink_kyc_submissions
          where data->>'userId' = $1
            and data->>'status' = 'rejected'
            and coalesce((data->>'submittedAt')::bigint, 0) < $2`,
@@ -50,7 +50,7 @@ export function createRelationalKycRepository({ getPool }) {
     async appendSubmission(data) {
       const submission = newSubmission(data);
       await pool().query(
-        `insert into public.wigofly_kyc_submissions
+        `insert into public.wigolink_kyc_submissions
            (id, data, created_at, updated_at)
          values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
         [
@@ -68,7 +68,7 @@ export function createRelationalKycRepository({ getPool }) {
       try {
         await client.query('begin');
         await client.query(
-          `insert into public.wigofly_kyc_submissions
+          `insert into public.wigolink_kyc_submissions
              (id, data, created_at, updated_at)
            values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
           [
@@ -78,7 +78,7 @@ export function createRelationalKycRepository({ getPool }) {
           ],
         );
         const updated = await client.query(
-          `update public.wigofly_users
+          `update public.wigolink_users
            set data = data || jsonb_build_object('kycStatus', $2::text),
                updated_at = now()
            where id = $1`,
@@ -98,7 +98,7 @@ export function createRelationalKycRepository({ getPool }) {
     async updateSubmission(submission, { client = null } = {}) {
       const executor = client || pool();
       const result = await executor.query(
-        `update public.wigofly_kyc_submissions
+        `update public.wigolink_kyc_submissions
          set data = $2::jsonb, updated_at = now()
          where id = $1
          returning data`,
@@ -110,7 +110,7 @@ export function createRelationalKycRepository({ getPool }) {
 
     async purgeSensitiveForUser(userId) {
       const result = await pool().query(
-        `update public.wigofly_kyc_submissions
+        `update public.wigolink_kyc_submissions
          set data = jsonb_set(
            jsonb_set(
              jsonb_set(
@@ -135,7 +135,7 @@ export function createRelationalKycRepository({ getPool }) {
     async reviewed() {
       const result = await pool().query(
         `select id, data
-         from public.wigofly_kyc_submissions
+         from public.wigolink_kyc_submissions
          where nullif(data->>'reviewedAt', '') is not null
          order by coalesce((data->>'reviewedAt')::bigint, 0) desc
          limit 500`,
@@ -161,7 +161,7 @@ export function createRelationalKycRepository({ getPool }) {
                   - (data->>'submittedAt')::bigint
              end
            ) as avg_review_ms
-         from public.wigofly_kyc_submissions`,
+         from public.wigolink_kyc_submissions`,
         [overdueBefore],
       );
       const row = result.rows[0] || {};
@@ -184,8 +184,8 @@ export function createRelationalKycRepository({ getPool }) {
                   - 'selfiePhoto'
                   - 'idFrontPhoto'
                   - 'idBackPhoto' as data
-         from public.wigofly_kyc_submissions submission
-         left join public.wigofly_users member
+         from public.wigolink_kyc_submissions submission
+         left join public.wigolink_users member
            on member.id = submission.data->>'userId'
          where ($1::text is null or submission.data->>'status' = $1)
            and (
@@ -209,7 +209,7 @@ export function createRelationalKycRepository({ getPool }) {
     async findSubmission(id) {
       const result = await pool().query(
         `select id, data
-         from public.wigofly_kyc_submissions
+         from public.wigolink_kyc_submissions
          where id = $1
          limit 1`,
         [String(id)],
@@ -220,7 +220,7 @@ export function createRelationalKycRepository({ getPool }) {
     async historyForUser(userId) {
       const result = await pool().query(
         `select id, data
-         from public.wigofly_kyc_decisions
+         from public.wigolink_kyc_decisions
          where data->>'userId' = $1
          order by coalesce((data->>'at')::bigint, 0) desc
          limit 100`,
@@ -248,7 +248,7 @@ export function createRelationalKycRepository({ getPool }) {
       };
       const executor = client || pool();
       await executor.query(
-        `insert into public.wigofly_kyc_decisions
+        `insert into public.wigolink_kyc_decisions
            (id, data, created_at, updated_at)
          values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
         [record.id, JSON.stringify(record), at],
@@ -262,7 +262,7 @@ export function createRelationalKycRepository({ getPool }) {
         await client.query('begin');
         await this.updateSubmission(submission, { client });
         const updated = await client.query(
-          `update public.wigofly_users
+          `update public.wigolink_users
            set data = data || jsonb_build_object('kycStatus', $2::text),
                updated_at = now()
            where id = $1`,
@@ -283,7 +283,7 @@ export function createRelationalKycRepository({ getPool }) {
     async rejectionCountsByUser() {
       const result = await pool().query(
         `select data->>'userId' as user_id, count(*)::int as count
-         from public.wigofly_kyc_submissions
+         from public.wigolink_kyc_submissions
          where data->>'status' in ('rejected', 'refused')
          group by data->>'userId'`,
       );
@@ -295,7 +295,7 @@ export function createRelationalKycRepository({ getPool }) {
     async verifiedUserCount() {
       const result = await pool().query(
         `select count(*)::int as count
-         from public.wigofly_users
+         from public.wigolink_users
          where data->>'kycStatus' = 'verified'
            and nullif(data->>'deletedAt', '') is null`,
       );

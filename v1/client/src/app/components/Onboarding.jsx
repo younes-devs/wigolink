@@ -7,7 +7,7 @@ import { t, useLang } from '../../i18n.js';
 // Onboarding premier lancement (PRD UI/UX U1) — 2 écrans max, skippable, une seule fois
 // par compte. Le serveur garde l'état pour éviter de le revoir sur un autre appareil ;
 // localStorage reste un fallback immédiat si la sauvegarde réseau échoue.
-const onboardKey = (userId) => `wigofly_onboarded_${userId}`;
+const onboardKey = (userId) => `wigolink_onboarded_${userId}`;
 
 export function shouldOnboard(user) {
   return !!user && !user.onboardingDone && !localStorage.getItem(onboardKey(user.id));
@@ -39,7 +39,7 @@ export default function Onboarding({ user, onClose }) {
 
         {screen === 0 && (
           <div className="onboard-screen">
-            <img className="onboard-logo" src="/assets/logo-mark-192.png" alt="Wigofly" />
+            <img className="onboard-logo" src="/assets/logo-mark-192.png" alt="Wigolink" />
             <h1 className="onboard-title">{t('onboard.welcome')}</h1>
             <p className="onboard-sub">{t('onboard.intro')}</p>
             <div className="onboard-steps">

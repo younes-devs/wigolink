@@ -41,7 +41,7 @@ function createRelationalUserRepository({ pool }) {
       if (!id) return null;
       const result = await pool().query(
         `select data
-         from public.wigofly_users
+         from public.wigolink_users
          where id = $1
          limit 1`,
         [String(id)],
@@ -54,7 +54,7 @@ function createRelationalUserRepository({ pool }) {
       if (!normalized) return null;
       const result = await pool().query(
         `select data
-         from public.wigofly_users
+         from public.wigolink_users
          where lower(data->>'email') = $1
          limit 1`,
         [normalized],
@@ -64,7 +64,7 @@ function createRelationalUserRepository({ pool }) {
 
     async append(user) {
       await pool().query(
-        `insert into public.wigofly_users (id, data, created_at, updated_at)
+        `insert into public.wigolink_users (id, data, created_at, updated_at)
          values ($1, $2::jsonb, coalesce(to_timestamp($3 / 1000.0), now()), now())`,
         [
           String(user.id),
@@ -78,7 +78,7 @@ function createRelationalUserRepository({ pool }) {
     async update(user) {
       if (!user?.id) throw new Error('Utilisateur invalide.');
       const result = await pool().query(
-        `update public.wigofly_users
+        `update public.wigolink_users
          set data = $2::jsonb, updated_at = now()
          where id = $1
          returning data`,
@@ -93,7 +93,7 @@ function createRelationalUserRepository({ pool }) {
       const patch = changedTopLevelFields(before, user);
       if (!Object.keys(patch).length) return user;
       const result = await pool().query(
-        `update public.wigofly_users
+        `update public.wigolink_users
          set data = data || $2::jsonb, updated_at = now()
          where id = $1
          returning data`,
@@ -111,7 +111,7 @@ function createRuntimeRepository({ pool, kind, hashId = true }) {
       const ids = runtimeIds(id, { hashId });
       const result = await pool().query(
         `select id, data
-         from public.wigofly_runtime_records
+         from public.wigolink_runtime_records
          where kind = $1 and id = any($2::text[])
          order by case when id = $3 then 0 else 1 end
          limit 1`,
@@ -124,7 +124,7 @@ function createRuntimeRepository({ pool, kind, hashId = true }) {
       const ids = runtimeIds(id, { hashId });
       const expires = finiteExpiry(value);
       await pool().query(
-        `insert into public.wigofly_runtime_records
+        `insert into public.wigolink_runtime_records
            (kind, id, data, expires_at, updated_at)
          values ($1, $2, $3::jsonb, $4, now())
          on conflict (kind, id) do update
@@ -135,7 +135,7 @@ function createRuntimeRepository({ pool, kind, hashId = true }) {
       );
       if (ids[1] !== ids[0]) {
         await pool().query(
-          `delete from public.wigofly_runtime_records
+          `delete from public.wigolink_runtime_records
            where kind = $1 and id = $2`,
           [kind, ids[1]],
         );
@@ -145,7 +145,7 @@ function createRuntimeRepository({ pool, kind, hashId = true }) {
 
     async remove(id) {
       await pool().query(
-        `delete from public.wigofly_runtime_records
+        `delete from public.wigolink_runtime_records
          where kind = $1 and id = any($2::text[])`,
         [kind, runtimeIds(id, { hashId })],
       );

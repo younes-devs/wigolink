@@ -7,11 +7,11 @@ import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 100;
 const MIRRORED_COLLECTIONS = [
-  ['users', 'wigofly_users'],
-  ['trips', 'wigofly_trips'],
-  ['savedTrips', 'wigofly_saved_trips'],
-  ['transactions', 'wigofly_transactions'],
-  ['conversations', 'wigofly_conversations'],
+  ['users', 'wigolink_users'],
+  ['trips', 'wigolink_trips'],
+  ['savedTrips', 'wigolink_saved_trips'],
+  ['transactions', 'wigolink_transactions'],
+  ['conversations', 'wigolink_conversations'],
 ];
 
 export function relationalTripReadsEnabled(env = process.env) {
@@ -50,13 +50,13 @@ export async function syncRelationalTripState({ pool, before, after }) {
     for (const [id, entity] of current) {
       const serialized = JSON.stringify(entity);
       if (previous.get(id) === serialized) continue;
-      const conflictUpdate = table === 'wigofly_conversations'
+      const conflictUpdate = table === 'wigolink_conversations'
         ? `data = excluded.data || jsonb_build_object(
-             'lastMessageAt', coalesce(wigofly_conversations.data->'lastMessageAt', excluded.data->'lastMessageAt'),
-             'archivedBy', coalesce(wigofly_conversations.data->'archivedBy', excluded.data->'archivedBy', '[]'::jsonb),
-             'pinnedBy', coalesce(wigofly_conversations.data->'pinnedBy', excluded.data->'pinnedBy', '[]'::jsonb),
-             'deletedBy', coalesce(wigofly_conversations.data->'deletedBy', excluded.data->'deletedBy', '[]'::jsonb),
-             'safetyIncidents', coalesce(wigofly_conversations.data->'safetyIncidents', excluded.data->'safetyIncidents', '[]'::jsonb)
+             'lastMessageAt', coalesce(wigolink_conversations.data->'lastMessageAt', excluded.data->'lastMessageAt'),
+             'archivedBy', coalesce(wigolink_conversations.data->'archivedBy', excluded.data->'archivedBy', '[]'::jsonb),
+             'pinnedBy', coalesce(wigolink_conversations.data->'pinnedBy', excluded.data->'pinnedBy', '[]'::jsonb),
+             'deletedBy', coalesce(wigolink_conversations.data->'deletedBy', excluded.data->'deletedBy', '[]'::jsonb),
+             'safetyIncidents', coalesce(wigolink_conversations.data->'safetyIncidents', excluded.data->'safetyIncidents', '[]'::jsonb)
            ), updated_at = now()`
         : 'data = excluded.data, updated_at = now()';
       await pool.query(
@@ -109,7 +109,7 @@ async function syncMessages({ pool, before = new Map(), after = [] }) {
 export async function relationalUserFromSession({ token, getSession, pool }) {
   const session = await getSession(token);
   if (!session?.userId) return null;
-  const result = await pool.query('select data from public.wigofly_users where id = $1', [session.userId]);
+  const result = await pool.query('select data from public.wigolink_users where id = $1', [session.userId]);
   return result.rows[0]?.data || null;
 }
 
@@ -177,7 +177,7 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
     offsetClause = `offset $${params.length}`;
   }
   const activeOperationSql = mine
-    ? `, (select count(*)::int from public.wigofly_transactions tx
+    ? `, (select count(*)::int from public.wigolink_transactions tx
           where tx.data->>'tripId' = t.id
             and coalesce(tx.data->>'status', '') not in ('released', 'refunded', 'cancelled')) as active_operations`
     : '';
@@ -185,11 +185,11 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
     `select t.data as trip, u.data as traveler, t.id as sort_id,
        coalesce(t.data->>'departureDate', t.data->>'date') as sort_date,
        t.created_at as sort_created_at,
-       exists(select 1 from public.wigofly_saved_trips s
+       exists(select 1 from public.wigolink_saved_trips s
          where s.data->>'userId' = ${userParam} and s.data->>'tripId' = t.id) as saved
        ${activeOperationSql}
-     from public.wigofly_trips t
-     join public.wigofly_users u on u.id = t.data->>'travelerId'
+     from public.wigolink_trips t
+     join public.wigolink_users u on u.id = t.data->>'travelerId'
      where ${where.join(' and ')}
      order by coalesce(t.data->>'departureDate', t.data->>'date') asc,
        t.created_at desc, t.id asc
@@ -222,20 +222,20 @@ export async function relationalTrip({ pool, user, id, today }) {
     `select t.data as trip, u.data as traveler,
        exists(
          select 1
-         from public.wigofly_saved_trips saved
+         from public.wigolink_saved_trips saved
          where saved.data->>'userId' = $1
            and saved.data->>'tripId' = t.id
        ) as saved,
        (
          select count(*)::int
-         from public.wigofly_transactions operation
+         from public.wigolink_transactions operation
          where operation.data->>'tripId' = t.id
            and coalesce(operation.data->>'status', '') not in (
              'released', 'refunded', 'cancelled'
            )
        ) as active_operations
-     from public.wigofly_trips t
-     join public.wigofly_users u on u.id = t.data->>'travelerId'
+     from public.wigolink_trips t
+     join public.wigolink_users u on u.id = t.data->>'travelerId'
      where t.id = $2`,
     [user.id, id],
   );
@@ -270,11 +270,11 @@ export async function listRelationalSavedTrips({
   query = {},
 }) {
   await pool.query(
-    `delete from public.wigofly_saved_trips saved
+    `delete from public.wigolink_saved_trips saved
      where saved.data->>'userId' = $1
        and not exists (
          select 1
-         from public.wigofly_trips trip
+         from public.wigolink_trips trip
          where trip.id = saved.data->>'tripId'
            and coalesce(trip.data->>'status', 'published') = 'published'
            and coalesce(trip.data->>'departureDate', trip.data->>'date') >= $2
@@ -305,10 +305,10 @@ export async function listRelationalSavedTrips({
   const result = await pool.query(
     `select trip.data as trip, traveler.data as traveler, true as saved,
        saved_trip.id as sort_id, saved_trip.created_at as sort_created_at
-     from public.wigofly_saved_trips saved_trip
-     join public.wigofly_trips trip
+     from public.wigolink_saved_trips saved_trip
+     join public.wigolink_trips trip
        on trip.id = saved_trip.data->>'tripId'
-     join public.wigofly_users traveler
+     join public.wigolink_users traveler
        on traveler.id = trip.data->>'travelerId'
      where saved_trip.data->>'userId' = $1
        and coalesce(trip.data->>'status', 'published') = 'published'

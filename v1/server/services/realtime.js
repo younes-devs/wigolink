@@ -22,7 +22,7 @@ export function createRealtimeService({
   }
 
   function ensureChannel(user) {
-    if (!user.realtimeChannel) user.realtimeChannel = `wigofly:${newToken()}`;
+    if (!user.realtimeChannel) user.realtimeChannel = `wigolink:${newToken()}`;
     return user.realtimeChannel;
   }
 

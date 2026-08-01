@@ -32,7 +32,7 @@ export async function relationalAuditLogs({
        log.at,
        member.data as actor
      from public.audit_logs log
-     left join public.wigofly_users member on member.id = log.actor_id
+     left join public.wigolink_users member on member.id = log.actor_id
      ${cursorClause}
      order by log.at desc, log.id desc
      limit $${params.length}`,

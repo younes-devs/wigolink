@@ -10,7 +10,7 @@ function storageHarness({ missingBucket = true } = {}) {
     async getBucket() {
       return missingBucket
         ? { error: { statusCode: 404, message: 'not found' } }
-        : { data: { id: 'wigofly-kyc-media' }, error: null };
+        : { data: { id: 'wigolink-kyc-media' }, error: null };
     },
     async createBucket(name, options) {
       buckets.push({ name, options });

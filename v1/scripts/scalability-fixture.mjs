@@ -100,7 +100,7 @@ export async function runFixture(config) {
     await client.query('begin');
     await client.query(
       'select pg_advisory_xact_lock(hashtext($1))',
-      [`wigofly:scalability-fixture:${config.runId}`],
+      [`wigolink:scalability-fixture:${config.runId}`],
     );
     const removed = await cleanupFixture(client, config.runId);
     if (config.cleanup) {
@@ -128,7 +128,7 @@ export async function runFixture(config) {
 
 async function seedFixture(client, { runId, profile }) {
   await client.query(
-    `insert into public.wigofly_users (id, data, created_at, updated_at)
+    `insert into public.wigolink_users (id, data, created_at, updated_at)
      select
        $1 || '-u-' || item,
        jsonb_build_object(
@@ -149,7 +149,7 @@ async function seedFixture(client, { runId, profile }) {
   );
 
   await client.query(
-    `insert into public.wigofly_trips (id, data, created_at, updated_at)
+    `insert into public.wigolink_trips (id, data, created_at, updated_at)
      select
        $1 || '-t-' || item,
        jsonb_build_object(
@@ -173,7 +173,7 @@ async function seedFixture(client, { runId, profile }) {
   );
 
   await client.query(
-    `insert into public.wigofly_conversations
+    `insert into public.wigolink_conversations
        (id, data, created_at, updated_at)
      select
        $1 || '-c-' || item,
@@ -202,7 +202,7 @@ async function seedFixture(client, { runId, profile }) {
   );
 
   await client.query(
-    `insert into public.wigofly_conversation_members
+    `insert into public.wigolink_conversation_members
        (conversation_id, user_id, last_read_at, created_at, updated_at)
      select
        conversation.id,
@@ -210,7 +210,7 @@ async function seedFixture(client, { runId, profile }) {
        now() - interval '30 minutes',
        conversation.created_at,
        now()
-     from public.wigofly_conversations conversation
+     from public.wigolink_conversations conversation
      cross join lateral jsonb_array_elements_text(
        conversation.data->'participantIds'
      ) participant(value)
@@ -246,7 +246,7 @@ async function seedFixture(client, { runId, profile }) {
   );
 
   await client.query(
-    `insert into public.wigofly_transactions
+    `insert into public.wigolink_transactions
        (id, data, created_at, updated_at)
      select
        $1 || '-tx-' || item,
@@ -271,7 +271,7 @@ async function seedFixture(client, { runId, profile }) {
   );
 
   await client.query(
-    `insert into public.wigofly_saved_trips
+    `insert into public.wigolink_saved_trips
        (id, data, created_at, updated_at)
      select
        $1 || '-saved-' || item,
@@ -324,18 +324,18 @@ async function cleanupFixture(client, runId) {
   );
   counts.conversationMembers = await deleteRows(
     client,
-    `delete from public.wigofly_conversation_members member
-     using public.wigofly_conversations conversation
+    `delete from public.wigolink_conversation_members member
+     using public.wigolink_conversations conversation
      where member.conversation_id = conversation.id
        and conversation.data->>'fixtureRun' = $1`,
     runId,
   );
   for (const [name, table] of [
-    ['savedTrips', 'wigofly_saved_trips'],
-    ['operations', 'wigofly_transactions'],
-    ['conversations', 'wigofly_conversations'],
-    ['trips', 'wigofly_trips'],
-    ['users', 'wigofly_users'],
+    ['savedTrips', 'wigolink_saved_trips'],
+    ['operations', 'wigolink_transactions'],
+    ['conversations', 'wigolink_conversations'],
+    ['trips', 'wigolink_trips'],
+    ['users', 'wigolink_users'],
   ]) {
     counts[name] = await deleteRows(
       client,
@@ -353,12 +353,12 @@ async function deleteRows(client, sql, runId) {
 
 async function analyzeFixture(client) {
   for (const table of [
-    'wigofly_users',
-    'wigofly_trips',
-    'wigofly_transactions',
-    'wigofly_saved_trips',
-    'wigofly_conversations',
-    'wigofly_conversation_members',
+    'wigolink_users',
+    'wigolink_trips',
+    'wigolink_transactions',
+    'wigolink_saved_trips',
+    'wigolink_conversations',
+    'wigolink_conversation_members',
     'messages',
     'audit_logs',
   ]) {

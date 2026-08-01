@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
-const DEFAULT_BUCKET = 'wigofly-kyc-media';
+const DEFAULT_BUCKET = 'wigolink-kyc-media';
 const PHOTO_FIELDS = ['selfiePhoto', 'idFrontPhoto', 'idBackPhoto'];
 
 export function createKycMediaService({

@@ -77,7 +77,7 @@ test('notation relationnelle verrouille operation et membre cible', async () => 
   const client = {
     async query(sql, params = []) {
       calls.push({ sql: String(sql), params });
-      if (String(sql).includes('select data from public.wigofly_transactions')) {
+      if (String(sql).includes('select data from public.wigolink_transactions')) {
         return {
           rows: [{
             data: {
@@ -91,7 +91,7 @@ test('notation relationnelle verrouille operation et membre cible', async () => 
           }],
         };
       }
-      if (String(sql).includes('select data from public.wigofly_users')) {
+      if (String(sql).includes('select data from public.wigolink_users')) {
         return {
           rows: [{
             data: {
@@ -120,13 +120,13 @@ test('notation relationnelle verrouille operation et membre cible', async () => 
   });
   assert.deepEqual(result, { status: 200, body: { ok: true } });
   assert.ok(calls.some(({ sql }) => (
-    sql.includes('wigofly_transactions') && sql.includes('for update')
+    sql.includes('wigolink_transactions') && sql.includes('for update')
   )));
   assert.ok(calls.some(({ sql }) => (
-    sql.includes('wigofly_users') && sql.includes('for update')
+    sql.includes('wigolink_users') && sql.includes('for update')
   )));
   const userUpdate = calls.find(({ sql }) => (
-    sql.includes('update public.wigofly_users')
+    sql.includes('update public.wigolink_users')
   ));
   assert.equal(JSON.parse(userUpdate.params[1]).rating, 4.5);
 });

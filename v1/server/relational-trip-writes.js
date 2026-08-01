@@ -44,7 +44,7 @@ export function createRelationalTripWriter({
       updatedAt: now(),
     };
     try {
-      await insertRecord(getPool(), 'wigofly_trips', trip);
+      await insertRecord(getPool(), 'wigolink_trips', trip);
       await bestEffort(() => auditChange({
         actorId: user.id,
         action: 'trip.create',
@@ -101,7 +101,7 @@ export function createRelationalTripWriter({
       }
       before = structuredClone(trip);
       Object.assign(trip, prepared.value, { updatedAt: now() });
-      await updateRecord(client, 'wigofly_trips', trip);
+      await updateRecord(client, 'wigolink_trips', trip);
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => {});
@@ -152,9 +152,9 @@ export function createRelationalTripWriter({
       trip.status = 'removed';
       trip.removedAt = now();
       trip.updatedAt = now();
-      await updateRecord(client, 'wigofly_trips', trip);
+      await updateRecord(client, 'wigolink_trips', trip);
       await client.query(
-        `delete from public.wigofly_saved_trips
+        `delete from public.wigolink_saved_trips
          where data->>'tripId' = $1`,
         [trip.id],
       );
@@ -207,7 +207,7 @@ export function createRelationalTripWriter({
         createdAt: now(),
       };
       await pool.query(
-        `insert into public.wigofly_saved_trips
+        `insert into public.wigolink_saved_trips
            (id, data, created_at, updated_at)
          values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())
          on conflict do nothing`,
@@ -232,7 +232,7 @@ export function createRelationalTripWriter({
   async function unsaveTrip({ user, tripId }) {
     try {
       await getPool().query(
-        `delete from public.wigofly_saved_trips
+        `delete from public.wigolink_saved_trips
          where data->>'userId' = $1 and data->>'tripId' = $2`,
         [user.id, tripId],
       );
@@ -369,7 +369,7 @@ function prepareTrip({
 
 async function lockedTrip(client, tripId) {
   const result = await client.query(
-    `select data from public.wigofly_trips where id = $1 for update`,
+    `select data from public.wigolink_trips where id = $1 for update`,
     [tripId],
   );
   return result.rows[0]?.data || null;
@@ -378,7 +378,7 @@ async function lockedTrip(client, tripId) {
 async function activeOperationCount(client, tripId) {
   const result = await client.query(
     `select count(*)::int as count
-     from public.wigofly_transactions
+     from public.wigolink_transactions
      where data->>'tripId' = $1
        and coalesce(data->>'status', '') not in (
          'released', 'refunded', 'cancelled'

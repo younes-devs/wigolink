@@ -1,4 +1,4 @@
-# Architecture de Wigofly
+# Architecture de Wigolink
 
 Ce document decrit uniquement l'application active. L'historique des anciennes
 architectures reste disponible dans Git.

@@ -413,8 +413,8 @@ export function createConversationDomain({
       categories: analysis.categories,
       cooldownUntil,
       error: cooldownUntil
-        ? 'Pour votre securite, l envoi est temporairement limite. Gardez les echanges et le paiement dans Wigofly.'
-        : 'Pour votre securite, les coordonnees, liens, reseaux sociaux et paiements externes ne peuvent pas etre partages. Gardez vos echanges dans Wigofly.',
+        ? 'Pour votre securite, l envoi est temporairement limite. Gardez les echanges et le paiement dans Wigolink.'
+        : 'Pour votre securite, les coordonnees, liens, reseaux sociaux et paiements externes ne peuvent pas etre partages. Gardez vos echanges dans Wigolink.',
     };
   }
 

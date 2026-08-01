@@ -127,13 +127,13 @@ for (const key of publicKeys) {
 }
 
 const allowedVisible = [
-  /^Wigofly$/,
+  /^Wigolink$/,
   /^Casablanca$/,
   /^Bruxelles$/,
   /^Casablanca\s*(?:→|->)\s*Bruxelles$/,
   /^Bruxelles\s*(?:→|->)\s*Casablanca$/,
   /^(?:kg|Kg|EUR|NPS)$/,
-  /^support@wigofly\.app$/,
+  /^support@wigolink\.app$/,
 ];
 const allowedAttribute = [
   ...allowedVisible,

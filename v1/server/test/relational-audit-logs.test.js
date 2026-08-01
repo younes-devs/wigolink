@@ -32,7 +32,7 @@ test('audit relationnel joint les acteurs sans charger tous les membres', async 
     limit: 1_000,
   });
 
-  assert.match(calls[0].sql, /left join public\.wigofly_users/);
+  assert.match(calls[0].sql, /left join public\.wigolink_users/);
   assert.deepEqual(calls[0].params, [201]);
   assert.equal(result.logs[0].at, at.getTime());
   assert.equal(result.logs[0].actor.name, 'Admin');

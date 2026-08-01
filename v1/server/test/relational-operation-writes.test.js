@@ -17,7 +17,7 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
   const notifications = [];
   const client = mockClient(async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('wigofly_trips') && sql.includes('for update')) {
+    if (sql.includes('wigolink_trips') && sql.includes('for update')) {
       return {
         rows: [{
           data: {
@@ -34,7 +34,7 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
         }],
       };
     }
-    if (sql.includes('select data from public.wigofly_transactions')) {
+    if (sql.includes('select data from public.wigolink_transactions')) {
       return { rows: [] };
     }
     return { rows: [] };
@@ -61,12 +61,12 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
   assert.equal(result.body.operation.price, 15);
   assert.match(result.body.conversation.id, /^conv-[0-9a-f-]{36}$/);
   assert.ok(calls.some(({ sql }) => (
-    sql.includes('wigofly_trips') && sql.includes('for update')
+    sql.includes('wigolink_trips') && sql.includes('for update')
   )));
-  assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigofly_transactions')));
-  assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigofly_conversations')));
+  assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigolink_transactions')));
+  assert.ok(calls.some(({ sql }) => sql.includes('insert into public.wigolink_conversations')));
   assert.equal(calls.filter(({ sql }) =>
-    sql.includes('insert into public.wigofly_conversation_members')
+    sql.includes('insert into public.wigolink_conversation_members')
   ).length, 2);
   assert.equal(notifications.length, 1);
   assert.equal(client.released, 1);
@@ -85,7 +85,7 @@ test('acceptation relationnelle reutilise une demande active apres un retry', as
   };
   const client = mockClient(async (sql) => {
     calls.push({ sql });
-    if (sql.includes('wigofly_trips')) {
+    if (sql.includes('wigolink_trips')) {
       return {
         rows: [{
           data: {
@@ -98,10 +98,10 @@ test('acceptation relationnelle reutilise une demande active apres un retry', as
         }],
       };
     }
-    if (sql.includes('select data from public.wigofly_transactions')) {
+    if (sql.includes('select data from public.wigolink_transactions')) {
       return { rows: [{ data: existing }] };
     }
-    if (sql.includes('select id from public.wigofly_conversations')) {
+    if (sql.includes('select id from public.wigolink_conversations')) {
       return { rows: [{ id: 'conv-existing' }] };
     }
     return { rows: [] };
@@ -133,7 +133,7 @@ test('transition relationnelle verrouille uniquement operation et persiste atomi
   };
   const client = mockClient(async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes('wigofly_transactions') && sql.includes('for update')) {
+    if (sql.includes('wigolink_transactions') && sql.includes('for update')) {
       return { rows: [{ data: structuredClone(tx) }] };
     }
     return { rows: [] };
@@ -147,9 +147,9 @@ test('transition relationnelle verrouille uniquement operation et persiste atomi
   assert.equal(result.status, 200);
   assert.equal(result.body.operation.operationStatus, 'paye');
   assert.ok(calls.some(({ sql }) => (
-    sql.includes('wigofly_transactions') && sql.includes('for update')
+    sql.includes('wigolink_transactions') && sql.includes('for update')
   )));
-  const update = calls.find(({ sql }) => sql.includes('update public.wigofly_transactions'));
+  const update = calls.find(({ sql }) => sql.includes('update public.wigolink_transactions'));
   assert.equal(JSON.parse(update.params[1]).paymentStatus, 'paid');
   assert.equal(client.transactions, 'begin,commit');
 });
@@ -159,10 +159,10 @@ function writerHarness({ client, notifications = [], memberState = false }) {
   const originalQuery = client.query;
   client.query = async (sql, params = []) => {
     const result = await originalQuery(sql, params);
-    if (sql.includes('insert into public.wigofly_transactions')) {
+    if (sql.includes('insert into public.wigolink_transactions')) {
       latestOperation = JSON.parse(params[1]);
     }
-    if (sql.includes('update public.wigofly_transactions')) {
+    if (sql.includes('update public.wigolink_transactions')) {
       latestOperation = JSON.parse(params[1]);
     }
     return result;

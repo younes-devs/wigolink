@@ -1,6 +1,6 @@
 {
-  "name": "Wigofly",
-  "short_name": "Wigofly",
+  "name": "Wigolink",
+  "short_name": "Wigolink",
   "description": "Envoyer et transporter des colis entre la Belgique et le Maroc, en toute sécurité.",
   "start_url": "/",
   "scope": "/",

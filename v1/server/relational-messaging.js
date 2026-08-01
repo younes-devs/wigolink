@@ -24,7 +24,7 @@ export async function listRelationalConversations({
        extract(epoch from member.last_read_at) * 1000 as member_last_read_at`
     : '';
   const memberJoin = memberStateEnabled
-    ? `join public.wigofly_conversation_members member
+    ? `join public.wigolink_conversation_members member
          on member.conversation_id = c.id and member.user_id = $1`
     : '';
   const unreadFilter = memberStateEnabled
@@ -61,15 +61,15 @@ export async function listRelationalConversations({
        last_message.data as last_message,
        coalesce(unread.count, 0)::int as unread_count
        ${memberSelect}
-     from public.wigofly_conversations c
+     from public.wigolink_conversations c
      ${memberJoin}
      left join lateral (
-       select u.data from public.wigofly_users u
+       select u.data from public.wigolink_users u
        where u.id <> $1 and c.data->'participantIds' ? u.id
        limit 1
      ) other on true
-     left join public.wigofly_trips trip on trip.id = c.data->>'tripId'
-     left join public.wigofly_transactions operation on operation.id = c.data->>'operationId'
+     left join public.wigolink_trips trip on trip.id = c.data->>'tripId'
+     left join public.wigolink_transactions operation on operation.id = c.data->>'operationId'
      left join lateral (
        select m.data from public.messages m
        where m.conversation_id = c.id
@@ -127,7 +127,7 @@ export async function relationalConversation({
        extract(epoch from member.last_read_at) * 1000 as member_last_read_at`
     : '';
   const memberJoin = memberStateEnabled
-    ? `join public.wigofly_conversation_members member
+    ? `join public.wigolink_conversation_members member
          on member.conversation_id = c.id and member.user_id = $1`
     : '';
   const unreadFilter = memberStateEnabled
@@ -142,15 +142,15 @@ export async function relationalConversation({
        last_message.data as last_message,
        coalesce(unread.count, 0)::int as unread_count
        ${memberSelect}
-     from public.wigofly_conversations c
+     from public.wigolink_conversations c
      ${memberJoin}
      left join lateral (
-       select u.data from public.wigofly_users u
+       select u.data from public.wigolink_users u
        where u.id <> $1 and c.data->'participantIds' ? u.id
        limit 1
      ) other on true
-     left join public.wigofly_trips trip on trip.id = c.data->>'tripId'
-     left join public.wigofly_transactions operation on operation.id = c.data->>'operationId'
+     left join public.wigolink_trips trip on trip.id = c.data->>'tripId'
+     left join public.wigolink_transactions operation on operation.id = c.data->>'operationId'
      left join lateral (
        select m.data from public.messages m
        where m.conversation_id = c.id
@@ -212,7 +212,7 @@ export async function relationalConversationMessages({
   const readStateSelect = memberStateEnabled
     ? `, coalesce((
          select jsonb_agg(member.user_id)
-         from public.wigofly_conversation_members member
+         from public.wigolink_conversation_members member
          where member.conversation_id = m.conversation_id
            and member.last_read_at >= m.at
        ), '[]'::jsonb) as member_read_by`
@@ -269,7 +269,7 @@ export async function relationalAdminMessageArchive({
     pool.query(
       `select m.id, m.conversation_id, m.at, m.data
        from public.messages m
-       join public.wigofly_conversations c on c.id = m.conversation_id
+       join public.wigolink_conversations c on c.id = m.conversation_id
        where c.data->'participantIds' ? $1
          ${cursorClause}
        order by m.at desc, m.id desc
@@ -280,7 +280,7 @@ export async function relationalAdminMessageArchive({
       `select
          count(m.id)::int as message_total,
          count(distinct c.id)::int as conversation_total
-       from public.wigofly_conversations c
+       from public.wigolink_conversations c
        left join public.messages m on m.conversation_id = c.id
        where c.data->'participantIds' ? $1`,
       [userId],
@@ -296,11 +296,11 @@ export async function relationalAdminMessageArchive({
        c.data as conversation,
        count(m.id)::int as message_count,
        coalesce(reports.data, '[]'::jsonb) as reports
-     from public.wigofly_conversations c
+     from public.wigolink_conversations c
      left join public.messages m on m.conversation_id = c.id
      left join lateral (
        select jsonb_agg(report.data order by report.created_at desc) as data
-       from public.wigofly_conversation_reports report
+       from public.wigolink_conversation_reports report
        where report.conversation_id = c.id
      ) reports on true
      where c.id = any($1::text[])

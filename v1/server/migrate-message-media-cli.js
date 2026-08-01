@@ -17,13 +17,13 @@ const messageMedia = createMessageMediaService({
 try {
   await pool.query('begin');
   const result = await pool.query(
-    'select state, revision from public.wigofly_app_state where id = 1 for update',
+    'select state, revision from public.wigolink_app_state where id = 1 for update',
   );
   const state = result.rows[0]?.state;
-  if (!state) throw new Error('Etat Wigofly introuvable.');
+  if (!state) throw new Error('Etat Wigolink introuvable.');
   const migrated = await migrateInlineMessageMedia({ state, messageMedia });
   await pool.query(
-    `update public.wigofly_app_state
+    `update public.wigolink_app_state
      set state = $1::jsonb, revision = revision + 1, updated_at = now()
      where id = 1`,
     [JSON.stringify(migrated.state)],

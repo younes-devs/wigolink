@@ -11,22 +11,22 @@
     <meta name="theme-color" content="#0a6cf5" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Wigofly" />
+    <meta name="apple-mobile-web-app-title" content="Wigolink" />
     <!-- Apply theme and language before rendering to avoid a visual flash. -->
     <script>
       (function () {
-        var t = localStorage.getItem('wigofly_theme');
+        var t = localStorage.getItem('wigolink_theme');
         if (t !== 'light' && t !== 'dark') {
           t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.dataset.theme = t;
-        var l = localStorage.getItem('wigofly_lang');
+        var l = localStorage.getItem('wigolink_lang');
         if (l !== 'fr' && l !== 'ar' && l !== 'nl') l = 'fr';
         document.documentElement.lang = l;
         document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
       })();
     </script>
-    <title>Wigofly</title>
+    <title>Wigolink</title>
   </head>
   <body>
     <div id="root"></div>

@@ -20,7 +20,7 @@ export function createRelationalSafetyAppeals({ getPool }) {
         return await transaction(pool(), async (client) => {
           const existing = await client.query(
             `select data
-             from public.wigofly_review_queue
+             from public.wigolink_review_queue
              where data->>'type' = 'safety_appeal'
                and data->>'userId' = $1
                and data->>'status' = 'open'
@@ -41,7 +41,7 @@ export function createRelationalSafetyAppeals({ getPool }) {
             createdAt: at,
           };
           await client.query(
-            `insert into public.wigofly_review_queue
+            `insert into public.wigolink_review_queue
                (id, data, created_at, updated_at)
              values ($1, $2::jsonb, to_timestamp($3 / 1000.0), now())`,
             [id, JSON.stringify(appeal), at],
@@ -64,7 +64,7 @@ export function createRelationalSafetyAppeals({ getPool }) {
       return transaction(pool(), async (client) => {
         const appealResult = await client.query(
           `select data
-           from public.wigofly_review_queue
+           from public.wigolink_review_queue
            where id = $1
              and data->>'type' = 'safety_appeal'
            for update`,
@@ -81,7 +81,7 @@ export function createRelationalSafetyAppeals({ getPool }) {
         appeal.decisionReason = reason || null;
         const userResult = await client.query(
           `select data
-           from public.wigofly_users
+           from public.wigolink_users
            where id = $1
            for update`,
           [String(appeal.userId)],
@@ -91,9 +91,9 @@ export function createRelationalSafetyAppeals({ getPool }) {
           user.suspendedUntil = null;
           user.suspensionReason = null;
           user.messageSafetyBlockedUntil = null;
-          await updateRecord(client, 'wigofly_users', user);
+          await updateRecord(client, 'wigolink_users', user);
         }
-        await updateRecord(client, 'wigofly_review_queue', appeal);
+        await updateRecord(client, 'wigolink_review_queue', appeal);
         await appendAudit(client, {
           actorId,
           action: `user.safety.appeal.${decision}`,
@@ -108,7 +108,7 @@ export function createRelationalSafetyAppeals({ getPool }) {
       const [users, appeals] = await Promise.all([
         pool().query(
           `select data
-           from public.wigofly_users member
+           from public.wigolink_users member
            where not coalesce((data->>'isAdmin')::boolean, false)
              and nullif(data->>'deletedAt', '') is null
              and (
@@ -129,8 +129,8 @@ export function createRelationalSafetyAppeals({ getPool }) {
         ),
         pool().query(
           `select queue.data as appeal, member.data as member
-           from public.wigofly_review_queue queue
-           left join public.wigofly_users member
+           from public.wigolink_review_queue queue
+           left join public.wigolink_users member
              on member.id = queue.data->>'userId'
            where queue.data->>'type' = 'safety_appeal'
            order by queue.created_at desc

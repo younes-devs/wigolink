@@ -28,7 +28,7 @@ test('messagerie relationnelle : lit les conversations par participant et retour
   assert.equal(data.conversations[0].other.name, 'Karim');
   assert.equal(data.conversations[0].unreadCount, 1);
   assert.equal(data.conversations[0].context.href, '/trajets/t-1');
-  assert.match(calls[0].sql, /wigofly_conversations/);
+  assert.match(calls[0].sql, /wigolink_conversations/);
   assert.match(calls[0].sql, /messages/);
   assert.ok(calls[0].params.includes('u-1'));
 });
@@ -125,7 +125,7 @@ test('messagerie relationnelle utilise l etat participant indexe', async () => {
   assert.equal(data.conversations[0].archived, true);
   assert.equal(data.conversations[0].pinned, true);
   assert.equal(data.conversations[0].lastReadAt, 150);
-  assert.match(calls[0].sql, /wigofly_conversation_members member/);
+  assert.match(calls[0].sql, /wigolink_conversation_members member/);
   assert.match(calls[0].sql, /m\.at > coalesce\(member\.last_read_at/);
   assert.doesNotMatch(calls[0].sql, /data->'readBy'/);
 });
@@ -197,7 +197,7 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
   assert.equal(archive.conversationTotal, 1);
   assert.match(calls[0].sql, /order by m\.at desc, m\.id desc/);
   assert.match(calls[1].sql, /conversation_total/);
-  assert.match(calls[2].sql, /wigofly_conversation_reports/);
+  assert.match(calls[2].sql, /wigolink_conversation_reports/);
   assert.deepEqual(calls[2].params, [['conv-1']]);
 });
 

@@ -13,10 +13,10 @@ const tokens = {};
 
 before(async () => {
   await startServer();
-  tokens.fatima = await loginAs('fatima@demo.wigofly.app');
-  tokens.karim = await loginAs('karim@demo.wigofly.app');
-  tokens.mehdi = await loginAs('mehdi@demo.wigofly.app');
-  tokens.admin = await loginAs('admin@demo.wigofly.app');
+  tokens.fatima = await loginAs('fatima@demo.wigolink.app');
+  tokens.karim = await loginAs('karim@demo.wigolink.app');
+  tokens.mehdi = await loginAs('mehdi@demo.wigolink.app');
+  tokens.admin = await loginAs('admin@demo.wigolink.app');
 });
 
 after(stopServer);
@@ -36,7 +36,7 @@ test('configuration, health and authentication', async () => {
   const regular = await api('/auth/login', {
     method: 'POST',
     body: {
-      email: 'fatima@demo.wigofly.app',
+      email: 'fatima@demo.wigolink.app',
       password: 'demo1234',
     },
   });
@@ -47,7 +47,7 @@ test('configuration, health and authentication', async () => {
   const remembered = await api('/auth/login', {
     method: 'POST',
     body: {
-      email: 'fatima@demo.wigofly.app',
+      email: 'fatima@demo.wigolink.app',
       password: 'demo1234',
       rememberMe: true,
     },
@@ -58,7 +58,7 @@ test('configuration, health and authentication', async () => {
   const refused = await api('/auth/login', {
     method: 'POST',
     body: {
-      email: 'fatima@demo.wigofly.app',
+      email: 'fatima@demo.wigolink.app',
       password: 'incorrect',
     },
   });

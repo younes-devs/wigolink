@@ -205,7 +205,7 @@ const SUPABASE_SECRET_KEY = String(
 const STORAGE_READY = !!(SUPABASE_URL && SUPABASE_SECRET_KEY);
 // The database URL is server-only and already mandatory in production. A dedicated
 // OPERATION_CODE_SECRET can supersede it without making deployments brittle.
-const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigofly-local-operation-code-secret';
+const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigolink-local-operation-code-secret';
 app.set('trust proxy', 1);
 app.use(cors(createCorsOptions({
   isProduction: IS_PRODUCTION,
@@ -382,17 +382,17 @@ const realtime = createRealtimeService({
 const messageMedia = createMessageMediaService({
   url: SUPABASE_URL,
   secretKey: SUPABASE_SECRET_KEY,
-  bucket: String(process.env.SUPABASE_MESSAGE_MEDIA_BUCKET || 'wigofly-message-media').trim(),
+  bucket: String(process.env.SUPABASE_MESSAGE_MEDIA_BUCKET || 'wigolink-message-media').trim(),
 });
 const kycMedia = createKycMediaService({
   url: SUPABASE_URL,
   secretKey: SUPABASE_SECRET_KEY,
-  bucket: String(process.env.SUPABASE_KYC_MEDIA_BUCKET || 'wigofly-kyc-media').trim(),
+  bucket: String(process.env.SUPABASE_KYC_MEDIA_BUCKET || 'wigolink-kyc-media').trim(),
 });
 const profileMedia = createProfileMediaService({
   url: SUPABASE_URL,
   secretKey: SUPABASE_SECRET_KEY,
-  bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigofly-profile-media').trim(),
+  bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigolink-profile-media').trim(),
 });
 const memberMediaUploads = createMemberMediaUploadService({
   getPool: databasePool,
@@ -902,7 +902,7 @@ const relationalMessageWriter = createRelationalMessageWriter({
   allowInlineMediaFallback: !IS_PRODUCTION,
   async notificationFor(userId, senderName, client) {
     const result = await client.query(
-      'select data from public.wigofly_users where id = $1',
+      'select data from public.wigolink_users where id = $1',
       [userId],
     );
     const recipient = result.rows[0]?.data;
@@ -1351,7 +1351,7 @@ if (DEMO) {
     const names = ['Salma', 'Youssef', 'Nadia', 'Hamza', 'Leila', 'Adam', 'Sofia', 'Bilal'];
     const user = makeUser({
       name: `${names[n % names.length]} T${n}`,
-      email: `test${n}@demo.wigofly.app`,
+      email: `test${n}@demo.wigolink.app`,
       phone: `+3247${n}000`,
       provider: 'email',
       emailVerified: true,
@@ -1373,5 +1373,5 @@ if (DEMO) {
 app.use(observability.errorMiddleware);
 
 const PORT = process.env.PORT || 4517;
-if (!process.env.VERCEL) app.listen(PORT, () => console.log(`API Wigofly sur http://localhost:${PORT}`));
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`API Wigolink sur http://localhost:${PORT}`));
 export default app;

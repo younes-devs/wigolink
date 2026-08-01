@@ -117,8 +117,8 @@ test('soumission KYC et statut membre sont atomiques', async () => {
   assert.match(submission.id, /^kyc-/);
   assert.equal(submission.status, 'pending');
   assert.match(calls[0].sql, /^begin$/);
-  assert.match(calls[1].sql, /wigofly_kyc_submissions/);
-  assert.match(calls[2].sql, /update public\.wigofly_users/);
+  assert.match(calls[1].sql, /wigolink_kyc_submissions/);
+  assert.match(calls[2].sql, /update public\.wigolink_users/);
   assert.match(calls[3].sql, /^commit$/);
   assert.equal(calls.at(-1).sql, 'release');
 });
@@ -146,8 +146,8 @@ test('decision KYC, historique et statut membre sont atomiques', async () => {
     },
   });
 
-  assert.match(calls[1].sql, /update public\.wigofly_kyc_submissions/);
-  assert.match(calls[2].sql, /update public\.wigofly_users/);
-  assert.match(calls[3].sql, /insert into public\.wigofly_kyc_decisions/);
+  assert.match(calls[1].sql, /update public\.wigolink_kyc_submissions/);
+  assert.match(calls[2].sql, /update public\.wigolink_users/);
+  assert.match(calls[3].sql, /insert into public\.wigolink_kyc_decisions/);
   assert.match(calls[4].sql, /^commit$/);
 });

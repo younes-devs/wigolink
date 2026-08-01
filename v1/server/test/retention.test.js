@@ -19,7 +19,7 @@ test('retention purge medias abandonnes et donnees temporaires expirees', async 
           rowCount: 3,
         };
       }
-      if (sql.includes('wigofly_sessions')) return { rowCount: 4, rows: [] };
+      if (sql.includes('wigolink_sessions')) return { rowCount: 4, rows: [] };
       if (sql.includes("kind not in ('message_upload', 'member_media_upload')")) return { rowCount: 3, rows: [] };
       if (sql.includes('public.notifications')) return { rowCount: 5, rows: [] };
       return { rowCount: 2, rows: [] };

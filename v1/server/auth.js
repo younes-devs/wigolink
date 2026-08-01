@@ -63,23 +63,23 @@ export function createDistributedRateLimit({
     try {
       const result = await pool.query(
         `with cleanup as (
-           delete from public.wigofly_runtime_records
+           delete from public.wigolink_runtime_records
            where kind = 'rate_limit' and expires_at < now()
          )
-         insert into public.wigofly_runtime_records (kind, id, data, expires_at)
+         insert into public.wigolink_runtime_records (kind, id, data, expires_at)
          values ('rate_limit', $1, '{"count":1}'::jsonb, now() + ($2 * interval '1 millisecond'))
          on conflict (kind, id) do update
          set data = jsonb_build_object(
                'count',
                case
-                 when wigofly_runtime_records.expires_at < now() then 1
-                 else coalesce((wigofly_runtime_records.data->>'count')::int, 0) + 1
+                 when wigolink_runtime_records.expires_at < now() then 1
+                 else coalesce((wigolink_runtime_records.data->>'count')::int, 0) + 1
                end
              ),
              expires_at = case
-               when wigofly_runtime_records.expires_at < now()
+               when wigolink_runtime_records.expires_at < now()
                  then now() + ($2 * interval '1 millisecond')
-               else wigofly_runtime_records.expires_at
+               else wigolink_runtime_records.expires_at
              end,
              updated_at = now()
          returning (data->>'count')::int as count`,

@@ -21,7 +21,7 @@ test('regles relationnelles chargent un catalogue borne et stable', async () => 
   assert.deepEqual(result, [
     { id: 'custom-1', label: 'Categorie validee' },
   ]);
-  assert.match(calls[0].sql, /wigofly_custom_whitelist/);
+  assert.match(calls[0].sql, /wigolink_custom_whitelist/);
   assert.match(calls[0].sql, /order by created_at asc, id asc/);
   assert.deepEqual(calls[0].params, [500]);
 });

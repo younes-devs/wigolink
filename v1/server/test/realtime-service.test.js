@@ -47,18 +47,18 @@ test('realtime expose uniquement la configuration publique', () => {
 test('realtime attribue un canal stable sans remplacer un canal existant', () => {
   const { service } = createHarness();
   const freshUser = { id: 'u-1' };
-  const existingUser = { id: 'u-2', realtimeChannel: 'wigofly:existing' };
+  const existingUser = { id: 'u-2', realtimeChannel: 'wigolink:existing' };
 
-  assert.equal(service.ensureChannel(freshUser), 'wigofly:channel-token');
-  assert.equal(service.ensureChannel(freshUser), 'wigofly:channel-token');
-  assert.equal(service.ensureChannel(existingUser), 'wigofly:existing');
+  assert.equal(service.ensureChannel(freshUser), 'wigolink:channel-token');
+  assert.equal(service.ensureChannel(freshUser), 'wigolink:channel-token');
+  assert.equal(service.ensureChannel(existingUser), 'wigolink:existing');
 });
 
 test('realtime publie un evenement sur le canal Supabase encode', async () => {
   const { requests, service, users } = createHarness();
   users.set('u-1', {
     id: 'u-1',
-    realtimeChannel: 'wigofly:member/channel',
+    realtimeChannel: 'wigolink:member/channel',
   });
   const payload = { type: 'message', conversationId: 'conv-1' };
 
@@ -66,7 +66,7 @@ test('realtime publie un evenement sur le canal Supabase encode', async () => {
   assert.equal(requests.length, 1);
   assert.equal(
     requests[0].url,
-    'https://project.supabase.co/realtime/v1/api/broadcast/wigofly%3Amember%2Fchannel/events/update',
+    'https://project.supabase.co/realtime/v1/api/broadcast/wigolink%3Amember%2Fchannel/events/update',
   );
   assert.deepEqual(requests[0].options, {
     method: 'POST',
@@ -84,7 +84,7 @@ test('realtime accepte une recherche membre asynchrone', async () => {
     async findUser() {
       return {
         id: 'u-async',
-        realtimeChannel: 'wigofly:async',
+        realtimeChannel: 'wigolink:async',
       };
     },
   });
@@ -109,7 +109,7 @@ test('realtime ignore les membres sans canal et absorbe une panne reseau', async
   assert.deepEqual(requests, []);
   assert.deepEqual(errors, []);
 
-  users.get('u-1').realtimeChannel = 'wigofly:ready';
+  users.get('u-1').realtimeChannel = 'wigolink:ready';
   assert.equal(await service.publish('u-1', { type: 'message' }), false);
   assert.equal(errors.length, 1);
   assert.equal(errors[0][0], 'Echec de diffusion temps reel');

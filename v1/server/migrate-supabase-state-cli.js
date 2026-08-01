@@ -17,9 +17,9 @@ const pool = createPostgresPool({ connectionString: process.env.DATABASE_URL });
 
 try {
   await pool.query(
-    `insert into wigofly_app_state (id, state)
+    `insert into wigolink_app_state (id, state)
      values (1, $1::jsonb)
-     on conflict (id) do update set state = excluded.state, updated_at = now(), revision = wigofly_app_state.revision + 1`,
+     on conflict (id) do update set state = excluded.state, updated_at = now(), revision = wigolink_app_state.revision + 1`,
     [JSON.stringify(state)]
   );
   console.log(`Etat ${useEmptyState ? 'vide' : 'local'} importe dans Supabase.`);

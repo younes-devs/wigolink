@@ -7,23 +7,23 @@ const DEFAULT_DEAD_ROW_RATIO = 0.2;
 const MINIMUM_ROWS_FOR_DEAD_ROW_ALERT = 1_000;
 
 const MONITORED_TABLES = [
-  'wigofly_users',
-  'wigofly_trips',
-  'wigofly_listings',
-  'wigofly_transactions',
-  'wigofly_matching_offers',
-  'wigofly_saved_trips',
-  'wigofly_conversations',
-  'wigofly_conversation_members',
-  'wigofly_conversation_reports',
+  'wigolink_users',
+  'wigolink_trips',
+  'wigolink_listings',
+  'wigolink_transactions',
+  'wigolink_matching_offers',
+  'wigolink_saved_trips',
+  'wigolink_conversations',
+  'wigolink_conversation_members',
+  'wigolink_conversation_reports',
   'messages',
   'notifications',
   'audit_logs',
-  'wigofly_kyc_submissions',
-  'wigofly_kyc_decisions',
-  'wigofly_runtime_records',
-  'wigofly_sessions',
-  'wigofly_app_state',
+  'wigolink_kyc_submissions',
+  'wigolink_kyc_decisions',
+  'wigolink_runtime_records',
+  'wigolink_sessions',
+  'wigolink_app_state',
 ];
 
 export function capacityConfig(env = process.env) {

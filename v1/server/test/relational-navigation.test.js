@@ -39,7 +39,7 @@ test('navigation relationnelle compte les conversations et actions en SQL', asyn
   });
   assert.deepEqual(calls[0].params, ['u-1']);
   assert.match(calls[0].sql, /count\(distinct c\.id\)/);
-  assert.match(calls[0].sql, /wigofly_transactions/);
+  assert.match(calls[0].sql, /wigolink_transactions/);
   assert.match(calls[0].sql, /@> array\[\$1\]::text\[\]/);
   assert.doesNotMatch(calls[0].sql, /operation_requires_action/);
 });
@@ -62,7 +62,7 @@ test('navigation relationnelle compte les non lus depuis le curseur participant'
     memberStateEnabled: true,
   });
 
-  assert.match(calls[0], /wigofly_conversation_members member/);
+  assert.match(calls[0], /wigolink_conversation_members member/);
   assert.match(calls[0], /m\.at > coalesce\(member\.last_read_at/);
   assert.doesNotMatch(calls[0], /data->'readBy'/);
 });

@@ -39,7 +39,7 @@ export function createRelationalOperationWriter({
     try {
       await client.query('begin');
       const tripResult = await client.query(
-        `select data from public.wigofly_trips where id = $1 for update`,
+        `select data from public.wigolink_trips where id = $1 for update`,
         [tripId],
       );
       const trip = tripResult.rows[0]?.data;
@@ -57,7 +57,7 @@ export function createRelationalOperationWriter({
       }
 
       const duplicateResult = await client.query(
-        `select data from public.wigofly_transactions
+        `select data from public.wigolink_transactions
          where data->>'tripId' = $1
            and data->>'senderId' = $2
            and coalesce(data->>'status', '') not in ('cancelled', 'refunded', 'released')
@@ -69,7 +69,7 @@ export function createRelationalOperationWriter({
       const duplicate = duplicateResult.rows[0]?.data;
       if (duplicate) {
         const conversationResult = await client.query(
-          `select id from public.wigofly_conversations
+          `select id from public.wigolink_conversations
            where data->>'operationId' = $1
              and data->'participantIds' ? $2
            limit 1`,
@@ -129,7 +129,7 @@ export function createRelationalOperationWriter({
         documentCount: shipment.documentCount,
         weightKg: shipment.weightKg,
       }, createdAt);
-      await insertRecord(client, 'wigofly_transactions', transaction);
+      await insertRecord(client, 'wigolink_transactions', transaction);
 
       conversation = {
         id: relationalId('conv'),
@@ -142,7 +142,7 @@ export function createRelationalOperationWriter({
         pinnedBy: [],
         deletedBy: [],
       };
-      await insertRecord(client, 'wigofly_conversations', conversation);
+      await insertRecord(client, 'wigolink_conversations', conversation);
       if (memberStateEnabled()) {
         await ensureConversationMembers(client, conversation, { now });
       }
@@ -381,7 +381,7 @@ export function createRelationalOperationWriter({
         });
       }
       const existing = await client.query(
-        `select data from public.wigofly_disputes
+        `select data from public.wigolink_disputes
          where data->>'txId' = $1 and data->>'status' = 'open'
          order by created_at desc limit 1 for update`,
         [tx.id],
@@ -406,9 +406,9 @@ export function createRelationalOperationWriter({
         addEvent(tx, 'dispute_opened', context.user.id, {
           reason: dispute.reason,
         }, createdAt);
-        await updateRecord(client, 'wigofly_transactions', tx);
-        await insertRecord(client, 'wigofly_disputes', dispute);
-        await insertRecord(client, 'wigofly_review_queue', {
+        await updateRecord(client, 'wigolink_transactions', tx);
+        await insertRecord(client, 'wigolink_disputes', dispute);
+        await insertRecord(client, 'wigolink_review_queue', {
           id: relationalId('review'),
           type: 'dispute',
           refId: dispute.id,
@@ -462,7 +462,7 @@ export function createRelationalOperationWriter({
         : invalid('Aucun litige ouvert sur cette operation'),
       async apply(tx, user, body, client) {
         const result = await client.query(
-          `select data from public.wigofly_disputes
+          `select data from public.wigolink_disputes
            where data->>'txId' = $1 and data->>'status' = 'open'
            order by created_at desc limit 1 for update`,
           [tx.id],
@@ -480,7 +480,7 @@ export function createRelationalOperationWriter({
           photo: photo || null,
           at: now(),
         });
-        await updateRecord(client, 'wigofly_disputes', dispute);
+        await updateRecord(client, 'wigolink_disputes', dispute);
         addEvent(tx, 'evidence_added', user.id, {}, now());
       },
     });
@@ -504,7 +504,7 @@ export function createRelationalOperationWriter({
       if (effect.error && !effect.persistOnError) {
         return await rollbackResult(client, effect.error);
       }
-      await updateRecord(client, 'wigofly_transactions', tx);
+      await updateRecord(client, 'wigolink_transactions', tx);
       if (effect.incrementCompleted) {
         await incrementCompleted(client, tx.senderId);
         await incrementCompleted(client, tx.travelerId);
@@ -633,7 +633,7 @@ async function operationResponse({
 
 async function lockedTransaction(client, id) {
   const result = await client.query(
-    `select data from public.wigofly_transactions where id = $1 for update`,
+    `select data from public.wigolink_transactions where id = $1 for update`,
     [id],
   );
   return result.rows[0]?.data || null;
@@ -663,7 +663,7 @@ async function updateRecord(client, table, value) {
 
 async function incrementCompleted(client, userId) {
   await client.query(
-    `update public.wigofly_users
+    `update public.wigolink_users
      set data = jsonb_set(
        case
          when coalesce((data->>'completed')::int, 0) + 1 >= 5

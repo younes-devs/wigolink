@@ -300,7 +300,7 @@ test('account privacy delegue la suppression atomique au stockage relationnel', 
         account: {
           ...user,
           name: 'Compte supprimé',
-          email: 'deleted-u-1@wigofly.invalid',
+          email: 'deleted-u-1@wigolink.invalid',
           deletedAt: 10_000,
         },
       };
@@ -314,7 +314,7 @@ test('account privacy delegue la suppression atomique au stockage relationnel', 
 
   assert.deepEqual(events, ['delete:relational']);
   assert.equal(user.name, 'Compte supprimé');
-  assert.equal(user.email, 'deleted-u-1@wigofly.invalid');
+  assert.equal(user.email, 'deleted-u-1@wigolink.invalid');
   assert.deepEqual(result, { value: { ok: true } });
 });
 
@@ -358,7 +358,7 @@ test('account privacy anonymise le compte mais conserve les preuves KYC', async 
   assert.deepEqual(user, {
     ...before,
     name: 'Compte supprimé',
-    email: `deleted-${user.id}@wigofly.invalid`,
+    email: `deleted-${user.id}@wigolink.invalid`,
     phone: '',
     city: '',
     photoUrl: null,

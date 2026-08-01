@@ -2,7 +2,7 @@
 // rapide et une tolérance hors-ligne de base. On ne met JAMAIS en cache /api/* : les
 // données (opérations, messages, KYC) doivent toujours venir du serveur, jamais d'un
 // cache potentiellement périmé.
-const CACHE = 'wigofly-shell-v3';
+const CACHE = 'wigolink-shell-v3';
 const SHELL = [
   '/',
   '/manifest.fr.webmanifest',

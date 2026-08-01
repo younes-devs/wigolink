@@ -131,25 +131,25 @@ function operationSelect() {
        sender.data as sender,
        traveler.data as traveler,
        recipient.data as recipient
-     from public.wigofly_transactions tx
-     left join public.wigofly_trips trip
+     from public.wigolink_transactions tx
+     left join public.wigolink_trips trip
        on trip.id = tx.data->>'tripId'
-     left join public.wigofly_listings listing
+     left join public.wigolink_listings listing
        on listing.id = tx.data->>'listingId'
      left join lateral (
        select d.data
-       from public.wigofly_disputes d
+       from public.wigolink_disputes d
        where d.data->>'txId' = tx.id
        order by
          (coalesce(d.data->>'status', '') = 'open') desc,
          d.created_at desc
        limit 1
      ) dispute on true
-     left join public.wigofly_users sender
+     left join public.wigolink_users sender
        on sender.id = tx.data->>'senderId'
-     left join public.wigofly_users traveler
+     left join public.wigolink_users traveler
        on traveler.id = tx.data->>'travelerId'
-     left join public.wigofly_users recipient
+     left join public.wigolink_users recipient
        on recipient.id = tx.data->>'recipientId'`;
 }
 

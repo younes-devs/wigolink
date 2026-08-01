@@ -66,7 +66,7 @@ test('mutations trajets relationnelles : creation utilise un id distribue et SQL
   const pool = {
     async query(sql, params) {
       queries.push({ sql, params });
-      if (String(sql).includes('insert into public.wigofly_trips')) {
+      if (String(sql).includes('insert into public.wigolink_trips')) {
         createdTrip = JSON.parse(params[1]);
       }
       return { rows: [] };
@@ -104,7 +104,7 @@ test('mutations trajets relationnelles : creation utilise un id distribue et SQL
 
   assert.equal(result.status, 200);
   assert.match(result.body.trip.id, /^t-[0-9a-f-]{36}$/);
-  assert.match(queries[0].sql, /insert into public.wigofly_trips/);
+  assert.match(queries[0].sql, /insert into public.wigolink_trips/);
   assert.equal(audits[0].action, 'trip.create');
 });
 
@@ -113,7 +113,7 @@ test('mutations trajets relationnelles : modification verrouille et refuse une o
   const client = {
     async query(sql, params = []) {
       queries.push({ sql: String(sql), params });
-      if (String(sql).includes('select data from public.wigofly_trips')) {
+      if (String(sql).includes('select data from public.wigolink_trips')) {
         return {
           rows: [{
             data: {
@@ -152,10 +152,10 @@ test('mutations trajets relationnelles : modification verrouille et refuse une o
   assert.equal(result.status, 400);
   assert.match(result.body.error, /operation en cours/);
   assert.ok(queries.some(({ sql }) => (
-    sql.includes('wigofly_trips') && sql.includes('for update')
+    sql.includes('wigolink_trips') && sql.includes('for update')
   )));
   assert.equal(
-    queries.some(({ sql }) => sql.includes('update public.wigofly_trips')),
+    queries.some(({ sql }) => sql.includes('update public.wigolink_trips')),
     false,
   );
 });
@@ -182,7 +182,7 @@ test('favoris relationnels : retrait est borne au membre et au trajet', async ()
 
   assert.equal(result.status, 200);
   assert.deepEqual(harness.queries[0].params, ['u-1', 't-1']);
-  assert.match(harness.queries[0].sql, /delete from public.wigofly_saved_trips/);
+  assert.match(harness.queries[0].sql, /delete from public.wigolink_saved_trips/);
 });
 
 test('favoris relationnels : trajet absent conserve le statut 404', async () => {

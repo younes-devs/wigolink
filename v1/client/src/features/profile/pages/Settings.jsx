@@ -7,7 +7,7 @@ import { getTheme, setTheme } from '../../../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../../../i18n.js';
 
 const DEFAULT_NOTIFICATIONS = { transactions: true, messages: true, shipments: true, reminders: true, security: true };
-const SUPPORT_EMAIL = 'support@wigofly.app';
+const SUPPORT_EMAIL = 'support@wigolink.app';
 
 export default function Settings() {
   useLang();

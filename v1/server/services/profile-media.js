@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const DEFAULT_BUCKET = 'wigofly-profile-media';
+const DEFAULT_BUCKET = 'wigolink-profile-media';
 const EXTENSIONS = ['jpg', 'png', 'webp'];
 
 export function createProfileMediaService({

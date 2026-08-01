@@ -11,7 +11,7 @@ import { dateLocale, t, useLang } from '../../../i18n.js';
 
 const tripOverviewCache = new Map();
 const TRIP_OVERVIEW_CACHE_MS = 30_000;
-const TRIP_SESSION_PREFIX = 'wigofly:trips:';
+const TRIP_SESSION_PREFIX = 'wigolink:trips:';
 
 function readTripCache(query) {
   const memory = tripOverviewCache.get(query);

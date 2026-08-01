@@ -18,7 +18,7 @@ test('resume explain extrait latence, noeuds et scans suspects', () => {
         'Plan Rows': 500_000,
       }, {
         'Node Type': 'Index Scan',
-        'Relation Name': 'wigofly_users',
+        'Relation Name': 'wigolink_users',
         'Plan Rows': 1,
       }],
     },
