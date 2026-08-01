@@ -143,6 +143,8 @@ function anonymizedAccount(user, { userId, now }) {
     city: '',
     photoUrl: null,
     passwordHash: null,
+    googleSubject: null,
+    googleLinkedAt: null,
     provider: 'deleted',
     deletedAt: now,
   };

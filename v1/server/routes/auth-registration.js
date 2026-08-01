@@ -160,6 +160,16 @@ export function createAuthRegistrationRouter({
     let user = typeof users.findByGoogleSubject === 'function'
       ? await users.findByGoogleSubject(identity.subject)
       : null;
+    if (user?.deletedAt) {
+      user.googleSubject = null;
+      user.googleLinkedAt = null;
+      if (typeof users.update !== 'function') {
+        return res.status(503).json({ error: 'Connexion Google temporairement indisponible.' });
+      }
+      await users.update(user);
+      save();
+      user = null;
+    }
     if (!user) user = await users.findByEmail(identity.email);
     if (!user) {
       if (req.body.allowRegistration !== true) {

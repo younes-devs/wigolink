@@ -337,7 +337,9 @@ function userSettings(user) {
 
 // Les comptes email restent bloques jusqu'a la verification de leur boite.
 // Google ne pourra etre exempte que lorsqu'un vrai flux OAuth est active.
-const canAccessApp = (user) => !!user && (user.emailVerified === true || user.provider === 'google');
+const canAccessApp = (user) => !!user && !user.deletedAt && (
+  user.emailVerified === true || user.provider === 'google'
+);
 
 const sessionAuth = createSessionAuth({
   getPersistentSession,

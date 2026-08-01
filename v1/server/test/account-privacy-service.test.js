@@ -363,6 +363,8 @@ test('account privacy anonymise le compte mais conserve les preuves KYC', async 
     city: '',
     photoUrl: null,
     passwordHash: null,
+    googleSubject: null,
+    googleLinkedAt: null,
     provider: 'deleted',
     deletedAt: 10_000,
   });

@@ -33,6 +33,16 @@ export function createSessionAuth({
     });
   }
 
+  async function denyDeletedSession(req, res) {
+    const token = bearerToken(req);
+    await deletePersistentSession(token);
+    save();
+    return res.status(401).json({
+      code: 'account_deleted',
+      error: 'Ce compte a été supprimé.',
+    });
+  }
+
   async function auth(req, res, next) {
     try {
       const token = bearerToken(req);
@@ -40,6 +50,7 @@ export function createSessionAuth({
       if (!userId) return res.status(401).json({ error: 'Non authentifié' });
       req.user = await findUser(userId);
       if (!req.user) return res.status(401).json({ error: 'Utilisateur inconnu' });
+      if (req.user.deletedAt) return denyDeletedSession(req, res);
       if (req.user.suspendedUntil && req.user.suspendedUntil > now()) {
         return res.status(403).json({
           code: 'account_suspended',
@@ -69,6 +80,7 @@ export function createSessionAuth({
     const userId = session?.userId;
     if (!userId) return res.status(401).json({ error: 'Non authentifie' });
     req.user = await findUser(session?.userId);
+    if (req.user?.deletedAt) return denyDeletedSession(req, res);
     if (req.user?.suspendedUntil && req.user.suspendedUntil > now()) {
       return res.status(403).json({
         code: 'account_suspended',

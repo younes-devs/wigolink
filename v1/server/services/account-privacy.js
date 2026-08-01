@@ -139,6 +139,8 @@ export function createAccountPrivacyService({
     user.city = '';
     user.photoUrl = null;
     user.passwordHash = null;
+    user.googleSubject = null;
+    user.googleLinkedAt = null;
     user.provider = 'deleted';
     user.deletedAt = now();
     await confirmations.remove(userId);

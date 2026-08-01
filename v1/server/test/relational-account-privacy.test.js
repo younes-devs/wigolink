@@ -92,6 +92,8 @@ test('suppression relationnelle anonymise et journalise dans une transaction', a
   assert.equal(result.account.name, 'Compte supprimé');
   assert.equal(result.account.email, 'deleted-u-1@wigolink.invalid');
   assert.equal(result.account.passwordHash, null);
+  assert.equal(result.account.googleSubject, null);
+  assert.equal(result.account.googleLinkedAt, null);
   assert.equal(result.account.deletedAt, 10_000);
   assert.equal(calls[0].sql, 'begin');
   assert.equal(calls.at(-2).sql, 'commit');

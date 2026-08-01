@@ -130,6 +130,34 @@ test('session auth attache le membre valide a la requete', async () => {
   assert.equal(res.statusCode, 200);
 });
 
+test('session auth invalide immediatement la session d un compte supprime', async () => {
+  const user = {
+    id: 'u-deleted',
+    email: 'deleted-u-deleted@wigolink.invalid',
+    emailVerified: true,
+    deletedAt: 900,
+  };
+  const sessions = new Map([
+    ['deleted-token', { userId: user.id, expiresAt: 2_000 }],
+  ]);
+  const users = new Map([[user.id, user]]);
+  const harness = createHarness({ sessions, users });
+  const res = createResponse();
+  let nextCalled = false;
+
+  await harness.sessionAuth.auth(request('deleted-token'), res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(res.body, {
+    code: 'account_deleted',
+    error: 'Ce compte a été supprimé.',
+  });
+  assert.deepEqual(harness.deletedTokens, ['deleted-token']);
+});
+
 test('session auth accepte une recherche utilisateur asynchrone', async () => {
   const user = { id: 'u-1', emailVerified: true };
   const sessions = new Map([

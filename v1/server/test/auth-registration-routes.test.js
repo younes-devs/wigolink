@@ -19,6 +19,10 @@ function createDependencies(overrides = {}) {
         events.push('user:append');
         usersByEmail.set(user.email, user);
       },
+      update(user) {
+        usersByEmail.set(user.email, user);
+        return user;
+      },
     },
     verifications: {
       get(email) {
@@ -483,4 +487,45 @@ test('auth google retrouve le meme compte apres un changement d email', async ()
   assert.equal(response.status, 200);
   assert.equal(response.body.userId, existing.id);
   assert.equal(existing.email, 'nouveau@example.test');
+});
+
+test('auth google cree un nouveau membre sans restaurer le compte supprime', async () => {
+  const deleted = {
+    id: 'u-deleted',
+    name: 'Compte supprimé',
+    email: 'deleted-u-deleted@wigolink.invalid',
+    provider: 'deleted',
+    deletedAt: 9_000,
+    googleSubject: 'google-subject',
+  };
+  const harness = createDependencies({
+    async verifyGoogleCredential() {
+      return {
+        subject: 'google-subject',
+        email: 'member@example.test',
+        name: 'Nouveau membre',
+      };
+    },
+    async openSession(res, user) {
+      res.json({ token: 'session-token', user });
+    },
+  });
+  harness.usersByEmail.set(deleted.email, deleted);
+
+  const response = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: {
+      accessToken: 'google-access-token',
+      allowRegistration: true,
+      cguAccepted: true,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.user.id, 'u-1');
+  assert.equal(response.body.user.email, 'member@example.test');
+  assert.equal(deleted.googleSubject, null);
+  assert.equal(deleted.googleLinkedAt, null);
+  assert.equal(deleted.deletedAt, 9_000);
 });
