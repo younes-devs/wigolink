@@ -1244,11 +1244,11 @@ const adminRecordService = createAdminRecordService({
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,
   kycSlaMs: KYC_SLA_MS,
   loadMessageArchive: relationalMessageWritesEnabled()
-    ? ({ userId, offset, limit }) => relationalAdminMessageArchive({
+    ? ({ userId, limit, cursor }) => relationalAdminMessageArchive({
       pool: databasePool(),
       userId,
-      offset,
       limit,
+      cursor,
     })
     : null,
   loadRelationalRecords: usesDatabase()

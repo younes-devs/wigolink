@@ -103,7 +103,7 @@ export function createAdminRecordService({
 
   async function buildCaseFile(
     user,
-    { messageOffset = 0, messageLimit = 50 } = {},
+    { messageOffset = 0, messageLimit = 50, messageCursor = null } = {},
   ) {
     const relationalRecords = loadRelationalRecords
       ? await loadRelationalRecords(user.id)
@@ -111,8 +111,8 @@ export function createAdminRecordService({
     const relationalArchive = loadMessageArchive
       ? await loadMessageArchive({
         userId: user.id,
-        offset: messageOffset,
         limit: messageLimit,
+        cursor: messageCursor,
       })
       : null;
     const conversations = relationalArchive?.conversations
@@ -156,7 +156,9 @@ export function createAdminRecordService({
       [user.id, user],
     ]);
     const caseUser = (id) => usersById.get(id) || null;
-    const messageTotal = relationalArchive?.total ?? allMessages.length;
+    const messageTotal = relationalArchive
+      ? relationalArchive.total
+      : allMessages.length;
     const transactions = (relationalRecords?.transactions || db.transactions)
       .filter(
         (transaction) => [
@@ -277,10 +279,16 @@ export function createAdminRecordService({
       })),
       messages,
       messagePage: {
-        offset: messageOffset,
+        offset: relationalArchive ? null : messageOffset,
         limit: messageLimit,
         total: messageTotal,
-        hasMore: messageOffset + messages.length < messageTotal,
+        conversationTotal: relationalArchive
+          ? relationalArchive.conversationTotal
+          : conversations.length,
+        hasMore: relationalArchive
+          ? relationalArchive.hasMore
+          : messageOffset + messages.length < messageTotal,
+        nextCursor: relationalArchive?.nextCursor || null,
       },
       notifications: (relationalRecords?.notifications || db.notifications || [])
         .filter((notification) => notification.userId === user.id)
@@ -313,6 +321,7 @@ export function createAdminRecordService({
       caseFile: await buildCaseFile(user, {
         messageOffset: offset,
         messageLimit: limit,
+        messageCursor: query.cursor || null,
       }),
     });
   }

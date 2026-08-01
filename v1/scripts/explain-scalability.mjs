@@ -152,6 +152,17 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
         limit 51`,
     },
     {
+      name: 'admin-message-archive-next',
+      params: [userId, cursorTime, `${runId}-m-0`],
+      sql: `select m.id, m.conversation_id, m.at
+        from public.messages m
+        join public.wigofly_conversations c on c.id = m.conversation_id
+        where c.data->'participantIds' ? $1
+          and (m.at, m.id) < ($2::timestamptz, $3)
+        order by m.at desc, m.id desc
+        limit 51`,
+    },
+    {
       name: 'operations-member',
       params: [userId],
       sql: `select tx.id

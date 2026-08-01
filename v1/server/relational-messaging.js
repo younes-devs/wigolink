@@ -253,12 +253,45 @@ export async function relationalConversationMessages({
 export async function relationalAdminMessageArchive({
   pool,
   userId,
-  offset = 0,
   limit = 50,
+  cursor = null,
 }) {
-  const safeOffset = boundedOffset(offset);
   const safeLimit = boundedLimit(limit);
-  const conversationsResult = await pool.query(
+  const pageCursor = decodeAdminMessageCursor(cursor);
+  const params = [userId];
+  let cursorClause = '';
+  if (pageCursor) {
+    params.push(new Date(pageCursor.at), pageCursor.id);
+    cursorClause = 'and (m.at, m.id) < ($2, $3)';
+  }
+  params.push(safeLimit + 1);
+  const [messagesResult, totalsResult] = await Promise.all([
+    pool.query(
+      `select m.id, m.conversation_id, m.at, m.data
+       from public.messages m
+       join public.wigofly_conversations c on c.id = m.conversation_id
+       where c.data->'participantIds' ? $1
+         ${cursorClause}
+       order by m.at desc, m.id desc
+       limit $${params.length}`,
+      params,
+    ),
+    pageCursor ? Promise.resolve(null) : pool.query(
+      `select
+         count(m.id)::int as message_total,
+         count(distinct c.id)::int as conversation_total
+       from public.wigofly_conversations c
+       left join public.messages m on m.conversation_id = c.id
+       where c.data->'participantIds' ? $1`,
+      [userId],
+    ),
+  ]);
+  const hasMore = messagesResult.rows.length > safeLimit;
+  const selected = messagesResult.rows.slice(0, safeLimit);
+  const conversationIds = [...new Set(
+    selected.map((row) => row.conversation_id).filter(Boolean),
+  )];
+  const conversationsResult = conversationIds.length ? await pool.query(
     `select
        c.data as conversation,
        count(m.id)::int as message_count,
@@ -270,31 +303,35 @@ export async function relationalAdminMessageArchive({
        from public.wigofly_conversation_reports report
        where report.conversation_id = c.id
      ) reports on true
-     where c.data->'participantIds' ? $1
+     where c.id = any($1::text[])
      group by c.id, c.data, c.created_at, reports.data
      order by coalesce(
        (c.data->>'lastMessageAt')::bigint,
        extract(epoch from c.created_at) * 1000
      ) desc`,
-    [userId],
-  );
-  const messagesResult = await pool.query(
-    `select m.data, count(*) over()::int as total
-     from public.messages m
-     join public.wigofly_conversations c on c.id = m.conversation_id
-     where c.data->'participantIds' ? $1
-     order by m.at desc
-     limit $2 offset $3`,
-    [userId, safeLimit, safeOffset],
-  );
+    [conversationIds],
+  ) : { rows: [] };
+  const last = selected.at(-1);
+  const totals = totalsResult?.rows[0] || null;
   return {
     conversations: conversationsResult.rows.map((row) => ({
       ...(row.conversation || {}),
       reports: Array.isArray(row.reports) ? row.reports : [],
       messageCount: Number(row.message_count || 0),
     })),
-    messages: messagesResult.rows.map((row) => row.data),
-    total: Number(messagesResult.rows[0]?.total || 0),
+    messages: selected.map((row) => ({
+      ...(row.data || {}),
+      id: row.data?.id || row.id,
+      conversationId: row.data?.conversationId || row.conversation_id,
+      at: row.data?.at || (row.at instanceof Date ? row.at.getTime() : new Date(row.at).getTime()),
+    })),
+    total: totals ? Number(totals.message_total || 0) : null,
+    conversationTotal: totals ? Number(totals.conversation_total || 0) : null,
+    hasMore,
+    nextCursor: hasMore && last ? encodePageCursor({
+      at: last.at instanceof Date ? last.at.getTime() : new Date(last.at).getTime(),
+      id: String(last.id),
+    }) : null,
   };
 }
 
@@ -442,6 +479,17 @@ function decodeConversationCursor(value) {
     && typeof cursor.id === 'string'
     && cursor.id.length > 0
     && cursor.id.length <= 120
+  ));
+}
+
+function decodeAdminMessageCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
+    && Number.isFinite(Number(cursor.at))
+    && Number(cursor.at) > 0
+    && typeof cursor.id === 'string'
+    && cursor.id.length > 0
+    && cursor.id.length <= 160
   ));
 }
 

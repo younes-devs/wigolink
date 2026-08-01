@@ -42,6 +42,7 @@ test('scenarios de charge couvrent les pages profondes sans offset', () => {
 
   assert.ok(names.includes('conversation-inbox-next'));
   assert.ok(names.includes('message-page-next'));
+  assert.ok(names.includes('admin-message-archive-next'));
   assert.ok(names.includes('operations-member-next'));
   assert.ok(names.includes('saved-trips-member-next'));
   assert.ok(names.includes('audit-latest-next'));

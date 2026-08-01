@@ -16,6 +16,7 @@ function createHarness({
   loadRelationalRecords = null,
   loadSafetyState = null,
   loadAuditLogs = null,
+  loadMessageArchive = null,
 } = {}) {
   const db = {
     users,
@@ -60,6 +61,7 @@ function createHarness({
     loadRelationalRecords,
     loadSafetyState,
     loadAuditLogs,
+    loadMessageArchive,
   });
   return { service };
 }
@@ -216,6 +218,39 @@ test('dossier admin prefere les trajets et operations relationnels', async () =>
     result.body.caseFile.disputes.map(({ id }) => id),
     ['d-sql'],
   );
+});
+
+test('dossier admin transmet le curseur de messages et expose la page suivante', async () => {
+  const calls = [];
+  const users = [{ id: 'u-1', name: 'Alice', email: 'alice@example.test' }];
+  const { service } = createHarness({
+    users,
+    async loadMessageArchive(options) {
+      calls.push(options);
+      return {
+        conversations: [],
+        messages: [],
+        total: null,
+        conversationTotal: null,
+        hasMore: true,
+        nextCursor: 'next-page',
+      };
+    },
+  });
+
+  const result = await service.caseFile('u-1', {
+    cursor: 'current-page',
+    limit: '25',
+  });
+
+  assert.deepEqual(calls, [{
+    userId: 'u-1',
+    limit: 25,
+    cursor: 'current-page',
+  }]);
+  assert.equal(result.body.caseFile.messagePage.offset, null);
+  assert.equal(result.body.caseFile.messagePage.hasMore, true);
+  assert.equal(result.body.caseFile.messagePage.nextCursor, 'next-page');
 });
 
 test('file KYC calcule SLA et détail auditable', async () => {

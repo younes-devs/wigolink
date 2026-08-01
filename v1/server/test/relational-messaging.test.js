@@ -164,29 +164,29 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
       if (calls.length === 1) {
         return {
           rows: [{
-            conversation: row.conversation,
-            message_count: 3,
-            reports: [{ id: 'cr-1', reason: 'Signalement conserve' }],
+            id: 'm-deleted',
+            conversation_id: 'conv-1',
+            at: new Date(500),
+            data: {
+              id: 'm-deleted',
+              conversationId: 'conv-1',
+              hiddenForParticipants: true,
+              deletedAt: 500,
+            },
           }],
         };
       }
-      return {
-        rows: [{
-          data: {
-            id: 'm-deleted',
-            conversationId: 'conv-1',
-            hiddenForParticipants: true,
-            deletedAt: 500,
-          },
-          total: 3,
-        }],
-      };
+      if (calls.length === 2) return { rows: [{ message_total: 3, conversation_total: 1 }] };
+      return { rows: [{
+        conversation: row.conversation,
+        message_count: 3,
+        reports: [{ id: 'cr-1', reason: 'Signalement conserve' }],
+      }] };
     },
   };
   const archive = await relationalAdminMessageArchive({
     pool,
     userId: 'u-1',
-    offset: 0,
     limit: 50,
   });
 
@@ -194,6 +194,38 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
   assert.equal(archive.conversations[0].reports[0].id, 'cr-1');
   assert.equal(archive.messages[0].hiddenForParticipants, true);
   assert.equal(archive.total, 3);
-  assert.match(calls[0].sql, /wigofly_conversation_reports/);
-  assert.match(calls[1].sql, /count\(\*\) over\(\)/);
+  assert.equal(archive.conversationTotal, 1);
+  assert.match(calls[0].sql, /order by m\.at desc, m\.id desc/);
+  assert.match(calls[1].sql, /conversation_total/);
+  assert.match(calls[2].sql, /wigofly_conversation_reports/);
+  assert.deepEqual(calls[2].params, [['conv-1']]);
+});
+
+test('messagerie relationnelle : archive admin poursuit sans offset ni recalcul des totaux', async () => {
+  const calls = [];
+  const pool = {
+    query(sql, params) {
+      calls.push({ sql, params });
+      if (calls.length === 1) return { rows: [
+        { id: 'm-3', conversation_id: 'conv-1', at: new Date(300), data: { id: 'm-3', conversationId: 'conv-1', at: 300 } },
+        { id: 'm-2', conversation_id: 'conv-1', at: new Date(200), data: { id: 'm-2', conversationId: 'conv-1', at: 200 } },
+      ] };
+      return { rows: [{ conversation: row.conversation, message_count: 2, reports: [] }] };
+    },
+  };
+
+  const first = await relationalAdminMessageArchive({ pool, userId: 'u-1', limit: 1 });
+  assert.equal(first.hasMore, true);
+  assert.ok(first.nextCursor);
+
+  calls.length = 0;
+  await relationalAdminMessageArchive({
+    pool,
+    userId: 'u-1',
+    limit: 1,
+    cursor: first.nextCursor,
+  });
+  assert.match(calls[0].sql, /\(m\.at, m\.id\) < \(\$2, \$3\)/);
+  assert.doesNotMatch(calls[0].sql, /offset/i);
+  assert.equal(calls.some(({ sql }) => /message_total/.test(sql)), false);
 });

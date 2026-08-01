@@ -312,6 +312,7 @@ alter table public.messages add column if not exists client_id text;
 alter table public.messages add column if not exists data jsonb not null default '{}'::jsonb;
 alter table public.messages alter column tx_id drop not null;
 create index if not exists messages_conversation_at_idx on public.messages (conversation_id, at);
+create index if not exists messages_archive_at_id_idx on public.messages (at desc, id desc);
 update public.messages current
 set client_id = nullif(current.data->>'clientId', '')
 where current.client_id is null
