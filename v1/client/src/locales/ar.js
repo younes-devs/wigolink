@@ -98,7 +98,7 @@ export default {
   'auth.google.login': 'المتابعة عبر Google',
   'auth.google.register': 'التسجيل عبر Google',
   'auth.google.unavailable': 'خدمة Google غير متاحة مؤقتا.',
-  'auth.or.email': 'أو عبر البريد الإلكتروني',
+  'auth.or.email': 'أو المتابعة عبر',
   'auth.no.account': 'ليس لديك حساب بعد؟',
   'auth.create.account': 'إنشاء حساب',
   'auth.already.member': 'عضو بالفعل؟',

@@ -93,7 +93,7 @@ export default {
   'auth.google.login': 'Doorgaan met Google',
   'auth.google.register': 'Registreren met Google',
   'auth.google.unavailable': 'Google is tijdelijk niet beschikbaar.',
-  'auth.or.email': 'of via e-mail',
+  'auth.or.email': 'of ga verder met',
   'auth.no.account': 'Nog geen account?',
   'auth.create.account': 'Account aanmaken',
   'auth.already.member': 'Al lid?',
