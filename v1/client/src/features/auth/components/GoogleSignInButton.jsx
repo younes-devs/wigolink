@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../../api.js';
+import { GoogleLogo, Icon } from '../../../Icons.jsx';
 import { t } from '../../../i18n.js';
 
 let googleSdkPromise;
@@ -30,6 +31,7 @@ export default function GoogleSignInButton({
   onError,
 }) {
   const containerRef = useRef(null);
+  const tokenClientRef = useRef(null);
   const callbackRef = useRef(onCredential);
   const [clientId, setClientId] = useState('');
 
@@ -46,38 +48,43 @@ export default function GoogleSignInButton({
   }, [onError]);
 
   useEffect(() => {
-    if (!clientId || !containerRef.current) return undefined;
+    if (!clientId) return undefined;
     let active = true;
 
     loadGoogleSdk()
       .then((google) => {
-        if (!active || !containerRef.current || !google?.accounts?.id) return;
-        google.accounts.id.initialize({
+        if (!active || !google?.accounts?.oauth2) return;
+        tokenClientRef.current = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          callback: ({ credential }) => callbackRef.current?.(credential),
-          cancel_on_tap_outside: true,
-        });
-        containerRef.current.replaceChildren();
-        google.accounts.id.renderButton(containerRef.current, {
-          type: 'icon',
-          theme: 'outline',
-          size: 'large',
-          shape: 'square',
-          text: 'continue_with',
-          locale: document.documentElement.lang || 'fr',
+          scope: 'openid email profile',
+          callback: (response) => {
+            if (response?.error || !response?.access_token) {
+              onError?.(new Error(t('auth.google.unavailable')));
+              return;
+            }
+            callbackRef.current?.({ accessToken: response.access_token });
+          },
         });
       })
       .catch((error) => onError?.(error));
 
-    return () => { active = false; };
+    return () => { active = false; tokenClientRef.current = null; };
   }, [clientId, onError]);
 
-  if (!clientId) return null;
+  const startGoogle = () => {
+    if (disabled) return;
+    if (!tokenClientRef.current) {
+      onError?.(new Error(t('auth.google.unavailable')));
+      return;
+    }
+    tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
+  };
 
   return (
-    <div className={`google-signin${disabled ? ' is-disabled' : ''}`} aria-disabled={disabled}>
-      <div ref={containerRef} />
-      {disabled && <span className="google-signin-guard" aria-hidden="true" />}
-    </div>
+    <button ref={containerRef} type="button" className="auth-method-card" onClick={startGoogle} disabled={disabled || !clientId}>
+      <span className="auth-method-icon"><GoogleLogo size={25} /></span>
+      <span>{t('auth.method.google')}</span>
+      <Icon name="arrowRight" size={18} />
+    </button>
   );
 }

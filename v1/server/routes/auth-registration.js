@@ -152,7 +152,7 @@ export function createAuthRegistrationRouter({
 
     let identity;
     try {
-      identity = await verifyGoogleCredential(req.body.credential);
+      identity = await verifyGoogleCredential(req.body.credential, req.body.accessToken);
     } catch {
       return res.status(401).json({ error: 'Authentification Google invalide.' });
     }

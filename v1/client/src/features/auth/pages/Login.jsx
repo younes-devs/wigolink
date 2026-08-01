@@ -12,6 +12,7 @@ export default function Login() {
   useLang();
   const { login } = useAuth();
   const [mode, setMode] = useState('login');
+  const [authMethod, setAuthMethod] = useState('');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', code: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,6 +26,7 @@ export default function Login() {
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const switchMode = (nextMode) => {
     setMode(nextMode);
+    if (nextMode === 'login' || nextMode === 'register') setAuthMethod('');
     setError('');
     setHint('');
     setShowPwd(false);
@@ -87,12 +89,12 @@ export default function Login() {
     setHint(data.message || t('auth.hint.checkEmail'));
   });
 
-  const submitGoogle = (credential) => run(async () => {
+  const submitGoogle = (googleToken) => run(async () => {
     try {
       const data = await api('/auth/google', {
         method: 'POST',
         body: {
-          credential,
+          ...googleToken,
           rememberMe,
           allowRegistration: true,
           cguAccepted: true,
@@ -184,7 +186,7 @@ export default function Login() {
                 className={mode === 'login' ? 'active' : ''}
                 onClick={() => switchMode('login')}
               >
-                {t('auth.login.submit')}
+                {t('auth.tab.login')}
               </button>
               <button
                 type="button"
@@ -193,7 +195,7 @@ export default function Login() {
                 className={mode === 'register' ? 'active' : ''}
                 onClick={() => switchMode('register')}
               >
-                {t('auth.create.account')}
+                {t('auth.tab.register')}
               </button>
             </div>
           )}
@@ -201,18 +203,23 @@ export default function Login() {
           {error && <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>}
           {hint && <div className="alert alert-teal"><Icon name="mail" size={17} />{hint}</div>}
 
-          {(mode === 'login' || mode === 'register') && (
-            <>
-              <GoogleSignInButton
-                disabled={busy}
-                onCredential={submitGoogle}
-                onError={showGoogleError}
-              />
-              <div className="auth-sep">{t('auth.or.email')}</div>
-            </>
+          {(mode === 'login' || mode === 'register') && !authMethod && (
+            <AuthMethodChooser
+              mode={mode}
+              busy={busy}
+              onEmail={() => setAuthMethod('email')}
+              onGoogle={submitGoogle}
+              onGoogleError={showGoogleError}
+            />
           )}
 
-          {mode === 'login' && (
+          {(mode === 'login' || mode === 'register') && authMethod === 'email' && (
+            <button type="button" className="auth-method-back" onClick={() => setAuthMethod('')}>
+              <Icon name="arrowLeft" size={15} />{t('auth.method.back')}
+            </button>
+          )}
+
+          {mode === 'login' && authMethod === 'email' && (
             <div className="auth-form">
               <div className="field">
                 <label>{t('auth.email')}</label>
@@ -248,7 +255,7 @@ export default function Login() {
             </div>
           )}
 
-          {mode === 'register' && (
+          {mode === 'register' && authMethod === 'email' && (
             <div className="auth-form">
               <div className="field">
                 <label>{t('auth.name')}</label>
@@ -467,6 +474,20 @@ function PasswordField({
         <Icon name={visible ? 'eyeOff' : 'eye'} size={18} />
       </button>
     </div>
+  );
+}
+
+function AuthMethodChooser({ mode, busy, onEmail, onGoogle, onGoogleError }) {
+  return (
+    <section className="auth-methods" aria-labelledby="auth-method-title">
+      <p id="auth-method-title">{t('auth.method.title')}</p>
+      <button type="button" className="auth-method-card" onClick={onEmail} disabled={busy}>
+        <span className="auth-method-icon"><Icon name="mail" size={22} /></span>
+        <span>{t(mode === 'register' ? 'auth.method.email.register' : 'auth.method.email.login')}</span>
+        <Icon name="arrowRight" size={18} />
+      </button>
+      <GoogleSignInButton disabled={busy} onCredential={onGoogle} onError={onGoogleError} />
+    </section>
   );
 }
 
