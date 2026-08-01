@@ -25,7 +25,6 @@ function loadGoogleSdk() {
 }
 
 export default function GoogleSignInButton({
-  mode,
   disabled = false,
   onCredential,
   onError,
@@ -60,20 +59,18 @@ export default function GoogleSignInButton({
         });
         containerRef.current.replaceChildren();
         google.accounts.id.renderButton(containerRef.current, {
-          type: 'standard',
-          theme: 'filled_blue',
+          type: 'icon',
+          theme: 'outline',
           size: 'large',
-          shape: 'rectangular',
-          text: mode === 'register' ? 'signup_with' : 'continue_with',
-          width: Math.min(400, Math.max(240, containerRef.current.clientWidth)),
-          logo_alignment: 'left',
+          shape: 'square',
+          text: 'continue_with',
           locale: document.documentElement.lang || 'fr',
         });
       })
       .catch((error) => onError?.(error));
 
     return () => { active = false; };
-  }, [clientId, mode, onError]);
+  }, [clientId, onError]);
 
   if (!clientId) return null;
 
