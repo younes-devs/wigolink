@@ -41,24 +41,50 @@ export function BottomNav({ user }) {
     messagesUnread: 0,
     operationsActionRequired: 0,
   });
-
   useEffect(() => {
     if (!user) return undefined;
     let alive = true;
-    const load = () => api('/navigation-summary')
-      .then((data) => {
-        if (alive) setSummary(data);
+    let pending = null;
+    let unsubscribe = () => {};
+    let cancelled = false;
+    const load = () => {
+      if (pending) return pending;
+      pending = api('/navigation-summary')
+        .then((data) => {
+          if (alive) setSummary(data);
+        })
+        .catch(() => {})
+        .finally(() => { pending = null; });
+      return pending;
+    };
+    void load();
+    void import('../../features/messaging/services/realtime.js')
+      .then(({ subscribeToMessageUpdates }) => subscribeToMessageUpdates(
+        user.id,
+        (update) => {
+          if (update.type !== 'typing') void load();
+        },
+      ))
+      .then((dispose) => {
+        if (cancelled) dispose();
+        else unsubscribe = dispose;
       })
       .catch(() => {});
-    load();
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') load();
-    }, 10_000);
+    const refreshVisible = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    const interval = setInterval(refreshVisible, 60_000);
+    document.addEventListener('visibilitychange', refreshVisible);
+    window.addEventListener('focus', refreshVisible);
     return () => {
       alive = false;
+      cancelled = true;
+      unsubscribe();
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshVisible);
+      window.removeEventListener('focus', refreshVisible);
     };
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return undefined;

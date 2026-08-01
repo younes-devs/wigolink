@@ -91,6 +91,15 @@ Objectifs avant ouverture :
 - aucune attente dans le pool PostgreSQL;
 - test authentifie apres chaque migration structurelle.
 
+## Synchronisation client
+
+Les ecrans de messagerie et la navigation partagent une seule souscription
+Supabase Realtime par membre dans un meme onglet. Les badges sont rafraichis
+sur les evenements temps reel de conversation. Un polling de securite ne
+s'execute qu'une fois par minute lorsque l'onglet est visible, ainsi qu'au
+retour au premier plan. Ne pas retablir un polling de 10 secondes: 1 000
+membres connectes produiraient alors environ 360 000 lectures par heure.
+
 ## Capacite de lancement
 
 Le plan Supabase Free convient au developpement, pas a une ouverture commerciale :
