@@ -22,6 +22,7 @@ export default {
   'common.optional': 'اختياري',
   'common.loading': 'جارٍ التحميل…',
   'common.retry': 'إعادة المحاولة',
+  'common.loadMore': 'عرض المزيد',
   'common.view': 'عرض',
   'common.description': 'الوصف',
   'common.date': 'التاريخ',

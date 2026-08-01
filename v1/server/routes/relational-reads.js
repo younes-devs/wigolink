@@ -77,6 +77,10 @@ export function createRelationalReadsRouter({
       return res.json({
         trips: feed.trips,
         myTrips: mine.trips,
+        pages: {
+          trips: feed.page,
+          myTrips: mine.page,
+        },
       });
     } catch (error) {
       logger.error('Echec de chargement de l apercu des trajets', error);

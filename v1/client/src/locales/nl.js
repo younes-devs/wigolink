@@ -20,6 +20,7 @@ export default {
   'common.or': 'of',
   'common.optional': 'optioneel',
   'common.loading': 'Laden…',
+  'common.loadMore': 'Meer tonen',
   'common.retry': 'Opnieuw proberen',
   'common.view': 'Bekijken',
   'common.description': 'Beschrijving',

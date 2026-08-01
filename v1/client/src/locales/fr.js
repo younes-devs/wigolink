@@ -21,6 +21,7 @@ export default {
   'common.or': 'ou',
   'common.optional': 'optionnel',
   'common.loading': 'Chargement…',
+  'common.loadMore': 'Afficher plus',
   'common.retry': 'Reessayer',
   'common.view': 'Voir',
   'common.description': 'Description',

@@ -39,6 +39,8 @@ export default function MessagesSimple() {
   const toast = useToast();
   const { user } = useAuth();
   const [conversations, setConversations] = useState(() => inboxCacheByUser.get(user?.id)?.conversations || null);
+  const [page, setPage] = useState(() => inboxCacheByUser.get(user?.id)?.page || {});
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
@@ -52,14 +54,17 @@ export default function MessagesSimple() {
     const cached = inboxCacheByUser.get(user?.id);
     if (cached) {
       setConversations(cached.conversations);
+      setPage(cached.page || {});
       if (!force && Date.now() - cached.at < INBOX_CACHE_MS) return;
     }
     try {
-      const data = await api('/conversations?includeArchived=1');
-      const next = { conversations: data.conversations || [], at: Date.now() };
+      const limit = Math.min(200, Math.max(40, cached?.conversations?.length || 0));
+      const data = await api(`/conversations?includeArchived=1&limit=${limit}`);
+      const next = { conversations: data.conversations || [], page: data.page || {}, at: Date.now() };
       inboxCacheByUser.set(user?.id, next);
       writeInboxCache(user?.id, next);
       setConversations(next.conversations);
+      setPage(next.page);
     } catch (err) {
       setError(err.message || t('messages.error.load'));
       if (!cached) setConversations([]);
@@ -80,7 +85,7 @@ export default function MessagesSimple() {
           Number(b.pinned) - Number(a.pinned)
           || Number(b.lastMessageAt || b.createdAt) - Number(a.lastMessageAt || a.createdAt)
         );
-        const cached = { conversations: next, at: Date.now() };
+        const cached = { conversations: next, page, at: Date.now() };
         inboxCacheByUser.set(user?.id, cached);
         writeInboxCache(user?.id, cached);
         return next;
@@ -102,11 +107,34 @@ export default function MessagesSimple() {
       if (cached) {
         inboxCacheByUser.set(user?.id, cached);
         setConversations(cached.conversations || []);
+        setPage(cached.page || {});
       }
       void load();
     });
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  const loadMore = async () => {
+    if (!page?.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await api(`/conversations?includeArchived=1&limit=40&offset=${page.nextOffset}`);
+      const incoming = data.conversations || [];
+      setConversations((current) => {
+        const seen = new Set((current || []).map((item) => item.id));
+        const conversationsNext = [...(current || []), ...incoming.filter((item) => !seen.has(item.id))];
+        const cached = { conversations: conversationsNext, page: data.page || {}, at: Date.now() };
+        inboxCacheByUser.set(user?.id, cached);
+        writeInboxCache(user?.id, cached);
+        return conversationsNext;
+      });
+      setPage(data.page || {});
+    } catch (err) {
+      toast.error(err.message || t('messages.error.load'));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -320,6 +348,13 @@ export default function MessagesSimple() {
             />
           ))}
         </div>
+        {page?.hasMore && (
+          <div className="center">
+            <button className="btn btn-ghost btn-sm" type="button" disabled={loadingMore} onClick={loadMore}>
+              {loadingMore ? t('common.loading') : t('common.loadMore')}
+            </button>
+          </div>
+        )}
       </section>
       {deleteTarget && <ConfirmDialog
         title={t('messages.delete.confirm.title')}

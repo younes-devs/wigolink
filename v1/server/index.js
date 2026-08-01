@@ -216,7 +216,11 @@ app.use(createSecurityHeaders({
   supabaseRealtimeOrigin: SUPABASE_REALTIME_ORIGIN,
 }));
 app.use(observability.middleware);
-app.use(express.json({ limit: '25mb' }));
+// KYC may contain three compressed captures. All other JSON endpoints stay
+// deliberately small so unauthenticated oversized bodies cannot exhaust a
+// serverless instance before authentication runs.
+app.use('/api/kyc/submit', express.json({ limit: '3mb' }));
+app.use(express.json({ limit: '1mb' }));
 // i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
 app.use(langMiddleware);
 

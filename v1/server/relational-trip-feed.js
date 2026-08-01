@@ -149,7 +149,7 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
 
   const limit = boundedLimit(query.limit);
   const offset = boundedOffset(query.offset);
-  params.push(user.id, limit, offset);
+  params.push(user.id, limit + 1, offset);
   const userParam = `$${params.length - 2}`;
   const limitParam = `$${params.length - 1}`;
   const offsetParam = `$${params.length}`;
@@ -170,10 +170,13 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
      limit ${limitParam} offset ${offsetParam}`,
     params
   );
-  const trips = result.rows.map((row) => tripView(row.trip, row.traveler, row.saved, row.active_operations));
+  const hasMore = result.rows.length > limit;
+  const trips = result.rows
+    .slice(0, limit)
+    .map((row) => tripView(row.trip, row.traveler, row.saved, row.active_operations));
   return {
     trips,
-    page: { limit, offset, hasMore: trips.length === limit, nextOffset: trips.length === limit ? offset + limit : null },
+    page: { limit, offset, hasMore, nextOffset: hasMore ? offset + limit : null },
   };
 }
 

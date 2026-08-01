@@ -10,6 +10,10 @@ charge ni une restauration reelle.
   messages, notifications et journaux deja migres.
 - Supabase Storage stocke les medias hors de PostgreSQL.
 - Les images de messagerie sont envoyees directement vers Storage par URL signee.
+- Les fils de messages, boites de reception et listes de trajets sont pagines et
+  ne chargent jamais l'historique complet dans une seule reponse.
+- Les corps JSON sont limites a 1 Mo, avec une exception KYC bornee a 3 Mo pour
+  ses trois captures compressees.
 - Le pool PostgreSQL est borne par instance Vercel.
 - Le cron quotidien supprime les reservations d'upload abandonnees, sessions,
   codes temporaires et notifications expirees.
@@ -18,9 +22,10 @@ charge ni une restauration reelle.
 
 Le document global `wigofly_app_state` est charge paresseusement uniquement pour
 les domaines historiques qui ne sont pas encore relationnels. Les parcours
-membres, KYC, export et suppression de compte n'en dependent plus. Certains
-ecrans administratifs historiques restent a migrer avant de supprimer
-definitivement cette table.
+membres, KYC, export et suppression de compte ainsi que les lectures et
+decisions d'administration n'en dependent plus. La table reste temporairement
+conservee pour la compatibilite et les migrations historiques; aucun nouveau
+parcours ne doit y etre ajoute.
 
 ## Mesure de reference
 

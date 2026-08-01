@@ -38,6 +38,8 @@ export default function TripFeedSimple() {
   useLang();
   const [trips, setTrips] = useState(() => readTripCache('')?.trips || null);
   const [myTrips, setMyTrips] = useState(() => readTripCache('')?.myTrips || null);
+  const [pages, setPages] = useState(() => readTripCache('')?.pages || {});
+  const [loadingMore, setLoadingMore] = useState('');
   const today = new Date().toISOString().slice(0, 10);
   const emptyFilters = { q: '', from: '', to: '', date: '', maxPrice: '', capacityKg: '' };
   const [filters, setFilters] = useState(emptyFilters);
@@ -72,15 +74,22 @@ export default function TripFeedSimple() {
     if (cached) {
       setTrips(cached.trips);
       setMyTrips(cached.myTrips);
+      setPages(cached.pages || {});
       if (!force && Date.now() - cached.at < TRIP_OVERVIEW_CACHE_MS) return;
     }
     try {
       const data = await api(`/trips/overview?${params.toString()}`);
       if (requestId !== requestRef.current) return;
-      const next = { trips: data.trips, myTrips: data.myTrips, at: Date.now() };
+      const next = {
+        trips: data.trips,
+        myTrips: data.myTrips,
+        pages: data.pages || {},
+        at: Date.now(),
+      };
       writeTripCache(query, next);
       setTrips(next.trips);
       setMyTrips(next.myTrips);
+      setPages(next.pages);
     } catch {
       if (!cached) {
         setTrips([]);
@@ -90,6 +99,38 @@ export default function TripFeedSimple() {
   };
 
   useEffect(() => { load(); }, [query]);
+
+  const loadMore = async (kind) => {
+    const page = pages[kind];
+    if (!page?.hasMore || loadingMore) return;
+    setLoadingMore(kind);
+    try {
+      const params = new URLSearchParams(query);
+      params.set('offset', String(page.nextOffset));
+      params.set('limit', String(page.limit));
+      if (kind === 'trips') params.set('excludeMine', '1');
+      const endpoint = kind === 'myTrips' ? '/trips/mine' : '/trips';
+      const data = await api(`${endpoint}?${params.toString()}`);
+      const setItems = kind === 'myTrips' ? setMyTrips : setTrips;
+      const nextPage = data.page || {};
+      setItems((current) => {
+        const merged = mergeById(current || [], data.trips || []);
+        const cached = readTripCache(query) || {};
+        writeTripCache(query, {
+          ...cached,
+          [kind]: merged,
+          pages: { ...(cached.pages || pages), [kind]: nextPage },
+          at: Date.now(),
+        });
+        return merged;
+      });
+      setPages((current) => ({ ...current, [kind]: nextPage }));
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoadingMore('');
+    }
+  };
 
   const toggleSaved = async (trip) => {
     try {
@@ -237,6 +278,13 @@ export default function TripFeedSimple() {
             </article>
           ))}
         </div>
+        {pages.myTrips?.hasMore && (
+          <div className="center">
+            <button className="btn btn-ghost btn-sm" type="button" disabled={!!loadingMore} onClick={() => loadMore('myTrips')}>
+              {loadingMore === 'myTrips' ? t('common.loading') : t('common.loadMore')}
+            </button>
+          </div>
+        )}
       </section>
 
       <section
@@ -294,9 +342,21 @@ export default function TripFeedSimple() {
           </article>
         ))}
       </div>
+      {pages.trips?.hasMore && (
+        <div className="center">
+          <button className="btn btn-ghost btn-sm" type="button" disabled={!!loadingMore} onClick={() => loadMore('trips')}>
+            {loadingMore === 'trips' ? t('common.loading') : t('common.loadMore')}
+          </button>
+        </div>
+      )}
       </section>
     </div>
   );
+}
+
+function mergeById(current, incoming) {
+  const seen = new Set(current.map((item) => item.id));
+  return [...current, ...incoming.filter((item) => !seen.has(item.id))];
 }
 
 function advancedFilterCount(filters) {

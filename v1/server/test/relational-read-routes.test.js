@@ -132,8 +132,8 @@ test('relational reads construit l apercu depuis feed et mes trajets', async () 
     async listTrips(payload) {
       harness.calls.push(['trips', payload]);
       return payload.mine
-        ? { trips: [{ id: 'mine' }] }
-        : { trips: [{ id: 'feed' }] };
+        ? { trips: [{ id: 'mine' }], page: { hasMore: false } }
+        : { trips: [{ id: 'feed' }], page: { hasMore: true, nextOffset: 40 } };
     },
   });
   const response = await requestRoute({
@@ -144,6 +144,10 @@ test('relational reads construit l apercu depuis feed et mes trajets', async () 
   assert.deepEqual(response.body, {
     trips: [{ id: 'feed' }],
     myTrips: [{ id: 'mine' }],
+    pages: {
+      trips: { hasMore: true, nextOffset: 40 },
+      myTrips: { hasMore: false },
+    },
   });
   assert.equal(harness.calls.length, 2);
   assert.deepEqual(harness.calls[0][1].query, {
