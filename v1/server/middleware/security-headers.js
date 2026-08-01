@@ -6,7 +6,8 @@ export function createSecurityHeaders({
   const realtimeConnectSrc = supabaseUrl
     ? ` ${supabaseUrl} ${supabaseRealtimeOrigin}`
     : '';
-  const contentSecurityPolicy = `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'${realtimeConnectSrc}; font-src 'self' data:`;
+  const googleOrigin = 'https://accounts.google.com';
+  const contentSecurityPolicy = `default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' ${googleOrigin}; frame-src ${googleOrigin}; connect-src 'self' ${googleOrigin}${realtimeConnectSrc}; font-src 'self' data:`;
 
   return function securityHeaders(req, res, next) {
     const requestId = req.headers['x-request-id'] || newRequestId();

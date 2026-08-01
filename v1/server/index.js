@@ -20,6 +20,7 @@ import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
 import { emailConfig, sendVerificationEmail } from './email.js';
+import { createGoogleCredentialVerifier } from './google-auth.js';
 import {
   listRelationalSavedTrips, listRelationalTrips, relationalTrip,
   relationalTripReadsEnabled, relationalUserFromSession,
@@ -203,6 +204,8 @@ const SUPABASE_SECRET_KEY = String(
   process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 ).trim();
 const STORAGE_READY = !!(SUPABASE_URL && SUPABASE_SECRET_KEY);
+const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+const verifyGoogleCredential = createGoogleCredentialVerifier({ clientId: GOOGLE_CLIENT_ID });
 // The database URL is server-only and already mandatory in production. A dedicated
 // OPERATION_CODE_SECRET can supersede it without making deployments brittle.
 const OPERATION_CODE_SECRET = process.env.OPERATION_CODE_SECRET || process.env.DATABASE_URL || 'wigolink-local-operation-code-secret';
@@ -278,6 +281,7 @@ app.use('/api', createSystemRouter({
   isProduction: IS_PRODUCTION,
   emailReady: EMAIL_READY,
   storageReady: STORAGE_READY,
+  googleClientId: GOOGLE_CLIENT_ID,
   databaseHealth,
 }));
 
@@ -577,7 +581,7 @@ function positiveNumber(v, { allowZero = false } = {}) {
   return n;
 }
 
-// ---------- Auth : email + mot de passe, Google (simulé), reset ----------
+// ---------- Auth : email + mot de passe, Google, reset ----------
 const normEmail = (e) => String(e || '').trim().toLowerCase();
 const findByEmail = (email) => repositories.users.findByEmail(email);
 
@@ -639,6 +643,23 @@ async function deliverAuthCode(email, code, purpose, lang = 'fr') {
   await sendVerificationEmail({ to: email, code, purpose, lang });
 }
 
+async function openSuspendedSession(res, user) {
+  const token = newToken();
+  await createPersistentSession({
+    token,
+    userId: user.id,
+    expiresAt: Date.now() + SESSION_DURATION_MS,
+  });
+  return res.status(403).json({
+    code: 'account_suspended',
+    token,
+    suspended: true,
+    suspendedUntil: user.suspendedUntil,
+    reason: user.suspensionReason || null,
+    error: 'Votre compte est temporairement suspendu. Vous pouvez envoyer un recours.',
+  });
+}
+
 app.use('/api/auth', createAuthRegistrationRouter({
   users: authRepositories.users,
   verifications: authRepositories.verifications,
@@ -653,6 +674,8 @@ app.use('/api/auth', createAuthRegistrationRouter({
   normalizeEmail: normEmail,
   rateLimit,
   openSession,
+  verifyGoogleCredential,
+  openSuspendedSession,
 }));
 
 app.use('/api/auth', createAuthAccessRouter({

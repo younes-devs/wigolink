@@ -97,6 +97,7 @@ export default {
   'auth.login.submit': 'تسجيل الدخول',
   'auth.google.login': 'المتابعة عبر Google',
   'auth.google.register': 'التسجيل عبر Google',
+  'auth.google.unavailable': 'خدمة Google غير متاحة مؤقتا.',
   'auth.or.email': 'أو عبر البريد الإلكتروني',
   'auth.no.account': 'ليس لديك حساب بعد؟',
   'auth.create.account': 'إنشاء حساب',

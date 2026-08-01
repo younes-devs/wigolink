@@ -94,6 +94,13 @@ function createUserRepository({ db }) {
       return user;
     },
 
+    update(user) {
+      const index = ensure().findIndex((candidate) => candidate.id === user?.id);
+      if (index < 0) throw new Error('Utilisateur introuvable.');
+      ensure()[index] = user;
+      return user;
+    },
+
     findByEmail(email) {
       const normalized = String(email || '').trim().toLowerCase();
       return ensure().find((user) => user.email === normalized) || null;

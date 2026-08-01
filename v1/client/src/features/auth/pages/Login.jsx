@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, setToken } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { t, useLang } from '../../../i18n.js';
 import AuthJourneyLoop from '../components/AuthJourneyLoop.jsx';
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
 
 // Authentication: login, registration, email verification, password reset and appeal.
 export default function Login() {
@@ -85,6 +86,36 @@ export default function Login() {
     switchMode('verify');
     setHint(data.message || t('auth.hint.checkEmail'));
   });
+
+  const submitGoogle = (credential) => run(async () => {
+    if (mode === 'register' && !cguAccepted) {
+      throw new Error(t('err.cgu.required'));
+    }
+    try {
+      const data = await api('/auth/google', {
+        method: 'POST',
+        body: {
+          credential,
+          rememberMe,
+          allowRegistration: mode === 'register',
+          cguAccepted: mode === 'register' && cguAccepted,
+        },
+      });
+      finishAuth(data);
+    } catch (requestError) {
+      if (requestError.data?.code === 'account_suspended' && requestError.data?.token) {
+        setToken(requestError.data.token);
+        setMode('appeal');
+        setHint(requestError.data.reason || t('auth.appeal.suspended'));
+        return;
+      }
+      throw requestError;
+    }
+  });
+
+  const showGoogleError = useCallback((requestError) => {
+    setError(requestError.message);
+  }, []);
 
   const submitVerify = () => run(async () => {
     const data = await api('/auth/verify-email', {
@@ -281,6 +312,18 @@ export default function Login() {
                 {busy ? <span className="spinner" /> : t('auth.register.submit')}
               </button>
             </div>
+          )}
+
+          {(mode === 'login' || mode === 'register') && (
+            <>
+              <div className="auth-sep">{t('auth.or.email')}</div>
+              <GoogleSignInButton
+                mode={mode}
+                disabled={busy || (mode === 'register' && !cguAccepted)}
+                onCredential={submitGoogle}
+                onError={showGoogleError}
+              />
+            </>
           )}
 
           {mode === 'verify' && (

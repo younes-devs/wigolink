@@ -97,6 +97,7 @@ export default {
   'auth.login.submit': 'Se connecter',
   'auth.google.login': 'Continuer avec Google',
   'auth.google.register': "S'inscrire avec Google",
+  'auth.google.unavailable': 'Google est temporairement indisponible.',
   'auth.or.email': 'ou par email',
   'auth.no.account': 'Pas encore de compte ?',
   'auth.create.account': 'Créer un compte',

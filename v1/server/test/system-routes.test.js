@@ -36,11 +36,17 @@ async function requestSystem(path, options = {}) {
   }
 }
 
-test('system routes expose uniquement le drapeau demo dans config', async () => {
-  const response = await requestSystem('/config', { demo: true });
+test('system routes exposent seulement la configuration publique du navigateur', async () => {
+  const response = await requestSystem('/config', {
+    demo: true,
+    googleClientId: 'client-public.apps.googleusercontent.com',
+  });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body, { demo: true });
+  assert.deepEqual(response.body, {
+    demo: true,
+    googleClientId: 'client-public.apps.googleusercontent.com',
+  });
 });
 
 test('system routes considerent le stockage local pret hors production', async () => {

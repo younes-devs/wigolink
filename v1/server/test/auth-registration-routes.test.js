@@ -343,12 +343,108 @@ test('auth resend route garde rememberMe et ne remplace rien si envoi echoue', a
   assert.equal(failed.pending.get(user.email), previous);
 });
 
-test('auth google route reste explicitement indisponible', async () => {
+test('auth google route reste indisponible sans configuration serveur', async () => {
   const { dependencies } = createDependencies();
   const response = await requestRegistration({
     path: '/google',
     dependencies,
   });
-  assert.equal(response.status, 410);
+  assert.equal(response.status, 503);
   assert.deepEqual(response.body, { error: 'Connexion Google indisponible' });
+});
+
+test('auth google cree uniquement depuis inscription avec CGU puis ouvre la session', async () => {
+  let sessionOptions;
+  const harness = createDependencies({
+    async verifyGoogleCredential(credential) {
+      assert.equal(credential, 'signed-token');
+      return {
+        subject: 'google-subject',
+        email: 'member@example.test',
+        name: 'Membre Google',
+      };
+    },
+    async openSession(res, user, _req, options) {
+      harness.events.push('session');
+      sessionOptions = options;
+      res.json({ token: 'session-token', user });
+    },
+  });
+
+  const loginOnly = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: { credential: 'signed-token' },
+  });
+  assert.equal(loginOnly.status, 404);
+
+  const missingCgu = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: { credential: 'signed-token', allowRegistration: true },
+  });
+  assert.equal(missingCgu.status, 400);
+
+  const response = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: {
+      credential: 'signed-token',
+      allowRegistration: true,
+      cguAccepted: true,
+      rememberMe: true,
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const user = harness.usersByEmail.get('member@example.test');
+  assert.equal(user.provider, 'google');
+  assert.equal(user.emailVerified, true);
+  assert.equal(user.googleSubject, 'google-subject');
+  assert.deepEqual(sessionOptions, { rememberMe: true });
+  assert.deepEqual(harness.events.slice(-4), [
+    'user:make',
+    'user:append',
+    'save',
+    'session',
+  ]);
+});
+
+test('auth google lie un compte existant mais refuse un sujet Google different', async () => {
+  const existing = {
+    id: 'u-existing',
+    email: 'member@example.test',
+    provider: 'email',
+    emailVerified: true,
+  };
+  const harness = createDependencies({
+    async verifyGoogleCredential() {
+      return {
+        subject: 'google-subject',
+        email: existing.email,
+        name: 'Membre Google',
+      };
+    },
+    async openSession(res) {
+      res.json({ token: 'session-token' });
+    },
+  });
+  harness.usersByEmail.set(existing.email, existing);
+
+  const linked = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: { credential: 'signed-token' },
+  });
+  assert.equal(linked.status, 200);
+  assert.equal(existing.googleSubject, 'google-subject');
+  assert.equal(existing.provider, 'email');
+
+  existing.googleSubject = 'another-google-subject';
+  const rejected = await requestRegistration({
+    path: '/google',
+    dependencies: harness.dependencies,
+    body: { credential: 'signed-token' },
+  });
+  assert.equal(rejected.status, 401);
 });
