@@ -45,6 +45,12 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 
 La connexion privee `DATABASE_URL` active un etat transactionnel Supabase pour les donnees metier pendant la transition. Les sessions, messages de conversation, notifications et journaux d'audit sont stockes dans des tables PostgreSQL indexees afin d'eviter le chargement du document JSON global a chaque consultation. Le schema relationnel couvre les utilisateurs, trajets, operations, favoris, conversations, litiges et dossiers KYC. Les tables d'annonces et d'offres de matching sont conservees uniquement pour les dossiers historiques et l'administration. La migration idempotente `npm run migrate:relational` recopie les donnees existantes vers ces tables avant le basculement progressif des routes. Le fichier `server/data.json` reste reserve au developpement local.
 
+Sur Vercel, le pool PostgreSQL utilise par defaut 2 connexions par instance,
+un delai de requete de 10 secondes et recycle une connexion apres 5 000 usages.
+`DB_POOL_MAX` (1 a 20) et `DB_QUERY_TIMEOUT_MS` (1 000 a 30 000) permettent un
+reglage mesure, mais ne doivent etre augmentes qu'apres observation conjointe
+des connexions Supabase et de la latence Vercel.
+
 ## Medias de messagerie
 
 Les photos de conversation sont stockees dans un bucket Supabase prive au lieu d'etre repetees en base64 dans chaque reponse JSON. Renseigner `SUPABASE_URL` et `SUPABASE_SECRET_KEY`; le serveur cree au premier envoi le bucket `wigofly-message-media`, ou le nom defini par `SUPABASE_MESSAGE_MEDIA_BUCKET`. Le navigateur ne recoit jamais la cle ni le chemin interne: il charge le fichier via une route API authentifiee, avec un cache prive de 24 heures.

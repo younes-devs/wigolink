@@ -17,11 +17,17 @@ test('postgres : pool serveur borne les connexions par instance', () => {
     max: 8,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
+    query_timeout: 10_000,
+    maxUses: 5_000,
     allowExitOnIdle: true,
   });
   assert.equal(databasePoolOptions({ DB_POOL_MAX: '200' }).max, 20);
   assert.equal(databasePoolOptions({ DB_POOL_MAX: '0' }).max, 1);
   assert.equal(databasePoolOptions({}).max, 5);
+  assert.equal(databasePoolOptions({ VERCEL: '1' }).max, 2);
+  assert.equal(databasePoolOptions({ VERCEL_ENV: 'production' }).max, 2);
+  assert.equal(databasePoolOptions({ DB_QUERY_TIMEOUT_MS: '999999' }).query_timeout, 30_000);
+  assert.equal(databasePoolOptions({ DB_QUERY_TIMEOUT_MS: '50' }).query_timeout, 1_000);
 });
 
 test('persistence : JSON par defaut sans DATABASE_URL', () => {

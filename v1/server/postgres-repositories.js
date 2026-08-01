@@ -29,12 +29,18 @@ export function createPostgresPool({ connectionString, ...options }) {
 
 export function databasePoolOptions(env = process.env) {
   const parsed = Number.parseInt(env.DB_POOL_MAX, 10);
+  const serverless = env.VERCEL === '1' || !!env.VERCEL_ENV;
+  const parsedQueryTimeout = Number.parseInt(env.DB_QUERY_TIMEOUT_MS, 10);
   return {
     max: Number.isFinite(parsed)
       ? Math.max(1, Math.min(20, parsed))
-      : 5,
+      : serverless ? 2 : 5,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
+    query_timeout: Number.isFinite(parsedQueryTimeout)
+      ? Math.max(1_000, Math.min(30_000, parsedQueryTimeout))
+      : 10_000,
+    maxUses: 5_000,
     allowExitOnIdle: true,
   };
 }
