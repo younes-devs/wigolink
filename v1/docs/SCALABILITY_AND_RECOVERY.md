@@ -28,6 +28,9 @@ charge ni une restauration reelle.
   execution afin d'eviter un retard de maintenance.
 - `GET /api/admin/maintenance/capacity` expose uniquement aux administrateurs la
   taille, les volumes estimes, les connexions et les alertes de capacite.
+- Les index de pagination et d'historique ajoutes dans `supabase/schema.sql`
+  ont ete appliques a la production et verifies dans `pg_indexes` le 1er aout
+  2026. Toute nouvelle migration doit conserver cette verification explicite.
 
 Le document global `wigofly_app_state` est charge paresseusement uniquement pour
 les domaines historiques qui ne sont pas encore relationnels. Les parcours
@@ -116,6 +119,14 @@ Le projet Vercel est deja configure avec Fluid Compute et la region `cdg1`,
 proche de la base Supabase a Paris. Le plan Hobby est reserve a un usage
 personnel non commercial. Passer a Pro avant le lancement payant afin d'eviter
 la suspension aux limites d'usage et d'obtenir une exploitation adaptee.
+
+Au 1er aout 2026, Supabase signalait 6,25 Go d'egress sur 5 Go inclus, alors
+que la base occupait 29,65 Mo, Storage moins de 0,01 Go et Realtime seulement
+103 messages. La reduction du polling navigation et des payloads admin doit
+faire baisser cette consommation. Surveiller l'egress chaque jour pendant une
+semaine. La periode de grace annoncee se termine le 30 aout 2026; si l'egress
+reste au-dessus du quota, passer en Pro avant cette date pour eviter des
+reponses HTTP 402.
 
 Le PITR devient obligatoire avant des paiements reels ou quand perdre jusqu'a
 24 heures de donnees n'est plus acceptable.
