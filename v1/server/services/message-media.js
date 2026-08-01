@@ -112,6 +112,14 @@ export function createMessageMediaService({
     return true;
   }
 
+  async function removePaths(paths) {
+    const selected = [...new Set((paths || []).filter(Boolean))];
+    if (!enabled || !selected.length) return 0;
+    const { error } = await storage.from(bucket).remove(selected);
+    if (error) throw error;
+    return selected.length;
+  }
+
   return {
     enabled,
     createSignedUpload,
@@ -119,6 +127,7 @@ export function createMessageMediaService({
     download,
     info,
     remove,
+    removePaths,
   };
 }
 

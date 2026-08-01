@@ -5,6 +5,7 @@ import {
   relationalTripReadsEnabled, relationalUserFromSession,
   snapshotRelationalTripState, syncRelationalTripState,
 } from '../relational-trip-feed.js';
+import { encodePageCursor } from '../pagination-cursor.js';
 
 test('feed relationnel : l option est inactive par defaut', () => {
   assert.equal(relationalTripReadsEnabled({}), false);
@@ -192,6 +193,38 @@ test('feed relationnel : favoris supprime les expires puis retourne une page', a
   assert.match(calls[0].sql, /delete from public.wigofly_saved_trips/);
   assert.match(calls[1].sql, /order by saved_trip.created_at desc/);
   assert.deepEqual(calls[1].params, ['u-1', '2026-07-29', 21, 0]);
+});
+
+test('feed relationnel : favoris poursuivent avec un curseur stable sans offset', async () => {
+  const calls = [];
+  await listRelationalSavedTrips({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        if (calls.length === 1) return { rows: [], rowCount: 0 };
+        return { rows: [] };
+      },
+    },
+    user: { id: 'u-1' },
+    today: '2026-07-29',
+    query: {
+      limit: 20,
+      cursor: encodePageCursor({
+        createdAt: '2026-07-28T12:00:00.000Z',
+        id: 'saved-20',
+      }),
+    },
+  });
+
+  assert.match(calls[1].sql, /saved_trip\.id > \$4/);
+  assert.doesNotMatch(calls[1].sql, /offset \$/i);
+  assert.deepEqual(calls[1].params, [
+    'u-1',
+    '2026-07-29',
+    '2026-07-28T12:00:00.000Z',
+    'saved-20',
+    21,
+  ]);
 });
 
 test('feed relationnel : ne synchronise que les ecritures changees', async () => {

@@ -94,4 +94,15 @@ test('uploads membre refuse un fichier trop lourd et nettoie un profil abandonne
   const data = records.get(reserved.uploadId);
   await service.cleanupData(data);
   assert.deepEqual(removed[0], ['profile', data.uploads[0].storagePath]);
+  await service.cleanupMany([
+    data,
+    {
+      mediaType: 'kyc',
+      uploads: [{ storagePath: 'users/u-1/kyc/selfie.jpg' }],
+    },
+  ]);
+  assert.deepEqual(removed.slice(1), [
+    ['kyc', 'users/u-1/kyc/selfie.jpg'],
+    ['profile', data.uploads[0].storagePath],
+  ]);
 });

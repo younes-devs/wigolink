@@ -20,16 +20,46 @@ const STATUS_LABELS = {
 export default function OperationsSimple() {
   useLang();
   const [operations, setOperations] = useState(null);
+  const [page, setPage] = useState(null);
   const [view, setView] = useState('active');
   const [busy, setBusy] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
   const nav = useNavigate();
   const toast = useToast();
 
   useEffect(() => {
+    let active = true;
     setOperations(null);
-    const suffix = view === 'history' ? '?history=1' : '';
-    api(`/operations${suffix}`).then((data) => setOperations(data.operations)).catch(() => setOperations([]));
+    setPage(null);
+    const params = new URLSearchParams({ limit: '40' });
+    if (view === 'history') params.set('history', '1');
+    api(`/operations?${params}`).then((data) => {
+      if (!active) return;
+      setOperations(data.operations);
+      setPage(data.page || null);
+    }).catch(() => {
+      if (active) setOperations([]);
+    });
+    return () => { active = false; };
   }, [view]);
+
+  const loadMore = async () => {
+    if (!page?.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ limit: String(page.limit || 40) });
+      if (view === 'history') params.set('history', '1');
+      if (page.nextCursor) params.set('cursor', page.nextCursor);
+      else params.set('offset', String(page.nextOffset));
+      const data = await api(`/operations?${params}`);
+      setOperations((current) => [...(current || []), ...data.operations]);
+      setPage(data.page || null);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const message = async (operationId) => {
     setBusy(operationId);
@@ -87,6 +117,11 @@ export default function OperationsSimple() {
           </article>
         ))}
       </div>
+      {page?.hasMore && (
+        <button className="btn btn-ghost btn-sm" type="button" disabled={loadingMore} onClick={loadMore}>
+          {loadingMore ? t('common.loading') : t('common.loadMore')}
+        </button>
+      )}
     </div>
   );
 }

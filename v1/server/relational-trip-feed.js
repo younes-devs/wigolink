@@ -282,9 +282,29 @@ export async function listRelationalSavedTrips({
     [user.id, today],
   );
   const limit = boundedLimit(query.limit);
-  const offset = boundedOffset(query.offset);
+  const cursor = decodeSavedTripCursor(query.cursor);
+  const offset = cursor ? 0 : boundedOffset(query.offset);
+  const params = [user.id, today];
+  let cursorClause = '';
+  if (cursor) {
+    params.push(cursor.createdAt, cursor.id);
+    const createdParam = `$${params.length - 1}`;
+    const idParam = `$${params.length}`;
+    cursorClause = `and (
+      saved_trip.created_at < ${createdParam}::timestamptz
+      or (saved_trip.created_at = ${createdParam}::timestamptz and saved_trip.id > ${idParam})
+    )`;
+  }
+  params.push(limit + 1);
+  const limitParam = `$${params.length}`;
+  let offsetClause = '';
+  if (!cursor) {
+    params.push(offset);
+    offsetClause = `offset $${params.length}`;
+  }
   const result = await pool.query(
-    `select trip.data as trip, traveler.data as traveler, true as saved
+    `select trip.data as trip, traveler.data as traveler, true as saved,
+       saved_trip.id as sort_id, saved_trip.created_at as sort_created_at
      from public.wigofly_saved_trips saved_trip
      join public.wigofly_trips trip
        on trip.id = saved_trip.data->>'tripId'
@@ -293,20 +313,27 @@ export async function listRelationalSavedTrips({
      where saved_trip.data->>'userId' = $1
        and coalesce(trip.data->>'status', 'published') = 'published'
        and coalesce(trip.data->>'departureDate', trip.data->>'date') >= $2
-     order by saved_trip.created_at desc
-     limit $3 offset $4`,
-    [user.id, today, limit + 1, offset],
+       ${cursorClause}
+     order by saved_trip.created_at desc, saved_trip.id asc
+     limit ${limitParam} ${offsetClause}`,
+    params,
   );
   const hasMore = result.rows.length > limit;
+  const selected = result.rows.slice(0, limit);
+  const last = selected.at(-1);
   return {
-    trips: result.rows.slice(0, limit).map((row) =>
+    trips: selected.map((row) =>
       tripView(row.trip, row.traveler, true)
     ),
     page: {
       limit,
       offset,
       hasMore,
-      nextOffset: hasMore ? offset + limit : null,
+      nextOffset: hasMore && !cursor ? offset + limit : null,
+      nextCursor: hasMore && last ? encodePageCursor({
+        createdAt: timestampCursorValue(last.sort_created_at, last.trip),
+        id: String(last.sort_id || ''),
+      }) : null,
     },
   };
 }
@@ -385,6 +412,16 @@ function decodeTripCursor(value) {
   return decodePageCursor(value, (cursor) => (
     cursor
     && /^\d{4}-\d{2}-\d{2}$/.test(cursor.date)
+    && Number.isFinite(Date.parse(cursor.createdAt))
+    && typeof cursor.id === 'string'
+    && cursor.id.length > 0
+    && cursor.id.length <= 120
+  ));
+}
+
+function decodeSavedTripCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
     && Number.isFinite(Date.parse(cursor.createdAt))
     && typeof cursor.id === 'string'
     && cursor.id.length > 0

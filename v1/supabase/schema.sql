@@ -160,6 +160,8 @@ create table if not exists public.wigofly_saved_trips (
   updated_at timestamptz not null default now()
 );
 create unique index if not exists wigofly_saved_trips_user_trip_idx on public.wigofly_saved_trips ((data->>'userId'), (data->>'tripId'));
+create index if not exists wigofly_saved_trips_user_created_idx
+  on public.wigofly_saved_trips ((data->>'userId'), created_at desc, id asc);
 
 create table if not exists public.wigofly_conversations (
   id text primary key,

@@ -12,16 +12,20 @@ charge ni une restauration reelle.
 - Les images de messagerie, les captures KYC et les photos de profil sont
   envoyees directement vers Storage par URL signee. Les fonctions Vercel ne
   transportent donc plus les fichiers binaires de production.
-- Les fils de messages, boites de reception et listes de trajets sont pagines et
-  ne chargent jamais l'historique complet dans une seule reponse.
-- Les pages suivantes des trajets et conversations utilisent un curseur de tri
-  stable; leur cout ne grandit pas avec le numero de page.
+- Les fils de messages, boites de reception, listes de trajets, favoris et
+  operations sont pagines et ne chargent jamais l'historique complet dans une
+  seule reponse.
+- Les pages suivantes des trajets, conversations, favoris et operations
+  utilisent un curseur de tri stable; leur cout ne grandit pas avec le numero
+  de page.
 - Les corps JSON sont limites a 1 Mo. L'ancienne exception KYC de 3 Mo reste
   uniquement compatible avec le developpement local; la production utilise des
   reservations signees de 15 minutes, liees au membre et verifiees cote serveur.
 - Le pool PostgreSQL est borne par instance Vercel.
 - Le cron quotidien supprime les reservations d'upload abandonnees, sessions,
-  codes temporaires et notifications expirees.
+  codes temporaires et notifications expirees. Les objets Storage sont retires
+  par lots et jusqu'a quatre pages de 500 reservations sont drainees par
+  execution afin d'eviter un retard de maintenance.
 - `GET /api/admin/maintenance/capacity` expose uniquement aux administrateurs la
   taille, les volumes estimes, les connexions et les alertes de capacite.
 

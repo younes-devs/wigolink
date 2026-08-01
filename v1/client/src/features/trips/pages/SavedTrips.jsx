@@ -10,11 +10,33 @@ import { t, useLang } from '../../../i18n.js';
 export default function SavedTrips() {
   useLang();
   const [trips, setTrips] = useState(null);
+  const [page, setPage] = useState(null);
   const [busy, setBusy] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
   const toast = useToast();
   const nav = useNavigate();
-  const load = () => api('/saved-trips').then((data) => setTrips(data.trips)).catch(() => setTrips([]));
+  const load = () => api('/saved-trips?limit=40').then((data) => {
+    setTrips(data.trips);
+    setPage(data.page || null);
+  }).catch(() => setTrips([]));
   useEffect(() => { load(); }, []);
+
+  const loadMore = async () => {
+    if (!page?.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ limit: String(page.limit || 40) });
+      if (page.nextCursor) params.set('cursor', page.nextCursor);
+      else params.set('offset', String(page.nextOffset));
+      const data = await api(`/saved-trips?${params}`);
+      setTrips((current) => [...(current || []), ...data.trips]);
+      setPage(data.page || null);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const remove = async (tripId) => {
     await api(`/saved-trips/${tripId}`, { method: 'DELETE' });
@@ -67,6 +89,11 @@ export default function SavedTrips() {
           </article>
         ))}
       </div>
+      {page?.hasMore && (
+        <button className="btn btn-ghost btn-sm" type="button" disabled={loadingMore} onClick={loadMore}>
+          {loadingMore ? t('common.loading') : t('common.loadMore')}
+        </button>
+      )}
     </div>
   );
 }

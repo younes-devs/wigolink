@@ -121,6 +121,21 @@ export function createMemberMediaUploadService({
     if (data?.mediaType === 'profile') await profileMedia?.removePaths(paths);
   }
 
+  async function cleanupMany(items = []) {
+    const kycPaths = [];
+    const profilePaths = [];
+    for (const data of items) {
+      const target = data?.mediaType === 'kyc' ? kycPaths : profilePaths;
+      for (const upload of data?.uploads || []) {
+        if (upload?.storagePath) target.push(upload.storagePath);
+      }
+    }
+    await Promise.all([
+      kycPaths.length ? kycMedia?.removePaths(kycPaths) : null,
+      profilePaths.length ? profileMedia?.removePaths(profilePaths) : null,
+    ]);
+  }
+
   async function saveReservation({ uploadId, userId, mediaType, uploads }) {
     const data = { userId: String(userId), mediaType, claimed: false, uploads };
     await pool().query(
@@ -165,6 +180,7 @@ export function createMemberMediaUploadService({
     complete,
     cancel,
     cleanupData,
+    cleanupMany,
   };
 }
 

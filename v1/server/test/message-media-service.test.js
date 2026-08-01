@@ -54,6 +54,10 @@ test('message media cree un bucket prive puis stocke et relit une image', async 
             error: null,
           };
         },
+        async remove(paths) {
+          calls.push(['remove', name, paths]);
+          return { data: paths, error: null };
+        },
       };
     },
   };
@@ -101,4 +105,13 @@ test('message media cree un bucket prive puis stocke et relit une image', async 
     mime: 'image/png',
     size: 512,
   });
+  assert.equal(await service.removePaths([
+    stored.storagePath,
+    stored.storagePath,
+    upload.storagePath,
+  ]), 2);
+  assert.deepEqual(calls.at(-1), ['remove', 'media', [
+    stored.storagePath,
+    upload.storagePath,
+  ]]);
 });

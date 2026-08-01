@@ -5,6 +5,7 @@ import {
   relationalOperation,
   relationalOperationReadsEnabled,
 } from '../relational-operations.js';
+import { encodePageCursor } from '../pagination-cursor.js';
 
 const row = {
   transaction: {
@@ -74,6 +75,29 @@ test('operations relationnelles : liste paginee par participant sans secret', as
     'u-1',
     ['released', 'refunded', 'cancelled'],
   ]);
+});
+
+test('operations relationnelles : poursuit avec un curseur stable sans offset', async () => {
+  const calls = [];
+  await listRelationalOperations({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return { rows: [{ ...row, sort_at: 300, sort_id: 'tx-1' }] };
+      },
+    },
+    user: { id: 'u-1' },
+    query: {
+      history: '0',
+      limit: 20,
+      cursor: encodePageCursor({ at: 400, id: 'tx-0' }),
+    },
+    operationCodePublicState: () => ({}),
+  });
+
+  assert.match(calls[0].sql, /tx\.id > \$5/);
+  assert.doesNotMatch(calls[0].sql, /offset \$/i);
+  assert.deepEqual(calls[0].params.slice(2), [false, 400, 'tx-0', 21]);
 });
 
 test('operations relationnelles : detail refuse un tiers et autorise un admin', async () => {

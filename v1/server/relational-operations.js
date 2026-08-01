@@ -1,4 +1,5 @@
 import { transactionParticipantFilter } from './relational-sql.js';
+import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -17,30 +18,64 @@ export async function listRelationalOperations({
 }) {
   const history = query.history === '1';
   const limit = boundedLimit(query.limit);
-  const offset = boundedOffset(query.offset);
-  const params = [user.id, [...CLOSED_STATUSES], limit + 1, offset];
+  const cursor = decodeOperationCursor(query.cursor);
+  const offset = cursor ? 0 : boundedOffset(query.offset);
+  const params = [user.id, [...CLOSED_STATUSES], history];
+  let cursorClause = '';
+  if (cursor) {
+    params.push(cursor.at, cursor.id);
+    const atParam = `$${params.length - 1}`;
+    const idParam = `$${params.length}`;
+    cursorClause = `and (
+      coalesce(
+        nullif(tx.data->>'createdAt', '')::bigint,
+        extract(epoch from tx.created_at) * 1000
+      ) < ${atParam}
+      or (
+        coalesce(
+          nullif(tx.data->>'createdAt', '')::bigint,
+          extract(epoch from tx.created_at) * 1000
+        ) = ${atParam}
+        and tx.id > ${idParam}
+      )
+    )`;
+  }
+  params.push(limit + 1);
+  const limitParam = `$${params.length}`;
+  let offsetClause = '';
+  if (!cursor) {
+    params.push(offset);
+    offsetClause = `offset $${params.length}`;
+  }
   const result = await pool.query(
     `${operationSelect()}
      where ${transactionParticipantFilter('$1')}
-       and ((coalesce(tx.data->>'status', '') = any($2::text[])) = $5)
+       and ((coalesce(tx.data->>'status', '') = any($2::text[])) = $3)
+       ${cursorClause}
      order by coalesce(
        nullif(tx.data->>'createdAt', '')::bigint,
        extract(epoch from tx.created_at) * 1000
-     ) desc
-     limit $3 offset $4`,
-    [...params, history],
+     ) desc, tx.id asc
+     limit ${limitParam} ${offsetClause}`,
+    params,
   );
   const hasMore = result.rows.length > limit;
-  const operations = result.rows.slice(0, limit).map((row) =>
+  const selected = result.rows.slice(0, limit);
+  const operations = selected.map((row) =>
     operationView(row, user, operationCodePublicState, disputeView)
   );
+  const last = selected.at(-1);
   return {
     operations,
     page: {
       limit,
       offset,
       hasMore,
-      nextOffset: hasMore ? offset + limit : null,
+      nextOffset: hasMore && !cursor ? offset + limit : null,
+      nextCursor: hasMore && last ? encodePageCursor({
+        at: Number(last.sort_at || last.transaction?.createdAt || 0),
+        id: String(last.sort_id || last.transaction?.id || ''),
+      }) : null,
     },
   };
 }
@@ -85,6 +120,11 @@ export async function relationalOperation({
 function operationSelect() {
   return `select
        tx.data as transaction,
+       tx.id as sort_id,
+       coalesce(
+         nullif(tx.data->>'createdAt', '')::bigint,
+         extract(epoch from tx.created_at) * 1000
+       ) as sort_at,
        trip.data as trip,
        listing.data as listing,
        dispute.data as dispute,
@@ -218,4 +258,15 @@ function boundedLimit(value) {
 function boundedOffset(value) {
   const numeric = Number(value || 0);
   return Math.max(0, Number.isFinite(numeric) ? Math.floor(numeric) : 0);
+}
+
+function decodeOperationCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
+    && Number.isFinite(Number(cursor.at))
+    && Number(cursor.at) >= 0
+    && typeof cursor.id === 'string'
+    && cursor.id.length > 0
+    && cursor.id.length <= 160
+  ));
 }

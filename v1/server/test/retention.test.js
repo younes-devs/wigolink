@@ -29,12 +29,14 @@ test('retention purge medias abandonnes et donnees temporaires expirees', async 
     getPool: () => pool,
     messageMedia: {
       enabled: true,
-      async remove(path) {
-        removed.push(path);
+      async removePaths(paths) {
+        removed.push(...paths);
       },
     },
     memberMediaUploads: {
-      async cleanupData(data) { memberCleaned.push(data.mediaType); },
+      async cleanupMany(items) {
+        memberCleaned.push(...items.map((data) => data.mediaType));
+      },
     },
   });
 
@@ -73,7 +75,7 @@ test('retention conserve une reservation si la suppression storage echoue', asyn
     }),
     messageMedia: {
       enabled: true,
-      async remove() {
+      async removePaths() {
         throw new Error('storage offline');
       },
     },
@@ -92,4 +94,44 @@ test('retention conserve une reservation si la suppression storage echoue', asyn
     )),
     false,
   );
+});
+
+test('retention draine plusieurs lots d uploads expires en un passage', async () => {
+  const records = [
+    { kind: 'message_upload', id: 'att-1', data: { storagePath: 'one.jpg' } },
+    { kind: 'message_upload', id: 'att-2', data: { storagePath: 'two.jpg' } },
+    { kind: 'message_upload', id: 'att-3', data: { storagePath: 'three.jpg' } },
+  ];
+  const batches = [];
+  const pool = {
+    async query(sql, params = []) {
+      if (sql.includes('select kind, id, data')) {
+        const rows = records.slice(0, params[0]);
+        return { rows, rowCount: rows.length };
+      }
+      if (sql.includes('id = any')) {
+        const removed = new Set(params[0]);
+        for (let index = records.length - 1; index >= 0; index -= 1) {
+          if (removed.has(records[index].id)) records.splice(index, 1);
+        }
+        return { rowCount: removed.size, rows: [] };
+      }
+      return { rowCount: 0, rows: [] };
+    },
+  };
+  const retention = createRetentionService({
+    getPool: () => pool,
+    limit: 2,
+    messageMedia: {
+      enabled: true,
+      async removePaths(paths) { batches.push(paths); },
+    },
+  });
+
+  const result = await retention.run();
+
+  assert.deepEqual(batches, [['one.jpg', 'two.jpg'], ['three.jpg']]);
+  assert.equal(result.expiredUploads, 3);
+  assert.equal(result.hasMoreUploads, false);
+  assert.equal(records.length, 0);
 });
