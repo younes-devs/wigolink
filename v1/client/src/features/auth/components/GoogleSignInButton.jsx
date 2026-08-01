@@ -61,7 +61,7 @@ export default function GoogleSignInButton({
         containerRef.current.replaceChildren();
         google.accounts.id.renderButton(containerRef.current, {
           type: 'standard',
-          theme: 'filled_black',
+          theme: 'filled_blue',
           size: 'large',
           shape: 'rectangular',
           text: mode === 'register' ? 'signup_with' : 'continue_with',
