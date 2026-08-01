@@ -55,6 +55,43 @@ test('feed relationnel : utilise filtres indexes et pagination bornee', async ()
   assert.ok(calls[0].params.includes('ma-2540483'));
 });
 
+test('feed relationnel : poursuit avec un curseur sans parcourir les lignes precedentes', async () => {
+  const rows = [
+    {
+      trip: { id: 't-1', travelerId: 'u-2', from: 'Oujda', to: 'Paris', date: '2026-08-01' },
+      traveler: { id: 'u-2', name: 'A', kycStatus: 'verified' },
+      sort_id: 't-1', sort_date: '2026-08-01', sort_created_at: new Date('2026-07-02T10:00:00Z'),
+    },
+    {
+      trip: { id: 't-2', travelerId: 'u-3', from: 'Oujda', to: 'Paris', date: '2026-08-01' },
+      traveler: { id: 'u-3', name: 'B', kycStatus: 'verified' },
+      sort_id: 't-2', sort_date: '2026-08-01', sort_created_at: new Date('2026-07-01T10:00:00Z'),
+    },
+    {
+      trip: { id: 't-3', travelerId: 'u-4', from: 'Oujda', to: 'Paris', date: '2026-08-02' },
+      traveler: { id: 'u-4', name: 'C', kycStatus: 'verified' },
+      sort_id: 't-3', sort_date: '2026-08-02', sort_created_at: new Date('2026-07-03T10:00:00Z'),
+    },
+  ];
+  const first = await listRelationalTrips({
+    pool: { async query() { return { rows }; } },
+    user: { id: 'u-1' }, query: { limit: 2 }, today: '2026-07-17',
+  });
+  assert.equal(first.trips.length, 2);
+  assert.equal(first.page.hasMore, true);
+  assert.ok(first.page.nextCursor);
+
+  const calls = [];
+  await listRelationalTrips({
+    pool: { async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } },
+    user: { id: 'u-1' }, query: { limit: 2, cursor: first.page.nextCursor }, today: '2026-07-17',
+  });
+  assert.match(calls[0].sql, /t\.created_at < .*timestamptz/);
+  assert.match(calls[0].sql, /t\.id >/);
+  assert.doesNotMatch(calls[0].sql, /offset \$/i);
+  assert.ok(calls[0].params.includes('t-2'));
+});
+
 test('feed relationnel : detail charge trajet, favori et operations sans document global', async () => {
   const calls = [];
   const result = await relationalTrip({

@@ -118,7 +118,10 @@ export default function MessagesSimple() {
     if (!page?.hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
-      const data = await api(`/conversations?includeArchived=1&limit=40&offset=${page.nextOffset}`);
+      const paging = page.nextCursor
+        ? `cursor=${encodeURIComponent(page.nextCursor)}`
+        : `offset=${page.nextOffset}`;
+      const data = await api(`/conversations?includeArchived=1&limit=40&${paging}`);
       const incoming = data.conversations || [];
       setConversations((current) => {
         const seen = new Set((current || []).map((item) => item.id));

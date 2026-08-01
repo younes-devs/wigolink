@@ -106,7 +106,8 @@ export default function TripFeedSimple() {
     setLoadingMore(kind);
     try {
       const params = new URLSearchParams(query);
-      params.set('offset', String(page.nextOffset));
+      if (page.nextCursor) params.set('cursor', page.nextCursor);
+      else params.set('offset', String(page.nextOffset));
       params.set('limit', String(page.limit));
       if (kind === 'trips') params.set('excludeMine', '1');
       const endpoint = kind === 'myTrips' ? '/trips/mine' : '/trips';

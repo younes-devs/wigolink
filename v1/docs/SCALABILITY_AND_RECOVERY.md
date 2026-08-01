@@ -12,6 +12,8 @@ charge ni une restauration reelle.
 - Les images de messagerie sont envoyees directement vers Storage par URL signee.
 - Les fils de messages, boites de reception et listes de trajets sont pagines et
   ne chargent jamais l'historique complet dans une seule reponse.
+- Les pages suivantes des trajets et conversations utilisent un curseur de tri
+  stable; leur cout ne grandit pas avec le numero de page.
 - Les corps JSON sont limites a 1 Mo, avec une exception KYC bornee a 3 Mo pour
   ses trois captures compressees.
 - Le pool PostgreSQL est borne par instance Vercel.

@@ -1,3 +1,5 @@
+import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
+
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 200;
 
@@ -13,7 +15,8 @@ export async function listRelationalConversations({
   memberStateEnabled = false,
 }) {
   const limit = boundedLimit(query.limit);
-  const offset = boundedOffset(query.offset);
+  const cursor = decodeConversationCursor(query.cursor);
+  const offset = cursor ? 0 : boundedOffset(query.offset);
   const memberSelect = memberStateEnabled
     ? `, member.archived as member_archived,
        member.pinned as member_pinned,
@@ -31,8 +34,30 @@ export async function listRelationalConversations({
     ? 'where not member.deleted'
     : `where c.data->'participantIds' ? $1
        and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
+  const params = [user.id];
+  let cursorClause = '';
+  if (cursor) {
+    params.push(cursor.at, cursor.id);
+    const atParam = `$${params.length - 1}`;
+    const idParam = `$${params.length}`;
+    cursorClause = `and (
+      coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) < ${atParam}
+      or (
+        coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) = ${atParam}
+        and c.id > ${idParam}
+      )
+    )`;
+  }
+  params.push(limit + 1);
+  const limitParam = `$${params.length}`;
+  let offsetClause = '';
+  if (!cursor) {
+    params.push(offset);
+    offsetClause = `offset $${params.length}`;
+  }
   const result = await pool.query(
     `select c.data as conversation, other.data as other, trip.data as trip, operation.data as operation,
+       coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) as sort_at,
        last_message.data as last_message,
        coalesce(unread.count, 0)::int as unread_count
        ${memberSelect}
@@ -60,15 +85,29 @@ export async function listRelationalConversations({
          ${unreadFilter}
      ) unread on true
      ${membershipFilter}
-     order by coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) desc
-     limit $2 offset $3`,
-    [user.id, limit, offset]
+     ${cursorClause}
+     order by coalesce((c.data->>'lastMessageAt')::bigint, extract(epoch from c.created_at) * 1000) desc,
+       c.id asc
+     limit ${limitParam} ${offsetClause}`,
+    params,
   );
-  let conversations = result.rows.map((row) => conversationView(row, user, today));
+  const hasMore = result.rows.length > limit;
+  const selected = result.rows.slice(0, limit);
+  let conversations = selected.map((row) => conversationView(row, user, today));
   conversations = applyConversationFilters(conversations, query);
+  const last = selected.at(-1);
   return {
     conversations,
-    page: { limit, offset, hasMore: result.rows.length === limit, nextOffset: result.rows.length === limit ? offset + limit : null },
+    page: {
+      limit,
+      offset,
+      hasMore,
+      nextOffset: hasMore && !cursor ? offset + limit : null,
+      nextCursor: hasMore && last ? encodePageCursor({
+        at: Number(last.sort_at || last.conversation?.lastMessageAt || last.conversation?.createdAt || 0),
+        id: String(last.conversation?.id || ''),
+      }) : null,
+    },
   };
 }
 
@@ -393,6 +432,17 @@ function boundedLimit(value) {
 function boundedOffset(value) {
   const number = Number(value || 0);
   return Math.max(0, Number.isFinite(number) ? Math.floor(number) : 0);
+}
+
+function decodeConversationCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
+    && Number.isFinite(cursor.at)
+    && cursor.at > 0
+    && typeof cursor.id === 'string'
+    && cursor.id.length > 0
+    && cursor.id.length <= 120
+  ));
 }
 
 function positiveTimestamp(value) {

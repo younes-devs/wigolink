@@ -33,6 +33,29 @@ test('messagerie relationnelle : lit les conversations par participant et retour
   assert.ok(calls[0].params.includes('u-1'));
 });
 
+test('messagerie relationnelle : poursuit la boite avec un curseur stable', async () => {
+  const rows = [
+    { ...row, conversation: { ...row.conversation, id: 'conv-1' }, sort_at: 300 },
+    { ...row, conversation: { ...row.conversation, id: 'conv-2' }, sort_at: 200 },
+    { ...row, conversation: { ...row.conversation, id: 'conv-3' }, sort_at: 100 },
+  ];
+  const first = await listRelationalConversations({
+    pool: { async query() { return { rows }; } },
+    user: { id: 'u-1' }, query: { limit: 2 }, today: '2026-07-17',
+  });
+  assert.equal(first.conversations.length, 2);
+  assert.ok(first.page.nextCursor);
+
+  const calls = [];
+  await listRelationalConversations({
+    pool: { async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } },
+    user: { id: 'u-1' }, query: { limit: 2, cursor: first.page.nextCursor }, today: '2026-07-17',
+  });
+  assert.match(calls[0].sql, /c\.id >/);
+  assert.doesNotMatch(calls[0].sql, /offset \$/i);
+  assert.deepEqual(calls[0].params.slice(0, 3), ['u-1', 200, 'conv-2']);
+});
+
 test('messagerie relationnelle : charge une page de messages sans le document global', async () => {
   const calls = [];
   const pool = {

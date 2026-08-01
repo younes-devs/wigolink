@@ -2,6 +2,7 @@ import {
   locationQueryTerms,
   suggestLocations,
 } from './location-search.js';
+import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
 
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 100;
@@ -148,35 +149,71 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
   }
 
   const limit = boundedLimit(query.limit);
-  const offset = boundedOffset(query.offset);
-  params.push(user.id, limit + 1, offset);
-  const userParam = `$${params.length - 2}`;
-  const limitParam = `$${params.length - 1}`;
-  const offsetParam = `$${params.length}`;
+  const cursor = decodeTripCursor(query.cursor);
+  const offset = cursor ? 0 : boundedOffset(query.offset);
+  if (cursor) {
+    params.push(cursor.date, cursor.createdAt, cursor.id);
+    const dateParam = `$${params.length - 2}`;
+    const createdParam = `$${params.length - 1}`;
+    const idParam = `$${params.length}`;
+    where.push(`(
+      coalesce(t.data->>'departureDate', t.data->>'date') > ${dateParam}
+      or (
+        coalesce(t.data->>'departureDate', t.data->>'date') = ${dateParam}
+        and (
+          t.created_at < ${createdParam}::timestamptz
+          or (t.created_at = ${createdParam}::timestamptz and t.id > ${idParam})
+        )
+      )
+    )`);
+  }
+  params.push(user.id);
+  const userParam = `$${params.length}`;
+  params.push(limit + 1);
+  const limitParam = `$${params.length}`;
+  let offsetClause = '';
+  if (!cursor) {
+    params.push(offset);
+    offsetClause = `offset $${params.length}`;
+  }
   const activeOperationSql = mine
     ? `, (select count(*)::int from public.wigofly_transactions tx
           where tx.data->>'tripId' = t.id
             and coalesce(tx.data->>'status', '') not in ('released', 'refunded', 'cancelled')) as active_operations`
     : '';
   const result = await pool.query(
-    `select t.data as trip, u.data as traveler,
+    `select t.data as trip, u.data as traveler, t.id as sort_id,
+       coalesce(t.data->>'departureDate', t.data->>'date') as sort_date,
+       t.created_at as sort_created_at,
        exists(select 1 from public.wigofly_saved_trips s
          where s.data->>'userId' = ${userParam} and s.data->>'tripId' = t.id) as saved
        ${activeOperationSql}
      from public.wigofly_trips t
      join public.wigofly_users u on u.id = t.data->>'travelerId'
      where ${where.join(' and ')}
-     order by coalesce(t.data->>'departureDate', t.data->>'date') asc, t.created_at desc
-     limit ${limitParam} offset ${offsetParam}`,
+     order by coalesce(t.data->>'departureDate', t.data->>'date') asc,
+       t.created_at desc, t.id asc
+     limit ${limitParam} ${offsetClause}`,
     params
   );
   const hasMore = result.rows.length > limit;
-  const trips = result.rows
-    .slice(0, limit)
+  const selected = result.rows.slice(0, limit);
+  const trips = selected
     .map((row) => tripView(row.trip, row.traveler, row.saved, row.active_operations));
+  const last = selected.at(-1);
   return {
     trips,
-    page: { limit, offset, hasMore, nextOffset: hasMore ? offset + limit : null },
+    page: {
+      limit,
+      offset,
+      hasMore,
+      nextOffset: hasMore && !cursor ? offset + limit : null,
+      nextCursor: hasMore && last ? encodePageCursor({
+        date: last.sort_date || last.trip?.departureDate || last.trip?.date,
+        createdAt: timestampCursorValue(last.sort_created_at, last.trip),
+        id: last.sort_id || last.trip?.id,
+      }) : null,
+    },
   };
 }
 
@@ -342,6 +379,22 @@ function boundedLimit(value) {
 function boundedOffset(value) {
   const number = Number(value || 0);
   return Math.max(0, Number.isFinite(number) ? Math.floor(number) : 0);
+}
+
+function decodeTripCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
+    && /^\d{4}-\d{2}-\d{2}$/.test(cursor.date)
+    && Number.isFinite(Date.parse(cursor.createdAt))
+    && typeof cursor.id === 'string'
+    && cursor.id.length > 0
+    && cursor.id.length <= 120
+  ));
+}
+
+function timestampCursorValue(value, trip) {
+  const parsed = value instanceof Date ? value : new Date(value || entityTimestamp(trip));
+  return parsed.toISOString();
 }
 
 function entityTimestamp(entity) {
