@@ -337,7 +337,10 @@ test('audit admin transmet la limite au dépôt', async () => {
 
   assert.deepEqual(
     await service.auditLogs({ limit: '1' }),
-    { logs: [{ id: 'one' }] },
+    {
+      logs: [{ id: 'one' }],
+      page: { hasMore: false, nextCursor: null },
+    },
   );
 });
 
@@ -353,7 +356,10 @@ test('audit admin prefere la lecture relationnelle bornee', async () => {
 
   assert.deepEqual(
     await service.auditLogs({ limit: '25' }),
-    { logs: [{ id: 'relational' }] },
+    {
+      logs: [{ id: 'relational' }],
+      page: { hasMore: false, nextCursor: null },
+    },
   );
   assert.deepEqual(calls, ['25']);
 });

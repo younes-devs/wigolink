@@ -11,6 +11,7 @@ const PROFILES = Object.freeze({
     conversations: 2_000,
     messages: 50_000,
     savedTrips: 5_000,
+    auditLogs: 10_000,
   },
   medium: {
     users: 10_000,
@@ -19,6 +20,7 @@ const PROFILES = Object.freeze({
     conversations: 20_000,
     messages: 500_000,
     savedTrips: 50_000,
+    auditLogs: 100_000,
   },
   large: {
     users: 50_000,
@@ -27,6 +29,7 @@ const PROFILES = Object.freeze({
     conversations: 100_000,
     messages: 2_000_000,
     savedTrips: 250_000,
+    auditLogs: 500_000,
   },
 });
 
@@ -288,10 +291,32 @@ async function seedFixture(client, { runId, profile }) {
      from generate_series(1, $2::int) item`,
     [runId, profile.savedTrips],
   );
+
+  await client.query(
+    `insert into public.audit_logs
+       (actor_id, action, target_type, target_id, meta, at)
+     select
+       $1 || '-u-' || (((item - 1) % $3::int) + 1),
+       case when item % 2 = 0 then 'trip.update' else 'profile.update' end,
+       case when item % 2 = 0 then 'trip' else 'user' end,
+       case when item % 2 = 0
+         then $1 || '-t-' || (((item - 1) % $4::int) + 1)
+         else $1 || '-u-' || (((item - 1) % $3::int) + 1)
+       end,
+       jsonb_build_object('fixtureRun', $1, 'sequence', item),
+       now() - item * interval '1 second'
+     from generate_series(1, $2::int) item`,
+    [runId, profile.auditLogs, profile.users, profile.trips],
+  );
 }
 
 async function cleanupFixture(client, runId) {
   const counts = {};
+  counts.auditLogs = await deleteRows(
+    client,
+    `delete from public.audit_logs where meta->>'fixtureRun' = $1`,
+    runId,
+  );
   counts.messages = await deleteRows(
     client,
     `delete from public.messages where data->>'fixtureRun' = $1`,
@@ -335,6 +360,7 @@ async function analyzeFixture(client) {
     'wigofly_conversations',
     'wigofly_conversation_members',
     'messages',
+    'audit_logs',
   ]) {
     await client.query(`analyze public.${table}`);
   }

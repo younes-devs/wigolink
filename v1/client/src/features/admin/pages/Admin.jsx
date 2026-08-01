@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonList, SkeletonStatGrid } from '../../../Skeleton.jsx';
@@ -33,6 +33,7 @@ export default function Admin() {
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [team, setTeam] = useState(null);
+  const teamRequest = useRef(0);
   const [safety, setSafety] = useState(null);
   const toast = useToast();
 
@@ -45,8 +46,21 @@ export default function Admin() {
   const loadFraud = useCallback(() => {
     api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
   }, []);
-  const loadTeam = useCallback(() => {
-    api('/admin/users').then(setTeam).catch(() => setTeam({ users: [], adminCount: 0 }));
+  const loadTeam = useCallback(({ q = '', cursor = '', append = false } = {}) => {
+    const requestId = ++teamRequest.current;
+    const params = new URLSearchParams({ limit: '50' });
+    if (q.trim()) params.set('q', q.trim());
+    if (cursor) params.set('cursor', cursor);
+    return api(`/admin/users?${params}`).then((next) => {
+      if (requestId !== teamRequest.current) return next;
+      setTeam((current) => append && current
+        ? { ...next, users: [...current.users, ...next.users] }
+        : next);
+      return next;
+    }).catch(() => {
+      if (requestId !== teamRequest.current) return;
+      if (!append) setTeam({ users: [], adminCount: 0, page: { hasMore: false, nextCursor: null } });
+    });
   }, []);
   const loadSafety = useCallback(() => {
     api('/admin/safety').then(setSafety).catch(() => setSafety({ riskyUsers: [], appeals: [] }));
@@ -171,7 +185,7 @@ export default function Admin() {
       {tab === 'kyc' && <KycPanel />}
       {tab === 'fraud' && <FraudPanel data={fraud} error={fraudError} reload={loadFraud} />}
       {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
-      {tab === 'members' && <MembersPanel data={team} />}
+      {tab === 'members' && <MembersPanel data={team} reload={loadTeam} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
     </div>
   );

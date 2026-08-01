@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../../api';
 import { ConfirmDialog } from '../../../components.jsx';
 import { SkeletonList } from '../../../Skeleton.jsx';
@@ -8,15 +8,23 @@ import { dateLocale, t } from '../../../i18n.js';
 export function AccessPanel({ data, reload }) {
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const toast = useToast();
-  const users = (data?.users || []).filter((user) => `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const users = data?.users || [];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void reload({ q: query });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, reload]);
 
   const apply = async () => {
     if (!pending) return;
     try {
       await api(`/admin/users/${pending.user.id}/role`, { method: 'POST', body: { role: pending.role } });
       toast.success(t(pending.role === 'admin' ? 'admin.access.granted' : 'admin.access.removed'));
-      reload();
+      reload({ q: query });
     } catch (error) {
       toast.error(error.message || t('admin.access.failed'));
     }
@@ -42,6 +50,19 @@ export function AccessPanel({ data, reload }) {
         ))}
         {data && users.length === 0 && <p className="muted center">{t('admin.members.none')}</p>}
       </div>
+      {data?.page?.hasMore && <button
+        type="button"
+        className="btn btn-ghost btn-sm mt"
+        disabled={loadingMore}
+        onClick={async () => {
+          setLoadingMore(true);
+          try {
+            await reload({ q: query, cursor: data.page.nextCursor, append: true });
+          } finally {
+            setLoadingMore(false);
+          }
+        }}
+      >{loadingMore ? t('common.loading') : t('common.loadMore')}</button>}
       {pending && <ConfirmDialog
         title={t(pending.role === 'admin' ? 'admin.access.confirmGrant' : 'admin.access.confirmRemove')}
         message={t(pending.role === 'admin' ? 'admin.access.grantMessage' : 'admin.access.removeMessage', { name: pending.user.name })}

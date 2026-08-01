@@ -165,9 +165,10 @@ npm run fixture:scalability -- --profile=medium --run-id=release-20260729
 ```
 
 Le profil `medium` cree 10 000 membres, 100 000 trajets, 50 000 operations,
-20 000 conversations, 500 000 messages et 50 000 favoris. Une partie des
-conversations, operations et favoris est volontairement concentree sur un
-compte afin de mesurer le pire cas d'un membre avec un gros historique.
+20 000 conversations, 500 000 messages, 50 000 favoris et 100 000 evenements
+d'audit. Une partie des conversations, operations et favoris est volontairement
+concentree sur un compte afin de mesurer le pire cas d'un membre avec un gros
+historique.
 `small` sert aux verifications rapides; `large` exige une base de staging
 dimensionnee.
 
@@ -190,9 +191,9 @@ npm run explain:scalability -- --run-id=release-20260729
 
 Le rapport contient la latence PostgreSQL, les types de noeuds du plan et les
 scans sequentiels suspects. Il mesure aussi les pages suivantes par curseur des
-conversations, messages, operations et favoris. La commande echoue si une
-requete depasse le seuil; elle doit etre verte avant une campagne HTTP
-authentifiee sur le staging.
+conversations, messages, operations, favoris, membres admin et journaux
+d'audit. La commande echoue si une requete depasse le seuil; elle doit etre
+verte avant une campagne HTTP authentifiee sur le staging.
 
 ## Sauvegardes
 

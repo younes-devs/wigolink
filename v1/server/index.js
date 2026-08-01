@@ -1212,7 +1212,8 @@ const adminRecordService = createAdminRecordService({
     ? (query) => relationalAdminUsers({
       pool: databasePool(),
       q: query.q,
-      limit: 100,
+      limit: query.limit,
+      cursor: query.cursor,
     })
     : null,
   loadUser: relationalAdminMembersEnabled()
@@ -1234,9 +1235,10 @@ const adminRecordService = createAdminRecordService({
   kycMedia,
   auditLogsRepository: repositories.auditLogs,
   loadAuditLogs: usesDatabase()
-    ? ({ limit }) => relationalAuditLogs({
+    ? ({ limit, cursor }) => relationalAuditLogs({
       pool: databasePool(),
       limit,
+      cursor,
     })
     : null,
   messageSafetyWindowMs: MESSAGE_SAFETY_ATTEMPT_WINDOW_MS,

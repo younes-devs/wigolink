@@ -8,10 +8,17 @@ import {
 } from './adminPanelUtils.js';
 import { AdminKycDocument } from './AdminKycDocument.jsx';
 
-export function MembersPanel({ data }) {
+export function MembersPanel({ data, reload }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
-  const users = (data?.users || []).filter((user) => `${user.name} ${user.email} ${user.city}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const [loadingMore, setLoadingMore] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void reload({ q: query });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, reload]);
+  const users = data?.users || [];
   const deletedCount = users.filter((user) => user.deletedAt).length;
   if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
   return <section className="card">
@@ -29,6 +36,23 @@ export function MembersPanel({ data }) {
       </button>)}
       {data && users.length === 0 && <p className="muted center">{t('admin.members.none')}</p>}
     </div>
+    {data?.page?.hasMore && <button
+      type="button"
+      className="btn btn-ghost btn-sm mt"
+      disabled={loadingMore}
+      onClick={async () => {
+        setLoadingMore(true);
+        try {
+          await reload({
+            q: query,
+            cursor: data.page.nextCursor,
+            append: true,
+          });
+        } finally {
+          setLoadingMore(false);
+        }
+      }}
+    >{loadingMore ? t('common.loading') : t('common.loadMore')}</button>}
   </section>;
 }
 

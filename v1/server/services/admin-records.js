@@ -65,6 +65,11 @@ export function createAdminRecordService({
       return {
         users: result.users.map(userView),
         adminCount: result.adminCount,
+        page: result.page || {
+          limit: result.users.length,
+          hasMore: false,
+          nextCursor: null,
+        },
       };
     }
     const needle = String(query.q || '').trim().toLowerCase();
@@ -88,6 +93,11 @@ export function createAdminRecordService({
       adminCount: db.users.filter(
         (user) => user.isAdmin && !user.deletedAt,
       ).length,
+      page: {
+        limit: members.length,
+        hasMore: false,
+        nextCursor: null,
+      },
     };
   }
 
@@ -308,10 +318,18 @@ export function createAdminRecordService({
   }
 
   async function auditLogs(query = {}) {
+    if (loadAuditLogs) {
+      const result = await loadAuditLogs({
+        limit: query.limit,
+        cursor: query.cursor,
+      });
+      return Array.isArray(result)
+        ? { logs: result, page: { hasMore: false, nextCursor: null } }
+        : result;
+    }
     return {
-      logs: loadAuditLogs
-        ? await loadAuditLogs({ limit: query.limit })
-        : await auditLogsRepository.list({ limit: query.limit }),
+      logs: await auditLogsRepository.list({ limit: query.limit }),
+      page: { hasMore: false, nextCursor: null },
     };
   }
 

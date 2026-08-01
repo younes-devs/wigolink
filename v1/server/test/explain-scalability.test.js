@@ -44,6 +44,8 @@ test('scenarios de charge couvrent les pages profondes sans offset', () => {
   assert.ok(names.includes('message-page-next'));
   assert.ok(names.includes('operations-member-next'));
   assert.ok(names.includes('saved-trips-member-next'));
+  assert.ok(names.includes('audit-latest-next'));
+  assert.ok(names.includes('admin-members-next'));
   for (const scenario of scenarios.filter(({ name }) => name.endsWith('-next'))) {
     assert.doesNotMatch(scenario.sql, /\boffset\b/i);
   }

@@ -46,6 +46,7 @@ test('jeu de charge expose des profils bornes et un nettoyage cible', () => {
   assert.equal(config.profile.users, 10_000);
   assert.equal(config.profile.messages, 500_000);
   assert.equal(config.profile.savedTrips, 50_000);
+  assert.equal(config.profile.auditLogs, 100_000);
   assert.equal(config.runId, 'release-20260729');
   assert.equal(config.cleanup, true);
 });

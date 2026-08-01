@@ -1,15 +1,26 @@
+import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
+
 const DEFAULT_LIMIT = 80;
 const MAX_LIMIT = 200;
 
 export async function relationalAuditLogs({
   pool,
   limit = DEFAULT_LIMIT,
+  cursor = null,
 } = {}) {
   requirePool(pool);
   const bounded = Math.max(
     1,
     Math.min(MAX_LIMIT, Number(limit) || DEFAULT_LIMIT),
   );
+  const pageCursor = decodeAuditCursor(cursor);
+  const params = [];
+  let cursorClause = '';
+  if (pageCursor) {
+    params.push(new Date(pageCursor.at), pageCursor.id);
+    cursorClause = 'where (log.at, log.id) < ($1, $2::bigint)';
+  }
+  params.push(bounded + 1);
   const result = await pool.query(
     `select
        log.id,
@@ -22,11 +33,25 @@ export async function relationalAuditLogs({
        member.data as actor
      from public.audit_logs log
      left join public.wigofly_users member on member.id = log.actor_id
-     order by log.at desc
-     limit $1`,
-    [bounded],
+     ${cursorClause}
+     order by log.at desc, log.id desc
+     limit $${params.length}`,
+    params,
   );
-  return result.rows.map(fromRow);
+  const hasMore = result.rows.length > bounded;
+  const selected = result.rows.slice(0, bounded);
+  const last = selected.at(-1);
+  return {
+    logs: selected.map(fromRow),
+    page: {
+      limit: bounded,
+      hasMore,
+      nextCursor: hasMore && last ? encodePageCursor({
+        at: last.at instanceof Date ? last.at.getTime() : new Date(last.at).getTime(),
+        id: String(last.id),
+      }) : null,
+    },
+  };
 }
 
 function fromRow(row) {
@@ -67,4 +92,13 @@ function requirePool(pool) {
   if (!pool || typeof pool.query !== 'function') {
     throw new Error('Un pool Postgres est requis.');
   }
+}
+
+function decodeAuditCursor(value) {
+  return decodePageCursor(value, (cursor) => (
+    cursor
+    && Number.isFinite(Number(cursor.at))
+    && Number(cursor.at) > 0
+    && /^\d+$/.test(String(cursor.id || ''))
+  ));
 }

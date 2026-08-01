@@ -93,6 +93,12 @@ create index if not exists wigofly_users_admin_created_idx
     (coalesce((data->>'isAdmin')::boolean, false)),
     (coalesce((data->>'createdAt')::bigint, 0)) desc
   );
+create index if not exists wigofly_users_admin_history_idx
+  on public.wigofly_users (
+    (case when coalesce((data->>'isAdmin')::boolean, false) then 0 else 1 end),
+    (coalesce((data->>'createdAt')::bigint, 0)) desc,
+    id asc
+  );
 create index if not exists wigofly_users_search_trgm_idx
   on public.wigofly_users using gin (
     (lower(

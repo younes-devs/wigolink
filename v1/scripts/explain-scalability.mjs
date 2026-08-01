@@ -217,6 +217,39 @@ export function scalabilityScenarios({ runId, now = Date.now() }) {
         order by log.at desc
         limit 200`,
     },
+    {
+      name: 'audit-latest-next',
+      params: [cursorTime, 9_223_372_036_854_775_807n],
+      sql: `select log.id, member.data
+        from public.audit_logs log
+        left join public.wigofly_users member on member.id = log.actor_id
+        where (log.at, log.id) < ($1::timestamptz, $2::bigint)
+        order by log.at desc, log.id desc
+        limit 201`,
+    },
+    {
+      name: 'admin-members-next',
+      params: [0, now, `${runId}-u-0`],
+      sql: `select member.id
+        from public.wigofly_users member
+        where (
+          case when coalesce((member.data->>'isAdmin')::boolean, false) then 0 else 1 end > $1
+          or (
+            case when coalesce((member.data->>'isAdmin')::boolean, false) then 0 else 1 end = $1
+            and coalesce((member.data->>'createdAt')::bigint, 0) < $2
+          )
+          or (
+            case when coalesce((member.data->>'isAdmin')::boolean, false) then 0 else 1 end = $1
+            and coalesce((member.data->>'createdAt')::bigint, 0) = $2
+            and member.id > $3
+          )
+        )
+        order by
+          case when coalesce((member.data->>'isAdmin')::boolean, false) then 0 else 1 end,
+          coalesce((member.data->>'createdAt')::bigint, 0) desc,
+          member.id asc
+        limit 51`,
+    },
   ];
 }
 
