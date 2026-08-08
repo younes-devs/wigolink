@@ -63,8 +63,15 @@ function scrollSessionKey(location) {
 
 function readSessionScroll(key) {
   try {
-    const value = Number(sessionStorage.getItem(key));
-    return Number.isFinite(value) ? value : undefined;
+    const raw = sessionStorage.getItem(key);
+    if (raw === null) return undefined;
+    const value = JSON.parse(raw);
+    if (Number.isFinite(value)) return { window: value, content: 0 };
+    if (!value || typeof value !== 'object') return undefined;
+    return {
+      window: Number.isFinite(value.window) ? value.window : 0,
+      content: Number.isFinite(value.content) ? value.content : 0,
+    };
   } catch {
     return undefined;
   }
@@ -72,7 +79,10 @@ function readSessionScroll(key) {
 
 function writeSessionScroll(key, value) {
   try {
-    sessionStorage.setItem(key, String(Math.max(0, Math.round(value))));
+    sessionStorage.setItem(key, JSON.stringify({
+      window: Math.max(0, Math.round(value.window)),
+      content: Math.max(0, Math.round(value.content)),
+    }));
   } catch {
     // In-memory history restoration remains available when storage is blocked.
   }
@@ -82,29 +92,38 @@ function writeSessionScroll(key, value) {
 function RouteScrollRestoration() {
   const location = useLocation();
   const navigationType = useNavigationType();
-  const initialRoute = useRef(true);
+  const initialLocationKey = useRef(location.key);
+
+  useEffect(() => {
+    if (!('scrollRestoration' in window.history)) return undefined;
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => { window.history.scrollRestoration = previous; };
+  }, []);
 
   useLayoutEffect(() => {
-    const scroller = document.querySelector('.content');
-    if (!scroller) return undefined;
+    const contentScroller = document.querySelector('.content');
+    if (!contentScroller) return undefined;
 
     const sessionKey = scrollSessionKey(location);
-    const isInitialRoute = initialRoute.current;
-    initialRoute.current = false;
-    const isReload = isInitialRoute
+    const isReload = location.key === initialLocationKey.current
       && performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
-    const savedPosition = navigationType === 'POP'
+    const savedPosition = navigationType === 'POP' || isReload
       ? (routeScrollPositions.get(location.key)
         ?? (isReload ? readSessionScroll(sessionKey) : undefined))
       : undefined;
-    let restoring = Number(savedPosition) > 0;
+    let restoring = Number(savedPosition?.window) > 0 || Number(savedPosition?.content) > 0;
     let writeFrame = 0;
     let restoreFrame = 0;
     let restoreTimer;
 
     const persistPosition = () => {
-      routeScrollPositions.set(location.key, scroller.scrollTop);
-      writeSessionScroll(sessionKey, scroller.scrollTop);
+      const position = {
+        window: window.scrollY || document.scrollingElement?.scrollTop || 0,
+        content: contentScroller.scrollTop,
+      };
+      routeScrollPositions.set(location.key, position);
+      writeSessionScroll(sessionKey, position);
     };
 
     const finishRestoration = () => {
@@ -115,8 +134,13 @@ function RouteScrollRestoration() {
 
     const restorePosition = () => {
       if (!restoring) return;
-      scroller.scrollTo({ top: savedPosition, behavior: 'auto' });
-      if (Math.abs(scroller.scrollTop - savedPosition) <= 1) finishRestoration();
+      window.scrollTo({ top: savedPosition.window, behavior: 'auto' });
+      contentScroller.scrollTo({ top: savedPosition.content, behavior: 'auto' });
+      const windowPosition = window.scrollY || document.scrollingElement?.scrollTop || 0;
+      if (
+        Math.abs(windowPosition - savedPosition.window) <= 1
+        && Math.abs(contentScroller.scrollTop - savedPosition.content) <= 1
+      ) finishRestoration();
     };
 
     const observer = restoring
@@ -127,14 +151,15 @@ function RouteScrollRestoration() {
       : null;
 
     if (restoring) {
-      observer.observe(scroller, { childList: true, subtree: true });
+      observer.observe(contentScroller, { childList: true, subtree: true });
       restorePosition();
       restoreTimer = window.setTimeout(() => {
         finishRestoration();
         persistPosition();
       }, 3_000);
     } else {
-      scroller.scrollTo({ top: savedPosition ?? 0, behavior: 'auto' });
+      window.scrollTo({ top: savedPosition?.window ?? 0, behavior: 'auto' });
+      contentScroller.scrollTo({ top: savedPosition?.content ?? 0, behavior: 'auto' });
     }
 
     const onScroll = () => {
@@ -142,11 +167,13 @@ function RouteScrollRestoration() {
       window.cancelAnimationFrame(writeFrame);
       writeFrame = window.requestAnimationFrame(persistPosition);
     };
-    scroller.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    contentScroller.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('pagehide', persistPosition);
 
     return () => {
-      scroller.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
+      contentScroller.removeEventListener('scroll', onScroll);
       window.removeEventListener('pagehide', persistPosition);
       window.cancelAnimationFrame(writeFrame);
       window.cancelAnimationFrame(restoreFrame);
