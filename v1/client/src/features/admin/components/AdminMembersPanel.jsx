@@ -21,18 +21,22 @@ export function MembersPanel({ data, reload }) {
   const users = data?.users || [];
   const deletedCount = users.filter((user) => user.deletedAt).length;
   if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
-  return <section className="card">
-    <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <div><h2 style={{ margin: 0 }}>{t('admin.members.files')}</h2><p className="muted" style={{ marginBottom: 0 }}>{t('admin.members.filesHelp')}</p></div>
-      <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} style={{ maxWidth: 260 }} />
+  return <section className="card admin-members-card">
+    <div className="admin-members-head">
+      <div><h2>{t('admin.members.files')}</h2><p className="muted">{t('admin.members.filesHelp')}</p></div>
+      <input className="chat-input admin-member-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} aria-label={t('admin.members.search')} />
     </div>
     {data && deletedCount > 0 && <p className="muted" style={{ margin: '12px 0 0' }}>{t(deletedCount > 1 ? 'admin.members.deletedCount.plural' : 'admin.members.deletedCount', { count: deletedCount })}</p>}
     <div className="list-stack" style={{ marginTop: 16 }}>
       {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => setSelectedId(user.id)}>
         <div className="cat-icon"><Icon name="user" size={20} /></div>
-        {user.deletedAt && <span className="pill pill-gray">{t('admin.member.deleted')}</span>}
-        <div className="grow"><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
-        <div className="row"><span className={`pill ${user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{adminStatus(user.kycStatus || 'none')}</span><Icon name="arrowRight" size={17} /></div>
+        <div className="admin-member-identity"><b title={user.name}>{user.name}</b><div className="muted" title={`${user.email}${user.city ? ` - ${user.city}` : ''}`}>{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
+        <div className="admin-member-status">
+          <span className={`pill ${user.deletedAt ? 'pill-gray' : user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>
+            {user.deletedAt ? t('admin.member.deleted') : adminStatus(user.kycStatus || 'none')}
+          </span>
+          <Icon name="arrowRight" size={17} />
+        </div>
       </button>)}
       {data && users.length === 0 && <p className="muted center">{t('admin.members.none')}</p>}
     </div>
