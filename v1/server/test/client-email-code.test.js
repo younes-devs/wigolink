@@ -12,3 +12,8 @@ test('email code insertion supports sequential entry, replacement and paste', ()
   assert.equal(insertEmailCode('123456', 2, '9'), '129456');
   assert.equal(insertEmailCode('', 0, '12 34-56'), '123456');
 });
+
+test('shared code input supports eight-digit handover and delivery codes', () => {
+  assert.equal(normalizeEmailCode('12 34-56-789', 8), '12345678');
+  assert.equal(insertEmailCode('', 0, '12 34 56 78', 8), '12345678');
+});

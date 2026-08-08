@@ -42,7 +42,13 @@ export default function EmailCodeInput({
   return (
     <div className="email-code-field">
       {label && <span className="email-code-label">{label}</span>}
-      <div className={`email-code-inputs ${disabled ? 'is-busy' : ''}`} role="group" aria-label={label} aria-busy={disabled}>
+      <div
+        className={`email-code-inputs ${length > EMAIL_CODE_LENGTH ? 'is-extended' : ''} ${disabled ? 'is-busy' : ''}`}
+        style={{ '--code-length': length, '--code-max-width': `${length * 60}px` }}
+        role="group"
+        aria-label={label}
+        aria-busy={disabled}
+      >
         {Array.from({ length }, (_, index) => (
           <input
             key={index}

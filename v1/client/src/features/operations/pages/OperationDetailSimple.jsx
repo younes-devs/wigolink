@@ -5,6 +5,7 @@ import { useAuth } from '../../../app/authContext.jsx';
 import { Stars, Stepper } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
+import EmailCodeInput from '../../../shared/ui/EmailCodeInput.jsx';
 import { formatDate } from '../../trips/index.js';
 import { STATUS_LABELS } from './OperationsSimple.jsx';
 import { t, useLang } from '../../../i18n.js';
@@ -65,8 +66,8 @@ export default function OperationDetailSimple() {
     }
   };
 
-  const confirmCode = async (stage) => {
-    const data = await run(`confirm-${stage}`, () => api(`/operations/${id}/confirm-${stage}`, { method: 'POST', body: { code } }), stage === 'pickup' ? 'operations.security.pickup.done' : 'operations.security.delivery.done');
+  const confirmCode = async (stage, completedCode = code) => {
+    const data = await run(`confirm-${stage}`, () => api(`/operations/${id}/confirm-${stage}`, { method: 'POST', body: { code: completedCode } }), stage === 'pickup' ? 'operations.security.pickup.done' : 'operations.security.delivery.done');
     if (data) {
       setCode('');
       setRevealedCode(null);
@@ -93,8 +94,6 @@ export default function OperationDetailSimple() {
   const viewerRole = resolveOperationRole(operation, user?.id) || 'sender';
   const viewedOperation = operation.myRole === viewerRole ? operation : { ...operation, myRole: viewerRole };
   const other = viewerRole === 'traveler' ? operation.sender : operation.traveler;
-  const codeReady = code.length === 8;
-
   return (
     <div className="simple-page operation-simple-page">
       <Link to="/en-cours" className="link-btn back-btn"><Icon name="arrowLeft" size={15} />{t('common.back')}</Link>
@@ -120,7 +119,6 @@ export default function OperationDetailSimple() {
           operation={viewedOperation}
           busy={busy}
           code={code}
-          codeReady={codeReady}
           revealedCode={revealedCode}
           onCodeChange={(value) => setCode(value.replace(/\D/g, '').slice(0, 8))}
           onPay={pay}
@@ -183,7 +181,7 @@ function OperationJourney({ operation }) {
   );
 }
 
-function OperationAction({ operation, busy, code, codeReady, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm }) {
+function OperationAction({ operation, busy, code, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm }) {
   const status = operation.operationStatus;
   const role = operation.myRole;
   const stage = status === 'paye' ? 'pickup' : status === 'en_transport' ? 'delivery' : null;
@@ -198,6 +196,6 @@ function OperationAction({ operation, busy, code, codeReady, revealedCode, onCod
   if (!stage) return null;
   if (security?.locked) return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{title}</b><p>{t('operations.security.locked')}</p></div></section>;
   if (security?.canReveal) return <section className="operation-action-card operation-code-card"><div><span>{t('operations.security.title')}</span><h2>{title}</h2>{revealedCode?.stage === stage ? <><output className="operation-code">{revealedCode.value}</output><p>{t(`operations.security.${stage}.share`)}</p></> : <p>{t('operations.security.issued')}</p>}</div><button className="btn btn-primary" onClick={() => onReveal(stage)} disabled={!!busy}>{busy === `reveal-${stage}` ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t(`operations.security.${stage}.get`)}</button></section>;
-  if (security?.canEnter) return <section className="operation-action-card operation-code-card"><div><span>{t('operations.security.title')}</span><h2>{t(`operations.security.${stage}.enter`)}</h2><p>{t(`operations.security.${stage}.enterHint`)}</p></div>{security.issued ? <div className="operation-code-entry"><label className="field"><span>{t('operations.security.codeLabel')}</span><input value={code} onChange={(event) => onCodeChange(event.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8} /></label><button className="btn btn-primary" onClick={() => onConfirm(stage)} disabled={!codeReady || !!busy}>{busy === `confirm-${stage}` ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.security.confirm')}</button></div> : <p className="operation-waiting"><Icon name="clock" size={16} />{t('operations.security.waiting')}</p>}</section>;
+  if (security?.canEnter) return <section className="operation-action-card operation-code-card operation-code-entry-card"><div><span>{t('operations.security.title')}</span><h2>{t(`operations.security.${stage}.enter`)}</h2><p>{t(`operations.security.${stage}.enterHint`)}</p></div>{security.issued ? <div className="operation-code-entry"><EmailCodeInput label={t('operations.security.codeLabel')} value={code} onChange={onCodeChange} onComplete={(completedCode) => onConfirm(stage, completedCode)} disabled={!!busy} length={8} autoFocus={false} />{busy === `confirm-${stage}` && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}</div> : <p className="operation-waiting"><Icon name="clock" size={16} />{t('operations.security.waiting')}</p>}</section>;
   return null;
 }

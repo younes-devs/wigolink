@@ -248,9 +248,9 @@
 .email-code-field { display: grid; gap: 9px; min-width: 0; }
 .email-code-label { color: var(--ink); font-size: 13px; font-weight: 750; }
 .email-code-inputs {
-  width: min(100%, 360px);
+  width: min(100%, var(--code-max-width, 360px));
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 52px));
+  grid-template-columns: repeat(var(--code-length, 6), minmax(0, 52px));
   justify-content: center;
   gap: 8px;
   direction: ltr;
@@ -283,4 +283,5 @@
   .email-code-input,
   .auth-form .email-code-input,
   .account-action-body .email-code-input { height: 46px; font-size: 20px; }
+  .email-code-inputs.is-extended .email-code-input { height: auto; aspect-ratio: 1; }
 }
