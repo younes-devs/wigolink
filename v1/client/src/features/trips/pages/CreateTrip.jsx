@@ -192,7 +192,7 @@ export default function CreateTrip() {
   }
 
   return (
-    <main className="trip-publish-wizard">
+    <main className="trip-publish-wizard trip-publish-editor">
       <header className="wizard-header">
         <button className="wizard-close" type="button" onClick={() => navigate('/trajets')} aria-label={t('common.close')}>
           <Icon name="x" size={19} />
