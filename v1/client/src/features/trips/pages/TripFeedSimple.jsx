@@ -147,7 +147,7 @@ export default function TripFeedSimple() {
   };
 
   return (
-    <div className="simple-page">
+    <div className="simple-page trip-feed-page">
       <div className="simple-hero">
         <div>
           <h1 className="page-title">{t('trips.title')}</h1>
