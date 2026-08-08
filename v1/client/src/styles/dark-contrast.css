@@ -17,6 +17,17 @@
 :root[data-theme="dark"] .card {
   border-color: var(--glass-border);
 }
+:root[data-theme="dark"] .email-code-input {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: var(--surface-soft);
+}
+:root[data-theme="dark"] .email-code-input.is-filled {
+  border-color: rgba(82, 156, 255, 0.78);
+  background: rgba(42, 128, 247, 0.14);
+}
+:root[data-theme="dark"] .email-code-input:focus {
+  border-color: #5ba2ff;
+}
 :root[data-theme="dark"] .pill-gray,
 :root[data-theme="dark"] .chat-presence,
 :root[data-theme="dark"] .chat-day span,
