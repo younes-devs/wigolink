@@ -148,8 +148,12 @@
   background: var(--accent-tint); color: var(--accent);
   display: inline-flex; align-items: center; justify-content: center;
 }
-.settings-row-title { display: block; font-size: 14px; font-weight: 650; color: var(--ink); letter-spacing: -0.1px; }
-.settings-row-sub { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 1px; }
+.settings-row-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 650; color: var(--ink); letter-spacing: -0.1px; }
+.settings-row-sub {
+  display: -webkit-box; overflow: hidden; margin-top: 1px;
+  color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+}
 .settings-chevron { flex: 0 0 auto; color: var(--ink-faint); transform: rotate(-90deg); }
 .settings-page .grow,
 .settings-row .grow,

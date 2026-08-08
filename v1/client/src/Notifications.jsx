@@ -129,7 +129,7 @@ export default function Notifications() {
               <button key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`} onClick={() => go(n)}>
                 <span className="notif-dot" />
                 <span className="grow">
-                  {n.text}
+                  <span className="notif-text">{n.text}</span>
                   <span className="notif-time">{relTime(n.at)}</span>
                 </span>
                 <Icon name="arrowRight" size={16} />

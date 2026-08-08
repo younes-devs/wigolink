@@ -104,7 +104,7 @@
   padding: 10px 11px; border-radius: 12px; background: var(--glass-strong);
 }
 .profile-summary-grid span { font-size: 12px; color: var(--ink-soft); }
-.profile-summary-grid strong { font-size: 13px; text-align: right; }
+.profile-summary-grid strong { min-width: 0; max-width: 65%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; text-align: right; }
 
 /* Notifications */
 .notif-wrap { position: relative; display: inline-flex; }
@@ -182,6 +182,14 @@
 }
 .notif-item:hover { background: rgba(22, 24, 29, 0.04); }
 .notif-item .grow { min-width: 0; }
+.notif-text {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
 .notif-item > .icon { flex: 0 0 auto; color: var(--ink-faint); margin-top: 2px; }
 .notif-item .notif-dot {
   flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%;
