@@ -13,9 +13,9 @@ test('app chrome disparait pendant la verification KYC', () => {
   assert.equal(shouldHideAppChrome('/verification/'), true);
 });
 
-test('app chrome disparait uniquement dans le detail d une operation', () => {
-  assert.equal(shouldHideAppChrome('/operations/tx-42'), true);
-  assert.equal(shouldHideAppChrome('/operations/tx-42/'), true);
+test('le detail operation conserve le chrome monte pour le masquer seulement en mobile', () => {
+  assert.equal(shouldHideAppChrome('/operations/tx-42'), false);
+  assert.equal(shouldHideAppChrome('/operations/tx-42/'), false);
   assert.equal(shouldHideAppChrome('/en-cours'), false);
 });
 
