@@ -8,6 +8,7 @@ import { useToast } from '../../../Toast.jsx';
 import { formatDate } from '../../trips/index.js';
 import { STATUS_LABELS } from './OperationsSimple.jsx';
 import { t, useLang } from '../../../i18n.js';
+import { operationGuideSteps, operationNeedsAction, operationStepIndex } from '../utils/operationGuide.js';
 
 export default function OperationDetailSimple() {
   useLang();
@@ -110,6 +111,8 @@ export default function OperationDetailSimple() {
           <b>{operation.price} {operation.currency || 'EUR'}</b>
         </div>
 
+        <OperationJourney operation={operation} />
+
         <OperationAction
           operation={operation}
           busy={busy}
@@ -155,6 +158,35 @@ export default function OperationDetailSimple() {
   );
 }
 
+function OperationJourney({ operation }) {
+  const steps = operationGuideSteps(operation);
+  const current = operationStepIndex(operation.operationStatus);
+  const role = operation.myRole === 'traveler' ? 'traveler' : 'sender';
+  const statusLabel = operation.operationStatus === 'litige'
+    ? t('operations.status.dispute')
+    : t('operations.guide.step', { current: Math.min(current + 1, steps.length), total: steps.length });
+
+  return (
+    <section className="operation-journey" aria-label={t('operations.progress.aria')}>
+      <div className="operation-journey-head">
+        <div>
+          <span>{t(operationNeedsAction(operation) ? 'operations.guide.action' : 'operations.guide.waiting')}</span>
+          <h2>{t(`operations.guide.${role}.title`)}</h2>
+        </div>
+        <b>{statusLabel}</b>
+      </div>
+      <div className="operation-journey-steps">
+        {steps.map((step, index) => (
+          <div className={`operation-journey-step ${step.state}`} key={step.id} aria-current={step.state === 'current' ? 'step' : undefined}>
+            <span>{step.state === 'done' ? <Icon name="check" size={13} /> : index + 1}</span>
+            <div><b>{t(step.labelKey)}</b><small>{t(step.detailKey)}</small></div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function OperationAction({ operation, busy, code, codeReady, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm }) {
   const status = operation.operationStatus;
   const role = operation.myRole;
@@ -164,8 +196,9 @@ function OperationAction({ operation, busy, code, codeReady, revealedCode, onCod
 
   if (status === 'termine') return <section className="operation-action-card operation-complete"><Icon name="check" size={22} /><div><b>{t('operations.security.delivery.done')}</b><p>{t('operations.complete')}</p></div></section>;
   if (status === 'litige') return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{t('operations.status.dispute')}</b><p>{t('operations.issue.placeholder')}</p></div></section>;
-  if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t('operations.status.awaitingConfirmation')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2></div>{role === 'traveler' && <div className="operation-action-buttons"><button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button><button className="btn btn-ghost" onClick={onReject} disabled={!!busy}>{t('operations.reject')}</button></div>}{role === 'sender' && <button className="btn btn-ghost btn-sm" onClick={onCancel} disabled={!!busy}>{t('common.cancel')}</button>}</section>;
-  if (status === 'paiement_requis') return <section className="operation-action-card"><div><span>{t('operations.payment')}</span><h2>{role === 'sender' ? t('operations.next.pay') : t('operations.next.waitPayment')}</h2></div>{role === 'sender' && <button className="btn btn-primary" onClick={onPay} disabled={!!busy}>{busy === 'pay' ? <span className="spinner" /> : <Icon name="euro" size={17} />}{t('operations.pay')}</button>}</section>;
+  if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t(role === 'traveler' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2><p>{t(role === 'traveler' ? 'operations.awaiting.traveler' : 'operations.next.travelerConfirmation')}</p></div>{role === 'traveler' && <div className="operation-action-buttons"><button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button><button className="btn btn-ghost" onClick={onReject} disabled={!!busy}>{t('operations.reject')}</button></div>}{role === 'sender' && <button className="btn btn-ghost btn-sm" onClick={onCancel} disabled={!!busy}>{t('common.cancel')}</button>}</section>;
+  if (status === 'paiement_requis') return <section className="operation-action-card"><div><span>{t(role === 'sender' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'sender' ? t('operations.next.pay') : t('operations.next.waitPayment')}</h2><p>{t(role === 'sender' ? 'operations.guide.sender.paymentHelp' : 'operations.guide.traveler.paymentHelp')}</p></div>{role === 'sender' && <button className="btn btn-primary" onClick={onPay} disabled={!!busy}>{busy === 'pay' ? <span className="spinner" /> : <Icon name="euro" size={17} />}{t('operations.pay')}</button>}</section>;
+  if (status === 'collecte_prevue' || status === 'livraison_prevue') return <section className="operation-action-card"><div><span>{t('operations.guide.waiting')}</span><h2>{t(STATUS_LABELS[status])}</h2><p>{t(status === 'collecte_prevue' ? 'operations.security.pickup.enterHint' : 'operations.security.delivery.enterHint')}</p></div></section>;
   if (!stage) return null;
   if (security?.locked) return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{title}</b><p>{t('operations.security.locked')}</p></div></section>;
   if (security?.canReveal) return <section className="operation-action-card operation-code-card"><div><span>{t('operations.security.title')}</span><h2>{title}</h2>{revealedCode?.stage === stage ? <><output className="operation-code">{revealedCode.value}</output><p>{t(`operations.security.${stage}.share`)}</p></> : <p>{t('operations.security.issued')}</p>}</div><button className="btn btn-primary" onClick={() => onReveal(stage)} disabled={!!busy}>{busy === `reveal-${stage}` ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t(`operations.security.${stage}.get`)}</button></section>;
