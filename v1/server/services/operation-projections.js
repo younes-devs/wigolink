@@ -35,6 +35,7 @@ export function createOperationProjections({
     const status = view.operationStatus;
     const isTraveler = user?.id === tx.travelerId;
     const isSender = user?.id === tx.senderId;
+    view.myRole = isTraveler ? 'traveler' : isSender ? 'sender' : 'recipient';
     view.security = {
       pickup: {
         ...operationCodePublicState(tx.securityCodes?.pickup),

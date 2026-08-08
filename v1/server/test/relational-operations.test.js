@@ -65,6 +65,7 @@ test('operations relationnelles : liste paginee par participant sans secret', as
 
   assert.equal(result.operations[0].title, 'Oujda -> Bruxelles');
   assert.equal(result.operations[0].sender.name, 'Younes');
+  assert.equal(result.operations[0].myRole, 'sender');
   assert.equal(result.operations[0].security.pickup.issued, true);
   assert.equal(result.operations[0].security.pickup.canEnter, false);
   assert.equal('securityCodes' in result.operations[0], false);
@@ -121,4 +122,12 @@ test('operations relationnelles : detail refuse un tiers et autorise un admin', 
   });
   assert.equal(allowed.status, 200);
   assert.equal(allowed.body.operation.id, 'tx-1');
+
+  const traveler = await relationalOperation({
+    pool,
+    user: { id: 'u-2' },
+    id: 'tx-1',
+    operationCodePublicState: () => ({}),
+  });
+  assert.equal(traveler.body.operation.myRole, 'traveler');
 });

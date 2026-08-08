@@ -197,6 +197,7 @@ function operationView(
   delete view.securityCodes;
   const isTraveler = user?.id === transaction.travelerId;
   const isSender = user?.id === transaction.senderId;
+  view.myRole = isTraveler ? 'traveler' : isSender ? 'sender' : 'recipient';
   view.security = {
     pickup: {
       ...operationCodePublicState(transaction.securityCodes?.pickup),

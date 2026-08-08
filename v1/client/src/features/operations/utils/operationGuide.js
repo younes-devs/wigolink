@@ -47,6 +47,19 @@ export function operationStepIndex(status) {
   return STEP_BY_STATUS[status] ?? 0;
 }
 
+export function resolveOperationRole(operation, userId) {
+  if (operation?.myRole === 'sender' || operation?.myRole === 'traveler') {
+    return operation.myRole;
+  }
+  if (userId && (operation?.senderId === userId || operation?.sender?.id === userId)) {
+    return 'sender';
+  }
+  if (userId && (operation?.travelerId === userId || operation?.traveler?.id === userId)) {
+    return 'traveler';
+  }
+  return null;
+}
+
 export function operationGuideSteps(operation) {
   const role = operation?.myRole === 'traveler' ? 'traveler' : 'sender';
   const current = operationStepIndex(operation?.operationStatus);

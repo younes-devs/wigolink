@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  operationGuideSteps, operationNeedsAction, operationStepIndex,
+  operationGuideSteps, operationNeedsAction, operationStepIndex, resolveOperationRole,
 } from '../../client/src/features/operations/utils/operationGuide.js';
 
 test('le guide operation suit les cinq etapes metier', () => {
@@ -28,4 +28,13 @@ test('le guide distingue une action disponible d une attente', () => {
   assert.equal(operationNeedsAction({ myRole: 'traveler', operationStatus: 'paiement_requis' }), false);
   assert.equal(operationNeedsAction({ operationStatus: 'paye', security: { pickup: { canEnter: true, issued: false } } }), false);
   assert.equal(operationNeedsAction({ operationStatus: 'paye', security: { pickup: { canEnter: true, issued: true } } }), true);
+});
+
+test('le role est retrouve meme si une ancienne projection oublie myRole', () => {
+  const operation = {
+    senderId: 'u-sender',
+    traveler: { id: 'u-traveler' },
+  };
+  assert.equal(resolveOperationRole(operation, 'u-sender'), 'sender');
+  assert.equal(resolveOperationRole(operation, 'u-traveler'), 'traveler');
 });

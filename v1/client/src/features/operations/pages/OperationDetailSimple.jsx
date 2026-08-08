@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
-import { Stars } from '../../../components.jsx';
+import { Stars, Stepper } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { formatDate } from '../../trips/index.js';
 import { STATUS_LABELS } from './OperationsSimple.jsx';
 import { t, useLang } from '../../../i18n.js';
-import { operationGuideSteps, operationNeedsAction, operationStepIndex } from '../utils/operationGuide.js';
+import {
+  operationGuideSteps, operationNeedsAction, operationStepIndex, resolveOperationRole,
+} from '../utils/operationGuide.js';
 
 export default function OperationDetailSimple() {
   useLang();
@@ -88,7 +90,9 @@ export default function OperationDetailSimple() {
   if (operation === null) return <div className="card"><span className="spinner" /> {t('common.loading')}</div>;
   if (operation === false) return <div className="card center empty-state"><Icon name="alert" size={32} /><p>{t('operations.notFound')}</p></div>;
 
-  const other = operation.myRole === 'traveler' ? operation.sender : operation.traveler;
+  const viewerRole = resolveOperationRole(operation, user?.id) || 'sender';
+  const viewedOperation = operation.myRole === viewerRole ? operation : { ...operation, myRole: viewerRole };
+  const other = viewerRole === 'traveler' ? operation.sender : operation.traveler;
   const codeReady = code.length === 8;
 
   return (
@@ -102,7 +106,7 @@ export default function OperationDetailSimple() {
 
         <div className="operation-person">
           <Avatar name={other?.name || t('messages.contact')} photo={other?.photoUrl} size={48} />
-          <div><b>{other?.name || t('messages.contact')}</b><span>{t(operation.myRole === 'traveler' ? 'operations.role.sender' : 'operations.role.traveler')}</span></div>
+          <div><b>{other?.name || t('messages.contact')}</b><span>{t(viewerRole === 'traveler' ? 'operations.role.sender' : 'operations.role.traveler')}</span></div>
           <button className="icon-btn" type="button" onClick={message} disabled={!!busy} aria-label={t('messages.title')}><Icon name="chat" size={18} /></button>
         </div>
 
@@ -111,10 +115,10 @@ export default function OperationDetailSimple() {
           <b>{operation.price} {operation.currency || 'EUR'}</b>
         </div>
 
-        <OperationJourney operation={operation} />
+        <OperationJourney operation={viewedOperation} />
 
         <OperationAction
-          operation={operation}
+          operation={viewedOperation}
           busy={busy}
           code={code}
           codeReady={codeReady}
@@ -175,14 +179,7 @@ function OperationJourney({ operation }) {
         </div>
         <b>{statusLabel}</b>
       </div>
-      <div className="operation-journey-steps">
-        {steps.map((step, index) => (
-          <div className={`operation-journey-step ${step.state}`} key={step.id} aria-current={step.state === 'current' ? 'step' : undefined}>
-            <span>{step.state === 'done' ? <Icon name="check" size={13} /> : index + 1}</span>
-            <div><b>{t(step.labelKey)}</b><small>{t(step.detailKey)}</small></div>
-          </div>
-        ))}
-      </div>
+      <Stepper labels={steps.map((step) => t(step.labelKey))} current={current} />
     </section>
   );
 }
