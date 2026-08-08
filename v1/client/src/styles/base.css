@@ -237,15 +237,37 @@ body {
 .decision-note .icon { flex: 0 0 auto; margin-top: 1px; color: var(--green); }
 
 /* Forms */
-.field { margin-bottom: 15px; }
+.field,
+.row,
+.row > *,
+form,
+fieldset {
+  min-width: 0;
+}
+.field { max-width: 100%; margin-bottom: 15px; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .field input, .field select, .field textarea {
-  width: 100%; padding: 13px 14px; border-radius: 12px;
+  display: block; width: 100%; min-width: 0; max-width: 100%; padding: 13px 14px; border-radius: 12px;
   border: 1px solid var(--hairline);
   background: var(--glass-strong);
   backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
   font-size: 15px; font-family: inherit; color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+input[type='date'],
+input[type='datetime-local'],
+input[type='month'],
+input[type='time'] {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none; border-color: var(--accent);
