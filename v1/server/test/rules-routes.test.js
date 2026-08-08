@@ -33,6 +33,7 @@ async function requestRules({ lang = 'fr', getWhitelist }) {
     return {
       status: response.status,
       cacheControl: response.headers.get('cache-control'),
+      vary: response.headers.get('vary'),
       body: await response.json(),
     };
   } finally {
@@ -56,6 +57,7 @@ test('rules routes localisent le catalogue et ne revelent pas les tables i18n', 
     response.cacheControl,
     'public, s-maxage=60, stale-while-revalidate=300',
   );
+  assert.match(response.vary, /Accept-Language/i);
   assert.equal(response.body.whitelist[0].label, 'زيت أركان مختوم');
   assert.equal(response.body.blacklist[0].label, 'مكمّلات غذائية / كبسولات');
   assert.equal(response.body.customs['MA-EU'].label, 'المغرب ← أوروبا (بلجيكا)');

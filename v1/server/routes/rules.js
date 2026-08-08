@@ -16,6 +16,7 @@ export function createRulesRouter({
         'Cache-Control',
         'public, s-maxage=60, stale-while-revalidate=300',
       );
+      res.vary('Accept-Language');
       res.json({
         whitelist: whitelist.map((category) => (
           localizeCategory(category, req.lang)
