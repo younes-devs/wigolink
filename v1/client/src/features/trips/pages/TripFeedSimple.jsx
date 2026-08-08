@@ -245,7 +245,6 @@ export default function TripFeedSimple() {
           onClick={() => setMobileTab('others')}
         >
           {t('trips.available')}
-          {trips?.length > 0 && <span>{trips.length}</span>}
         </button>
         <button
           type="button"
@@ -314,7 +313,6 @@ export default function TripFeedSimple() {
       >
         <div className="section-head">
           <h2>{t(user ? 'trips.others' : 'trips.available')}</h2>
-          {trips?.length > 0 && <span>{trips.length}</span>}
         </div>
       {trips === null && <SkeletonList count={4} />}
       {trips?.length === 0 && (
