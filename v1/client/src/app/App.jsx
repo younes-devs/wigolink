@@ -88,6 +88,26 @@ function writeSessionScroll(key, value) {
   }
 }
 
+function readHistoryScroll(key) {
+  try {
+    const saved = window.history.state?.__wigolinkScroll;
+    return saved?.key === key ? saved.position : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeHistoryScroll(key, position) {
+  try {
+    window.history.replaceState({
+      ...(window.history.state || {}),
+      __wigolinkScroll: { key, position },
+    }, document.title);
+  } catch {
+    // Session storage remains the primary fallback in restricted webviews.
+  }
+}
+
 // New screens start at the top; history navigation and reload restore the previous position.
 function RouteScrollRestoration() {
   const location = useLocation();
@@ -106,24 +126,26 @@ function RouteScrollRestoration() {
     if (!contentScroller) return undefined;
 
     const sessionKey = scrollSessionKey(location);
-    const isReload = location.key === initialLocationKey.current
-      && performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
-    const savedPosition = navigationType === 'POP' || isReload
+    const isInitialLocation = location.key === initialLocationKey.current;
+    const savedPosition = navigationType === 'POP' || isInitialLocation
       ? (routeScrollPositions.get(location.key)
-        ?? (isReload ? readSessionScroll(sessionKey) : undefined))
+        ?? (isInitialLocation ? readHistoryScroll(sessionKey) : undefined)
+        ?? (isInitialLocation ? readSessionScroll(sessionKey) : undefined))
       : undefined;
     let restoring = Number(savedPosition?.window) > 0 || Number(savedPosition?.content) > 0;
     let writeFrame = 0;
     let restoreFrame = 0;
     let restoreTimer;
+    let historyTimer;
 
-    const persistPosition = () => {
+    const persistPosition = (includeHistory = false) => {
       const position = {
         window: window.scrollY || document.scrollingElement?.scrollTop || 0,
         content: contentScroller.scrollTop,
       };
       routeScrollPositions.set(location.key, position);
       writeSessionScroll(sessionKey, position);
+      if (includeHistory) writeHistoryScroll(sessionKey, position);
     };
 
     const finishRestoration = () => {
@@ -155,7 +177,7 @@ function RouteScrollRestoration() {
       restorePosition();
       restoreTimer = window.setTimeout(() => {
         finishRestoration();
-        persistPosition();
+        persistPosition(true);
       }, 3_000);
     } else {
       window.scrollTo({ top: savedPosition?.window ?? 0, behavior: 'auto' });
@@ -165,21 +187,25 @@ function RouteScrollRestoration() {
     const onScroll = () => {
       if (restoring) return;
       window.cancelAnimationFrame(writeFrame);
-      writeFrame = window.requestAnimationFrame(persistPosition);
+      window.clearTimeout(historyTimer);
+      writeFrame = window.requestAnimationFrame(() => persistPosition(false));
+      historyTimer = window.setTimeout(() => persistPosition(true), 180);
     };
+    const onPageHide = () => persistPosition(true);
     window.addEventListener('scroll', onScroll, { passive: true });
     contentScroller.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('pagehide', persistPosition);
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
       window.removeEventListener('scroll', onScroll);
       contentScroller.removeEventListener('scroll', onScroll);
-      window.removeEventListener('pagehide', persistPosition);
+      window.removeEventListener('pagehide', onPageHide);
       window.cancelAnimationFrame(writeFrame);
       window.cancelAnimationFrame(restoreFrame);
+      window.clearTimeout(historyTimer);
       if (restoreTimer) window.clearTimeout(restoreTimer);
       observer?.disconnect();
-      if (!restoring) persistPosition();
+      if (!restoring) persistPosition(false);
       if (routeScrollPositions.size > 50) {
         routeScrollPositions.delete(routeScrollPositions.keys().next().value);
       }
