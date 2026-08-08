@@ -22,7 +22,7 @@
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/api/public/sitemap.xml"
+      "dest": "/api/sitemap.js"
     },
     {
       "src": "/cgu",
