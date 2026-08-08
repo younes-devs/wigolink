@@ -107,7 +107,7 @@ export default function OperationsSimple() {
               </div>
             </div>
             <div className="operation-side">
-              <span className="pill pill-saffron">{STATUS_LABELS[operation.operationStatus] ? t(STATUS_LABELS[operation.operationStatus]) : operation.operationStatus}</span>
+              <span className="pill pill-saffron">{t(STATUS_LABELS[operation.operationStatus] || 'messages.operation.active')}</span>
               <Link to={`/operations/${operation.id}`} className="btn btn-primary btn-sm">{t('common.open')}</Link>
               <button className="btn btn-ghost btn-sm" onClick={() => message(operation.id)} disabled={busy === operation.id}>
                 {busy === operation.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}

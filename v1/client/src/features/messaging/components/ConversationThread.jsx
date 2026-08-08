@@ -4,7 +4,7 @@ import { apiBlob } from '../../../api';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t } from '../../../i18n.js';
 import { shortDate } from '../pages/MessagesSimple.jsx';
-import { contextLabel } from '../utils/conversationDisplay.js';
+import { contextDetail, contextLabel } from '../utils/conversationDisplay.js';
 
 export function ConversationContext({ conversation }) {
   const icon = conversation.contextType === 'operation' ? 'repeat' : conversation.contextType === 'trip' ? 'plane' : 'chat';
@@ -16,7 +16,7 @@ export function ConversationContext({ conversation }) {
       <span className="conversation-context-icon"><Icon name={icon} size={17} /></span>
       <div className="grow">
         <b>{contextLabel(conversation)}</b>
-        <span>{conversation.actionKey ? t(conversation.actionKey) : conversation.actionLabel || conversation.context?.detail || t('messages.context.default')}</span>
+        <span>{contextDetail(conversation)}</span>
       </div>
       {(price || href) && (
         <div className="conversation-context-actions">

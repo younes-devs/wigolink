@@ -300,9 +300,9 @@ function MyPublishedTrips() {
                 <span>{profileTripDate(trip.departureDate)} · {trip.price} {trip.currency} · {trip.capacityKg} kg</span>
                 {trip.activeOperations > 0 && <small>{t('trips.active', { count: trip.activeOperations })}</small>}
               </div>
-              <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
-                {trip.status === 'published' ? t('profile.trips.published') : trip.status}
-              </span>
+              {trip.status === 'published' && (
+                <span className="pill pill-teal">{t('profile.trips.published')}</span>
+              )}
               <div className="my-trip-actions">
                 <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('common.edit')}>
                   <Icon name="pencil" size={16} />
