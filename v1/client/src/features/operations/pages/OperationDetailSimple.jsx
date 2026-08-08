@@ -98,6 +98,7 @@ export default function OperationDetailSimple() {
   return (
     <div className="simple-page operation-simple-page">
       <Link to="/en-cours" className="link-btn back-btn"><Icon name="arrowLeft" size={15} />{t('common.back')}</Link>
+      <OperationJourney operation={viewedOperation} />
       <section className="card operation-detail operation-detail-simple">
         <header className="operation-detail-head">
           <div><h1>{operation.title}</h1><p>{operation.trip ? formatDate(operation.trip.departureDate) : t('trips.date.pending')}</p></div>
@@ -114,8 +115,6 @@ export default function OperationDetailSimple() {
           <span>{operation.shipmentType === 'document' ? t('trips.request.documentType') : t('trips.request.parcel')} · {operation.shipmentType === 'document' ? t(Number(operation.documentCount) > 1 ? 'trips.request.documents' : 'trips.request.document', { count: operation.documentCount || 0 }) : t('trips.request.weight', { weight: operation.weightKg || 0 })}</span>
           <b>{operation.price} {operation.currency || 'EUR'}</b>
         </div>
-
-        <OperationJourney operation={viewedOperation} />
 
         <OperationAction
           operation={viewedOperation}
