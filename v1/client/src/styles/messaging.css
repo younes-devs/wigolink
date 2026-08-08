@@ -88,7 +88,7 @@
   font-family: inherit; font-size: 14px; color: var(--ink);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.chat-input:focus { outline: none; border-color: var(--accent); box-shadow: none; }
 
 .simple-page { padding-bottom: 18px; }
 .trip-section { margin-top: 20px; }

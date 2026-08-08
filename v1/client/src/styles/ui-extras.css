@@ -275,7 +275,7 @@
   transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease, transform 150ms ease;
 }
 .email-code-input.is-filled { border-color: rgba(10, 108, 245, 0.42); background: var(--accent-tint); }
-.email-code-input:focus { border-color: var(--accent); outline: 0; box-shadow: 0 0 0 3px rgba(10, 108, 245, 0.14); transform: translateY(-1px); }
+.email-code-input:focus { border-color: var(--accent); outline: 0; box-shadow: none; transform: translateY(-1px); }
 .email-code-inputs.is-busy { opacity: 0.65; }
 .email-code-checking { min-height: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
 @media (max-width: 420px) {

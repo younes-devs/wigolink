@@ -229,7 +229,19 @@
 .account-action-body { display: grid; gap: 10px; padding: 18px; overflow-y: auto; }
 .account-action-body .muted { font-size: 13px; line-height: 1.55; }
 .account-action-body label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
-.account-action-body input { min-height: 44px; }
+.account-action-body input:not(.email-code-input) {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.account-action-body input:not(.email-code-input):focus { border-color: var(--accent); box-shadow: none; }
 .account-action-body .btn { justify-content: center; margin-top: 4px; }
 .settings-danger-row .settings-row-icon { background: var(--danger-tint); color: var(--danger); }
 .settings-danger-row .settings-row-title { color: var(--danger); }
@@ -248,7 +260,7 @@
   width: 100%; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); color: var(--ink);
   font: inherit; font-size: 14px; padding: 12px;
 }
-.settings-support-form input:focus, .settings-support-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.settings-support-form input:focus, .settings-support-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: none; }
 .settings-support-form textarea { min-height: 132px; resize: vertical; }
 .settings-support-form .btn { justify-content: center; margin-top: 3px; }
 .settings-support-notice { color: var(--amber); font-size: 12px; line-height: 1.45; }

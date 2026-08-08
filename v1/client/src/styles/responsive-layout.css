@@ -177,7 +177,7 @@
     background: var(--surface); color: var(--ink-soft); cursor: pointer; text-align: left;
     font: inherit;
   }
-  .trip-search-row:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  .trip-search-row:focus-visible { outline: none; border-color: var(--accent); box-shadow: none; }
   .trip-search-row > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
   .trip-search-row .trip-search-value { color: var(--ink); }
   .trip-mobile-publish {
