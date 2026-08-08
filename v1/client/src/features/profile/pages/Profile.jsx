@@ -398,11 +398,13 @@ function KycBanner({ status }) {
   }[status] || null;
   if (!cfg) return null;
   return (
-    <div className={`alert ${cfg.cls}`} style={{ alignItems: 'center' }}>
+    <div className={`alert profile-kyc-banner ${cfg.cls}`}>
       <Icon name={cfg.icon} size={17} />
       <span className="grow">{t(`kycbanner.${status}`)}</span>
       {cfg.cta && (
-        <Link to="/verification"><button className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.06)', color: 'inherit' }}>{t(`kycbanner.${status}.cta`)}</button></Link>
+        <Link className="btn btn-sm profile-kyc-action" to="/verification">
+          {t(`kycbanner.${status}.cta`)}
+        </Link>
       )}
     </div>
   );
