@@ -7,6 +7,12 @@
 // la langue de leur création.
 import { useSyncExternalStore } from 'react';
 import fr from './locales/fr.js';
+import {
+  LOCALE_COOKIE,
+  SUPPORTED_LOCALES,
+  localeFromPath,
+  localizePath,
+} from '../../shared/locale-routing.js';
 
 const DICT = { fr };
 const LOCALE_LOADERS = {
@@ -23,7 +29,7 @@ const ADMIN_LOADERS = {
   es: () => import('./locales/admin.es.js'),
 };
 const RTL_LANGS = new Set(['ar']);
-const KEY = 'wigolink_lang';
+const KEY = LOCALE_COOKIE;
 
 export const LANGS = [
   { code: 'fr', label: 'Français' },
@@ -33,7 +39,7 @@ export const LANGS = [
   { code: 'es', label: 'Español' },
 ];
 
-const SUPPORTED_LANGS = LANGS.map(({ code }) => code);
+const SUPPORTED_LANGS = SUPPORTED_LOCALES;
 
 let current = SUPPORTED_LANGS.includes(document.documentElement.lang)
   ? document.documentElement.lang
@@ -46,6 +52,12 @@ function syncDocumentLanguage() {
   document.documentElement.dir = RTL_LANGS.has(current) ? 'rtl' : 'ltr';
   document.title = DICT[current]?.['app.title'] || DICT.fr['app.title'];
   document.querySelector('link[rel="manifest"]')?.setAttribute('href', `/manifest.${current}.webmanifest`);
+}
+
+function persistLanguage(lang) {
+  localStorage.setItem(KEY, lang);
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(lang)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
 }
 
 async function loadLanguage(lang) {
@@ -63,7 +75,10 @@ async function loadAdminLanguage(lang) {
 }
 
 export async function initializeI18n() {
+  const pathLanguage = localeFromPath(window.location.pathname);
+  if (pathLanguage) current = pathLanguage;
   await loadLanguage(current);
+  persistLanguage(current);
   syncDocumentLanguage();
 }
 
@@ -87,10 +102,14 @@ export async function setLang(lang) {
   await loadLanguage(lang);
   if (adminTranslationsRequested) await loadAdminLanguage(lang);
   current = lang;
-  localStorage.setItem(KEY, lang);
+  persistLanguage(lang);
   syncDocumentLanguage();
   listeners.forEach((l) => l());
   return true;
+}
+
+export function languageUrl(lang, location = window.location) {
+  return localizePath(`${location.pathname}${location.search}${location.hash}`, lang);
 }
 
 export function t(key, vars) {

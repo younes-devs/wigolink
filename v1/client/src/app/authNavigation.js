@@ -1,11 +1,17 @@
+import { stripLocalePrefix } from '../../../shared/locale-routing.js';
+
 export function loginPath(returnTo = '/trajets') {
   const safePath = safeReturnPath(returnTo);
   return `/connexion?retour=${encodeURIComponent(safePath)}`;
 }
 
 export function safeReturnPath(value) {
-  const path = String(value || '');
-  if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/connexion')) {
+  const rawPath = String(value || '');
+  if (!rawPath.startsWith('/') || rawPath.startsWith('//')) {
+    return '/trajets';
+  }
+  const path = stripLocalePrefix(rawPath);
+  if (path.startsWith('/connexion')) {
     return '/trajets';
   }
   return path;

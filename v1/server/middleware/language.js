@@ -1,4 +1,5 @@
 import generatedTranslations from '../i18n/generated-en-es.js';
+import { DEFAULT_LOCALE, localeFromAcceptLanguage } from '../../shared/locale-routing.js';
 
 // Traduction des messages d'erreur de l'API (suite du chantier i18n U14).
 // Principe : les messages restent écrits en français dans le code (lisibilité, grep),
@@ -280,11 +281,8 @@ function translateError(lang, msg) {
 
 // Middleware : pose req.lang depuis Accept-Language (langues supportées, défaut fr) et wrappe
 // res.json pour traduire les textes d'interface renvoyés par l'API à la volée.
-const SUPPORTED = new Set(['fr', 'ar', 'nl', 'en', 'es']);
-
 export function langMiddleware(req, res, next) {
-  const raw = String(req.headers['accept-language'] || '').split(',')[0].trim().slice(0, 2).toLowerCase();
-  req.lang = SUPPORTED.has(raw) ? raw : 'fr';
+  req.lang = localeFromAcceptLanguage(req.headers['accept-language']) || DEFAULT_LOCALE;
   const originalJson = res.json.bind(res);
   res.json = (body) => {
     if (body && typeof body === 'object') {

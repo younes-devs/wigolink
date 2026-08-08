@@ -2,7 +2,7 @@
   "name": "Wigolink",
   "short_name": "Wigolink",
   "description": "Pakketten veilig verzenden en vervoeren tussen België en Marokko.",
-  "start_url": "/",
+  "start_url": "/nl",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",

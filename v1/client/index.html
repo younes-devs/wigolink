@@ -20,8 +20,16 @@
           t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.dataset.theme = t;
-        var l = localStorage.getItem('wigolink_lang');
-        if (!['fr', 'ar', 'nl', 'en', 'es'].includes(l)) l = 'fr';
+        var languages = ['fr', 'ar', 'nl', 'en', 'es'];
+        var pathLanguage = window.location.pathname.split('/')[1].toLowerCase();
+        var storedLanguage = localStorage.getItem('wigolink_lang');
+        var browserLanguages = navigator.languages || [navigator.language];
+        var detectedLanguage = browserLanguages
+          .map(function (value) { return String(value || '').toLowerCase().split(/[-_]/)[0]; })
+          .find(function (value) { return languages.includes(value); });
+        var l = languages.includes(pathLanguage)
+          ? pathLanguage
+          : languages.includes(storedLanguage) ? storedLanguage : detectedLanguage || 'fr';
         document.documentElement.lang = l;
         document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
       })();

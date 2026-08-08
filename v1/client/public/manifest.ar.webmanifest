@@ -2,7 +2,7 @@
   "name": "Wigolink",
   "short_name": "Wigolink",
   "description": "إرسال ونقل الطرود بأمان بين بلجيكا والمغرب.",
-  "start_url": "/",
+  "start_url": "/ar",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",

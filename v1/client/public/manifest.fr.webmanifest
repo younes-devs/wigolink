@@ -2,7 +2,7 @@
   "name": "Wigolink",
   "short_name": "Wigolink",
   "description": "Envoyer et transporter des colis entre la Belgique et le Maroc, en toute sécurité.",
-  "start_url": "/",
+  "start_url": "/fr",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",

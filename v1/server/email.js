@@ -1,5 +1,6 @@
+import { DEFAULT_LOCALE, normalizeLocale } from '../shared/locale-routing.js';
+
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-const SUPPORTED_LANGS = new Set(['fr', 'nl', 'ar', 'en', 'es']);
 
 const EMAIL_COPY = {
   fr: {
@@ -66,7 +67,7 @@ function escapeHtml(value) {
 }
 
 export function verificationEmailCopy({ code, purpose, lang = 'fr' }) {
-  const locale = SUPPORTED_LANGS.has(lang) ? lang : 'fr';
+  const locale = normalizeLocale(lang) || DEFAULT_LOCALE;
   const copy = EMAIL_COPY[locale];
   const [title, bodyTemplate] = copy[purpose] || copy.verify;
   return {
@@ -120,7 +121,7 @@ export async function sendSupportEmail({
     throw new Error('Service email indisponible');
   }
 
-  const locale = SUPPORTED_LANGS.has(lang) ? lang : 'fr';
+  const locale = normalizeLocale(lang) || DEFAULT_LOCALE;
   const labels = SUPPORT_COPY[locale];
   const userName = String(user?.name || 'Membre Wigolink').trim();
   const userEmail = String(user?.email || '').trim().toLowerCase();

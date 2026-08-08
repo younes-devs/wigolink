@@ -2,12 +2,14 @@
 // rapide et une tolérance hors-ligne de base. On ne met JAMAIS en cache /api/* : les
 // données (opérations, messages, KYC) doivent toujours venir du serveur, jamais d'un
 // cache potentiellement périmé.
-const CACHE = 'wigolink-shell-v3';
+const CACHE = 'wigolink-shell-v4';
 const SHELL = [
-  '/',
+  '/index.html',
   '/manifest.fr.webmanifest',
   '/manifest.nl.webmanifest',
   '/manifest.ar.webmanifest',
+  '/manifest.en.webmanifest',
+  '/manifest.es.webmanifest',
   '/assets/logo-mark-192.png',
   '/assets/logo-wordmark.png',
   '/assets/favicon-32.png',
@@ -30,7 +32,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
   // Navigation : réseau d'abord, repli sur l'app-shell en cache si hors-ligne (SPA).
   if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request).catch(() => caches.match('/')));
+    e.respondWith(fetch(e.request).catch(() => caches.match('/index.html')));
     return;
   }
   // Statique : cache d'abord, complété au fil de l'eau (stale-while-revalidate léger).

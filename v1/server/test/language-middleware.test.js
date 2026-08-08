@@ -61,3 +61,8 @@ test('language middleware accepte anglais et espagnol', () => {
   assert.equal(spanish.req.lang, 'es');
   assert.equal(spanish.output.error, 'Reservado para administradores');
 });
+
+test('language middleware respecte les poids Accept-Language', () => {
+  const rendered = runMiddleware('de-DE, en-GB;q=0.4, es-ES;q=0.9', { error: 'Reserve aux admins' });
+  assert.equal(rendered.req.lang, 'es');
+});

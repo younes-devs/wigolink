@@ -11,8 +11,17 @@ const stored = new Map();
 globalThis.document = {
   documentElement: { lang: 'fr', dir: 'ltr' },
   title: '',
+  cookie: '',
   querySelector(selector) {
     return selector === 'link[rel="manifest"]' ? manifest : null;
+  },
+};
+globalThis.window = {
+  location: {
+    protocol: 'https:',
+    pathname: '/fr/parametres',
+    search: '?section=appearance',
+    hash: '#language',
   },
 };
 globalThis.localStorage = {
@@ -33,6 +42,8 @@ test('client i18n charge anglais et espagnol avec locale et manifeste', async ()
   assert.equal(document.documentElement.lang, 'en');
   assert.equal(document.documentElement.dir, 'ltr');
   assert.equal(manifest.href, '/manifest.en.webmanifest');
+  assert.match(document.cookie, /^wigolink_lang=en;/);
+  assert.equal(i18n.languageUrl('en'), '/en/parametres?section=appearance#language');
 
   assert.equal(await i18n.setLang('es'), true);
   assert.equal(i18n.t('settings.title'), 'Configuración');
@@ -40,6 +51,7 @@ test('client i18n charge anglais et espagnol avec locale et manifeste', async ()
   assert.equal(document.documentElement.lang, 'es');
   assert.equal(document.documentElement.dir, 'ltr');
   assert.equal(manifest.href, '/manifest.es.webmanifest');
+  assert.equal(i18n.languageUrl('es'), '/es/parametres?section=appearance#language');
 });
 
 test('client i18n refuse une langue inconnue', async () => {

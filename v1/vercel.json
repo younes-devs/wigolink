@@ -13,6 +13,10 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "/api/locale-entry.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/[...path].js"
     },

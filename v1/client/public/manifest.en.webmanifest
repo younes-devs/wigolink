@@ -2,7 +2,7 @@
   "name": "Wigolink",
   "short_name": "Wigolink",
   "description": "Send and carry parcels safely between Belgium and Morocco.",
-  "start_url": "/",
+  "start_url": "/en",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",

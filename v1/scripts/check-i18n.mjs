@@ -14,6 +14,7 @@ import adminNl from '../client/src/locales/admin.nl.js';
 import adminAr from '../client/src/locales/admin.ar.js';
 import adminEn from '../client/src/locales/admin.en.js';
 import adminEs from '../client/src/locales/admin.es.js';
+import { SUPPORTED_LOCALES } from '../shared/locale-routing.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const fr = { ...baseFr, ...adminFr };
@@ -22,9 +23,22 @@ const ar = { ...baseAr, ...adminAr };
 const en = { ...baseEn, ...adminEn };
 const es = { ...baseEs, ...adminEs };
 const dictionaries = { fr, nl, ar, en, es };
-const supportedLanguages = Object.keys(dictionaries);
+const dictionaryLanguages = Object.keys(dictionaries).sort();
+const supportedLanguages = [...SUPPORTED_LOCALES];
 const translatedLanguages = supportedLanguages.filter((lang) => lang !== 'fr');
 const failures = [];
+
+if (dictionaryLanguages.join('|') !== [...SUPPORTED_LOCALES].sort().join('|')) {
+  failures.push(`Langues du routage incompatibles: ${SUPPORTED_LOCALES.join(', ')}`);
+}
+
+const indexHtml = fs.readFileSync(path.join(root, 'client/index.html'), 'utf8');
+const inlineLanguages = indexHtml.match(/var languages = \[([^\]]+)\]/)?.[1]
+  ?.match(/['"]([a-z]{2})['"]/g)
+  ?.map((value) => value.slice(1, -1)) || [];
+if (inlineLanguages.join('|') !== SUPPORTED_LOCALES.join('|')) {
+  failures.push(`Langues du bootstrap incompatibles: ${inlineLanguages.join(', ')}`);
+}
 
 function fail(message) {
   failures.push(message);
@@ -65,6 +79,7 @@ for (const lang of supportedLanguages) {
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (manifest.lang !== lang || !manifest.description) fail(`Manifeste PWA ${lang} incomplet`);
+  if (manifest.start_url !== `/${lang}`) fail(`Manifeste PWA ${lang}: start_url doit etre /${lang}`);
   if (lang === 'ar' && manifest.dir !== 'rtl') fail('Manifeste PWA arabe sans direction RTL');
 }
 

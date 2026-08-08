@@ -4,7 +4,7 @@ import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, GoogleLogo, Icon } from '../../../Icons.jsx';
 import { getTheme, setTheme } from '../../../theme.js';
-import { t, useLang, getLang, setLang, LANGS } from '../../../i18n.js';
+import { t, useLang, getLang, setLang, languageUrl, LANGS } from '../../../i18n.js';
 
 const DEFAULT_NOTIFICATIONS = { transactions: true, shipments: true, reminders: true, security: true };
 const SUPPORT_EMAIL = 'support@wigolink.com';
@@ -117,7 +117,10 @@ function AppearanceSection() {
   const [lang, setLangState] = useState(getLang());
   const chooseTheme = (value) => { setTheme(value); setThemeState(value); };
   const chooseLang = async (value) => {
-    if (await setLang(value)) setLangState(value);
+    if (await setLang(value)) {
+      setLangState(value);
+      window.location.assign(languageUrl(value));
+    }
   };
   return <div className="settings-card settings-detail-card"><div className="settings-choice-row"><span className="settings-row-icon"><Icon name="moon" size={17} /></span><div className="settings-choice-content"><span className="settings-row-title">{t('settings.appearance.title')}</span><div className="theme-toggle"><button className={`theme-opt ${theme === 'light' ? 'active' : ''}`} onClick={() => chooseTheme('light')}>{t('settings.appearance.light')}</button><button className={`theme-opt ${theme === 'dark' ? 'active' : ''}`} onClick={() => chooseTheme('dark')}>{t('settings.appearance.dark')}</button></div></div></div><div className="settings-choice-row"><span className="settings-row-icon"><Icon name="mapPin" size={17} /></span><div className="settings-choice-content"><span className="settings-row-title">{t('settings.appearance.language')}</span><div className="theme-toggle settings-language-toggle">{LANGS.map((item) => <button key={item.code} className={`theme-opt ${lang === item.code ? 'active' : ''}`} onClick={() => chooseLang(item.code)}>{item.label}</button>)}</div></div></div></div>;
 }

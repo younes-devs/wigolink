@@ -8,7 +8,7 @@ import {
   shouldOnboard,
 } from './components/index.js';
 import { ToastProvider } from '../shared/ui/Toast.jsx';
-import { loadAdminTranslations, t } from '../i18n.js';
+import { getLang, loadAdminTranslations, t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
 import { loginPath, safeReturnPath } from './authNavigation.js';
 import GuestAccess from './components/GuestAccess.jsx';
@@ -124,7 +124,7 @@ export default function App() {
   return (
     <AuthCtx.Provider value={{ user, login, logout, refreshUser }}>
       <ToastProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={`/${getLang()}`}>
           <AppWorkspace
             user={user}
             onboarding={onboarding}

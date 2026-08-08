@@ -2,7 +2,7 @@
   "name": "Wigolink",
   "short_name": "Wigolink",
   "description": "Envía y transporta paquetes de forma segura entre Bélgica y Marruecos.",
-  "start_url": "/",
+  "start_url": "/es",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",
