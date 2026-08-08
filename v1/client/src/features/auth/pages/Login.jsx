@@ -7,6 +7,7 @@ import { t, useLang } from '../../../i18n.js';
 import AuthJourneyLoop from '../components/AuthJourneyLoop.jsx';
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
 import { safeReturnPath } from '../../../app/authNavigation.js';
+import EmailCodeInput from '../../../shared/ui/EmailCodeInput.jsx';
 
 // Authentication: login, registration, email verification, password reset and appeal.
 export default function Login() {
@@ -29,6 +30,11 @@ export default function Login() {
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const switchMode = (nextMode) => {
     setMode(nextMode);
+    setForm((current) => ({
+      ...current,
+      code: '',
+      ...(nextMode === 'reset' ? { password: '', confirm: '' } : {}),
+    }));
     if (nextMode === 'login' || nextMode === 'register') setAuthMethod('');
     setError('');
     setHint('');
@@ -123,16 +129,17 @@ export default function Login() {
     setError(requestError.message);
   }, []);
 
-  const submitVerify = () => run(async () => {
+  const submitVerify = (verificationCode = form.code) => run(async () => {
     const data = await api('/auth/verify-email', {
       method: 'POST',
-      body: { email: form.email, code: form.code, rememberMe },
+      body: { email: form.email, code: verificationCode, rememberMe },
     });
     finishAuth(data);
   });
 
   const resendCode = () => run(async () => {
     const data = await api('/auth/resend-code', { method: 'POST', body: { email: form.email } });
+    set('code', '');
     setHint(data.message || t('auth.hint.checkEmail'));
   });
 
@@ -142,11 +149,11 @@ export default function Login() {
     setHint(data.message || t('auth.hint.resetSent'));
   });
 
-  const submitReset = () => run(async () => {
+  const submitReset = (verificationCode = form.code) => run(async () => {
     if (form.password !== form.confirm) throw new Error(t('err.pwd.mismatch'));
     const data = await api('/auth/reset', {
       method: 'POST',
-      body: { email: form.email, code: form.code, password: form.password },
+      body: { email: form.email, code: verificationCode, password: form.password },
     });
     if (data.needsVerification) {
       switchMode('verify');
@@ -338,21 +345,8 @@ export default function Login() {
 
           {mode === 'verify' && (
             <div className="auth-form">
-              <div className="field">
-                <label>{t('auth.verify.code')}</label>
-                <input
-                  className="code-input"
-                  value={form.code}
-                  onChange={(event) => set('code', event.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  inputMode="numeric"
-                  maxLength={6}
-                  autoFocus
-                />
-              </div>
-              <button className="btn btn-primary mb" onClick={submitVerify} disabled={busy || form.code.length !== 6}>
-                {busy ? <span className="spinner" /> : t('auth.verify.submit')}
-              </button>
+              <EmailCodeInput label={t('auth.verify.code')} value={form.code} onChange={(code) => set('code', code)} onComplete={submitVerify} disabled={busy} />
+              {busy && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}
               <button className="btn btn-ghost" onClick={resendCode} disabled={busy}>{t('auth.verify.resend')}</button>
               <AuthBack onClick={() => switchMode('login')} />
             </div>
@@ -381,18 +375,6 @@ export default function Login() {
           {mode === 'reset' && (
             <div className="auth-form">
               <div className="field">
-                <label>{t('auth.reset.code')}</label>
-                <input
-                  className="code-input"
-                  value={form.code}
-                  onChange={(event) => set('code', event.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  inputMode="numeric"
-                  maxLength={6}
-                  autoFocus
-                />
-              </div>
-              <div className="field">
                 <label>{t('auth.reset.newpwd')}</label>
                 <PasswordField
                   value={form.password}
@@ -413,13 +395,14 @@ export default function Login() {
                   autoComplete="new-password"
                 />
               </div>
-              <button
-                className="btn btn-primary"
-                onClick={submitReset}
-                disabled={busy || form.code.length !== 6 || form.password.length < 8 || !form.confirm}
-              >
-                {busy ? <span className="spinner" /> : t('auth.reset.submit')}
-              </button>
+              <EmailCodeInput
+                label={t('auth.reset.code')}
+                value={form.code}
+                onChange={(code) => set('code', code)}
+                onComplete={submitReset}
+                disabled={busy || form.password.length < 8 || form.confirm !== form.password}
+              />
+              {busy && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}
             </div>
           )}
 

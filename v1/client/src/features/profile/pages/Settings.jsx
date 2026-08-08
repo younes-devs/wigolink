@@ -5,6 +5,7 @@ import { useAuth } from '../../../app/authContext.jsx';
 import { Avatar, GoogleLogo, Icon } from '../../../Icons.jsx';
 import { getTheme, setTheme } from '../../../theme.js';
 import { t, useLang, getLang, setLang, languageUrl, LANGS } from '../../../i18n.js';
+import EmailCodeInput from '../../../shared/ui/EmailCodeInput.jsx';
 
 const DEFAULT_NOTIFICATIONS = { transactions: true, shipments: true, reminders: true, security: true };
 const SUPPORT_EMAIL = 'support@wigolink.com';
@@ -192,30 +193,44 @@ function PasswordSetupModal({ email, onClose, onDone }) {
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
-  const confirmPassword = async () => {
+  const confirmPassword = async (verificationCode = code) => {
     if (password !== confirm) { setError(t('err.pwd.mismatch')); return; }
     setError(''); setBusy(true);
     try {
       const data = await api('/auth/reset', {
         method: 'POST',
-        body: { email, code, password, rememberMe: true },
+        body: { email, code: verificationCode, password, rememberMe: true },
       });
       onDone(data);
     } catch (err) { setError(err.message); setBusy(false); }
   };
-  return <ActionModal title={t('settings.password.create.title')} icon="key" onClose={onClose}>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}{!sent ? <><p className="muted">{t('settings.password.create.intro', { email })}</p><button className="btn btn-primary" disabled={busy} onClick={request}>{busy ? <span className="spinner" /> : t('settings.password.create.send')}</button></> : <><p className="muted">{t('settings.password.create.sent', { email })}</p><label>{t('settings.email.code')}</label><input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" /><label>{t('settings.password.new')}</label><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /><label>{t('auth.password.confirm')}</label><input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" /><button className="btn btn-primary" disabled={busy || code.length !== 6 || password.length < 8 || !confirm} onClick={confirmPassword}>{busy ? <span className="spinner" /> : t('settings.password.create.confirm')}</button></>}</ActionModal>;
+  return <ActionModal title={t('settings.password.create.title')} icon="key" onClose={onClose}>
+    {error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}
+    {!sent ? <>
+      <p className="muted">{t('settings.password.create.intro', { email })}</p>
+      <button className="btn btn-primary" disabled={busy} onClick={request}>{busy ? <span className="spinner" /> : t('settings.password.create.send')}</button>
+    </> : <>
+      <p className="muted">{t('settings.password.create.sent', { email })}</p>
+      <label>{t('settings.password.new')}</label>
+      <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
+      <label>{t('auth.password.confirm')}</label>
+      <input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" />
+      <EmailCodeInput label={t('settings.email.code')} value={code} onChange={setCode} onComplete={confirmPassword} disabled={busy || password.length < 8 || confirm !== password} />
+      {busy && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}
+    </>}
+  </ActionModal>;
 }
 
 function EmailModal({ email, onClose, onDone }) {
   const [newEmail, setNewEmail] = useState(''); const [currentPassword, setCurrentPassword] = useState(''); const [code, setCode] = useState(''); const [sent, setSent] = useState(false); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const request = async () => { setError(''); setBusy(true); try { await api('/profile/email/change/request', { method: 'POST', body: { newEmail, currentPassword } }); setSent(true); } catch (err) { setError(err.message); } finally { setBusy(false); } };
-  const confirm = async () => { setError(''); setBusy(true); try { await api('/profile/email/change/confirm', { method: 'POST', body: { code } }); onDone(); } catch (err) { setError(err.message); setBusy(false); } };
-  return <ActionModal title={t('settings.email.title')} icon="mail" onClose={onClose}>{!sent ? <><p className="muted">{t('settings.email.intro')}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.email.new')}</label><input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder={email} autoComplete="email" /><label>{t('settings.password.current')}</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" /><button className="btn btn-primary" disabled={busy || !newEmail || !currentPassword} onClick={request}>{busy ? <span className="spinner" /> : t('settings.email.send')}</button></> : <><p className="muted">{t('settings.email.sent', { email: newEmail })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.email.code')}</label><input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" /><button className="btn btn-primary" disabled={busy || code.length !== 6} onClick={confirm}>{busy ? <span className="spinner" /> : t('settings.email.confirm')}</button></>}</ActionModal>;
+  const confirmEmail = async (verificationCode = code) => { setError(''); setBusy(true); try { await api('/profile/email/change/confirm', { method: 'POST', body: { code: verificationCode } }); onDone(); } catch (err) { setError(err.message); setBusy(false); } };
+  return <ActionModal title={t('settings.email.title')} icon="mail" onClose={onClose}>{!sent ? <><p className="muted">{t('settings.email.intro')}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.email.new')}</label><input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder={email} autoComplete="email" /><label>{t('settings.password.current')}</label><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" /><button className="btn btn-primary" disabled={busy || !newEmail || !currentPassword} onClick={request}>{busy ? <span className="spinner" /> : t('settings.email.send')}</button></> : <><p className="muted">{t('settings.email.sent', { email: newEmail })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<EmailCodeInput label={t('settings.email.code')} value={code} onChange={setCode} onComplete={confirmEmail} disabled={busy} />{busy && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}</>}</ActionModal>;
 }
 
 function DeleteAccountModal({ email, onClose, onDone }) {
   const [code, setCode] = useState(''); const [sent, setSent] = useState(false); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const request = async () => { setError(''); setBusy(true); try { await api('/profile/delete/request', { method: 'POST' }); setSent(true); } catch (err) { setError(err.message); } finally { setBusy(false); } };
-  const confirm = async () => { setError(''); setBusy(true); try { await api('/profile/delete', { method: 'POST', body: { code } }); onDone(); } catch (err) { setError(err.message); setBusy(false); } };
-  return <ActionModal title={t('settings.delete.title')} icon="trash" onClose={onClose}>{!sent ? <><p className="muted">{t('settings.delete.intro', { email })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<button className="btn btn-danger-ghost" disabled={busy} onClick={request}>{busy ? <span className="spinner" /> : t('settings.delete.send')}</button></> : <><p className="muted">{t('settings.delete.sent', { email })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<label>{t('settings.delete.code')}</label><input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" /><button className="btn btn-danger-ghost" disabled={busy || code.length !== 6} onClick={confirm}>{busy ? <span className="spinner" /> : t('settings.delete.confirm')}</button></>}</ActionModal>;
+  const confirmDelete = async (verificationCode = code) => { setError(''); setBusy(true); try { await api('/profile/delete', { method: 'POST', body: { code: verificationCode } }); onDone(); } catch (err) { setError(err.message); setBusy(false); } };
+  return <ActionModal title={t('settings.delete.title')} icon="trash" onClose={onClose}>{!sent ? <><p className="muted">{t('settings.delete.intro', { email })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<button className="btn btn-danger-ghost" disabled={busy} onClick={request}>{busy ? <span className="spinner" /> : t('settings.delete.send')}</button></> : <><p className="muted">{t('settings.delete.sent', { email })}</p>{error && <div className="alert alert-danger"><Icon name="alert" size={16} />{error}</div>}<EmailCodeInput label={t('settings.delete.code')} value={code} onChange={setCode} onComplete={confirmDelete} disabled={busy} />{busy && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}</>}</ActionModal>;
 }

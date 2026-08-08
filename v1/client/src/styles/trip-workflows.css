@@ -860,11 +860,14 @@
   .compose-attach, .chat-send { width: 36px; height: 36px; }
   .compose-count { display: none; }
   .conversation-row { overflow: hidden; }
-  .conversation-row.is-swiped .conversation-row-main, .conversation-row.is-swiped .conversation-side { transform: translateX(-154px); }
+  .conversation-row.is-swiped .conversation-row-main, .conversation-row.is-swiped .conversation-side { transform: translateX(-200px); }
   .conversation-row-main, .conversation-side { transition: transform .18s ease; }
-  .conversation-swipe-actions { position: absolute; inset: 0 0 0 auto; width: 154px; display: flex; align-items: stretch; background: var(--surface-soft); }
+  .conversation-swipe-actions { position: absolute; inset: 0 0 0 auto; width: 200px; display: flex; align-items: stretch; background: var(--surface-soft); }
   .conversation-swipe-actions button { flex: 1; border: 0; color: #fff; background: var(--accent); display: grid; place-items: center; }
-  .conversation-swipe-actions button:nth-child(2) { background: #a76200; }.conversation-swipe-actions button:nth-child(3) { background: #406a84; }
+  .conversation-swipe-actions button:nth-child(2) { background: #406a84; }
+  .conversation-swipe-actions button:nth-child(3) { background: #a76200; }
+  .conversation-swipe-actions button:nth-child(4) { background: #b42318; }
+  .conversation-more, .conversation-menu { display: none; }
 }
 .chat-send:active { transform: scale(0.92); }
 .chat-send:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }

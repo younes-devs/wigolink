@@ -384,6 +384,7 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
   const closeMenu = () => onMenuOpenChange(false);
   const runAction = async (action) => {
     closeMenu();
+    setSwiped(false);
     await action();
   };
   const onTouchStart = (event) => { touchStart.current = event.touches[0]?.clientX ?? null; };
@@ -395,7 +396,12 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
   };
   return (
     <article className={`conversation-row ${menuOpen ? 'menu-open' : ''} ${swiped ? 'is-swiped' : ''} ${unread > 0 ? 'has-unread' : ''} ${conversation.actionRequired ? 'needs-action' : ''} ${conversation.pinned ? 'is-pinned' : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {swiped && <div className="conversation-swipe-actions"><button type="button" onClick={() => runAction(() => onTogglePin(conversation))}><Icon name="pin" size={16} /></button><button type="button" onClick={() => runAction(() => onArchive(conversation.id))}><Icon name="eyeOff" size={16} /></button><button type="button" onClick={() => runAction(() => onUnread(conversation.id))}><Icon name="mail" size={16} /></button></div>}
+      {swiped && <div className="conversation-swipe-actions">
+        <button type="button" aria-label={conversation.pinned ? t('messages.action.unpin') : t('messages.action.pin')} title={conversation.pinned ? t('messages.action.unpin') : t('messages.action.pin')} onClick={() => runAction(() => onTogglePin(conversation))}><Icon name="pin" size={17} /></button>
+        <button type="button" aria-label={t('messages.action.markUnread')} title={t('messages.action.markUnread')} onClick={() => runAction(() => onUnread(conversation.id))}><Icon name="mail" size={17} /></button>
+        <button type="button" aria-label={conversation.archived ? t('messages.action.restore') : t('messages.action.archive')} title={conversation.archived ? t('messages.action.restore') : t('messages.action.archive')} onClick={() => runAction(() => conversation.archived ? onRestore(conversation.id) : onArchive(conversation.id))}><Icon name={conversation.archived ? 'eye' : 'eyeOff'} size={17} /></button>
+        <button type="button" aria-label={t('messages.action.delete')} title={t('messages.action.delete')} onClick={() => runAction(() => onRemove(conversation))}><Icon name="trash" size={17} /></button>
+      </div>}
       <Link to={`/messages/${conversation.id}`} className="conversation-row-main" onClick={closeMenu}>
         <div className="conversation-avatar">
           <Avatar name={conversation.other?.name || t('messages.contact')} photo={conversation.other?.photoUrl} size={50} />

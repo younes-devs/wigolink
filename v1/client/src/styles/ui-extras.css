@@ -243,3 +243,44 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+/* Shared email verification code control. */
+.email-code-field { display: grid; gap: 9px; min-width: 0; }
+.email-code-label { color: var(--ink); font-size: 13px; font-weight: 750; }
+.email-code-inputs {
+  width: min(100%, 360px);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 52px));
+  justify-content: center;
+  gap: 8px;
+  direction: ltr;
+}
+.email-code-input,
+.auth-form .email-code-input,
+.account-action-body .email-code-input {
+  width: 100%;
+  height: 52px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  caret-color: var(--accent);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.email-code-input.is-filled { border-color: rgba(10, 108, 245, 0.42); background: var(--accent-tint); }
+.email-code-input:focus { border-color: var(--accent); outline: 0; box-shadow: 0 0 0 3px rgba(10, 108, 245, 0.14); transform: translateY(-1px); }
+.email-code-inputs.is-busy { opacity: 0.65; }
+.email-code-checking { min-height: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
+@media (max-width: 420px) {
+  .email-code-inputs { gap: 6px; }
+  .email-code-input,
+  .auth-form .email-code-input,
+  .account-action-body .email-code-input { height: 46px; font-size: 20px; }
+}
