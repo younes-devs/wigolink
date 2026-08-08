@@ -167,15 +167,13 @@ export function PhotoCapture({ facing = 'user', maxPx = 900, stream, streamError
                 </div>
               )}
             </div>
-            <div className="capture-actions">
-              <button
-                className="btn btn-primary"
-                onClick={shoot}
-                disabled={!ready || (faceAssist && !faceGuidance.canCapture)}
-              >
-                <Icon name="camera" size={18} />{t(faceAssist ? 'kyc.face.capture' : 'kyc.photo.capture')}
-              </button>
-            </div>
+            {(!faceAssist || faceStatus === 'unavailable') && (
+              <div className="capture-actions">
+                <button className="btn btn-primary" onClick={shoot} disabled={!ready}>
+                  <Icon name="camera" size={18} />{t('kyc.photo.capture')}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

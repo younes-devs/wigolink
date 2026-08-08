@@ -3,6 +3,7 @@ const CHROMELESS_ROUTES = new Set([
   '/cgu',
   '/confidentialite',
   '/trajets/nouveau',
+  '/verification',
 ]);
 
 export function shouldHideAppChrome(pathname) {

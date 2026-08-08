@@ -1,7 +1,7 @@
 // Face analysis stays lazy so the large MediaPipe bundle loads only for KYC.
 import { useEffect, useRef, useState } from 'react';
 
-const STABLE_CAPTURE_MS = 1200;
+const STABLE_CAPTURE_MS = 900;
 const DETECTION_INTERVAL_MS = 110;
 const LIGHT_INTERVAL_MS = 330;
 const MEDIAPIPE_WASM = {

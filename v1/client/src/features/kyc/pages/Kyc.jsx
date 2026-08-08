@@ -20,11 +20,12 @@ export default function Kyc() {
   const [me, setMe] = useState(null);
 
   const load = () => api('/me').then(setMe);
-  useEffect(() => { load(); }, []);
   useEffect(() => {
-    const status = me?.kyc?.status || me?.kycStatus;
-    if (status === 'none' || status === 'rejected') void warmKycFaceGuidance();
-  }, [me]);
+    load();
+    // Charge la détection en parallèle des données du compte pour que le selfie
+    // démarre immédiatement lorsque l'utilisateur atteint cette étape.
+    void warmKycFaceGuidance();
+  }, []);
 
   if (!me) return <div className="kyc-page"><SkeletonCard lines={3} /></div>;
   const status = me.kyc?.status || 'none';
@@ -186,7 +187,16 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
             </select>
             <div className="hint">{needsBack ? t('kyc.hint.both') : t('kyc.hint.passport')}</div>
           </div>
-          <button className="btn btn-primary" disabled={!infosValid} onClick={next}>{t('common.continue')}</button>
+          <button
+            className="btn btn-primary"
+            disabled={!infosValid}
+            onClick={() => {
+              next();
+              void openCapture('selfie');
+            }}
+          >
+            {t('common.continue')}
+          </button>
         </>
       )}
 
@@ -232,7 +242,13 @@ function KycFlow({ rejected, rejectReason, canResubmit, onDone }) {
           streamError={captureError}
           faceAssist={capturing === 'selfie'}
           onClose={closeCapture}
-          onCapture={(dataUrl) => { setPhotos((p) => ({ ...p, [captureConfig[capturing].key]: dataUrl })); setCapturing(null); setCaptureStream(null); }}
+          onCapture={(dataUrl) => {
+            const capturedStep = capturing;
+            setPhotos((p) => ({ ...p, [captureConfig[capturedStep].key]: dataUrl }));
+            setCapturing(null);
+            setCaptureStream(null);
+            if (capturedStep === 'selfie') next();
+          }}
         />
       )}
     </div>

@@ -134,8 +134,11 @@ body {
   scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom));
 }
 .phone:has(.kyc-page) .app-header,
-.phone:has(.kyc-page) .bottom-nav,
-.phone:has(.kyc-page) .content { padding-top: 24px; padding-bottom: 24px; }
+.phone:has(.kyc-page) .bottom-nav { display: none; }
+.phone:has(.kyc-page) .content {
+  padding-top: 24px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
 .kyc-page { width: 100%; }
 .phone:has(.conversation-detail) .app-header { display: none; }
 .phone:has(.conversation-detail) .content {
