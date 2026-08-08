@@ -130,6 +130,46 @@ test('trip routes sert le catalogue public sans authentification', async () => {
   assert.equal('email' in response.body.trips[0].traveler, false);
 });
 
+test('trip routes sert un detail public nettoye sans authentification', async () => {
+  let authCalls = 0;
+  const response = await requestTrip({
+    path: '/public/trips/t-public',
+    auth(_req, res) {
+      authCalls += 1;
+      res.status(401).json({ error: 'Authentification requise' });
+    },
+    trips: {
+      detail(id, user) {
+        assert.equal(id, 't-public');
+        assert.equal(user, null);
+        return {
+          status: 200,
+          body: {
+            trip: {
+              id,
+              from: 'Oujda',
+              to: 'Paris',
+              date: '2026-08-20',
+              travelerId: 'u-private',
+              traveler: {
+                id: 'u-private',
+                name: 'Karim',
+                email: 'private@example.com',
+              },
+            },
+          },
+        };
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(authCalls, 0);
+  assert.equal(response.body.trip.from, 'Oujda');
+  assert.equal('travelerId' in response.body.trip, false);
+  assert.equal('email' in response.body.trip.traveler, false);
+});
+
 test('trip routes conserve statut service et protege avant appel', async () => {
   const refused = await requestTrip({
     method: 'PATCH',

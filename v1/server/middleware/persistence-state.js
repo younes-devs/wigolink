@@ -1,11 +1,12 @@
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const RELATIONAL_TRIP_PATHS = new Set([
   '/api/public/trips',
+  '/api/public/sitemap.xml',
   '/api/trips',
   '/api/trips/mine',
   '/api/trips/overview',
 ]);
-const RELATIONAL_TRIP_DETAIL_PATH = /^\/api\/trips\/[^/]+$/;
+const RELATIONAL_TRIP_DETAIL_PATH = /^\/api\/(?:public\/)?trips\/[^/]+$/;
 const RELATIONAL_SAVED_TRIP_PATH = /^\/api\/saved-trips(?:\/[^/]+)?$/;
 const RELATIONAL_MESSAGE_PATH = /^\/api\/conversations(?:\/[^/]+(?:\/messages)?)?$/;
 const RELATIONAL_MESSAGE_WRITE_PATH = /^\/api\/conversations\/[^/]+(?:\/messages(?:\/[^/]+)?|\/(?:read|unread|archive|pin|typing))?$/;

@@ -227,6 +227,8 @@ test('trip service sert feed, apercu et detail disponible', () => {
   assert.deepEqual(overview.trips.map(({ id }) => id), ['t-other']);
   assert.deepEqual(overview.myTrips.map(({ id }) => id), ['t-own']);
   assert.equal(service.detail('t-own', users[0]).body.trip.activeOperations, 0);
+  assert.equal(service.detail('t-own', null).body.trip.id, 't-own');
+  assert.equal('activeOperations' in service.detail('t-own', null).body.trip, false);
   assert.equal(service.detail('missing', users[0]).status, 404);
   assert.deepEqual(
     service.publicList({ excludeMine: '1' }).trips.map(({ id }) => id),

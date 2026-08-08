@@ -1,2 +1,32 @@
+# Public search and trip pages are available to search engines and AI assistants.
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+Allow: /api/public/trips
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Allow: /api/public/trips
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Allow: /api/public/trips
+
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /api/
+Allow: /api/public/trips
+Disallow: /*/connexion
+Disallow: /*/messages
+Disallow: /*/en-cours
+Disallow: /*/enregistres
+Disallow: /*/profil
+Disallow: /*/parametres
+Disallow: /*/verification
+Disallow: /*/admin
+Disallow: /*/trajets/nouveau
+Disallow: /*/demande
+
+Sitemap: https://wigolink.com/sitemap.xml

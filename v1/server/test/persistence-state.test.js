@@ -115,6 +115,8 @@ test('persistence state reconnait uniquement les lectures relationnelles attendu
   assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/trips' }, enabled), true);
   assert.equal(isRelationalTripRead({ method: 'POST', path: '/api/trips' }, enabled), false);
   assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/trips/t-1' }, enabled), true);
+  assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/public/trips/t-1' }, enabled), true);
+  assert.equal(isRelationalTripRead({ method: 'GET', path: '/api/public/sitemap.xml' }, enabled), true);
   assert.equal(
     isRelationalMessageRead({ method: 'GET', path: '/api/conversations/c-1/messages' }, enabled),
     true,

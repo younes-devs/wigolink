@@ -251,7 +251,7 @@ export async function relationalTrip({ pool, user, id, today }) {
      from public.wigolink_trips t
      join public.wigolink_users u on u.id = t.data->>'travelerId'
      where t.id = $2`,
-    [user.id, id],
+    [user?.id || null, id],
   );
   const row = result.rows[0];
   if (!row) {
@@ -261,7 +261,7 @@ export async function relationalTrip({ pool, user, id, today }) {
     row.trip,
     row.traveler,
     row.saved,
-    row.trip.travelerId === user.id
+    user && row.trip.travelerId === user.id
       ? row.active_operations
       : undefined,
   );

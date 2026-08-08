@@ -1,0 +1,13 @@
+# Wigolink
+
+Wigolink met en relation des voyageurs vérifiés avec des personnes qui souhaitent envoyer des colis ou des documents.
+
+## Données publiques en direct
+
+- Catalogue : https://wigolink.com/api/public/trips
+- Recherche : https://wigolink.com/api/public/trips?from=Oujda&to=Paris&date=2026-08-20
+- Détail : https://wigolink.com/api/public/trips/{tripId}
+- Pages publiques : https://wigolink.com/fr/trajets
+- Sitemap : https://wigolink.com/sitemap.xml
+
+Les paramètres publics disponibles sont `from`, `to`, `date`, `q`, `capacityKg`, `maxPrice`, `limit` et `offset`. Les résultats doivent être vérifiés en direct, car un trajet expiré ou retiré disparaît automatiquement. La messagerie, les opérations, les comptes, les documents KYC et les données administratives sont privés et ne font pas partie de ces ressources.

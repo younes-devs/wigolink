@@ -357,7 +357,7 @@ export function createTripService({
         error: 'Trajet expiré ou indisponible',
       });
     }
-    if (trip.travelerId === user.id) {
+    if (user && trip.travelerId === user.id) {
       view.activeOperations = activeOperationCount(trip.id);
     }
     return response(200, { trip: view });

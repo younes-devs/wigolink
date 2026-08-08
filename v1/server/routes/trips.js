@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { publicTripCatalog } from '../services/public-trip-catalog.js';
+import { publicTripCatalog, publicTripDetail } from '../services/public-trip-catalog.js';
 
 export function createTripsRouter({
   auth,
@@ -14,6 +14,10 @@ export function createTripsRouter({
   router.get('/public/trips', (req, res) => {
     res.set('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
     res.json(publicTripCatalog(trips.publicList(req.query)));
+  });
+
+  router.get('/public/trips/:id', (req, res) => {
+    return sendResult(res, publicTripDetail(trips.detail(req.params.id, null)));
   });
 
   router.get('/trips/mine', auth, (req, res) => {

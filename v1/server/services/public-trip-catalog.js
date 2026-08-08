@@ -11,6 +11,14 @@ export function publicTripCatalog(result = {}) {
   };
 }
 
+export function publicTripDetail(result = {}) {
+  if (result.status !== 200 || !result.body?.trip) return result;
+  return {
+    status: 200,
+    body: { trip: publicTrip(result.body.trip) },
+  };
+}
+
 function publicTrip(trip = {}) {
   return {
     id: trip.id,

@@ -10,6 +10,7 @@ import { LocationInput } from '../components/LocationInput.jsx';
 import { dateLocale, t, useLang } from '../../../i18n.js';
 import { useAuth } from '../../../app/authContext.jsx';
 import { loginPath } from '../../../app/authNavigation.js';
+import { usePageSeo } from '../../../app/Seo.jsx';
 
 const tripOverviewCache = new Map();
 const TRIP_OVERVIEW_CACHE_MS = 30_000;
@@ -38,6 +39,11 @@ function writeTripCache(query, value) {
 
 export default function TripFeedSimple() {
   useLang();
+  usePageSeo({
+    title: `${t('trips.title')} | Wigolink`,
+    description: t('trips.subtitle'),
+    canonicalPath: '/trajets',
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
   const initialCacheKey = `${user?.id || 'guest'}:`;

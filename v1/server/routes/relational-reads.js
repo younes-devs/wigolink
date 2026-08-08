@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { publicTripCatalog } from '../services/public-trip-catalog.js';
+import { publicTripCatalog, publicTripDetail } from '../services/public-trip-catalog.js';
 
 export function createRelationalReadsRouter({
   auth,
@@ -36,6 +36,26 @@ export function createRelationalReadsRouter({
       logger.error('Echec de recherche publique des trajets', error);
       return res.status(503).json({
         error: 'Recherche temporairement indisponible. Reessayez.',
+      });
+    }
+  });
+
+  router.get('/public/trips/:id', async (req, res, next) => {
+    if (!tripReadsEnabled()) return next('route');
+    try {
+      const result = await getTrip({
+        pool: getPool(),
+        user: null,
+        id: req.params.id,
+        today: today(),
+      });
+      const publicResult = publicTripDetail(result);
+      res.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      return res.status(publicResult.status).json(publicResult.body);
+    } catch (error) {
+      logger.error('Echec de lecture publique d un trajet', error);
+      return res.status(503).json({
+        error: 'Trajet temporairement indisponible. Reessayez.',
       });
     }
   });

@@ -141,6 +141,8 @@ import { createAdminFraudRouter } from './routes/admin-fraud.js';
 import { createAdminOperationsRouter } from './routes/admin-operations.js';
 import { createAdminReviewRouter } from './routes/admin-review.js';
 import { createLocationsRouter } from './routes/locations.js';
+import { createSeoRouter } from './routes/seo.js';
+import { publicTripCatalog } from './services/public-trip-catalog.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
@@ -995,6 +997,19 @@ app.use('/api', createLocationsRouter({
 app.use('/api', createTripsRouter({
   auth,
   trips: tripService,
+}));
+
+app.use('/api', createSeoRouter({
+  listPublicTrips: async (query) => publicTripCatalog(
+    relationalTripReadsEnabled()
+      ? await listRelationalTrips({
+        pool: databasePool(),
+        user: null,
+        query,
+        today: TODAY_ISO(),
+      })
+      : tripService.publicList(query),
+  ),
 }));
 
 app.use('/api', createTripOperationsRouter({

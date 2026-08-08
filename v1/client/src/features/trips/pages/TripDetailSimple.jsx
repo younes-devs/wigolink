@@ -8,6 +8,8 @@ import { useToast } from '../../../Toast.jsx';
 import { TripTransportIcon, TransportModePicker } from '../components/TripTransport.jsx';
 import { t, useLang } from '../../../i18n.js';
 import { formatDate } from './TripFeedSimple.jsx';
+import { loginPath } from '../../../app/authNavigation.js';
+import { tripSeo, usePageSeo } from '../../../app/Seo.jsx';
 
 export default function TripDetailSimple() {
   useLang();
@@ -21,8 +23,11 @@ export default function TripDetailSimple() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  usePageSeo(tripSeo(trip || null, document.documentElement.lang || 'fr'));
 
-  const load = () => api(`/trips/${id}`).then((data) => setTrip(data.trip)).catch(() => setTrip(false));
+  const load = () => api(user ? `/trips/${id}` : `/public/trips/${id}`)
+    .then((data) => setTrip(data.trip))
+    .catch(() => setTrip(false));
   useEffect(() => { load(); }, [id]);
   useEffect(() => {
     if (!trip) return;
@@ -30,6 +35,10 @@ export default function TripDetailSimple() {
   }, [trip]);
 
   const saveTrip = async () => {
+    if (!user) {
+      nav(loginPath(`/trajets/${id}`));
+      return;
+    }
     setBusy('save');
     try {
       if (trip.saved) await api(`/saved-trips/${trip.id}`, { method: 'DELETE' });
@@ -44,6 +53,10 @@ export default function TripDetailSimple() {
   };
 
   const message = async () => {
+    if (!user) {
+      nav(loginPath(`/trajets/${id}`));
+      return;
+    }
     setBusy('message');
     try {
       const data = await api('/conversations', { method: 'POST', body: { tripId: trip.id } });
@@ -178,7 +191,7 @@ export default function TripDetailSimple() {
             {busy === 'message' ? <span className="spinner" /> : <Icon name="chat" size={17} />}
             {t('messages.title')}
           </button>
-          <button className="btn btn-primary" onClick={() => nav(`/trajets/${trip.id}/demande`)} disabled={!!busy}>
+          <button className="btn btn-primary" onClick={() => nav(user ? `/trajets/${trip.id}/demande` : loginPath(`/trajets/${trip.id}/demande`))} disabled={!!busy}>
             <Icon name="arrowRight" size={17} />
             {t('trips.request.make')}
           </button>

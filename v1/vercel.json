@@ -21,6 +21,10 @@
       "dest": "/api/[...path].js"
     },
     {
+      "src": "/sitemap.xml",
+      "dest": "/api/public/sitemap.xml"
+    },
+    {
       "src": "/cgu",
       "dest": "/index.html"
     },

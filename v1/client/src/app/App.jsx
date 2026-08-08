@@ -19,6 +19,7 @@ import { getLang, loadAdminTranslations, t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
 import { loginPath, safeReturnPath } from './authNavigation.js';
 import { shouldHideAppChrome } from './chromeVisibility.js';
+import { RouteSeoPolicy } from './Seo.jsx';
 import GuestAccess from './components/GuestAccess.jsx';
 import {
   loadMessagesRoute,
@@ -169,6 +170,7 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
   return (
     <>
       <RouteScrollRestoration />
+      <RouteSeoPolicy />
       <div className="phone">
         {!chromeHidden && <Header user={user} />}
         <div className="main-wrap">
@@ -186,7 +188,7 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
                 <Route path="/profil" element={user ? <Profile /> : <GuestAccess area="profile" />} />
                 <Route path="/trajets/nouveau" element={<RequireAuth user={user}><CreateTrip /></RequireAuth>} />
                 <Route path="/trajets/:id/demande" element={<RequireAuth user={user}><TripRequestSimple /></RequireAuth>} />
-                <Route path="/trajets/:id" element={<RequireAuth user={user}><TripDetailSimple /></RequireAuth>} />
+                <Route path="/trajets/:id" element={<TripDetailSimple />} />
                 <Route path="/operations/:id" element={<RequireAuth user={user}><OperationDetailSimple /></RequireAuth>} />
                 <Route path="/messages/:id" element={<RequireAuth user={user}><ConversationDetail /></RequireAuth>} />
                 <Route path="/membres/:id" element={<RequireAuth user={user}><PublicProfile /></RequireAuth>} />

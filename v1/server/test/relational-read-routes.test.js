@@ -167,6 +167,48 @@ test('relational reads sert le catalogue public sans appeler auth', async () => 
   assert.equal('email' in response.body.trips[0].traveler, false);
 });
 
+test('relational reads sert le detail public avec un utilisateur anonyme', async () => {
+  let authCalls = 0;
+  const harness = createDependencies({
+    auth(_req, res) {
+      authCalls += 1;
+      res.status(401).json({ error: 'Authentification requise' });
+    },
+    async getTrip(payload) {
+      harness.calls.push(['trip', payload]);
+      return {
+        status: 200,
+        body: {
+          trip: {
+            id: payload.id,
+            from: 'Oujda',
+            to: 'Paris',
+            date: '2026-08-20',
+            traveler: { id: 'u-2', name: 'Karim', email: 'private@example.com' },
+          },
+        },
+      };
+    },
+  });
+  const response = await requestRoute({
+    path: '/public/trips/t-public',
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(authCalls, 0);
+  assert.deepEqual(harness.calls[0], [
+    'trip',
+    {
+      pool: harness.pool,
+      user: null,
+      id: 't-public',
+      today: '2026-07-25',
+    },
+  ]);
+  assert.equal('email' in response.body.trip.traveler, false);
+});
+
 test('relational reads construit l apercu depuis feed et mes trajets', async () => {
   const harness = createDependencies({
     async listTrips(payload) {
