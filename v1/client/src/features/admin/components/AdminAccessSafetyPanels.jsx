@@ -31,20 +31,20 @@ export function AccessPanel({ data, reload }) {
   };
 
   return (
-    <section className="card">
-      <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div><h2 style={{ margin: 0 }}>{t('admin.access.title')}</h2><p className="muted" style={{ marginBottom: 0 }}>{t('admin.access.activeCount', { count: data?.adminCount ?? '...' })}</p></div>
-        <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} style={{ maxWidth: 260 }} />
+    <section className="card admin-access-card">
+      <div className="admin-members-head">
+        <div><h2>{t('admin.access.title')}</h2><p className="muted">{t('admin.access.activeCount', { count: data?.adminCount ?? '...' })}</p></div>
+        <input className="chat-input admin-member-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.members.search')} aria-label={t('admin.members.search')} />
       </div>
       <div className="list-stack" style={{ marginTop: 16 }}>
         {users.map((user) => (
-          <div className="list-row" key={user.id}>
-            <div><b>{user.name}</b><div className="muted">{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
-            <div className="row" style={{ marginLeft: 'auto' }}>
-              <span className={`pill ${user.isAdmin ? 'pill-teal' : 'pill-gray'}`}>{t(user.isAdmin ? 'admin.role.admin' : 'admin.role.member')}</span>
-              <button className={`btn btn-sm ${user.isAdmin ? 'btn-danger-ghost' : 'btn-primary'}`} onClick={() => setPending({ user, role: user.isAdmin ? 'member' : 'admin' })}>
+          <div className="admin-access-row" key={user.id}>
+            <div className="admin-member-identity"><b title={user.name}>{user.name}</b><div className="muted" title={`${user.email}${user.city ? ` - ${user.city}` : ''}`}>{user.email} {user.city ? `· ${user.city}` : ''}</div></div>
+            <div className="admin-access-actions">
+              <span className={`pill ${user.isAdmin && !user.deletedAt ? 'pill-teal' : 'pill-gray'}`}>{user.deletedAt ? t('admin.member.deleted') : t(user.isAdmin ? 'admin.role.admin' : 'admin.role.member')}</span>
+              {!user.deletedAt && <button className={`btn btn-sm ${user.isAdmin ? 'btn-danger-ghost' : 'btn-primary'}`} onClick={() => setPending({ user, role: user.isAdmin ? 'member' : 'admin' })}>
                 {t(user.isAdmin ? 'admin.access.remove' : 'admin.access.promote')}
-              </button>
+              </button>}
             </div>
           </div>
         ))}

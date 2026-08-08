@@ -711,15 +711,30 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .admin-member-identity .muted { margin-top: 2px; font-size: 12px; }
 .admin-member-status { min-width: 0; display: flex; align-items: center; gap: 9px; }
 .admin-member-status > .icon { flex: 0 0 auto; }
+.admin-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.admin-access-actions { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.admin-access-actions .btn { width: auto; min-width: 104px; }
 
 @media (max-width: 600px) {
-  .admin-members-card { padding: 14px 12px; }
+  .admin-members-card, .admin-access-card { padding: 14px 12px; }
   .admin-members-head { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .admin-member-search { max-width: none; }
   .admin-member-row { grid-template-columns: 42px minmax(0, 1fr) auto; gap: 9px; padding: 9px; }
   .admin-member-row .cat-icon { width: 42px; height: 42px; }
   .admin-member-status { gap: 5px; }
   .admin-member-status .pill { max-width: 92px; padding-inline: 9px; }
+  .admin-access-row { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 11px; }
+  .admin-access-actions { justify-content: space-between; }
+  .admin-access-actions .btn { min-width: 112px; }
 }
 .mini-label {
   display: block; margin-bottom: 4px;
