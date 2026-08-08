@@ -7,6 +7,7 @@ import { dateLocale, t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
 import { ConfirmDialog } from '../../../components.jsx';
 import { readInboxCache, writeInboxCache } from '../services/messageCache.js';
+import { contextLabel } from '../utils/conversationDisplay.js';
 
 const FILTERS = [
   { id: 'all', label: 'messages.filter.all' },
@@ -378,7 +379,7 @@ function ConversationRow({ conversation, menuOpen, onMenuOpenChange, onArchive, 
   const [swiped, setSwiped] = useState(false);
   const unread = unreadCount(conversation);
   const status = statusLabel(conversation);
-  const context = conversation.context?.labelKey ? t(conversation.context.labelKey) : conversation.context?.label || conversationContext(conversation);
+  const context = contextLabel(conversation);
   const preview = conversation.lastMessagePreviewKey ? t(conversation.lastMessagePreviewKey) : conversation.lastMessagePreview || conversation.lastMessage?.text || conversationLabel(conversation);
   useDismissibleMenu(menuOpen, menuRef, () => onMenuOpenChange(false));
   const closeMenu = () => onMenuOpenChange(false);
@@ -519,12 +520,6 @@ function conversationLabel(conversation) {
   if (conversation.trip) return t('messages.preview.trip');
   if (conversation.operation) return t('messages.preview.operation');
   return t('messages.preview.new');
-}
-
-function conversationContext(conversation) {
-  if (conversation.trip) return `${conversation.trip.from} -> ${conversation.trip.to}`;
-  if (conversation.operation) return conversation.operation.title || t('messages.operation.active');
-  return t('messages.status.direct');
 }
 
 export function shortDate(value) {

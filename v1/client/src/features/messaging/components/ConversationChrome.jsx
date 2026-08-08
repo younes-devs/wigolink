@@ -80,7 +80,7 @@ export function ConversationChrome({
               {conversation.actionHref && (
                 <Link to={conversation.actionHref} role="menuitem" onClick={() => setMenuOpen(false)}>
                   <Icon name={conversation.contextType === 'trip' ? 'plane' : 'repeat'} size={15} />
-                  {conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}
+                  {conversation.contextType === 'trip' ? t('messages.action.viewTrip') : t('messages.action.viewRecap')}
                 </Link>
               )}
               <button type="button" role="menuitem" onClick={() => { setReportOpen(true); setMenuOpen(false); }}>

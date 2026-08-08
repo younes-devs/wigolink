@@ -183,7 +183,7 @@ function operationView(
     operationStatus,
     title: trip
       ? `${trip.from} -> ${trip.to}`
-      : listing?.title || transaction.id,
+      : listing?.title || 'Envoi en cours',
     trip: trip ? tripView(trip, row.traveler) : null,
     price: transaction.price
       || transaction.escrow?.travelerPay

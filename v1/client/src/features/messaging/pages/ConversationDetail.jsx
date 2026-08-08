@@ -10,8 +10,9 @@ import { readThreadCache, writeThreadCache } from '../services/messageCache.js';
 import { ConversationChrome } from '../components/ConversationChrome.jsx';
 import { ConversationComposer } from '../components/ConversationComposer.jsx';
 import { ConversationMessages } from '../components/ConversationMessages.jsx';
+import { contextLabel } from '../utils/conversationDisplay.js';
 import {
-  ConversationSkeleton, contextLabel, groupMessages, latestMessageAt, mergeMessages, resizeImage,
+  ConversationSkeleton, groupMessages, latestMessageAt, mergeMessages, resizeImage,
   useDismissibleMenu,
 } from '../components/ConversationThread.jsx';
 
@@ -597,7 +598,7 @@ export default function ConversationDetail() {
     );
   }
 
-  const contextText = conversation.context?.labelKey ? t(conversation.context.labelKey) : conversation.context?.label || contextLabel(conversation);
+  const contextText = contextLabel(conversation);
   const price = conversation.operation?.price ?? conversation.trip?.price;
   const currency = conversation.operation?.currency || conversation.trip?.currency || 'EUR';
   const profileLabel = conversation.other?.kycStatus === 'verified' ? t('messages.profile.verified') : t('messages.profile.basic');

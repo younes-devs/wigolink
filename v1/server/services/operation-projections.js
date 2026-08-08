@@ -23,7 +23,7 @@ export function createOperationProjections({
     const view = {
       ...txView(user)(tx),
       operationStatus: tx.operationStatus || statusMap[tx.status] || 'attente_confirmation',
-      title: trip ? `${trip.from} -> ${trip.to}` : listing?.title || tx.id,
+      title: trip ? `${trip.from} -> ${trip.to}` : listing?.title || 'Envoi en cours',
       trip: trip ? tripPostView(trip, user) : null,
       price: tx.price || tx.escrow?.travelerPay || listing?.travelerPay || trip?.price || 0,
       dispute: dispute ? disputeView(dispute, tx) : null,

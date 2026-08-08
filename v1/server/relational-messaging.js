@@ -68,8 +68,9 @@ export async function listRelationalConversations({
        where u.id <> $1 and c.data->'participantIds' ? u.id
        limit 1
      ) other on true
-     left join public.wigolink_trips trip on trip.id = c.data->>'tripId'
      left join public.wigolink_transactions operation on operation.id = c.data->>'operationId'
+     left join public.wigolink_trips trip
+       on trip.id = coalesce(c.data->>'tripId', operation.data->>'tripId')
      left join lateral (
        select m.data from public.messages m
        where m.conversation_id = c.id
@@ -149,8 +150,9 @@ export async function relationalConversation({
        where u.id <> $1 and c.data->'participantIds' ? u.id
        limit 1
      ) other on true
-     left join public.wigolink_trips trip on trip.id = c.data->>'tripId'
      left join public.wigolink_transactions operation on operation.id = c.data->>'operationId'
+     left join public.wigolink_trips trip
+       on trip.id = coalesce(c.data->>'tripId', operation.data->>'tripId')
      left join lateral (
        select m.data from public.messages m
        where m.conversation_id = c.id
@@ -391,7 +393,7 @@ function operationView(operation, trip) {
   return {
     ...operation,
     operationStatus: operation.operationStatus || operation.status || 'attente_confirmation',
-    title: trip ? `${trip.from} -> ${trip.to}` : operation.title || operation.id,
+    title: trip ? `${trip.from} -> ${trip.to}` : publicOperationTitle(operation.title),
     price: Number(operation.price || operation.escrow?.travelerPay || trip?.price || 0),
     currency: operation.currency || trip?.currency || 'EUR',
   };
@@ -409,9 +411,16 @@ function tripView(trip) {
 }
 
 function contextView({ trip, operation }) {
-  if (operation) return { type: 'operation', label: operation.title || 'Operation en cours', detail: operation.operationStatus || operation.status || 'en cours', href: `/operations/${operation.id}` };
+  if (operation) return { type: 'operation', label: trip ? `${trip.from} -> ${trip.to}` : publicOperationTitle(operation.title), detail: operation.operationStatus || operation.status || 'en cours', href: `/operations/${operation.id}` };
   if (trip) return { type: 'trip', label: `${trip.from} -> ${trip.to}`, detail: trip.departureDate || trip.date || null, href: `/trajets/${trip.id}` };
   return { type: 'direct', label: 'Discussion directe', detail: null, href: null };
+}
+
+function publicOperationTitle(value) {
+  const title = String(value || '').trim();
+  return title && !/^(?:tx|op|operation|conv|t)[-_][a-z0-9-]+$/i.test(title)
+    ? title
+    : 'Envoi en cours';
 }
 
 function messageView(message) {

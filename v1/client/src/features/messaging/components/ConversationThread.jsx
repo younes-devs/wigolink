@@ -4,6 +4,7 @@ import { apiBlob } from '../../../api';
 import { Avatar, Icon } from '../../../Icons.jsx';
 import { dateLocale, t } from '../../../i18n.js';
 import { shortDate } from '../pages/MessagesSimple.jsx';
+import { contextLabel } from '../utils/conversationDisplay.js';
 
 export function ConversationContext({ conversation }) {
   const icon = conversation.contextType === 'operation' ? 'repeat' : conversation.contextType === 'trip' ? 'plane' : 'chat';
@@ -14,13 +15,13 @@ export function ConversationContext({ conversation }) {
     <div className={`conversation-context ${conversation.actionRequired ? 'needs-action' : ''}`}>
       <span className="conversation-context-icon"><Icon name={icon} size={17} /></span>
       <div className="grow">
-        <b>{conversation.context?.labelKey ? t(conversation.context.labelKey) : conversation.context?.label || contextLabel(conversation)}</b>
+        <b>{contextLabel(conversation)}</b>
         <span>{conversation.actionKey ? t(conversation.actionKey) : conversation.actionLabel || conversation.context?.detail || t('messages.context.default')}</span>
       </div>
       {(price || href) && (
         <div className="conversation-context-actions">
           {price ? <strong>{price} {currency}</strong> : null}
-          {href && <Link to={href} className="btn btn-sm">{conversation.contextType === 'trip' ? t('messages.status.trip') : t('messages.status.operation')}</Link>}
+          {href && <Link to={href} className="btn btn-sm">{conversation.contextType === 'trip' ? t('messages.action.viewTrip') : t('messages.action.viewRecap')}</Link>}
         </div>
       )}
     </div>
@@ -249,12 +250,6 @@ export function mergeMessages(current, incoming) {
 }
 
 function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-export function contextLabel(conversation) {
-  if (conversation.trip) return `${conversation.trip.from} -> ${conversation.trip.to}`;
-  if (conversation.operation) return conversation.operation.title || t('messages.status.operation');
-  return t('messages.status.direct');
-}
 
 export function suggestions(conversation) {
   if (conversation.operation?.operationStatus === 'paiement_requis') return [t('messages.suggest.paid'), t('messages.suggest.confirmHandoff'), t('messages.suggest.place')];

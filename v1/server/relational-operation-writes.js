@@ -36,6 +36,7 @@ export function createRelationalOperationWriter({
     const client = await pool.connect();
     let transaction;
     let conversation;
+    let tripLabel = 'Envoi en cours';
     try {
       await client.query('begin');
       const tripResult = await client.query(
@@ -44,6 +45,7 @@ export function createRelationalOperationWriter({
       );
       const trip = tripResult.rows[0]?.data;
       if (!trip) return await rollbackResponse(client, 404, { error: 'Trajet introuvable' });
+      tripLabel = `${trip.from} -> ${trip.to}`;
       const departureDate = trip.departureDate || trip.ticketDate || trip.date;
       if ((trip.status || 'published') !== 'published' || departureDate < today()) {
         return await rollbackResponse(client, 400, {
@@ -163,7 +165,7 @@ export function createRelationalOperationWriter({
         key: 'offer.received',
         params: {
           name: user.name,
-          title: `${transaction.tripId}`,
+          title: tripLabel,
         },
       },
       transaction.id,

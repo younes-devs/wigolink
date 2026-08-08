@@ -88,7 +88,7 @@ export default function Profile() {
   const memberSince = user.createdAt ? memberFmt().format(new Date(user.createdAt)) : null;
 
   return (
-    <div>
+    <div className="profile-page">
       {/* En-tête profil : bannière + avatar + actions */}
       <div className="card profile-card">
         <div className="profile-head">
@@ -303,12 +303,14 @@ function MyPublishedTrips() {
               <span className={`pill ${trip.status === 'published' ? 'pill-teal' : 'pill-gray'}`}>
                 {trip.status === 'published' ? t('profile.trips.published') : trip.status}
               </span>
-              <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('common.edit')}>
-                <Icon name="pencil" size={16} />
-              </button>
-              <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('trips.remove')}>
-                {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
-              </button>
+              <div className="my-trip-actions">
+                <button className="icon-btn" onClick={() => startEdit(trip)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('common.edit')}>
+                  <Icon name="pencil" size={16} />
+                </button>
+                <button className="icon-btn" onClick={() => remove(trip.id)} disabled={busy === trip.id || trip.activeOperations > 0} title={t('trips.remove')}>
+                  {busy === trip.id ? <span className="spinner" /> : <Icon name="trash" size={16} />}
+                </button>
+              </div>
             </article>
           )
         ))}
