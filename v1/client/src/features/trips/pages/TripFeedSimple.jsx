@@ -268,7 +268,15 @@ export default function TripFeedSimple() {
           {myTrips?.length > 0 && <span>{myTrips.length}</span>}
         </div>
         {myTrips === null && <SkeletonList count={1} />}
-        {myTrips?.length === 0 && <p className="muted trip-section-empty">{t('trips.mine.empty')}</p>}
+        {myTrips?.length === 0 && (
+          <div className="card center empty-state">
+            <TripTransportIcon mode="plane" size={30} />
+            <p className="muted">{t('trips.mine.empty')}</p>
+            <Link className="btn btn-primary btn-sm" to="/trajets/nouveau">
+              <Icon name="plus" size={15} />{t('trips.publish.open')}
+            </Link>
+          </div>
+        )}
         <div className="trip-post-list">
           {myTrips?.map((trip) => (
             <article className="card trip-post" key={trip.id}>
