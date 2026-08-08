@@ -44,6 +44,7 @@ export function Header({ user }) {
 
 export function BottomNav({ user }) {
   useLang();
+  const location = useLocation();
   const { compact, expand } = useAdaptiveBottomNav();
   const [summary, setSummary] = useState({
     messagesUnread: 0,
@@ -137,6 +138,12 @@ export function BottomNav({ user }) {
           end={tab.to === '/trajets'}
           className={({ isActive }) => (isActive ? 'active' : '')}
           aria-label={tab.label}
+          onClick={(event) => {
+            if (tab.to !== '/trajets' || location.pathname !== '/trajets') return;
+            event.preventDefault();
+            expand(0);
+            document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           onPointerEnter={() => { void preloadPrimaryRoute(tab.to); }}
           onTouchStart={() => { void preloadPrimaryRoute(tab.to); }}
         >

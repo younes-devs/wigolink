@@ -288,7 +288,7 @@ export default function TripFeedSimple() {
                 </div>
               </div>
               <div className="trip-post-actions">
-                <Link to={`/trajets/${trip.id}`} className="btn btn-primary btn-sm">{t('trips.manage')} <Icon name="arrowRight" size={15} /></Link>
+                <Link to={`/trajets/${trip.id}`} state={{ fromTripsFeed: true }} className="btn btn-primary btn-sm">{t('trips.manage')} <Icon name="arrowRight" size={15} /></Link>
               </div>
             </article>
           ))}
@@ -350,7 +350,11 @@ export default function TripFeedSimple() {
               <button className="btn btn-ghost btn-sm" onClick={() => toggleSaved(trip)}>
                 <Icon name={trip.saved ? 'check' : 'star'} size={15} />{trip.saved ? t('trips.saved') : t('trips.save')}
               </button>
-              <Link to={user ? `/trajets/${trip.id}` : loginPath(`/trajets/${trip.id}`)} className="btn btn-primary btn-sm">
+              <Link
+                to={user ? `/trajets/${trip.id}` : loginPath(`/trajets/${trip.id}`)}
+                state={user ? { fromTripsFeed: true } : undefined}
+                className="btn btn-primary btn-sm"
+              >
                 {t('common.view')} <Icon name="arrowRight" size={15} />
               </Link>
             </div>

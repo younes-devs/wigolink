@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { ConfirmDialog } from '../../../components.jsx';
@@ -13,6 +13,7 @@ export default function TripDetailSimple() {
   useLang();
   const { id } = useParams();
   const nav = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const toast = useToast();
   const [trip, setTrip] = useState(null);
@@ -88,7 +89,13 @@ export default function TripDetailSimple() {
 
   return (
     <div className="simple-page">
-      <Link to="/trajets" className="link-btn"><Icon name="arrowLeft" size={15} />{t('trips.back')}</Link>
+      <button
+        type="button"
+        className="link-btn"
+        onClick={() => (location.state?.fromTripsFeed ? nav(-1) : nav('/trajets'))}
+      >
+        <Icon name="arrowLeft" size={15} />{t('trips.back')}
+      </button>
       <section className="card trip-detail-card">
         <div className="trip-detail-route">
           <div><span>{t('trips.from')}</span><b>{trip.from}</b></div>

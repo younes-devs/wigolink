@@ -1,5 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigationType,
+} from 'react-router-dom';
 import { api, getToken, setToken } from '../core/api.js';
 import {
   BottomNav,
@@ -46,12 +53,30 @@ const Terms = lazy(() => import('../pages/Terms.jsx'));
 const Kyc = lazy(() => import('../features/kyc/pages/Kyc.jsx'));
 const NotFound = lazy(() => import('../pages/NotFound.jsx'));
 
-// Reset the application scroller after each route change.
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'auto' });
-  }, [pathname]);
+const routeScrollPositions = new Map();
+
+// New screens start at the top; browser back/forward restores the previous screen.
+function RouteScrollRestoration() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+
+  useLayoutEffect(() => {
+    const scroller = document.querySelector('.content');
+    if (!scroller) return undefined;
+
+    const savedPosition = navigationType === 'POP'
+      ? routeScrollPositions.get(location.key)
+      : undefined;
+    scroller.scrollTo({ top: savedPosition ?? 0, behavior: 'auto' });
+
+    return () => {
+      routeScrollPositions.set(location.key, scroller.scrollTop);
+      if (routeScrollPositions.size > 50) {
+        routeScrollPositions.delete(routeScrollPositions.keys().next().value);
+      }
+    };
+  }, [location.key, navigationType]);
+
   return null;
 }
 
@@ -143,7 +168,7 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
 
   return (
     <>
-      <ScrollToTop />
+      <RouteScrollRestoration />
       <div className="phone">
         {!chromeHidden && <Header user={user} />}
         <div className="main-wrap">
