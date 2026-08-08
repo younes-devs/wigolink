@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../app/authContext.jsx';
 import { api } from '../../../api';
+import { invalidateTripFeedCache } from '../tripFeedCache.js';
 import { Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { Stepper } from '../../../components.jsx';
@@ -128,6 +129,7 @@ export default function CreateTrip() {
     setBusy(true);
     try {
       const data = await api('/trips', { method: 'POST', body: form });
+      invalidateTripFeedCache();
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {

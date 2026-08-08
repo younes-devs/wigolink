@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -55,23 +55,104 @@ const Kyc = lazy(() => import('../features/kyc/pages/Kyc.jsx'));
 const NotFound = lazy(() => import('../pages/NotFound.jsx'));
 
 const routeScrollPositions = new Map();
+const SCROLL_SESSION_PREFIX = 'wigolink:scroll:';
 
-// New screens start at the top; browser back/forward restores the previous screen.
+function scrollSessionKey(location) {
+  return `${SCROLL_SESSION_PREFIX}${location.pathname}${location.search}${location.hash}`;
+}
+
+function readSessionScroll(key) {
+  try {
+    const value = Number(sessionStorage.getItem(key));
+    return Number.isFinite(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSessionScroll(key, value) {
+  try {
+    sessionStorage.setItem(key, String(Math.max(0, Math.round(value))));
+  } catch {
+    // In-memory history restoration remains available when storage is blocked.
+  }
+}
+
+// New screens start at the top; history navigation and reload restore the previous position.
 function RouteScrollRestoration() {
   const location = useLocation();
   const navigationType = useNavigationType();
+  const initialRoute = useRef(true);
 
   useLayoutEffect(() => {
     const scroller = document.querySelector('.content');
     if (!scroller) return undefined;
 
+    const sessionKey = scrollSessionKey(location);
+    const isInitialRoute = initialRoute.current;
+    initialRoute.current = false;
+    const isReload = isInitialRoute
+      && performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
     const savedPosition = navigationType === 'POP'
-      ? routeScrollPositions.get(location.key)
+      ? (routeScrollPositions.get(location.key)
+        ?? (isReload ? readSessionScroll(sessionKey) : undefined))
       : undefined;
-    scroller.scrollTo({ top: savedPosition ?? 0, behavior: 'auto' });
+    let restoring = Number(savedPosition) > 0;
+    let writeFrame = 0;
+    let restoreFrame = 0;
+    let restoreTimer;
+
+    const persistPosition = () => {
+      routeScrollPositions.set(location.key, scroller.scrollTop);
+      writeSessionScroll(sessionKey, scroller.scrollTop);
+    };
+
+    const finishRestoration = () => {
+      restoring = false;
+      if (restoreTimer) window.clearTimeout(restoreTimer);
+      observer?.disconnect();
+    };
+
+    const restorePosition = () => {
+      if (!restoring) return;
+      scroller.scrollTo({ top: savedPosition, behavior: 'auto' });
+      if (Math.abs(scroller.scrollTop - savedPosition) <= 1) finishRestoration();
+    };
+
+    const observer = restoring
+      ? new MutationObserver(() => {
+          window.cancelAnimationFrame(restoreFrame);
+          restoreFrame = window.requestAnimationFrame(restorePosition);
+        })
+      : null;
+
+    if (restoring) {
+      observer.observe(scroller, { childList: true, subtree: true });
+      restorePosition();
+      restoreTimer = window.setTimeout(() => {
+        finishRestoration();
+        persistPosition();
+      }, 3_000);
+    } else {
+      scroller.scrollTo({ top: savedPosition ?? 0, behavior: 'auto' });
+    }
+
+    const onScroll = () => {
+      if (restoring) return;
+      window.cancelAnimationFrame(writeFrame);
+      writeFrame = window.requestAnimationFrame(persistPosition);
+    };
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pagehide', persistPosition);
 
     return () => {
-      routeScrollPositions.set(location.key, scroller.scrollTop);
+      scroller.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pagehide', persistPosition);
+      window.cancelAnimationFrame(writeFrame);
+      window.cancelAnimationFrame(restoreFrame);
+      if (restoreTimer) window.clearTimeout(restoreTimer);
+      observer?.disconnect();
+      if (!restoring) persistPosition();
       if (routeScrollPositions.size > 50) {
         routeScrollPositions.delete(routeScrollPositions.keys().next().value);
       }

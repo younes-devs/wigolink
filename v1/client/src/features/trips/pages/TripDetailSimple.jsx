@@ -10,6 +10,7 @@ import { t, useLang } from '../../../i18n.js';
 import { formatDate } from './TripFeedSimple.jsx';
 import { loginPath } from '../../../app/authNavigation.js';
 import { tripSeo, usePageSeo } from '../../../app/Seo.jsx';
+import { invalidateTripFeedCache } from '../tripFeedCache.js';
 
 export default function TripDetailSimple() {
   useLang();
@@ -72,6 +73,7 @@ export default function TripDetailSimple() {
     setBusy('edit');
     try {
       await api(`/trips/${trip.id}`, { method: 'PATCH', body: editForm });
+      invalidateTripFeedCache();
       toast.success(t('trips.toast.updated'));
       setEditing(false);
       load();
@@ -86,6 +88,7 @@ export default function TripDetailSimple() {
     setBusy('remove');
     try {
       await api(`/trips/${trip.id}`, { method: 'DELETE' });
+      invalidateTripFeedCache();
       toast.success(t('trips.toast.removed'));
       nav('/trajets');
     } catch (error) {

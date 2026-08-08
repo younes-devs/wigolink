@@ -11,31 +11,12 @@ import { dateLocale, t, useLang } from '../../../i18n.js';
 import { useAuth } from '../../../app/authContext.jsx';
 import { loginPath } from '../../../app/authNavigation.js';
 import { usePageSeo } from '../../../app/Seo.jsx';
-
-const tripOverviewCache = new Map();
-const TRIP_OVERVIEW_CACHE_MS = 30_000;
-const TRIP_SESSION_PREFIX = 'wigolink:trips:';
-
-function readTripCache(query) {
-  const memory = tripOverviewCache.get(query);
-  if (memory) return memory;
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(`${TRIP_SESSION_PREFIX}${query}`));
-    if (stored) tripOverviewCache.set(query, stored);
-    return stored;
-  } catch {
-    return null;
-  }
-}
-
-function writeTripCache(query, value) {
-  tripOverviewCache.set(query, value);
-  try {
-    sessionStorage.setItem(`${TRIP_SESSION_PREFIX}${query}`, JSON.stringify(value));
-  } catch {
-    // The in-memory cache remains available when browser storage is full.
-  }
-}
+import {
+  invalidateTripFeedCache,
+  readTripCache,
+  TRIP_OVERVIEW_CACHE_MS,
+  writeTripCache,
+} from '../tripFeedCache.js';
 
 export default function TripFeedSimple() {
   useLang();
@@ -158,11 +139,7 @@ export default function TripFeedSimple() {
       if (trip.saved) await api(`/saved-trips/${trip.id}`, { method: 'DELETE' });
       else await api(`/saved-trips/${trip.id}`, { method: 'POST' });
       toast.success(trip.saved ? t('trips.toast.unsaved') : t('trips.toast.saved'));
-      tripOverviewCache.clear();
-      for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
-        const key = sessionStorage.key(index);
-        if (key?.startsWith(TRIP_SESSION_PREFIX)) sessionStorage.removeItem(key);
-      }
+      invalidateTripFeedCache();
       load({ force: true });
     } catch (e) {
       toast.error(e.message);
