@@ -250,6 +250,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .trip-request-review-head, .operation-journey-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }.trip-request-review-head span { display: block; color: var(--accent); font-size: 12px; font-weight: 800; }.trip-request-review h2, .operation-journey h2 { margin: 2px 0 0; font-size: 16px; }
 .trip-request-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }.trip-request-summary > div { min-width: 0; display: grid; gap: 3px; padding: 9px; border-radius: 9px; background: var(--surface); }.trip-request-summary span { color: var(--ink-soft); font-size: 11px; }.trip-request-summary b { display: flex; align-items: center; gap: 4px; font-size: 12.5px; overflow-wrap: anywhere; }
 .request-confirmation { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 12.5px; line-height: 1.4; cursor: pointer; }.request-confirmation input { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--accent); }
+.phone:has(.trip-request-page) .content {
+  max-width: 720px;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(32px + env(safe-area-inset-bottom));
+}
 .trip-request-page { max-width: 680px; }
 .trip-request-intro { display: grid; gap: 5px; margin: 4px 0 16px; }
 .trip-request-intro > span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }

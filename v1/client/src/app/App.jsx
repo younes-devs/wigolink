@@ -11,6 +11,7 @@ import { ToastProvider } from '../shared/ui/Toast.jsx';
 import { getLang, loadAdminTranslations, t } from '../i18n.js';
 import AuthCtx from './authContext.jsx';
 import { loginPath, safeReturnPath } from './authNavigation.js';
+import { shouldHideAppChrome } from './chromeVisibility.js';
 import GuestAccess from './components/GuestAccess.jsx';
 import {
   loadMessagesRoute,
@@ -138,7 +139,7 @@ export default function App() {
 
 function AppWorkspace({ user, onboarding, setOnboarding }) {
   const location = useLocation();
-  const chromeHidden = ['/connexion', '/cgu', '/confidentialite'].includes(location.pathname);
+  const chromeHidden = shouldHideAppChrome(location.pathname);
 
   return (
     <>
