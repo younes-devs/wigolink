@@ -130,9 +130,35 @@ for (const [key, translations] of Object.entries(generatedTranslations.notificat
 // simplement pas traduites).
 function renderNotification(lang, n) {
   const tpl = n.key && TEMPLATES[n.key];
-  if (!tpl) return renderLegacyNotification(lang, n.text || '');
+  if (!tpl) return renderLegacyNotification(lang, sanitizeTechnicalReferences(n.text || '', lang));
   const fn = tpl[lang] || tpl.fr;
-  try { return fn(n.params || {}); } catch { return (tpl.fr)(n.params || {}); }
+  const params = sanitizeNotificationParams(n.params || {}, lang);
+  try { return fn(params); } catch { return (tpl.fr)(params); }
+}
+
+function sanitizeNotificationParams(params, lang) {
+  if (!isTechnicalReference(params.title)) return params;
+  return { ...params, title: shipmentFallback(lang) };
+}
+
+function sanitizeTechnicalReferences(text, lang) {
+  return String(text).replace(
+    /\b(?:(?:tx|op|conv)-[a-z0-9-]{6,}|t-(?:[a-f0-9-]{8,}|\d+))\b/gi,
+    shipmentFallback(lang),
+  );
+}
+
+function isTechnicalReference(value) {
+  return /^(?:(?:tx|op|conv)-[a-z0-9-]{6,}|t-(?:[a-f0-9-]{8,}|\d+))$/i.test(String(value || '').trim());
+}
+
+function shipmentFallback(lang) {
+  return {
+    ar: 'هذه الشحنة',
+    en: 'this shipment',
+    es: 'este envío',
+    nl: 'deze zending',
+  }[lang] || 'cet envoi';
 }
 
 const LEGACY_PATTERNS = [

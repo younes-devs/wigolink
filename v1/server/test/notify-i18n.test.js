@@ -9,6 +9,18 @@ test('notifications rendent les variables en anglais et espagnol', () => {
   assert.equal(renderNotification('es', notification), 'Nora se ofrece a transportar «Diplôme».');
 });
 
+test('notifications ne rendent jamais un identifiant technique visible', () => {
+  const notification = {
+    key: 'offer.received',
+    params: { name: 'Aya', title: 't-8a67f9ba1-22e4-45b1-aa8b-91d367784e7f' },
+  };
+
+  assert.doesNotMatch(renderNotification('fr', notification), /t-8a67/);
+  assert.match(renderNotification('fr', notification), /cet envoi/);
+  assert.doesNotMatch(renderNotification('en', notification), /t-8a67/);
+  assert.match(renderNotification('en', notification), /this shipment/);
+});
+
 test('notifications historiques sont traduites en anglais et espagnol', () => {
   const legacy = 'Nora a retiré sa proposition.';
 

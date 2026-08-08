@@ -6,11 +6,26 @@ import { dateLocale, t, useLang } from './i18n.js';
 
 function relTime(at) {
   const formatter = new Intl.RelativeTimeFormat(dateLocale(), { numeric: 'auto' });
-  const mins = Math.round((at - Date.now()) / 60e3);
+  const mins = Math.round((notificationTime(at) - Date.now()) / 60e3);
   if (mins > -60) return formatter.format(mins, 'minute');
   const hours = Math.round(mins / 60);
   if (hours > -24) return formatter.format(hours, 'hour');
   return formatter.format(Math.round(hours / 24), 'day');
+}
+
+function notificationTime(value) {
+  let timestamp = value instanceof Date ? value.getTime() : Number(value);
+  if (!Number.isFinite(timestamp)) timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return Date.now();
+
+  // Historical imports may contain seconds, centiseconds, microseconds or
+  // nanoseconds. Bring every epoch value back to JavaScript milliseconds.
+  while (timestamp > 4_102_444_800_000) timestamp /= 10;
+  if (timestamp > 0 && timestamp < 100_000_000_000) timestamp *= 1000;
+
+  const now = Date.now();
+  if (timestamp > now + 5 * 60e3) return now;
+  return timestamp;
 }
 
 export default function Notifications() {
