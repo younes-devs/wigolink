@@ -104,6 +104,42 @@
 .trip-filter-head p { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
 .trip-filter-sheet-body { display: grid; gap: 10px; padding: 12px 16px 16px; }
 .trip-filter-sheet-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px 16px; border-top: 1px solid var(--hairline); }
+.trip-date-filter {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+.trip-date-filter > .icon,
+.trip-date-filter > span {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.trip-date-filter > .icon {
+  inset-inline-start: 16px;
+  color: var(--ink-soft);
+}
+.trip-date-filter > span {
+  inset-inline-start: 44px;
+  inset-inline-end: 14px;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trip-date-filter > input {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-inline-start: 44px;
+}
+.trip-date-filter:not(.has-value) > input {
+  color: transparent;
+}
+.trip-date-filter:focus-within > .icon { color: var(--accent); }
 .filter-toggle {
   display: flex; align-items: center; gap: 8px;
   min-height: 42px; border: 1px solid var(--line); border-radius: 8px;

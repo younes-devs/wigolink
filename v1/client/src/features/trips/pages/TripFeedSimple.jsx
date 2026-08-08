@@ -178,7 +178,11 @@ export default function TripFeedSimple() {
         <input className="chat-input" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t('trips.search.placeholder')} />
         <LocationInput inputClassName="chat-input" value={filters.from} onChange={({ value }) => setFilters({ ...filters, from: value })} placeholder={t('trips.from')} />
         <LocationInput inputClassName="chat-input" value={filters.to} onChange={({ value }) => setFilters({ ...filters, to: value })} placeholder={t('trips.to')} />
-        <input className="chat-input" type="date" min={today} value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} aria-label={t('trips.filter.date')} />
+        <TripDateFilter
+          min={today}
+          value={filters.date}
+          onChange={(date) => setFilters({ ...filters, date })}
+        />
         <input className="chat-input" type="number" min="0" value={filters.maxPrice} onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })} placeholder={t('trips.filter.price.short')} />
         <input className="chat-input" type="number" min="0" value={filters.capacityKg} onChange={(e) => setFilters({ ...filters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity.short')} />
       </section>
@@ -197,7 +201,11 @@ export default function TripFeedSimple() {
               <input className="chat-input" value={draftFilters.q} onChange={(e) => setDraftFilters({ ...draftFilters, q: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { setFilters({ ...draftFilters, q: draftFilters.q.trim() }); setFiltersOpen(false); } }} placeholder={t('trips.search.placeholder')} aria-label={t('trips.search.short')} />
               <LocationInput inputClassName="chat-input" value={draftFilters.from} onChange={({ value }) => setDraftFilters({ ...draftFilters, from: value })} placeholder={t('trips.from')} />
               <LocationInput inputClassName="chat-input" value={draftFilters.to} onChange={({ value }) => setDraftFilters({ ...draftFilters, to: value })} placeholder={t('trips.to')} />
-              <input className="chat-input" type="date" min={today} value={draftFilters.date} onChange={(e) => setDraftFilters({ ...draftFilters, date: e.target.value })} aria-label={t('trips.filter.date')} />
+              <TripDateFilter
+                min={today}
+                value={draftFilters.date}
+                onChange={(date) => setDraftFilters({ ...draftFilters, date })}
+              />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.maxPrice} onChange={(e) => setDraftFilters({ ...draftFilters, maxPrice: e.target.value })} placeholder={t('trips.filter.price')} />
               <input className="chat-input" type="number" min="0" inputMode="decimal" value={draftFilters.capacityKg} onChange={(e) => setDraftFilters({ ...draftFilters, capacityKg: e.target.value })} placeholder={t('trips.filter.capacity')} />
             </div>
@@ -359,6 +367,23 @@ export default function TripFeedSimple() {
       )}
       </section>
     </div>
+  );
+}
+
+function TripDateFilter({ min, value, onChange }) {
+  return (
+    <label className={`trip-date-filter${value ? ' has-value' : ''}`}>
+      <Icon name="calendar" size={18} />
+      {!value && <span>{t('trips.filter.date')}</span>}
+      <input
+        className="chat-input"
+        type="date"
+        min={min}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={t('trips.filter.date')}
+      />
+    </label>
   );
 }
 
