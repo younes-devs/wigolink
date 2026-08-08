@@ -620,8 +620,6 @@ export default {
   'settings.notifications.title': 'Meldingen',
   'settings.notifications.transactions': 'Transacties',
   'settings.notifications.transactions.sub': 'Betalingen, aanvaardingen en statuswijzigingen',
-  'settings.notifications.messages': 'Berichten',
-  'settings.notifications.messages.sub': 'Nieuwe berichten over uw zendingen',
   'settings.notifications.shipments': 'Zendingen',
   'settings.notifications.shipments.sub': 'Aanvragen, overdracht, levering en statuswijzigingen',
   'settings.notifications.reminders': 'Herinneringen',

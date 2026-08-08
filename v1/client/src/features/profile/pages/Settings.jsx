@@ -6,7 +6,7 @@ import { Avatar, GoogleLogo, Icon } from '../../../Icons.jsx';
 import { getTheme, setTheme } from '../../../theme.js';
 import { t, useLang, getLang, setLang, LANGS } from '../../../i18n.js';
 
-const DEFAULT_NOTIFICATIONS = { transactions: true, messages: true, shipments: true, reminders: true, security: true };
+const DEFAULT_NOTIFICATIONS = { transactions: true, shipments: true, reminders: true, security: true };
 const SUPPORT_EMAIL = 'support@wigolink.com';
 
 export default function Settings() {
@@ -104,12 +104,11 @@ function NotificationsSection() {
   };
   const rows = [
     ['transactions', 'settings.notifications.transactions', 'settings.notifications.transactions.sub'],
-    ['messages', 'settings.notifications.messages', 'settings.notifications.messages.sub'],
     ['shipments', 'settings.notifications.shipments', 'settings.notifications.shipments.sub'],
     ['reminders', 'settings.notifications.reminders', 'settings.notifications.reminders.sub'],
     ['security', 'settings.notifications.security', 'settings.notifications.security.sub'],
   ];
-  return <><div className="settings-card settings-detail-card">{rows.map(([key, title, sub]) => <button key={key} className="settings-inline-row" onClick={() => toggle(key)} disabled={key === 'security'}><span className="settings-row-icon"><Icon name={key === 'messages' ? 'chat' : key === 'security' ? 'shieldCheck' : 'bell'} size={17} /></span><span className="grow"><span className="settings-row-title">{t(title)}</span><span className="settings-row-sub">{t(sub)}</span></span><span className={`switch ${prefs[key] ? 'on' : ''}`}><span /></span></button>)}</div>{status && <p className="settings-save-state">{t(status)}</p>}</>;
+  return <><div className="settings-card settings-detail-card">{rows.map(([key, title, sub]) => <button key={key} className="settings-inline-row" onClick={() => toggle(key)} disabled={key === 'security'}><span className="settings-row-icon"><Icon name={key === 'security' ? 'shieldCheck' : 'bell'} size={17} /></span><span className="grow"><span className="settings-row-title">{t(title)}</span><span className="settings-row-sub">{t(sub)}</span></span><span className={`switch ${prefs[key] ? 'on' : ''}`}><span /></span></button>)}</div>{status && <p className="settings-save-state">{t(status)}</p>}</>;
 }
 
 function AppearanceSection() {

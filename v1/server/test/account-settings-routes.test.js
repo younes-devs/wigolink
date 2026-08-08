@@ -54,7 +54,6 @@ function createAuthenticatedUser() {
     settings: {
       notifications: {
         transactions: true,
-        messages: true,
         shipments: true,
         reminders: true,
         security: true,
@@ -109,14 +108,14 @@ test('account settings routes auditent puis sauvegardent la mise a jour', async 
       events.push('update');
       candidate.settings.notifications = {
         ...candidate.settings.notifications,
-        messages: !!input.messages,
+        reminders: !!input.reminders,
         security: true,
       };
     },
   };
   const response = await requestAccountSettings({
     method: 'POST',
-    body: { notifications: { messages: false } },
+    body: { notifications: { reminders: false } },
     auth: authFor(user),
     settings,
     async auditChange(payload) {
@@ -141,21 +140,19 @@ test('account settings routes auditent puis sauvegardent la mise a jour', async 
     subjectUserId: user.id,
     before: {
       transactions: true,
-      messages: true,
       shipments: true,
       reminders: true,
       security: true,
     },
     after: {
       transactions: true,
-      messages: false,
       shipments: true,
-      reminders: true,
+      reminders: false,
       security: true,
     },
-    fields: ['transactions', 'messages', 'shipments', 'reminders'],
+    fields: ['transactions', 'shipments', 'reminders'],
   });
-  assert.equal(response.body.settings.notifications.messages, false);
+  assert.equal(response.body.settings.notifications.reminders, false);
   assert.equal(response.body.settings.notifications.security, true);
 });
 

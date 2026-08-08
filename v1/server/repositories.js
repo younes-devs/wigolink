@@ -138,7 +138,6 @@ function createAccountConfirmationRepository({ db }) {
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
-  messages: true,
   shipments: true,
   reminders: true,
   security: true,
@@ -148,9 +147,11 @@ function createSettingsRepository() {
   return {
     ensure(user) {
       user.settings = user.settings || {};
+      const storedNotifications = { ...(user.settings.notifications || {}) };
+      delete storedNotifications.messages;
       user.settings.notifications = {
         ...DEFAULT_NOTIFICATION_SETTINGS,
-        ...(user.settings.notifications || {}),
+        ...storedNotifications,
         security: true,
       };
       return user.settings;

@@ -531,8 +531,6 @@ export default {
   'settings.notifications.title': 'الإشعارات',
   'settings.notifications.transactions': 'المعاملات',
   'settings.notifications.transactions.sub': 'المدفوعات، القبول وتغييرات الحالة',
-  'settings.notifications.messages': 'الرسائل',
-  'settings.notifications.messages.sub': 'رسائل جديدة مرتبطة بشحناتك',
   'settings.notifications.shipments': 'الشحنات',
   'settings.notifications.shipments.sub': 'الطلبات والاستلام والتسليم وتغييرات الحالة',
   'settings.notifications.reminders': 'التذكيرات',

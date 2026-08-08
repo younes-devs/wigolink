@@ -4,7 +4,6 @@ import { createNotificationService } from '../services/notifications.js';
 
 const DEFAULT_SETTINGS = {
   transactions: true,
-  messages: true,
   shipments: true,
   reminders: true,
   security: true,
@@ -68,14 +67,14 @@ test('notification service respecte une preference desactivee', async () => {
     settings: {
       notifications: {
         ...DEFAULT_SETTINGS,
-        messages: false,
+        transactions: false,
       },
     },
   };
   const harness = createHarness([user]);
 
   assert.deepEqual(
-    await harness.notify(['u-1'], { key: 'message.new' }, null, 'messages'),
+    await harness.notify(['u-1'], { key: 'offer.received' }, null, 'transactions'),
     [],
   );
   assert.deepEqual(harness.appended, []);

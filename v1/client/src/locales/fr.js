@@ -531,8 +531,6 @@ export default {
   'settings.notifications.title': 'Notifications',
   'settings.notifications.transactions': 'Transactions',
   'settings.notifications.transactions.sub': 'Paiements, acceptations et changements de statut',
-  'settings.notifications.messages': 'Messages',
-  'settings.notifications.messages.sub': 'Nouveaux messages liés à vos envois',
   'settings.notifications.shipments': 'Envois',
   'settings.notifications.shipments.sub': 'Demandes, remise, livraison et changements de statut',
   'settings.notifications.reminders': 'Rappels',

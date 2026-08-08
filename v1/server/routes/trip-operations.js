@@ -76,7 +76,7 @@ export function createTripOperationsRouter({
     addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price, shipmentType, documentCount: tx.documentCount, weightKg: tx.weightKg });
     db.transactions.push(tx);
     const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
-    await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'messages', 'messages');
+    await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'transactions', 'messages');
     save();
     res.json({ operation: operationView(tx, req.user), conversation: conversationView(conversation, req.user.id) });
   });

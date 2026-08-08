@@ -2,7 +2,6 @@ import { Router } from 'express';
 
 const AUDITED_NOTIFICATION_FIELDS = [
   'transactions',
-  'messages',
   'shipments',
   'reminders',
 ];

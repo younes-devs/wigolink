@@ -323,7 +323,6 @@ const kycRepository = relationalKycEnabled()
   : repositories.kyc;
 const DEFAULT_NOTIFICATION_SETTINGS = {
   transactions: true,
-  messages: true,
   shipments: true,
   reminders: true,
   security: true,
