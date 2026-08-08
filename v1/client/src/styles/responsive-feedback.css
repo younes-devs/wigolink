@@ -286,6 +286,17 @@ textarea:focus-visible {
 .trip-request-flow .price-input { max-width: 260px; }
 .trip-request-next { justify-self: end; min-width: 160px; }
 .operation-simple-page { max-width: 720px; }
+.phone:has(.operation-simple-page) .content {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+@media (min-width: 900px) {
+  .phone:has(.operation-simple-page) { margin-left: 0; }
+  .phone:has(.operation-simple-page) .content {
+    max-width: 784px;
+    padding: 36px 32px 60px;
+  }
+}
 .operation-detail-simple { display: grid; gap: 16px; }
 .operation-detail-simple .operation-person { margin: 0; }
 .operation-person .icon-btn { margin-left: auto; }
