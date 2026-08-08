@@ -34,7 +34,7 @@ export default function PrivacyPolicy() {
   const copy = getLegalCopy('privacy');
 
   return <div>
-    <button className="link-btn mb" onClick={() => nav(-1)}>
+    <button className="link-btn back-btn" onClick={() => nav(-1)}>
       <Icon name="arrowLeft" size={14} />{t('common.back')}
     </button>
     <h1 className="page-title">{copy.title}</h1>

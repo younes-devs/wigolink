@@ -107,7 +107,7 @@ export default function TripDetailSimple() {
     <div className="simple-page">
       <button
         type="button"
-        className="link-btn"
+        className="link-btn back-btn"
         onClick={() => (location.state?.fromTripsFeed ? nav(-1) : nav('/trajets'))}
       >
         <Icon name="arrowLeft" size={15} />{t('trips.back')}

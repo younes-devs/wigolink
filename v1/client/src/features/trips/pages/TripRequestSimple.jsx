@@ -76,7 +76,7 @@ export default function TripRequestSimple() {
 
   return (
     <div className="simple-page trip-request-page">
-      <button type="button" className="link-btn" onClick={() => nav(`/trajets/${trip.id}`)}><Icon name="arrowLeft" size={15} />{t('common.back')}</button>
+      <button type="button" className="link-btn back-btn" onClick={() => nav(`/trajets/${trip.id}`)}><Icon name="arrowLeft" size={15} />{t('common.back')}</button>
       <header className="trip-request-intro">
         <span>{trip.from} <TripTransportIcon mode={trip.transportMode} size={16} /> {trip.to}</span>
         <h1>{t('trips.request.make')}</h1>

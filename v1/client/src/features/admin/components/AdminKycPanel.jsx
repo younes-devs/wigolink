@@ -109,14 +109,14 @@ function KycDetail({ id, onBack, onDecided }) {
     } catch (e) { setError(e.message); setBusy(false); }
   };
 
-  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('common.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
+  if (error) return <div><button className="link-btn back-btn" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('common.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
   if (!data) return <SkeletonCard lines={4} />;
   const s = data.submission;
   const done = s.status !== 'pending';
 
   return (
     <div>
-      <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.kyc.backToQueue')}</button>
+      <button className="link-btn back-btn" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.kyc.backToQueue')}</button>
 
       <div className="card">
         <div className="list-row mb">

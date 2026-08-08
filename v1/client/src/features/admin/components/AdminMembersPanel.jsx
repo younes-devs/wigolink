@@ -83,11 +83,11 @@ function MemberCaseFile({ userId, onBack }) {
     void api(`/admin/users/${userId}/case-file/access`, { method: 'POST', body: { section: 'overview' } }).catch(() => {});
     load();
   }, [userId, load]);
-  if (error) return <div><button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
+  if (error) return <div><button className="link-btn back-btn" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button><div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div></div>;
   if (!data) return <SkeletonCard lines={5} />;
   const { member } = data;
   return <div className="admin-case-file">
-    <button className="link-btn mb" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button>
+    <button className="link-btn back-btn" onClick={onBack}><Icon name="arrowLeft" size={14} />{t('admin.members.back')}</button>
     <div className="alert alert-warn"><Icon name="shieldCheck" size={17} /><span>{t('admin.member.auditNotice')}</span></div>
     <section className="card">
       <div className="list-row"><div className="cat-icon"><Icon name="user" size={22} /></div><div className="grow"><h2 style={{ marginBottom: 2 }}>{member.name}</h2><div className="muted">{member.email} · {member.phone || t('admin.member.phoneMissing')}</div></div><span className={`pill ${member.deletedAt ? 'pill-gray' : member.kycStatus === 'verified' ? 'pill-teal' : 'pill-saffron'}`}>{member.deletedAt ? t('admin.member.anonymized') : adminStatus(member.kycStatus)}</span></div>

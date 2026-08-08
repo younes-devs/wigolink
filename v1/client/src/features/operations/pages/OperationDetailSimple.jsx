@@ -92,7 +92,7 @@ export default function OperationDetailSimple() {
 
   return (
     <div className="simple-page operation-simple-page">
-      <Link to="/en-cours" className="link-btn"><Icon name="arrowLeft" size={15} />{t('common.back')}</Link>
+      <Link to="/en-cours" className="link-btn back-btn"><Icon name="arrowLeft" size={15} />{t('common.back')}</Link>
       <section className="card operation-detail operation-detail-simple">
         <header className="operation-detail-head">
           <div><h1>{operation.title}</h1><p>{operation.trip ? formatDate(operation.trip.departureDate) : t('trips.date.pending')}</p></div>

@@ -42,11 +42,17 @@
 }
 .auth-switch { text-align: center; font-size: 13.5px; color: var(--ink-soft); margin: 4px 0 10px; }
 .link-btn {
-  background: none; border: none; padding: 0; font-family: inherit;
+  min-height: 34px; max-width: 100%; padding: 6px 8px; border: none; border-radius: 8px;
+  background: transparent; font-family: inherit; line-height: 1.2;
   font-size: inherit; font-weight: 600; color: var(--accent); cursor: pointer;
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  transition: color .15s ease, background .15s ease;
 }
-.link-btn:hover { text-decoration: underline; }
+.link-btn:hover, .link-btn:focus, .link-btn:visited { text-decoration: none; }
+.link-btn:hover { color: var(--accent-dark); background: var(--accent-tint); }
+.link-btn > .icon { flex: 0 0 auto; }
+.back-btn { margin: 0 0 14px -8px; }
+[dir="rtl"] .back-btn { margin-right: -8px; margin-left: 0; }
 .field .link-btn { font-size: 12.5px; margin-top: 7px; }
 .auth-sep {
   display: flex; align-items: center; gap: 12px; margin: 14px 0;

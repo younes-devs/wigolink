@@ -32,7 +32,7 @@ export default function Kyc() {
 
   return (
     <div className="kyc-page">
-      <button className="link-btn mb" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />{t('common.back')}</button>
+      <button className="link-btn back-btn" onClick={() => nav(-1)}><Icon name="arrowLeft" size={14} />{t('common.back')}</button>
       <h1 className="page-title">{t('kyc.title')}</h1>
       <p className="page-sub">{t('kyc.sub')}</p>
 
