@@ -175,9 +175,10 @@ body {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   border: none; border-radius: 12px; padding: 14px 20px;
   font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
-  font-family: inherit; letter-spacing: -0.1px;
+  font-family: inherit; letter-spacing: -0.1px; text-decoration: none;
   transition: filter 0.15s, transform 0.06s, box-shadow 0.15s;
 }
+.btn:hover, .btn:focus, .btn:visited { text-decoration: none; }
 .btn:active { transform: scale(0.985); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primary {
