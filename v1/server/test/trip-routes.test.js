@@ -155,6 +155,7 @@ test('trip routes sert un detail public nettoye sans authentification', async ()
                 id: 'u-private',
                 name: 'Karim',
                 email: 'private@example.com',
+                photoUrl: 'data:image/jpeg;base64,private-inline-image',
               },
             },
           },
@@ -168,6 +169,7 @@ test('trip routes sert un detail public nettoye sans authentification', async ()
   assert.equal(response.body.trip.from, 'Oujda');
   assert.equal('travelerId' in response.body.trip, false);
   assert.equal('email' in response.body.trip.traveler, false);
+  assert.equal(response.body.trip.traveler.photoUrl, null);
 });
 
 test('trip routes conserve statut service et protege avant appel', async () => {

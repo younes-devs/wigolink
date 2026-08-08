@@ -49,6 +49,12 @@ function publicTraveler(traveler) {
     ratingCount: traveler.ratingCount,
     completed: traveler.completed,
     badges: traveler.badges,
-    photoUrl: traveler.photoUrl || null,
+    photoUrl: publicPhotoUrl(traveler.photoUrl),
   };
+}
+
+function publicPhotoUrl(value) {
+  const url = String(value || '').trim();
+  if (url.startsWith('https://') || url.startsWith('/assets/')) return url;
+  return null;
 }
