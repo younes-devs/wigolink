@@ -1,3 +1,5 @@
+import generatedTranslations from './i18n/generated-en-es.js';
+
 // Traduction des notifications in-app.
 //
 // Différence clé avec les erreurs API : une notification est PERSISTÉE au moment de
@@ -113,6 +115,16 @@ const TEMPLATES = {
   },
 };
 
+function interpolate(template, params = {}) {
+  return template.replace(/\{([^}]+)\}/g, (_match, key) => params[key] ?? `{${key}}`);
+}
+
+for (const [key, translations] of Object.entries(generatedTranslations.notifications)) {
+  if (!TEMPLATES[key]) continue;
+  TEMPLATES[key].en = (params) => interpolate(translations.en, params);
+  TEMPLATES[key].es = (params) => interpolate(translations.es, params);
+}
+
 // Rend le texte d'une notification. `n` doit porter soit {key, params}, soit un `text`
 // déjà en clair (notifications persistées avant l'introduction des clés — jamais cassées,
 // simplement pas traduites).
@@ -128,31 +140,43 @@ const LEGACY_PATTERNS = [
     re: /^(.+) vous propose de transporter « (.+) »\.$/,
     ar: (m) => `${m[1]} يقترح عليك نقل « ${m[2]} ».`,
     nl: (m) => `${m[1]} stelt voor om « ${m[2]} » te vervoeren.`,
+    en: (m) => `${m[1]} offers to carry “${m[2]}”.`,
+    es: (m) => `${m[1]} se ofrece a transportar «${m[2]}».`,
   },
   {
     re: /^(.+) a décliné la proposition\.$/,
     ar: (m) => `${m[1]} رفض العرض.`,
     nl: (m) => `${m[1]} heeft het voorstel geweigerd.`,
+    en: (m) => `${m[1]} declined the offer.`,
+    es: (m) => `${m[1]} rechazó la propuesta.`,
   },
   {
     re: /^(.+) a retiré sa proposition\.$/,
     ar: (m) => `${m[1]} سحب عرضه.`,
     nl: (m) => `${m[1]} heeft zijn voorstel ingetrokken.`,
+    en: (m) => `${m[1]} withdrew their offer.`,
+    es: (m) => `${m[1]} retiró su propuesta.`,
   },
   {
     re: /^(.+) a envoyé une contre-proposition\.$/,
     ar: (m) => `${m[1]} أرسل عرضا مضادا.`,
     nl: (m) => `${m[1]} heeft een tegenvoorstel verstuurd.`,
+    en: (m) => `${m[1]} sent a counter-offer.`,
+    es: (m) => `${m[1]} envió una contrapropuesta.`,
   },
   {
     re: /^(.+) transporte « (.+) »\. Paiement séquestré\.$/,
     ar: (m) => `${m[1]} ينقل « ${m[2]} ». الدفع محجوز.`,
     nl: (m) => `${m[1]} vervoert « ${m[2]} ». Betaling in bewaring.`,
+    en: (m) => `${m[1]} is carrying “${m[2]}”. Payment is held in escrow.`,
+    es: (m) => `${m[1]} transporta «${m[2]}». El pago está en depósito.`,
   },
   {
     re: /^(.+) vous a envoyé un message\.$/,
     ar: (m) => `أرسل لك ${m[1]} رسالة.`,
     nl: (m) => `${m[1]} heeft u een bericht gestuurd.`,
+    en: (m) => `${m[1]} sent you a message.`,
+    es: (m) => `${m[1]} te envió un mensaje.`,
   },
 ];
 

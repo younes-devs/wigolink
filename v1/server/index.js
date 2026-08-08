@@ -226,7 +226,7 @@ app.use(observability.middleware);
 // serverless instance before authentication runs.
 app.use('/api/kyc/submit', express.json({ limit: '3mb' }));
 app.use(express.json({ limit: '1mb' }));
-// i18n des erreurs API : traduit body.error à la sortie selon Accept-Language (fr/ar/nl).
+// i18n des erreurs API : traduit body.error à la sortie selon Accept-Language.
 app.use(langMiddleware);
 
 // Production never falls back to the packaged JSON data when Supabase is missing.
@@ -636,6 +636,8 @@ const demoHintFor = (code, lang = 'fr') => {
   if (!DEMO) return undefined;
   if (lang === 'ar') return `رمز التحقق (تجريبي): ${code}`;
   if (lang === 'nl') return `Verificatiecode (demo): ${code}`;
+  if (lang === 'en') return `Verification code (demo): ${code}`;
+  if (lang === 'es') return `Código de verificación (demo): ${code}`;
   return `Code de vérification (démo) : ${code}`;
 };
 
@@ -867,7 +869,7 @@ app.use('/api/rules', createRulesRouter({
 }));
 
 function localeForLang(lang) {
-  return lang === 'nl' ? 'nl-BE' : lang === 'ar' ? 'ar-MA' : 'fr-BE';
+  return { fr: 'fr-BE', nl: 'nl-BE', ar: 'ar-MA', en: 'en-GB', es: 'es-ES' }[lang] || 'fr-BE';
 }
 
 // ---------- Trajets voyageur (PRD §2.1) ----------

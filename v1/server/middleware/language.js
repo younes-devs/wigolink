@@ -1,7 +1,9 @@
+import generatedTranslations from '../i18n/generated-en-es.js';
+
 // Traduction des messages d'erreur de l'API (suite du chantier i18n U14).
 // Principe : les messages restent écrits en français dans le code (lisibilité, grep),
 // et un middleware traduit `body.error` à la SORTIE selon l'en-tête Accept-Language
-// envoyé par le client (fr/ar/nl). Aucun site d'appel à modifier ; tout message absent
+// envoyé par le client. Aucun site d'appel à modifier ; tout message absent
 // de la table part tel quel (français) — jamais d'erreur cassée.
 
 // Messages exacts → traductions. La clé est le texte français du code.
@@ -221,6 +223,10 @@ const ERRORS = {
   },
 };
 
+for (const [source, translations] of Object.entries(generatedTranslations.errors)) {
+  if (ERRORS[source]) Object.assign(ERRORS[source], translations);
+}
+
 // Messages dynamiques (template literals côté code) : motifs avec groupes capturés,
 // réinjectés dans la traduction via $1.
 const PATTERNS = [
@@ -228,26 +234,36 @@ const PATTERNS = [
     re: /^Impossible : (\d+) transaction\(s\) encore en cours\. Terminez-les d'abord\.$/,
     ar: 'غير ممكن: $1 معاملة لا تزال جارية. أنهِها أولاً.',
     nl: 'Onmogelijk: $1 transactie(s) nog lopend. Rond ze eerst af.',
+    en: 'Impossible: $1 transaction(s) still in progress. Complete them first.',
+    es: 'Imposible: todavía hay $1 transacción(es) en curso. Complételas primero.',
   },
   {
     re: /^Plafond dépassé : votre compte est limité à (\d+(?:\.\d+)?) € par envoi$/,
     ar: 'تجاوزت السقف: حسابك محدود بـ $1 € لكل شحنة',
     nl: 'Plafond overschreden: uw account is beperkt tot $1 € per zending',
+    en: 'Limit exceeded: your account is limited to €$1 per shipment',
+    es: 'Límite superado: su cuenta está limitada a $1 € por envío',
   },
   {
     re: /^Catégorie refusée : (.+)$/,
     ar: 'فئة مرفوضة: $1',
     nl: 'Categorie geweigerd: $1',
+    en: 'Category rejected: $1',
+    es: 'Categoría rechazada: $1',
   },
   {
     re: /^Plafond atteint : (\d+) transaction\(s\) active\(s\) max$/,
     ar: 'بلغت السقف: $1 معاملة نشطة كحد أقصى',
     nl: 'Plafond bereikt: max $1 actieve transactie(s)',
+    en: 'Limit reached: maximum $1 active transaction(s)',
+    es: 'Límite alcanzado: máximo $1 transacción(es) activa(s)',
   },
   {
     re: /^Le colis doit peser entre 0 et (\d+(?:\.\d+)?) kg\.$/,
     ar: 'يجب أن يتراوح وزن الطرد بين 0 و$1 كغ.',
     nl: 'Het pakket moet tussen 0 en $1 kg wegen.',
+    en: 'The parcel must weigh between 0 and $1 kg.',
+    es: 'El paquete debe pesar entre 0 y $1 kg.',
   },
 ];
 
@@ -262,9 +278,9 @@ function translateError(lang, msg) {
   return msg; // repli : français
 }
 
-// Middleware : pose req.lang depuis Accept-Language (fr/ar/nl, défaut fr) et wrappe
+// Middleware : pose req.lang depuis Accept-Language (langues supportées, défaut fr) et wrappe
 // res.json pour traduire les textes d'interface renvoyés par l'API à la volée.
-const SUPPORTED = new Set(['fr', 'ar', 'nl']);
+const SUPPORTED = new Set(['fr', 'ar', 'nl', 'en', 'es']);
 
 export function langMiddleware(req, res, next) {
   const raw = String(req.headers['accept-language'] || '').split(',')[0].trim().slice(0, 2).toLowerCase();

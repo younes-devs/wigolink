@@ -51,3 +51,13 @@ test('language middleware revient au français et préserve le corps source', ()
 test('translateError conserve les messages inconnus', () => {
   assert.equal(translateError('nl', 'Message métier inconnu'), 'Message métier inconnu');
 });
+
+test('language middleware accepte anglais et espagnol', () => {
+  const english = runMiddleware('en-GB,en;q=0.9', { error: 'Réservé aux admins' });
+  const spanish = runMiddleware('es-ES,es;q=0.9', { error: 'Réservé aux admins' });
+
+  assert.equal(english.req.lang, 'en');
+  assert.equal(english.output.error, 'Reserved for admins');
+  assert.equal(spanish.req.lang, 'es');
+  assert.equal(spanish.output.error, 'Reservado para administradores');
+});

@@ -12,11 +12,15 @@ const DICT = { fr };
 const LOCALE_LOADERS = {
   ar: () => import('./locales/ar.js'),
   nl: () => import('./locales/nl.js'),
+  en: () => import('./locales/en.js'),
+  es: () => import('./locales/es.js'),
 };
 const ADMIN_LOADERS = {
   fr: () => import('./locales/admin.fr.js'),
   ar: () => import('./locales/admin.ar.js'),
   nl: () => import('./locales/admin.nl.js'),
+  en: () => import('./locales/admin.en.js'),
+  es: () => import('./locales/admin.es.js'),
 };
 const RTL_LANGS = new Set(['ar']);
 const KEY = 'wigolink_lang';
@@ -25,9 +29,13 @@ export const LANGS = [
   { code: 'fr', label: 'Français' },
   { code: 'ar', label: 'العربية' },
   { code: 'nl', label: 'Nederlands' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
 ];
 
-let current = ['fr', 'ar', 'nl'].includes(document.documentElement.lang)
+const SUPPORTED_LANGS = LANGS.map(({ code }) => code);
+
+let current = SUPPORTED_LANGS.includes(document.documentElement.lang)
   ? document.documentElement.lang
   : 'fr';
 let adminTranslationsRequested = false;
@@ -71,11 +79,11 @@ export async function loadAdminTranslations() {
 export function getLang() { return current; }
 
 // Locale Intl pour dates/nombres, alignée sur la langue de l'UI.
-const DATE_LOCALES = { fr: 'fr-BE', ar: 'ar-MA', nl: 'nl-BE' };
+const DATE_LOCALES = { fr: 'fr-BE', ar: 'ar-MA', nl: 'nl-BE', en: 'en-GB', es: 'es-ES' };
 export function dateLocale() { return DATE_LOCALES[current] || 'fr-BE'; }
 
 export async function setLang(lang) {
-  if (!['fr', 'ar', 'nl'].includes(lang)) return false;
+  if (!SUPPORTED_LANGS.includes(lang)) return false;
   await loadLanguage(lang);
   if (adminTranslationsRequested) await loadAdminLanguage(lang);
   current = lang;

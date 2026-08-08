@@ -81,3 +81,13 @@ test('rules routes chargent la whitelist dynamique a chaque requete publique', a
   assert.equal(calls, 1);
   assert.deepEqual(response.body.whitelist, [customCategory]);
 });
+
+test('rules routes localisent aussi anglais et espagnol', async () => {
+  const english = await requestRules({ lang: 'en', getWhitelist: () => WHITELIST.slice(0, 1) });
+  const spanish = await requestRules({ lang: 'es', getWhitelist: () => WHITELIST.slice(0, 1) });
+
+  assert.equal(english.body.whitelist[0].label, 'Sealed Argan Oil');
+  assert.equal(english.body.customs['MA-EU'].label, 'Morocco → Europe (Belgium)');
+  assert.equal(spanish.body.whitelist[0].label, 'Aceite de argán sellado');
+  assert.equal(spanish.body.customs['EU-MA'].label, 'Europa → Marruecos');
+});

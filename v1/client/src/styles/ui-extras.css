@@ -66,6 +66,8 @@
   transition: all 0.15s;
 }
 .theme-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+.settings-language-toggle { flex-wrap: wrap; }
+.settings-language-toggle .theme-opt { flex: 1 1 110px; min-width: 0; }
 
 /* Onboarding premier lancement (PRD UI/UX U1) */
 .onboard-overlay {

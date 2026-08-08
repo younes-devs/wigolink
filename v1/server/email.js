@@ -1,5 +1,5 @@
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-const SUPPORTED_LANGS = new Set(['fr', 'nl', 'ar']);
+const SUPPORTED_LANGS = new Set(['fr', 'nl', 'ar', 'en', 'es']);
 
 const EMAIL_COPY = {
   fr: {
@@ -23,6 +23,28 @@ const EMAIL_COPY = {
     verify: ['أكد عنوان بريدك الإلكتروني', 'استخدم رمز Wigolink هذا لتأكيد عنوان بريدك الإلكتروني: {code}'],
     footer: 'تنتهي صلاحية هذا الرمز خلال 15 دقيقة. إذا لم تطلب ذلك، فتجاهل هذه الرسالة.',
   },
+  en: {
+    reset: ['Reset your password', 'Use this Wigolink code to reset your password: {code}'],
+    change_email: ['Confirm your new email address', 'Use this Wigolink code to confirm your new email address: {code}'],
+    delete_account: ['Confirm account deletion', 'Use this Wigolink code to confirm the deletion of your account: {code}'],
+    verify: ['Confirm your email address', 'Use this Wigolink code to confirm your email address: {code}'],
+    footer: 'This code expires in 15 minutes. If you did not request it, you can ignore this email.',
+  },
+  es: {
+    reset: ['Restablece tu contraseña', 'Utiliza este código de Wigolink para restablecer tu contraseña: {code}'],
+    change_email: ['Confirma tu nueva dirección de correo', 'Utiliza este código de Wigolink para confirmar tu nueva dirección de correo: {code}'],
+    delete_account: ['Confirma la eliminación de tu cuenta', 'Utiliza este código de Wigolink para confirmar la eliminación de tu cuenta: {code}'],
+    verify: ['Confirma tu dirección de correo', 'Utiliza este código de Wigolink para confirmar tu dirección de correo: {code}'],
+    footer: 'Este código caduca en 15 minutos. Si no lo solicitaste, puedes ignorar este correo.',
+  },
+};
+
+const SUPPORT_COPY = {
+  fr: { request: 'Demande de support', subject: 'Sujet', member: 'Membre', memberId: 'ID membre', language: 'Langue', received: 'Reçu le' },
+  nl: { request: 'Supportaanvraag', subject: 'Onderwerp', member: 'Lid', memberId: 'Lid-ID', language: 'Taal', received: 'Ontvangen op' },
+  ar: { request: 'طلب دعم', subject: 'الموضوع', member: 'العضو', memberId: 'معرّف العضو', language: 'اللغة', received: 'تاريخ الاستلام' },
+  en: { request: 'Support request', subject: 'Subject', member: 'Member', memberId: 'Member ID', language: 'Language', received: 'Received at' },
+  es: { request: 'Solicitud de soporte', subject: 'Asunto', member: 'Miembro', memberId: 'ID de miembro', language: 'Idioma', received: 'Recibido el' },
 };
 
 export function emailConfig(env = process.env) {
@@ -99,6 +121,7 @@ export async function sendSupportEmail({
   }
 
   const locale = SUPPORTED_LANGS.has(lang) ? lang : 'fr';
+  const labels = SUPPORT_COPY[locale];
   const userName = String(user?.name || 'Membre Wigolink').trim();
   const userEmail = String(user?.email || '').trim().toLowerCase();
   const safeMessage = escapeHtml(message).replaceAll('\n', '<br>');
@@ -117,15 +140,15 @@ export async function sendSupportEmail({
       subject: `[Support ${ticketId}] ${subject}`,
       text: [
         `Ticket : ${ticketId}`,
-        `Membre : ${userName}`,
+        `${labels.member} : ${userName}`,
         `Email : ${userEmail}`,
-        `ID membre : ${user?.id || ''}`,
-        `Langue : ${locale}`,
-        `Recu le : ${receivedAt}`,
+        `${labels.memberId} : ${user?.id || ''}`,
+        `${labels.language} : ${locale}`,
+        `${labels.received} : ${receivedAt}`,
         '',
         message,
       ].join('\n'),
-      html: `<main lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}" style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#17191d"><h1 style="font-size:22px">Demande de support ${escapeHtml(ticketId)}</h1><p><strong>Sujet :</strong> ${escapeHtml(subject)}</p><p><strong>Membre :</strong> ${escapeHtml(userName)} (${escapeHtml(userEmail)})</p><p><strong>ID membre :</strong> ${escapeHtml(user?.id || '')}</p><p><strong>Langue :</strong> ${escapeHtml(locale)}</p><hr style="border:0;border-top:1px solid #dfe3e8;margin:20px 0"><p>${safeMessage}</p></main>`,
+      html: `<main lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}" style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#17191d"><h1 style="font-size:22px">${labels.request} ${escapeHtml(ticketId)}</h1><p><strong>${labels.subject} :</strong> ${escapeHtml(subject)}</p><p><strong>${labels.member} :</strong> ${escapeHtml(userName)} (${escapeHtml(userEmail)})</p><p><strong>${labels.memberId} :</strong> ${escapeHtml(user?.id || '')}</p><p><strong>${labels.language} :</strong> ${escapeHtml(locale)}</p><hr style="border:0;border-top:1px solid #dfe3e8;margin:20px 0"><p>${safeMessage}</p></main>`,
     }),
   });
   if (!response.ok) throw new Error('Support email delivery failed');

@@ -3,19 +3,27 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ERRORS, PATTERNS } from '../server/middleware/language.js';
 import { TEMPLATES } from '../server/notify-i18n.js';
-import { CUSTOMS } from '../server/rules.js';
+import { BLACKLIST, CUSTOMS, WHITELIST } from '../server/rules.js';
 import baseFr from '../client/src/locales/fr.js';
 import baseNl from '../client/src/locales/nl.js';
 import baseAr from '../client/src/locales/ar.js';
+import baseEn from '../client/src/locales/en.js';
+import baseEs from '../client/src/locales/es.js';
 import adminFr from '../client/src/locales/admin.fr.js';
 import adminNl from '../client/src/locales/admin.nl.js';
 import adminAr from '../client/src/locales/admin.ar.js';
+import adminEn from '../client/src/locales/admin.en.js';
+import adminEs from '../client/src/locales/admin.es.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const fr = { ...baseFr, ...adminFr };
 const nl = { ...baseNl, ...adminNl };
 const ar = { ...baseAr, ...adminAr };
-const dictionaries = { fr, nl, ar };
+const en = { ...baseEn, ...adminEn };
+const es = { ...baseEs, ...adminEs };
+const dictionaries = { fr, nl, ar, en, es };
+const supportedLanguages = Object.keys(dictionaries);
+const translatedLanguages = supportedLanguages.filter((lang) => lang !== 'fr');
 const failures = [];
 
 function fail(message) {
@@ -49,7 +57,7 @@ for (const [lang, dict] of Object.entries(dictionaries)) {
   }
 }
 
-for (const lang of ['fr', 'nl', 'ar']) {
+for (const lang of supportedLanguages) {
   const manifestPath = path.join(root, `client/public/manifest.${lang}.webmanifest`);
   if (!fs.existsSync(manifestPath)) {
     fail(`Manifeste PWA ${lang} absent`);
@@ -69,7 +77,7 @@ globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: 
 const { LEGAL_COPY } = await import(pathToFileURL(path.join(root, 'client/src/legalCopy.js')).href);
 for (const type of ['privacy', 'terms']) {
   const reference = LEGAL_COPY[type].fr;
-  for (const lang of ['nl', 'ar']) {
+  for (const lang of translatedLanguages) {
     const copy = LEGAL_COPY[type][lang];
     if (!copy) {
       fail(`${type}: copie ${lang} absente`);
@@ -121,7 +129,7 @@ const serverPublicKeys = [...fs.readFileSync(path.join(root, 'server/index.js'),
 const publicKeys = new Set(serverPublicKeys);
 for (const match of publicSource.matchAll(/\bt\(\s*['"]([^'"]+)['"]/g)) publicKeys.add(match[1]);
 for (const key of publicKeys) {
-  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr })) {
+  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr, en: baseEn, es: baseEs })) {
     if (!(key in dict)) fail(`${lang}: public key available only in the admin module: ${key}`);
   }
 }
@@ -227,7 +235,7 @@ for (const match of emailSource.matchAll(/throw new Error\(\s*(['"`])((?:\\.|(?!
   }
 }
 const { EMAIL_COPY } = await import(pathToFileURL(path.join(root, 'server/email.js')).href);
-for (const lang of ['fr', 'nl', 'ar']) {
+for (const lang of supportedLanguages) {
   if (!EMAIL_COPY[lang]) {
     fail(`Email: langue ${lang} absente`);
     continue;
@@ -241,7 +249,7 @@ for (const lang of ['fr', 'nl', 'ar']) {
   if (!EMAIL_COPY[lang].footer) fail(`Email: pied de page ${lang} absent`);
 }
 for (const [corridorId, corridor] of Object.entries(CUSTOMS)) {
-  for (const lang of ['nl', 'ar']) {
+  for (const lang of translatedLanguages) {
     const translated = corridor.i18n?.[lang];
     if (!translated) {
       fail(`Douane ${corridorId}: traduction ${lang} absente`);
@@ -251,24 +259,41 @@ for (const [corridorId, corridor] of Object.entries(CUSTOMS)) {
     if (translated.rules?.length !== corridor.rules.length) fail(`Douane ${corridorId}: règles ${lang} incomplètes`);
   }
 }
+for (const category of [...WHITELIST, ...BLACKLIST]) {
+  for (const lang of translatedLanguages) {
+    if (!category.i18n?.[lang]) fail(`Règles ${category.id}: libellé ${lang} absent`);
+    if (category.reason && !category.reasonI18n?.[lang]) fail(`Règles ${category.id}: motif ${lang} absent`);
+  }
+}
 for (const [message, translations] of Object.entries(ERRORS)) {
-  for (const lang of ['nl', 'ar']) {
+  for (const lang of translatedLanguages) {
     if (!translations[lang]) fail(`server/middleware/language.js: traduction ${lang} absente pour ${message}`);
+  }
+}
+for (const [index, pattern] of PATTERNS.entries()) {
+  for (const lang of translatedLanguages) {
+    if (!pattern[lang]) fail(`Erreur dynamique ${index}: traduction ${lang} absente`);
   }
 }
 for (const match of serverSource.matchAll(/\{\s*key:\s*['"]([^'"]+)['"]/g)) {
   if (!TEMPLATES[match[1]]) fail(`Notification sans modèle: ${match[1]}`);
 }
 for (const [key, template] of Object.entries(TEMPLATES)) {
-  for (const lang of ['fr', 'nl', 'ar']) {
+  const placeholderParams = new Proxy({}, { get: (_target, property) => `{${String(property)}}` });
+  const expected = placeholders(template.fr(placeholderParams)).join('|');
+  for (const lang of supportedLanguages) {
     if (typeof template[lang] !== 'function') fail(`Notification ${key}: modèle ${lang} absent`);
+    else {
+      const actual = placeholders(template[lang](placeholderParams)).join('|');
+      if (actual !== expected) fail(`Notification ${key}: variables ${lang} incompatibles (${actual} au lieu de ${expected})`);
+    }
   }
 }
 
 const systemBlock = serverSource.match(/const SYSTEM_EVENT_TEXT = \{([\s\S]*?)\n\};/)?.[1] || '';
 for (const match of systemBlock.matchAll(/^\s*([a-z_]+)\s*:/gm)) {
   const key = `messages.system.${match[1]}`;
-  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr })) {
+  for (const [lang, dict] of Object.entries({ fr: baseFr, nl: baseNl, ar: baseAr, en: baseEn, es: baseEs })) {
     if (!(key in dict)) fail(`${lang}: événement système sans traduction: ${key}`);
   }
 }
@@ -278,4 +303,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`i18n valide: ${referenceKeys.length} clés, 3 langues, ${literalKeys.size} clés utilisées et toutes les erreurs API couvertes.`);
+console.log(`i18n valide: ${referenceKeys.length} clés, ${supportedLanguages.length} langues, ${literalKeys.size} clés utilisées et toutes les erreurs API couvertes.`);

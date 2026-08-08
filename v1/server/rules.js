@@ -1,3 +1,5 @@
+import generatedTranslations from './i18n/generated-en-es.js';
+
 // Moteur de règles catalogue (PRD §4.2) — côté serveur, modifiable sans release app.
 
 // `label`/`reason` (français) restent la référence stockée dans les données ;
@@ -122,6 +124,21 @@ export const CUSTOMS = {
     },
   },
 };
+
+for (const category of WHITELIST) {
+  category.i18n.en = generatedTranslations.rules.en.whitelist[category.id].label;
+  category.i18n.es = generatedTranslations.rules.es.whitelist[category.id].label;
+}
+for (const category of BLACKLIST) {
+  category.i18n.en = generatedTranslations.rules.en.blacklist[category.id].label;
+  category.i18n.es = generatedTranslations.rules.es.blacklist[category.id].label;
+  category.reasonI18n.en = generatedTranslations.rules.en.blacklist[category.id].reason;
+  category.reasonI18n.es = generatedTranslations.rules.es.blacklist[category.id].reason;
+}
+for (const [id, corridor] of Object.entries(CUSTOMS)) {
+  corridor.i18n.en = generatedTranslations.rules.en.customs[id];
+  corridor.i18n.es = generatedTranslations.rules.es.customs[id];
+}
 
 export function localizeCustoms(customs, lang) {
   return Object.fromEntries(Object.entries(customs).map(([id, corridor]) => {

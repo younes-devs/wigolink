@@ -1,4 +1,6 @@
 import { getLang } from './i18n.js';
+import legalEn from './locales/legal.en.js';
+import legalEs from './locales/legal.es.js';
 
 const privacyTable = {
   fr: {
@@ -422,6 +424,11 @@ const terms = {
     ],
   },
 };
+
+privacy.en = legalEn.privacy;
+privacy.es = legalEs.privacy;
+terms.en = legalEn.terms;
+terms.es = legalEs.terms;
 
 export function getLegalCopy(type) {
   const lang = getLang();

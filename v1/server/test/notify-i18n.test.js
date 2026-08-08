@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { renderLegacyNotification, renderNotification } from '../notify-i18n.js';
+
+test('notifications rendent les variables en anglais et espagnol', () => {
+  const notification = { key: 'offer.received', params: { name: 'Nora', title: 'Diplôme' } };
+
+  assert.equal(renderNotification('en', notification), 'Nora offers to transport “Diplôme”.');
+  assert.equal(renderNotification('es', notification), 'Nora se ofrece a transportar «Diplôme».');
+});
+
+test('notifications historiques sont traduites en anglais et espagnol', () => {
+  const legacy = 'Nora a retiré sa proposition.';
+
+  assert.equal(renderLegacyNotification('en', legacy), 'Nora withdrew their offer.');
+  assert.equal(renderLegacyNotification('es', legacy), 'Nora retiró su propuesta.');
+});
