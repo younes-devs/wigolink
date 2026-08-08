@@ -135,8 +135,11 @@
   }
   .phone:has(.kyc-page) .main-wrap { display: block; }
   .phone:has(.kyc-page) .content { max-width: 620px; margin: 0 auto; padding-top: 40px; }
-  .phone:has(.conversation-detail) .content { padding-top: 16px; }
-  .phone:has(.conversation-detail) .conversation-detail { height: calc(100dvh - 76px); }
+  .phone:has(.conversation-detail) .content {
+    padding-top: 16px;
+    padding-bottom: 20px;
+  }
+  .phone:has(.conversation-detail) .conversation-detail { height: calc(100dvh - 36px); }
   .page-title { font-size: 26px; }
 
   /* Grille adaptative pour les listes de cartes cliquables */
