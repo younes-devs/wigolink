@@ -316,7 +316,7 @@ export default function TripFeedSimple() {
       )}
       <div className="trip-post-list">
         {trips?.map((trip) => (
-          <article className="card trip-post" key={trip.id}>
+          <article className="card trip-post trip-post-discovery" key={trip.id}>
             <div className="trip-post-route">
               <div>
                 <b>{trip.from}</b>
@@ -329,30 +329,37 @@ export default function TripFeedSimple() {
               </div>
             </div>
             <div className="trip-post-body">
-              <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={42} />
+              <Avatar name={trip.traveler?.name || t('trips.traveler')} photo={trip.traveler?.photoUrl} size={44} />
               <div className="grow">
                 <div className="trip-post-title">
                   <b title={trip.traveler?.name || t('trips.traveler')}>{trip.traveler?.name || t('trips.traveler')}</b>
-                  {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal">{t('trips.verified')}</span>}
+                  {trip.traveler?.kycStatus === 'verified' && <span className="pill pill-teal"><Icon name="shieldCheck" size={12} />{t('trips.verified')}</span>}
                 </div>
-                <p>{trip.description}</p>
-                <div className="trip-post-meta">
-                  <span><Icon name="clock" size={14} />{formatDate(trip.departureDate)}</span>
-                  <span><Icon name="luggage" size={14} />{trip.capacityKg} kg</span>
-                  <span><Icon name="euro" size={14} />{trip.price} {trip.currency}</span>
-                </div>
+                <p className="trip-post-copy">{trip.description}</p>
               </div>
             </div>
+            <div className="trip-post-facts">
+              <span><Icon name="clock" size={15} />{formatDate(trip.departureDate)}</span>
+              <span><Icon name="luggage" size={15} />{trip.capacityKg} kg</span>
+              <strong>{trip.price} {trip.currency}</strong>
+            </div>
             <div className="trip-post-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => toggleSaved(trip)}>
-                <Icon name={trip.saved ? 'check' : 'star'} size={15} />{trip.saved ? t('trips.saved') : t('trips.save')}
+              <button
+                type="button"
+                className={`icon-btn trip-save-action${trip.saved ? ' active' : ''}`}
+                onClick={() => toggleSaved(trip)}
+                aria-label={t(trip.saved ? 'trips.saved' : 'trips.save')}
+                title={t(trip.saved ? 'trips.saved' : 'trips.save')}
+                aria-pressed={!!trip.saved}
+              >
+                <Icon name="bookmark" size={18} filled={!!trip.saved} />
               </button>
               <Link
                 to={user ? `/trajets/${trip.id}` : loginPath(`/trajets/${trip.id}`)}
                 state={user ? { fromTripsFeed: true } : undefined}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm trip-view-action"
               >
-                {t('common.view')} <Icon name="arrowRight" size={15} />
+                {t('common.view')} <Icon name="arrowRight" size={16} />
               </Link>
             </div>
           </article>
