@@ -30,7 +30,17 @@ export function emailConfig(env = process.env) {
     apiKey: String(env.RESEND_API_KEY || '').trim(),
     from: String(env.EMAIL_FROM || '').trim(),
     appUrl: String(env.APP_URL || '').replace(/\/$/, ''),
+    supportEmail: String(env.SUPPORT_EMAIL || 'support@wigolink.com').trim(),
   };
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 export function verificationEmailCopy({ code, purpose, lang = 'fr' }) {
@@ -45,11 +55,18 @@ export function verificationEmailCopy({ code, purpose, lang = 'fr' }) {
   };
 }
 
-export async function sendVerificationEmail({ to, code, purpose, lang = 'fr', env = process.env }) {
+export async function sendVerificationEmail({
+  to,
+  code,
+  purpose,
+  lang = 'fr',
+  env = process.env,
+  fetchImpl = fetch,
+}) {
   const config = emailConfig(env);
   if (!config.apiKey || !config.from) throw new Error('Service email indisponible');
   const { lang: locale, title, body, footer } = verificationEmailCopy({ code, purpose, lang });
-  const response = await fetch(RESEND_ENDPOINT, {
+  const response = await fetchImpl(RESEND_ENDPOINT, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
@@ -65,6 +82,55 @@ export async function sendVerificationEmail({ to, code, purpose, lang = 'fr', en
     }),
   });
   if (!response.ok) throw new Error('Impossible d envoyer l email de verification');
+}
+
+export async function sendSupportEmail({
+  ticketId,
+  user,
+  subject,
+  message,
+  lang = 'fr',
+  env = process.env,
+  fetchImpl = fetch,
+}) {
+  const config = emailConfig(env);
+  if (!config.apiKey || !config.from || !config.supportEmail) {
+    throw new Error('Service email indisponible');
+  }
+
+  const locale = SUPPORTED_LANGS.has(lang) ? lang : 'fr';
+  const userName = String(user?.name || 'Membre Wigolink').trim();
+  const userEmail = String(user?.email || '').trim().toLowerCase();
+  const safeMessage = escapeHtml(message).replaceAll('\n', '<br>');
+  const receivedAt = new Date().toISOString();
+  const response = await fetchImpl(RESEND_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': `wigolink-support-${ticketId}`,
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: [config.supportEmail],
+      reply_to: userEmail,
+      subject: `[Support ${ticketId}] ${subject}`,
+      text: [
+        `Ticket : ${ticketId}`,
+        `Membre : ${userName}`,
+        `Email : ${userEmail}`,
+        `ID membre : ${user?.id || ''}`,
+        `Langue : ${locale}`,
+        `Recu le : ${receivedAt}`,
+        '',
+        message,
+      ].join('\n'),
+      html: `<main lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}" style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px;color:#17191d"><h1 style="font-size:22px">Demande de support ${escapeHtml(ticketId)}</h1><p><strong>Sujet :</strong> ${escapeHtml(subject)}</p><p><strong>Membre :</strong> ${escapeHtml(userName)} (${escapeHtml(userEmail)})</p><p><strong>ID membre :</strong> ${escapeHtml(user?.id || '')}</p><p><strong>Langue :</strong> ${escapeHtml(locale)}</p><hr style="border:0;border-top:1px solid #dfe3e8;margin:20px 0"><p>${safeMessage}</p></main>`,
+    }),
+  });
+  if (!response.ok) throw new Error('Support email delivery failed');
+  const payload = await response.json().catch(() => ({}));
+  return { id: payload.id || null };
 }
 
 export { EMAIL_COPY };

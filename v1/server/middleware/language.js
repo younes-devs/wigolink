@@ -207,6 +207,7 @@ const ERRORS = {
   // Email et messages de confirmation
   'Service email indisponible': { ar: 'خدمة البريد الإلكتروني غير متاحة', nl: 'E-maildienst niet beschikbaar' },
   'Impossible d envoyer l email de verification': { ar: 'تعذر إرسال رسالة التحقق', nl: 'De verificatie-e-mail kon niet worden verzonden' },
+  'Support email delivery failed': { ar: 'تعذر إرسال رسالة الدعم', nl: 'De support-e-mail kon niet worden verzonden' },
   'La verification par email n est pas encore configuree.': { ar: 'التحقق عبر البريد الإلكتروني غير مهيأ بعد.', nl: 'E-mailverificatie is nog niet geconfigureerd.' },
   'Un code de verification vient d etre envoye.': { ar: 'تم إرسال رمز تحقق للتو.', nl: 'Er is zojuist een verificatiecode verzonden.' },
   'Un nouveau code vient d etre envoye.': { ar: 'تم إرسال رمز جديد للتو.', nl: 'Er is zojuist een nieuwe code verzonden.' },

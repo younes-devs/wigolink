@@ -19,7 +19,7 @@ import { langMiddleware } from './middleware/language.js';
 import { renderNotification } from './notify-i18n.js';
 import { createEscrow, transitionEscrow } from './escrow.js';
 import { createPersistence } from './persistence.js';
-import { emailConfig, sendVerificationEmail } from './email.js';
+import { emailConfig, sendSupportEmail, sendVerificationEmail } from './email.js';
 import { createGoogleCredentialVerifier } from './google-auth.js';
 import {
   listRelationalSavedTrips, listRelationalTrips, relationalTrip,
@@ -116,6 +116,7 @@ import { createAccountPrivacyRouter } from './routes/account-privacy.js';
 import { createAuthAccessRouter } from './routes/auth-access.js';
 import { createAuthRegistrationRouter } from './routes/auth-registration.js';
 import { createAccountSettingsRouter } from './routes/account-settings.js';
+import { createSupportRouter } from './routes/support.js';
 import { createKycRouter } from './routes/kyc.js';
 import { createProfileRouter } from './routes/profile.js';
 import { createTrainingRouter } from './routes/training.js';
@@ -714,6 +715,14 @@ app.use('/api', createAccountSettingsRouter({
   auditChange,
   publicUser,
   save,
+}));
+
+app.use('/api', createSupportRouter({
+  auth,
+  rateLimit,
+  sendEmail: sendSupportEmail,
+  audit,
+  newId,
 }));
 
 // ---------- KYC manuel (PRD KYC) ----------

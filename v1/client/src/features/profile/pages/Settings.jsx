@@ -147,12 +147,24 @@ function BlockedAccountSection() {
 
 function SupportSection() {
   const [form, setForm] = useState({ subject: '', message: '' });
-  const [notice, setNotice] = useState('');
-  const submit = (event) => {
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (event) => {
     event.preventDefault();
-    setNotice('settings.support.pending');
+    if (busy) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const result = await api('/support', { method: 'POST', body: form });
+      setForm({ subject: '', message: '' });
+      setStatus({ type: 'success', message: t('settings.support.sent', { ticket: result.ticketId }) });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || t('settings.support.error') });
+    } finally {
+      setBusy(false);
+    }
   };
-  return <div className="settings-support"><form className="settings-support-form" onSubmit={submit}><label>{t('settings.support.subject')}</label><input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder={t('settings.support.subject.placeholder')} required /><label>{t('settings.support.message')}</label><textarea value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder={t('settings.support.message.placeholder')} rows="6" required /><button className="btn btn-primary" type="submit"><Icon name="send" size={16} />{t('settings.support.send')}</button>{notice && <p className="settings-support-notice">{t(notice)}</p>}</form><div className="settings-email-contact"><span className="settings-row-icon"><Icon name="mail" size={17} /></span><div><b>{t('settings.support.email')}</b><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a><small>{t('settings.support.email.sub')}</small></div></div></div>;
+  return <div className="settings-support"><form className="settings-support-form" onSubmit={submit}><label>{t('settings.support.subject')}</label><input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} placeholder={t('settings.support.subject.placeholder')} minLength={4} maxLength={120} disabled={busy} required /><label>{t('settings.support.message')}</label><textarea value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder={t('settings.support.message.placeholder')} minLength={20} maxLength={5000} rows="6" disabled={busy} required /><button className="btn btn-primary" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : <Icon name="send" size={16} />}{busy ? t('settings.support.sending') : t('settings.support.send')}</button>{status && <p className={`settings-support-notice ${status.type === 'error' ? 'alert alert-danger' : 'alert alert-success'}`} role={status.type === 'error' ? 'alert' : 'status'}>{status.message}</p>}</form><div className="settings-email-contact"><span className="settings-row-icon"><Icon name="mail" size={17} /></span><div><b>{t('settings.support.email')}</b><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a><small>{t('settings.support.email.sub')}</small></div></div></div>;
 }
 
 function ActionModal({ title, icon, children, onClose }) {
