@@ -321,9 +321,38 @@ textarea:focus-visible {
   .payout-embedded-heading span { display: block; margin-bottom: 5px; color: var(--accent); font-size: 11px; font-weight: 850; text-transform: uppercase; }
   .payout-fallback { display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 14px; border: 1px solid rgba(190, 74, 54, .3); border-radius: 8px; background: rgba(190, 74, 54, .07); }
   .payout-fallback b { display: block; margin-bottom: 3px; font-size: 14px; }
-  .payout-fallback p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
-  .payout-fallback .btn { flex: 0 0 auto; }
-.operation-help { border-top: 1px solid var(--hairline); padding-top: 12px; }.operation-help summary { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 750; cursor: pointer; }.operation-help[open] { display: grid; gap: 11px; }.operation-help .field { margin: 0; }
+    .payout-fallback p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+    .payout-fallback .btn { flex: 0 0 auto; }
+  @media (min-width: 1024px) {
+    .phone:has(.payout-setup-page) .main-wrap { display: block; }
+    .phone:has(.payout-setup-page) .content { width: 100%; max-width: none; margin: 0; padding: 0; overflow: visible; }
+    .payout-setup-page {
+      width: min(1120px, calc(100% - 80px));
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+      column-gap: clamp(48px, 6vw, 88px);
+      align-content: start;
+      align-items: start;
+      padding: clamp(64px, 8vh, 96px) 0 64px;
+    }
+    .payout-setup-page .focus-flow-header {
+      position: sticky;
+      top: 48px;
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 20px;
+    }
+    .payout-setup-page .focus-flow-header .icon-btn { width: 56px; height: 56px; }
+    .payout-setup-page .focus-flow-header h1 { max-width: 330px; margin-top: 8px; font-size: 40px; line-height: 1.08; }
+    .payout-setup-page .focus-flow-header p { max-width: 330px; font-size: 16px; }
+    .payout-setup-page .payout-setup-content,
+    .payout-setup-page .payout-embedded-shell { width: 100%; margin-top: 0; padding: 28px; }
+    .payout-setup-page .payout-embedded-shell { min-height: 520px; }
+    .payout-setup-page .payout-inline-icon { flex-basis: 50px; width: 50px; height: 50px; }
+    .payout-setup-page .payout-inline-intro h2,
+    .payout-setup-page .payout-embedded-heading h2 { font-size: 22px; }
+  }
+  .operation-help { border-top: 1px solid var(--hairline); padding-top: 12px; }.operation-help summary { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 750; cursor: pointer; }.operation-help[open] { display: grid; gap: 11px; }.operation-help .field { margin: 0; }
 @media (max-width: 520px) {
   .operation-action-card, .operation-code-card { display: grid; align-items: stretch; }
   .operation-code-card > .btn, .operation-action-card > .btn { width: 100%; margin-top: 0; }
