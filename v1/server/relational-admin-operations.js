@@ -119,6 +119,7 @@ export async function relationalAdminOperationState({ pool }) {
          payment.stripe_fee_cents,
          payment.payment_status,
          payment.transfer_status,
+         payment.payout_method,
          payment.stripe_payment_intent_id,
          payment.stripe_transfer_id,
          payment.stripe_refund_id,
@@ -208,6 +209,7 @@ function adminPaymentView(row) {
     platformNetCents: Number(row.platform_gross_cents || 0) - Number(row.stripe_fee_cents || 0),
     paymentStatus: row.payment_status,
     transferStatus: row.transfer_status,
+    payoutMethod: row.payout_method,
     paymentIntentRef: truncateStripeId(row.stripe_payment_intent_id),
     transferRef: truncateStripeId(row.stripe_transfer_id),
     refundRef: truncateStripeId(row.stripe_refund_id),
@@ -217,6 +219,7 @@ function adminPaymentView(row) {
     refundedAt: row.refunded_at,
     updatedAt: row.updated_at,
     refundable: ['paid', 'transfer_pending', 'transferred'].includes(row.payment_status)
+      && row.transfer_status !== 'manual_sent'
       && !!row.stripe_payment_intent_id,
   };
 }

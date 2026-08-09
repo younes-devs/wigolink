@@ -29,6 +29,7 @@ export function stripeConfiguration(env = process.env) {
     publishableKey,
     webhookSecret,
     appUrl,
+    payoutMode: String(env.PAYOUT_MODE || 'stripe_connect').trim().toLowerCase(),
     allowedConnectedCountries,
     ready: !!(secretKey && publishableKey && webhookSecret),
   };

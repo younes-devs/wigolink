@@ -171,6 +171,24 @@ create table if not exists public.stripe_connected_accounts (
 create index if not exists stripe_connected_accounts_status_idx
   on public.stripe_connected_accounts (transfers_capability_status, onboarding_status);
 
+-- Les coordonnees bancaires des versements manuels sont chiffrees cote serveur.
+-- Une nouvelle ligne remplace logiquement l'ancienne sans effacer l'historique.
+create table if not exists public.manual_payout_accounts (
+  id text primary key,
+  user_id text not null references public.wigolink_users(id),
+  country text not null check (country = upper(country) and length(country) = 2),
+  details_ciphertext text not null,
+  account_last4 text not null,
+  status text not null default 'verified',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists manual_payout_accounts_active_user_idx
+  on public.manual_payout_accounts (user_id) where active;
+create index if not exists manual_payout_accounts_user_history_idx
+  on public.manual_payout_accounts (user_id, created_at desc);
+
 create table if not exists public.operation_payments (
   operation_id text primary key references public.wigolink_transactions(id),
   currency text not null check (currency = upper(currency) and length(currency) = 3),
@@ -185,6 +203,7 @@ create table if not exists public.operation_payments (
   stripe_charge_id text unique,
   stripe_transfer_id text unique,
   stripe_refund_id text unique,
+  payout_method text not null default 'stripe_connect',
   payment_status text not null default 'pending',
   transfer_status text not null default 'not_ready',
   checkout_attempt integer not null default 0 check (checkout_attempt >= 0),
@@ -202,8 +221,26 @@ create table if not exists public.operation_payments (
 );
 create index if not exists operation_payments_payment_status_idx
   on public.operation_payments (payment_status, updated_at);
+alter table public.operation_payments
+  add column if not exists payout_method text not null default 'stripe_connect';
 create index if not exists operation_payments_transfer_status_idx
   on public.operation_payments (transfer_status, updated_at);
+
+create table if not exists public.manual_payout_requests (
+  operation_id text primary key references public.wigolink_transactions(id),
+  traveler_id text not null references public.wigolink_users(id),
+  payout_account_id text not null references public.manual_payout_accounts(id),
+  amount_cents integer not null check (amount_cents > 0),
+  currency text not null check (currency = upper(currency) and length(currency) = 3),
+  status text not null default 'pending',
+  transfer_reference text,
+  processed_by text references public.wigolink_users(id),
+  requested_at timestamptz not null default now(),
+  processed_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+create index if not exists manual_payout_requests_queue_idx
+  on public.manual_payout_requests (status, requested_at);
 
 create table if not exists public.stripe_webhook_events (
   stripe_event_id text primary key,
@@ -447,8 +484,12 @@ revoke all on table public.wigolink_users, public.wigolink_trips, public.wigolin
   public.wigolink_kyc_submissions, public.wigolink_kyc_decisions, public.wigolink_custom_whitelist,
   public.wigolink_runtime_records from anon, authenticated;
 
-revoke all on table public.stripe_connected_accounts, public.operation_payments,
+revoke all on table public.stripe_connected_accounts, public.manual_payout_accounts,
+  public.manual_payout_requests, public.operation_payments,
   public.stripe_webhook_events from anon, authenticated;
+
+alter table public.manual_payout_accounts enable row level security;
+alter table public.manual_payout_requests enable row level security;
 
 -- Import idempotent des donnees deja presentes dans wigolink_app_state.
 insert into public.notifications (id, user_id, tx_id, type, section, key, params, text, read, at)

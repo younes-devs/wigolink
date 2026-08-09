@@ -21,6 +21,10 @@ export function createStripePaymentsRouter({
     payments.connectedStatus({ user: req.user, refresh: req.query.refresh === '1' })
   )));
 
+  router.get('/payouts/status', auth, dispatch((req) => (
+    payments.connectedStatus({ user: req.user, refresh: req.query.refresh === '1' })
+  )));
+
   router.post('/stripe/connect/account', auth, dispatch((req) => (
     payments.createConnectedAccount({ user: req.user, country: req.body?.country })
   )));

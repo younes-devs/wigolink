@@ -1,6 +1,31 @@
 # PRD - Paiements Stripe Connect Wigolink
 
-Statut: proposition a valider avant implementation
+Statut: implemente. Mode pilote de versement manuel retenu pour le Maroc,
+la Belgique et la France; Stripe Connect reste disponible comme rail futur.
+
+## Decision pilote: encaissement Stripe, versement manuel
+
+Stripe encaisse toujours le paiement de l'expediteur et confirme la charge par
+webhook. Apres confirmation de la livraison, Wigolink cree une demande de
+versement interne au lieu de lancer automatiquement un transfert Connect.
+
+Le voyageur enregistre avant le paiement:
+
+- son pays de versement;
+- le nom du titulaire identique au KYC;
+- sa banque;
+- un RIB marocain de 24 chiffres et son telephone, ou un IBAN et un BIC pour
+  la Belgique et la France.
+
+Les coordonnees completes sont chiffrees en AES-256-GCM. Le voyageur ne revoit
+que les quatre derniers caracteres. Un administrateur authentifie consulte la
+file apres livraison, effectue le virement depuis un compte professionnel puis
+enregistre la reference bancaire. Cette derniere action marque le versement
+comme effectue et clot l'operation dans une seule transaction SQL.
+
+Ce pilote ne constitue pas un portefeuille utilisateur, un retrait a la
+demande ou un service de sequestre. Il doit etre valide juridiquement et
+comptablement avant les premiers paiements reels.
 
 ## 1. Objectif
 

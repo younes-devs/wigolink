@@ -11,7 +11,7 @@ import { useToast } from '../../../Toast.jsx';
 import { getLang, t, useLang } from '../../../i18n.js';
 
 const COUNTRIES = [
-  ['BE', 'Belgique'], ['FR', 'France'], ['NL', 'Pays-Bas'], ['DE', 'Allemagne'],
+  ['MA', 'Maroc'], ['BE', 'Belgique'], ['FR', 'France'], ['NL', 'Pays-Bas'], ['DE', 'Allemagne'],
   ['ES', 'Espagne'], ['IT', 'Italie'], ['PT', 'Portugal'], ['GB', 'Royaume-Uni'],
   ['CH', 'Suisse'], ['CA', 'Canada'], ['US', 'Etats-Unis'],
 ];
@@ -23,20 +23,45 @@ export default function PayoutSetup() {
   const params = new URLSearchParams(window.location.search);
   const returnTo = safeReturn(params.get('retour'));
   const stripeReturn = params.get('stripe');
-  const [country, setCountry] = useState('BE');
+  const [country, setCountry] = useState('MA');
+  const [mode, setMode] = useState(null);
   const [payout, setPayout] = useState(null);
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [bank, setBank] = useState({
+    holderName: '', bankName: '', accountIdentifier: '', bic: '', phone: '',
+  });
   const [connectInstance, setConnectInstance] = useState(null);
   const [busy, setBusy] = useState(false);
   const [embeddedError, setEmbeddedError] = useState(false);
   const initialSecret = useRef(null);
 
   const refreshStatus = useCallback(async ({ finish = false, refresh = false } = {}) => {
-    const data = await api(`/stripe/connect/status${refresh ? '?refresh=1' : ''}`);
+    const data = await api(`/payouts/status${refresh ? '?refresh=1' : ''}`);
+    setMode(data.mode);
     setPayout(data.payout);
     if (data.payout?.country) setCountry(data.payout.country);
     if (finish && data.payout?.ready) navigate(returnTo, { replace: true });
     return data.payout;
   }, [navigate, returnTo]);
+
+  const saveManualAccount = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const data = await api('/payouts/account', {
+        method: 'PUT',
+        body: { country, ...bank },
+      });
+      setPayout(data.payout);
+      setEditingAccount(false);
+      setBank({ holderName: '', bankName: '', accountIdentifier: '', bic: '', phone: '' });
+      toast.success(t('payments.payout.manual.saved'));
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     refreshStatus({ finish: stripeReturn === 'return', refresh: !!stripeReturn })
@@ -118,7 +143,28 @@ export default function PayoutSetup() {
   };
 
   let content;
-  if (payout?.ready) {
+  if (mode === 'manual' && payout?.ready && !editingAccount) {
+    content = <section className="payout-setup-content payout-complete-panel">
+      <div className="payout-ready"><Icon name="shieldCheck" size={23} /><div><b>{t('payments.payout.manual.ready')}</b><p>{t('payments.payout.manual.readyHelp', { country: payout.country, last4: payout.accountLast4 })}</p></div></div>
+      <div className="payout-manual-actions">
+        <button className="btn btn-secondary" type="button" onClick={() => setEditingAccount(true)}><Icon name="edit" size={17} />{t('payments.payout.manual.change')}</button>
+        <button className="btn btn-primary" onClick={() => navigate(returnTo, { replace: true })}><Icon name="check" size={17} />{t('payments.payout.finish')}</button>
+      </div>
+    </section>;
+  } else if (mode === 'manual') {
+    const isMorocco = country === 'MA';
+    content = <form className="payout-setup-content payout-manual-form" onSubmit={saveManualAccount}>
+      <div className="payout-inline-intro"><span className="payout-inline-icon"><Icon name="bank" size={22} /></span><div><h2>{t('payments.payout.manual.bankTitle')}</h2><p>{t('payments.payout.manual.bankIntro')}</p></div></div>
+      <label className="field"><span>{t('payments.payout.country')}</span><select value={country} onChange={(event) => setCountry(event.target.value)}>{COUNTRIES.filter(([code]) => ['MA', 'BE', 'FR'].includes(code)).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
+      <label className="field"><span>{t('payments.payout.manual.holder')}</span><input value={bank.holderName} maxLength={120} autoComplete="name" onChange={(event) => setBank((current) => ({ ...current, holderName: event.target.value }))} placeholder={t('payments.payout.manual.holderPlaceholder')} required /></label>
+      <label className="field"><span>{t('payments.payout.manual.bank')}</span><input value={bank.bankName} maxLength={100} onChange={(event) => setBank((current) => ({ ...current, bankName: event.target.value }))} placeholder={t('payments.payout.manual.bankPlaceholder')} required /></label>
+      <label className="field"><span>{t(isMorocco ? 'payments.payout.manual.rib' : 'payments.payout.manual.iban')}</span><input value={bank.accountIdentifier} maxLength={34} inputMode={isMorocco ? 'numeric' : 'text'} autoCapitalize="characters" onChange={(event) => setBank((current) => ({ ...current, accountIdentifier: event.target.value }))} placeholder={t(isMorocco ? 'payments.payout.manual.ribPlaceholder' : 'payments.payout.manual.ibanPlaceholder')} required /></label>
+      {!isMorocco && <label className="field"><span>{t('payments.payout.manual.bic')}</span><input value={bank.bic} maxLength={11} autoCapitalize="characters" onChange={(event) => setBank((current) => ({ ...current, bic: event.target.value }))} placeholder={t('payments.payout.manual.bicPlaceholder')} /></label>}
+      {isMorocco && <label className="field"><span>{t('payments.payout.manual.phone')}</span><input value={bank.phone} maxLength={20} type="tel" autoComplete="tel" onChange={(event) => setBank((current) => ({ ...current, phone: event.target.value }))} placeholder="+212 6 00 00 00 00" required /></label>}
+      <p className="payout-country-note">{t('payments.payout.manual.security')}</p>
+      <button className="btn btn-primary payout-start-btn" type="submit" disabled={busy}>{busy ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t('payments.payout.manual.save')}</button>
+    </form>;
+  } else if (payout?.ready) {
     content = <section className="payout-setup-content payout-complete-panel">
       <div className="payout-ready"><Icon name="shieldCheck" size={23} /><div><b>{t('payments.payout.ready')}</b><p>{t('payments.payout.readyHelp')}</p></div></div>
       <button className="btn btn-primary" onClick={() => navigate(returnTo, { replace: true })}><Icon name="check" size={17} />{t('payments.payout.finish')}</button>

@@ -30,6 +30,7 @@ export default function Admin() {
   const [tab, setTab] = useState('ops');
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
+  const [manualPayouts, setManualPayouts] = useState([]);
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [team, setTeam] = useState(null);
@@ -42,6 +43,11 @@ export default function Admin() {
   }, []);
   const loadOps = useCallback(() => {
     api('/admin/ops').then((d) => setOps(d.ops)).catch((e) => setOpsError(e.message));
+  }, []);
+  const loadManualPayouts = useCallback(() => {
+    api('/admin/payouts/manual')
+      .then((data) => setManualPayouts(data.requests || []))
+      .catch(() => setManualPayouts([]));
   }, []);
   const loadFraud = useCallback(() => {
     api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
@@ -68,6 +74,7 @@ export default function Admin() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadOps(); }, [loadOps]);
+  useEffect(() => { loadManualPayouts(); }, [loadManualPayouts]);
   useEffect(() => {
     if (tab === 'fraud' && !fraud) loadFraud();
   }, [tab, fraud, loadFraud]);
@@ -89,6 +96,15 @@ export default function Admin() {
     await api(`/admin/operations/${operationId}/refund`, { method: 'POST', body: { reason } });
     await Promise.all([load(), loadOps()]);
     toast.success(t('admin.payments.refundSuccess'), 2600);
+  };
+
+  const confirmManualPayout = async (operationId, reference) => {
+    await api(`/admin/payouts/manual/${operationId}/sent`, {
+      method: 'POST',
+      body: { reference },
+    });
+    await Promise.all([load(), loadOps(), loadManualPayouts()]);
+    toast.success(t('admin.payouts.sentSuccess'), 2600);
   };
 
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
@@ -139,7 +155,7 @@ export default function Admin() {
         <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">{t('admin.stat.flagged')}</div></div>
       </div>
 
-      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} onRefund={refundPayment} reload={() => { load(); loadOps(); loadFraud(); }} />}
+      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} manualPayouts={manualPayouts} onManualPayout={confirmManualPayout} onRefund={refundPayment} reload={() => { load(); loadOps(); loadManualPayouts(); loadFraud(); }} />}
       {tab === 'review' && (
         <>
           {reviewQueue.length === 0 && (

@@ -12,6 +12,7 @@ export function createStripePaymentService({
   stripe,
   config,
   audit = async () => {},
+  manualPayouts = null,
   now = Date.now,
   logger = console,
 }) {
@@ -28,14 +29,14 @@ export function createStripePaymentService({
     if (unavailable) return unavailable;
     const pool = getPool();
     const current = await connectedAccountByUser(pool, user.id);
-    if (!current) return success({ payout: emptyPayoutStatus() });
+    if (!current) return success({ mode: 'stripe_connect', payout: emptyPayoutStatus() });
     if (!refresh && isFresh(current.last_synced_at, now())) {
-      return success({ payout: publicPayoutStatus(current) });
+      return success({ mode: 'stripe_connect', payout: publicPayoutStatus(current) });
     }
     try {
       const account = await stripe.accounts.retrieve(current.stripe_account_id);
       const saved = await saveConnectedAccount(pool, user.id, account);
-      return success({ payout: publicPayoutStatus(saved) });
+      return success({ mode: 'stripe_connect', payout: publicPayoutStatus(saved) });
     } catch (error) {
       logStripeError(logger, 'stripe_connected_account_sync_failed', error, {
         userId: user.id,
@@ -167,6 +168,7 @@ export function createStripePaymentService({
       user,
       operationId,
       now: now(),
+      payoutMode: config.payoutMode,
     });
     if (prepared.error) return prepared.error;
 
@@ -271,6 +273,10 @@ export function createStripePaymentService({
   }
 
   async function releaseAfterDelivery(operationId) {
+    if (config.payoutMode === 'manual') {
+      return manualPayouts?.queueAfterDelivery(operationId)
+        || failure(503, 'Versement manuel temporairement indisponible.');
+    }
     const unavailable = availability();
     if (unavailable) return unavailable;
     const prepared = await prepareTransfer(getPool(), operationId, now());
@@ -357,6 +363,9 @@ export function createStripePaymentService({
   }
 
   async function retryPendingTransfers({ limit = 20 } = {}) {
+    if (config.payoutMode === 'manual') {
+      return { inspected: 0, transferred: 0, failed: 0, manual: true };
+    }
     const unavailable = availability();
     if (unavailable) {
       return { inspected: 0, transferred: 0, failed: 0, disabled: true };
@@ -398,18 +407,29 @@ export function createStripePaymentService({
   };
 }
 
-async function prepareCheckout({ pool, user, operationId, now }) {
+async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'stripe_connect' }) {
   const client = await pool.connect();
   try {
     await client.query('begin');
+    const payoutFields = payoutMode === 'manual'
+      ? `null::text as stripe_account_id, null::text as transfers_capability_status,
+         false as payouts_enabled, manual.id as manual_payout_account_id,
+         manual.status as manual_payout_account_status`
+      : `connected.stripe_account_id, connected.transfers_capability_status,
+         connected.payouts_enabled, null::text as manual_payout_account_id,
+         null::text as manual_payout_account_status`;
+    const payoutJoin = payoutMode === 'manual'
+      ? `left join public.manual_payout_accounts manual
+           on manual.user_id = tx.data->>'travelerId' and manual.active`
+      : `left join public.stripe_connected_accounts connected
+           on connected.user_id = tx.data->>'travelerId'`;
     const result = await client.query(
       `select tx.data as operation, sender.data as sender, traveler.data as traveler,
-              connected.*
+              ${payoutFields}
          from public.wigolink_transactions tx
          join public.wigolink_users sender on sender.id = tx.data->>'senderId'
          join public.wigolink_users traveler on traveler.id = tx.data->>'travelerId'
-         left join public.stripe_connected_accounts connected
-           on connected.user_id = tx.data->>'travelerId'
+         ${payoutJoin}
         where tx.id = $1
         for update of tx`,
       [operationId],
@@ -422,8 +442,12 @@ async function prepareCheckout({ pool, user, operationId, now }) {
     if (row.operation.operationStatus !== 'paiement_requis') {
       return rollback(client, failure(409, 'Cette operation ne peut pas etre payee maintenant.'));
     }
-    if (!row.stripe_account_id || row.transfers_capability_status !== 'active'
-      || !row.payouts_enabled) {
+    const manualReady = row.manual_payout_account_id
+      && row.manual_payout_account_status === 'verified';
+    const stripeReady = row.stripe_account_id
+      && row.transfers_capability_status === 'active'
+      && row.payouts_enabled;
+    if (payoutMode === 'manual' ? !manualReady : !stripeReady) {
       return rollback(client, failure(409, 'Le voyageur doit configurer ses versements avant le paiement.', {
         payoutSetupRequired: true,
       }));
@@ -442,13 +466,17 @@ async function prepareCheckout({ pool, user, operationId, now }) {
       return rollback(client, failure(409, 'La page de paiement est en cours de preparation.'));
     }
     const attempt = Number(existing?.checkout_attempt || 0) + 1;
+    const manualPayment = payoutMode === 'manual';
+    const payoutColumn = manualPayment ? ', payout_method' : '';
+    const payoutValue = manualPayment ? ',$12' : '';
+    const payoutUpdate = manualPayment ? ', payout_method = excluded.payout_method' : '';
     await client.query(
       `insert into public.operation_payments (
          operation_id, currency, traveler_price_cents, sender_fee_cents,
          traveler_fee_cents, charged_amount_cents, traveler_transfer_cents,
          platform_gross_cents, payment_status, transfer_status, checkout_attempt,
-         fee_policy_version, pricing_snapshot_json, created_at, updated_at
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,'creating','not_ready',$9,$10,$11::jsonb,now(),now())
+         fee_policy_version, pricing_snapshot_json${payoutColumn}, created_at, updated_at
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,'creating','not_ready',$9,$10,$11::jsonb${payoutValue},now(),now())
        on conflict (operation_id) do update set
          payment_status = 'creating', checkout_attempt = excluded.checkout_attempt,
          currency = excluded.currency, traveler_price_cents = excluded.traveler_price_cents,
@@ -456,7 +484,7 @@ async function prepareCheckout({ pool, user, operationId, now }) {
          traveler_fee_cents = excluded.traveler_fee_cents,
          charged_amount_cents = excluded.charged_amount_cents,
          traveler_transfer_cents = excluded.traveler_transfer_cents,
-         platform_gross_cents = excluded.platform_gross_cents,
+         platform_gross_cents = excluded.platform_gross_cents${payoutUpdate},
          fee_policy_version = excluded.fee_policy_version,
          pricing_snapshot_json = excluded.pricing_snapshot_json, updated_at = now()`,
       [
@@ -471,6 +499,7 @@ async function prepareCheckout({ pool, user, operationId, now }) {
         attempt,
         quote.feePolicyVersion,
         JSON.stringify(paymentSnapshot(quote)),
+        ...(manualPayment ? ['manual'] : []),
       ],
     );
     row.operation.paymentStatus = 'creating';
@@ -645,6 +674,9 @@ async function prepareRefund(pool, operationId, now) {
     if (!row) return rollback(client, { error: failure(404, 'Paiement introuvable.') });
     if (row.payment_status === 'refunded') {
       return rollback(client, { error: failure(409, 'Ce paiement est deja rembourse.') });
+    }
+    if (row.payout_method === 'manual' && row.transfer_status === 'manual_sent') {
+      return rollback(client, { error: failure(409, 'Recuperez d abord le versement voyageur avant de rembourser cet expediteur.') });
     }
     if (!row.stripe_payment_intent_id || !PAID_STATUSES.has(row.payment_status)) {
       return rollback(client, { error: failure(409, "Aucun paiement remboursable n'est disponible.") });
@@ -1072,17 +1104,18 @@ function publicPayment(row) {
 }
 
 function paymentMetadata(operation, quote, connectedAccountId) {
-  return {
+  const metadata = {
     wigolink_operation_id: operation.id,
     wigolink_sender_id: operation.senderId,
     wigolink_traveler_id: operation.travelerId,
-    wigolink_connected_account_id: connectedAccountId,
     wigolink_fee_policy: quote.feePolicyVersion,
     wigolink_traveler_price_cents: String(quote.travelerPriceCents),
     wigolink_sender_fee_cents: String(quote.senderFeeCents),
     wigolink_traveler_fee_cents: String(quote.travelerFeeCents),
     wigolink_transfer_cents: String(quote.travelerTransferCents),
   };
+  if (connectedAccountId) metadata.wigolink_connected_account_id = connectedAccountId;
+  return metadata;
 }
 
 function checkoutDescription(operation, quote) {

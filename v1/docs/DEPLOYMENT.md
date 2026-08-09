@@ -43,6 +43,28 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 
 ## Paiements Stripe Connect
 
+### Mode pilote avec versement manuel
+
+Pour encaisser par Stripe puis traiter les versements voyageurs depuis les
+comptes professionnels Wigolink:
+
+1. Reexecuter `supabase/schema.sql` afin de creer `manual_payout_accounts`,
+   `manual_payout_requests` et la colonne `operation_payments.payout_method`.
+2. Generer une cle aleatoire de 32 octets encodee en base64 et la stocker dans
+   `MANUAL_PAYOUT_ENCRYPTION_KEY`. Ne jamais changer cette cle sans migration,
+   car les anciens comptes deviendraient illisibles.
+3. Definir `PAYOUT_MODE=manual` et `MANUAL_PAYOUT_COUNTRIES=MA,BE,FR`.
+4. Conserver `PAYMENT_PROVIDER=stripe` et toutes les cles/webhooks Stripe:
+   Stripe continue d'encaisser l'expediteur.
+5. Tester une livraison complete. Une ligne `manual_payout_requests` doit
+   apparaitre dans l'administration, puis passer a `sent` uniquement apres la
+   saisie d'une reference de virement.
+
+Les coordonnees bancaires ne doivent jamais etre copiees dans les logs, les
+captures de support ou les metadonnees d'audit. Les virements sont realises
+uniquement depuis des comptes professionnels rapproches avec le registre
+d'administration.
+
 Le paiement reel est active uniquement lorsque `PAYMENT_PROVIDER=stripe`. Le
 serveur exige alors `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` et
 `STRIPE_WEBHOOK_SECRET`; leur absence

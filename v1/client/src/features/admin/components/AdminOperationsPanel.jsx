@@ -4,7 +4,7 @@ import { SkeletonList } from '../../../Skeleton.jsx';
 import { t } from '../../../i18n.js';
 import { formatAdminShortDate, opsTaskCopy } from './adminPanelUtils.js';
 
-export function OpsPanel({ ops, error, setTab, reload, onRefund }) {
+export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPayout, onRefund }) {
   const [refundTarget, setRefundTarget] = useState(null);
   if (error) {
     return (
@@ -93,6 +93,8 @@ export function OpsPanel({ ops, error, setTab, reload, onRefund }) {
           </details>
         )}
       </section>
+
+      <ManualPayoutQueue requests={manualPayouts} onConfirm={onManualPayout} />
 
       <div className="ops-task-grid">
         {ops.tasks.map((task) => (
@@ -188,6 +190,52 @@ function OpsMetric({ icon, value, label, danger = false }) {
 
 function RiskPill({ label, value }) {
   return <span className={`ops-risk-pill ${value > 0 ? 'on' : ''}`}><b>{value}</b>{label}</span>;
+}
+
+function ManualPayoutQueue({ requests = [], onConfirm }) {
+  const [references, setReferences] = useState({});
+  const [busyId, setBusyId] = useState(null);
+  const pending = requests.filter((request) => request.status !== 'sent');
+  const submit = async (request) => {
+    const reference = String(references[request.operationId] || '').trim();
+    if (reference.length < 4) return;
+    setBusyId(request.operationId);
+    try {
+      await onConfirm(request.operationId, reference);
+    } finally {
+      setBusyId(null);
+    }
+  };
+  return <section className="ops-section ops-manual-payouts">
+    <div className="ops-section-head">
+      <h2><Icon name="bank" size={17} />{t('admin.payouts.title')}</h2>
+      <span className="pill pill-gray">{pending.length}</span>
+    </div>
+    <p className="muted ops-payout-intro">{t('admin.payouts.intro')}</p>
+    {pending.length === 0 ? <div className="ops-payout-empty"><Icon name="check" size={18} />{t('admin.payouts.empty')}</div> : <div className="ops-payout-list">
+      {pending.map((request) => <article className="ops-payout-row" key={request.operationId}>
+        <div className="ops-payout-summary">
+          <div><b>{request.traveler?.name || t('admin.payouts.traveler')}</b><span>{request.traveler?.email}</span></div>
+          <strong>{formatMoney(request.amountCents, request.currency)}</strong>
+        </div>
+        <div className="ops-payout-context">
+          <span><Icon name="plane" size={14} />{request.route || t('admin.payments.operation')}</span>
+          <span className="pill pill-success">{t('admin.payouts.kycVerified')}</span>
+        </div>
+        <dl className="ops-bank-details">
+          <div><dt>{t('admin.payouts.holder')}</dt><dd>{request.bank.holderName}</dd></div>
+          <div><dt>{t('admin.payouts.bank')}</dt><dd>{request.bank.bankName} · {request.bank.country}</dd></div>
+          <div><dt>{t(request.bank.country === 'MA' ? 'admin.payouts.rib' : 'admin.payouts.iban')}</dt><dd className="ops-bank-number">{request.bank.accountIdentifier}</dd></div>
+          {request.bank.bic && <div><dt>{t('admin.payouts.bic')}</dt><dd>{request.bank.bic}</dd></div>}
+          {request.bank.phone && <div><dt>{t('admin.payouts.phone')}</dt><dd>{request.bank.phone}</dd></div>}
+        </dl>
+        <div className="ops-payout-confirm">
+          <label className="field"><span>{t('admin.payouts.reference')}</span><input value={references[request.operationId] || ''} maxLength={120} onChange={(event) => setReferences((current) => ({ ...current, [request.operationId]: event.target.value }))} placeholder={t('admin.payouts.referencePlaceholder')} /></label>
+          <button className="btn btn-primary" type="button" disabled={busyId === request.operationId || String(references[request.operationId] || '').trim().length < 4} onClick={() => submit(request)}>{busyId === request.operationId ? <span className="spinner" /> : <Icon name="check" size={16} />}{t('admin.payouts.markSent')}</button>
+        </div>
+      </article>)}
+    </div>}
+  </section>;
 }
 
 function RefundDialog({ payment, onClose, onConfirm }) {

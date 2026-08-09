@@ -148,6 +148,9 @@ import {
   stripeConfiguration,
 } from './payments/stripe-config.js';
 import { createStripePaymentService } from './payments/stripe-service.js';
+import { manualPayoutConfiguration } from './payments/manual-payout-config.js';
+import { createManualPayoutService } from './payments/manual-payout-service.js';
+import { createManualPayoutsRouter } from './routes/manual-payouts.js';
 import { publicTripCatalog } from './services/public-trip-catalog.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -209,6 +212,7 @@ const observability = createObservability({
   slowRequestMs: Number(process.env.SLOW_REQUEST_MS) || 1_000,
 });
 const STRIPE_CONFIG = stripeConfiguration();
+const MANUAL_PAYOUT_CONFIG = manualPayoutConfiguration();
 const stripeClient = createStripeClient(STRIPE_CONFIG);
 let stripePayments = null;
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
@@ -570,12 +574,25 @@ const {
 const { audit, auditChange } = createAuditService({
   auditLogs: repositories.auditLogs,
 });
+const manualPayouts = createManualPayoutService({
+  getPool: databasePool,
+  config: MANUAL_PAYOUT_CONFIG,
+  audit,
+});
 stripePayments = createStripePaymentService({
   getPool: databasePool,
   stripe: stripeClient,
   config: STRIPE_CONFIG,
   audit,
+  manualPayouts,
 });
+
+app.use('/api', createManualPayoutsRouter({
+  auth: relationalOperationWriteAuth,
+  adminOnly,
+  payouts: manualPayouts,
+  enabled: () => MANUAL_PAYOUT_CONFIG.enabled && relationalOperationWritesEnabled(),
+}));
 
 app.use('/api', createStripePaymentsRouter({
   auth: relationalOperationWriteAuth,
