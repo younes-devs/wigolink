@@ -131,3 +131,51 @@ test('operations relationnelles : detail refuse un tiers et autorise un admin', 
   });
   assert.equal(traveler.body.operation.myRole, 'traveler');
 });
+
+test('operation voyageur expose le compte manuel et normalise le prix avant paiement', async () => {
+  const previousProvider = process.env.PAYMENT_PROVIDER;
+  const previousPayoutMode = process.env.PAYOUT_MODE;
+  process.env.PAYMENT_PROVIDER = 'stripe';
+  process.env.PAYOUT_MODE = 'manual';
+  try {
+    const operationRow = {
+      ...row,
+      transaction: {
+        ...row.transaction,
+        price: 9,
+        payment: {
+          currency: 'EUR',
+          priceCents: 900,
+          senderFeeCents: 150,
+          travelerFeeCents: 150,
+          chargedAmountCents: 1050,
+          travelerTransferCents: 750,
+          platformGrossCents: 300,
+          feePolicyVersion: 'test-v1',
+        },
+      },
+      payout_record: null,
+      manual_payout_record: {
+        country: 'MA',
+        status: 'verified',
+      },
+    };
+    const result = await relationalOperation({
+      pool: { query: () => ({ rows: [operationRow] }) },
+      user: { id: 'u-2' },
+      id: 'tx-1',
+      operationCodePublicState: () => ({}),
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.operation.payout.ready, true);
+    assert.equal(result.body.operation.payout.mode, 'manual');
+    assert.equal(result.body.operation.paymentDetails.travelerPriceCents, 900);
+    assert.equal(result.body.operation.paymentDetails.travelerTransferCents, 750);
+  } finally {
+    if (previousProvider === undefined) delete process.env.PAYMENT_PROVIDER;
+    else process.env.PAYMENT_PROVIDER = previousProvider;
+    if (previousPayoutMode === undefined) delete process.env.PAYOUT_MODE;
+    else process.env.PAYOUT_MODE = previousPayoutMode;
+  }
+});

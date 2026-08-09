@@ -2,7 +2,7 @@
 export default {
   "privacy": {
     "title": "Política de privacidad",
-    "lastUpdate": "18 de julio de 2026",
+    "lastUpdate": "9 de agosto de 2026",
     "updated": "Última actualización: {date}",
     "warning": "Texto previo a la publicación: completa los campos entre corchetes, los plazos de conservación y la información de la empresa antes del lanzamiento comercial.",
     "question": "¿Pregunta sobre tus datos?",
@@ -59,8 +59,8 @@ export default {
             ],
             [
               "Pago",
-              "Estado y montos de una transacción cuando se activará el pago real",
-              "Proveedor de pagos"
+              "Importes, tarifas, estado de Stripe y datos bancarios cifrados para el pago",
+              "Usted y proveedor de pagos"
             ]
           ]
         }
@@ -93,7 +93,8 @@ export default {
           "Vercel: alojamiento de aplicaciones y funciones de servidor.",
           "Reenviar: envío de correos electrónicos transaccionales, incluida la verificación del correo electrónico.",
           "Google: solo si y cuando la conexión Google OAuth esté realmente activada.",
-          "Un proveedor de pago o KYC solo se agregará después de que se active y se actualice esta política.",
+          "Stripe: procesamiento de pagos con tarjeta. Los datos bancarios de pago están cifrados y solo son accesibles para el equipo de pagos autorizado.",
+          "Un proveedor KYC externo solo se agregará después de que se active y se actualice esta política.",
           "Autoridades públicas: sólo en caso de obligación legal o solicitud válida."
         ]
       },
@@ -136,7 +137,7 @@ export default {
   },
   "terms": {
     "title": "Condiciones generales de uso",
-    "lastUpdate": "18 de julio de 2026",
+    "lastUpdate": "9 de agosto de 2026",
     "updated": "Última actualización: {date}",
     "warning": "Texto previo a la publicación: los campos entre corchetes y las condiciones de pago deben ser finalizados y validados por un abogado antes de cualquier lanzamiento comercial.",
     "question": "¿Preguntas sobre estas condiciones?",
@@ -199,8 +200,8 @@ export default {
         "id": "payment",
         "title": "6. Pagos y tarifas",
         "paragraphs": [
-          "Estado actual del servicio: se simula el módulo de pagos y escrow. Wigolink no ejecuta ningún pago, cobro, delimitación ni remesa hasta que un proveedor de pago aprobado y los términos finales estén activos.",
-          "Antes de activar los pagos reales, Wigolink publicará el nombre del proveedor, tarifas, condiciones de reembolso, plazos de pago e información legalmente requerida. Los usuarios nunca deberán pagar a otro usuario fuera de las formas ofrecidas oficialmente por Wigolink."
+          "El pago del remitente es procesado por Stripe. El precio acordado, las tarifas de servicio aplicadas a cada parte y el total se muestran antes de la confirmación. Wigolink no es un banco ni debe presentarse como un servicio de depósito regulado.",
+          "Después de confirmar la entrega, y sujeto a controles de seguridad o a una disputa, el importe neto debido al viajero se transfiere manualmente a la cuenta bancaria registrada. Los plazos bancarios pueden variar. Los usuarios nunca deben pagar a otro usuario fuera de los métodos ofrecidos oficialmente por Wigolink."
         ]
       },
       {

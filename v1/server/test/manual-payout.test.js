@@ -110,3 +110,81 @@ test('enregistrer la banque libere la connexion avant de reprendre les versement
   assert.equal(result.body.payout.accountLast4, '1234');
   assert.equal(connectionActive, false);
 });
+
+test('creer la demande de versement libere la connexion avant l audit', async () => {
+  let connectionActive = false;
+  const pool = transactionalPool((sql) => {
+    if (sql.includes('select payment.*')) return { rows: [{
+      operation: {
+        id: 'tx-test', travelerId: 'u-traveler', operationStatus: 'termine', status: 'completed', events: [],
+      },
+      payout_account_id: 'mpa-test',
+      payment_status: 'paid',
+      stripe_charge_id: 'ch_test',
+      traveler_transfer_cents: 750,
+      currency: 'EUR',
+    }] };
+    if (sql.includes('insert into public.manual_payout_requests')) return { rows: [{
+      operation_id: 'tx-test', amount_cents: 750, currency: 'EUR', status: 'pending', requested_at: 1,
+    }] };
+    return { rows: [] };
+  }, (active) => { connectionActive = active; });
+  const service = createManualPayoutService({
+    getPool: () => pool,
+    config: manualConfig(),
+    audit: async () => assert.equal(connectionActive, false, 'la connexion doit etre liberee avant l audit'),
+  });
+
+  const result = await service.queueAfterDelivery('tx-test');
+
+  assert.equal(result.status, 201);
+  assert.equal(result.body.request.amountCents, 750);
+  assert.equal(connectionActive, false);
+});
+
+test('confirmer le virement admin libere la connexion avant l audit', async () => {
+  let connectionActive = false;
+  const pool = transactionalPool((sql) => {
+    if (sql.includes('select request.*')) return { rows: [{
+      operation: { id: 'tx-test', status: 'completed', events: [], escrow: {} },
+      status: 'pending', amount_cents: 750, currency: 'EUR',
+    }] };
+    if (sql.includes('update public.manual_payout_requests')) return { rows: [{
+      operation_id: 'tx-test', amount_cents: 750, currency: 'EUR', status: 'sent', processed_at: 2,
+    }] };
+    return { rows: [] };
+  }, (active) => { connectionActive = active; });
+  const service = createManualPayoutService({
+    getPool: () => pool,
+    config: manualConfig(),
+    audit: async () => assert.equal(connectionActive, false, 'la connexion doit etre liberee avant l audit'),
+  });
+
+  const result = await service.markSent({
+    admin: { id: 'u-admin' }, operationId: 'tx-test', reference: 'BANK-2026-001',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.request.status, 'sent');
+  assert.equal(connectionActive, false);
+});
+
+function manualConfig() {
+  return manualPayoutConfiguration({
+    PAYOUT_MODE: 'manual',
+    MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
+    MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+  });
+}
+
+function transactionalPool(queryResult, setActive) {
+  return {
+    async connect() {
+      setActive(true);
+      return {
+        async query(sql) { return queryResult(sql); },
+        release() { setActive(false); },
+      };
+    },
+  };
+}

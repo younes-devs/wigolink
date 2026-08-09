@@ -12,7 +12,7 @@ const privacyTable = {
       ['Trajets et opérations', 'Itinéraires, dates, capacité, annonces, prix proposés, preuves', 'Vous et votre partenaire'],
       ['Messagerie', 'Messages, photos jointes, signalements et actions de modération', 'Vous'],
       ['Localisation ponctuelle', 'Lieu choisi ou position actuelle, précision, expiration', 'Vous, après autorisation du navigateur'],
-      ['Paiement', "Statut et montants d'une opération lorsque le paiement réel sera activé", 'Prestataire de paiement'],
+      ['Paiement et versement', "Montants, frais, statut Stripe et coordonnées bancaires de versement chiffrées", 'Vous et prestataire de paiement'],
     ],
   },
   nl: {
@@ -24,7 +24,7 @@ const privacyTable = {
       ['Reizen en operaties', 'Routes, datums, capaciteit, advertenties, voorgestelde prijzen, bewijzen', 'U en uw partner'],
       ['Berichten', 'Berichten, bijgevoegde foto’s, meldingen en moderatieacties', 'U'],
       ['Eenmalige locatie', 'Gekozen plaats of huidige locatie, nauwkeurigheid, vervaldatum', 'U, na toestemming van de browser'],
-      ['Betaling', 'Status en bedragen van een operatie zodra echte betalingen actief zijn', 'Betalingsprovider'],
+      ['Betaling en uitbetaling', 'Bedragen, kosten, Stripe-status en versleutelde bankgegevens voor uitbetaling', 'U en betalingsprovider'],
     ],
   },
   ar: {
@@ -36,7 +36,7 @@ const privacyTable = {
       ['الرحلات والعمليات', 'المسارات، التواريخ، السعة، الإعلانات، الأسعار المقترحة، الأدلة', 'أنت وشريكك'],
       ['الرسائل', 'الرسائل، الصور المرفقة، البلاغات وإجراءات الإشراف', 'أنت'],
       ['الموقع المؤقت', 'المكان المختار أو الموقع الحالي، الدقة، انتهاء الصلاحية', 'أنت، بعد إذن المتصفح'],
-      ['الدفع', 'حالة ومبالغ العملية عند تفعيل الدفع الحقيقي', 'مزود الدفع'],
+      ['الدفع والتحويل', 'المبالغ والرسوم وحالة Stripe والبيانات البنكية المشفرة للتحويل', 'أنت ومزود الدفع'],
     ],
   },
 };
@@ -44,7 +44,7 @@ const privacyTable = {
 const privacy = {
   fr: {
     title: 'Politique de confidentialité',
-    lastUpdate: '18 juillet 2026',
+    lastUpdate: '9 août 2026',
     updated: 'Dernière mise à jour : {date}',
     warning: 'Texte pré-publication : complétez les champs entre crochets, les durées de conservation et les informations de société avant le lancement commercial.',
     question: 'Question concernant vos données ?',
@@ -73,7 +73,8 @@ const privacy = {
         'Vercel : hébergement de l’application et fonctions serveur.',
         'Resend : envoi des emails transactionnels, notamment la vérification d’email.',
         'Google : seulement si et lorsque la connexion Google OAuth est effectivement activée.',
-        'Un prestataire de paiement ou de KYC ne sera ajouté qu’après son activation et la mise à jour de cette politique.',
+        'Stripe : traitement des paiements par carte. Les coordonnées bancaires de versement sont chiffrées et accessibles uniquement à l’équipe habilitée chargée des versements.',
+        "Un prestataire KYC externe ne sera ajouté qu'après son activation et la mise à jour de cette politique.",
         'Autorités publiques : uniquement en cas d’obligation légale ou de demande valable.',
       ] },
       { id: 'retention', title: '6. Conservation et suppression', list: [
@@ -99,7 +100,7 @@ const privacy = {
   },
   nl: {
     title: 'Privacybeleid',
-    lastUpdate: '18 juli 2026',
+    lastUpdate: '9 augustus 2026',
     updated: 'Laatst bijgewerkt: {date}',
     warning: 'Tekst vóór publicatie: vul de velden tussen haakjes, de bewaartermijnen en de bedrijfsgegevens in vóór de commerciële lancering.',
     question: 'Een vraag over uw gegevens?',
@@ -128,7 +129,8 @@ const privacy = {
         'Vercel: hosting van de applicatie en serverfuncties.',
         'Resend: transactionele e-mails, waaronder e-mailverificatie.',
         'Google: alleen als en wanneer Google OAuth werkelijk is geactiveerd.',
-        'Een betalings- of KYC-provider wordt pas toegevoegd na activering en actualisering van dit beleid.',
+        'Stripe: verwerking van kaartbetalingen. Bankgegevens voor uitbetaling zijn versleuteld en alleen toegankelijk voor het bevoegde uitbetalingsteam.',
+        'Een externe KYC-provider wordt pas toegevoegd na activering en actualisering van dit beleid.',
         'Overheidsinstanties: uitsluitend bij een wettelijke verplichting of geldig verzoek.',
       ] },
       { id: 'retention', title: '6. Bewaring en verwijdering', list: [
@@ -154,7 +156,7 @@ const privacy = {
   },
   ar: {
     title: 'سياسة الخصوصية',
-    lastUpdate: '18 يوليو 2026',
+    lastUpdate: '9 أغسطس 2026',
     updated: 'آخر تحديث: {date}',
     warning: 'نص قبل النشر: أكمل الحقول بين القوسين ومدد الاحتفاظ وبيانات الشركة قبل الإطلاق التجاري.',
     question: 'هل لديك سؤال حول بياناتك؟',
@@ -183,7 +185,8 @@ const privacy = {
         'Vercel: استضافة التطبيق ووظائف الخادم.',
         'Resend: إرسال رسائل المعاملات، ومنها التحقق من البريد الإلكتروني.',
         'Google: فقط إذا وعندما يتم تفعيل تسجيل Google OAuth فعليا.',
-        'لن يُضاف مزود دفع أو تحقق من الهوية إلا بعد تفعيله وتحديث هذه السياسة.',
+        'Stripe: معالجة المدفوعات بالبطاقة. تُشفّر البيانات البنكية للتحويل ولا يصل إليها إلا فريق التحويل المخول.',
+        'لن يُضاف مزود خارجي للتحقق من الهوية إلا بعد تفعيله وتحديث هذه السياسة.',
         'السلطات العامة: فقط عند وجود التزام قانوني أو طلب صحيح.',
       ] },
       { id: 'retention', title: '6. الاحتفاظ والحذف', list: [
@@ -212,7 +215,7 @@ const privacy = {
 const terms = {
   fr: {
     title: "Conditions générales d'utilisation",
-    lastUpdate: '18 juillet 2026',
+    lastUpdate: '9 août 2026',
     updated: 'Dernière mise à jour : {date}',
     warning: 'Texte pré-publication : les champs entre crochets et les conditions de paiement doivent être finalisés et validés par un avocat avant tout lancement commercial.',
     question: 'Question concernant ces conditions ?',
@@ -252,8 +255,8 @@ const terms = {
         "Une remise ou une livraison ne doit être confirmée que lorsqu'elle a effectivement eu lieu.",
       ] },
       { id: 'payment', title: '6. Paiement et frais', paragraphs: [
-        "État actuel du service : le module de paiement et de séquestre est simulé. Aucun paiement réel, encaissement, cantonnement ou versement n'est exécuté par Wigolink tant qu'un prestataire de paiement agréé et les conditions définitives ne sont pas actifs.",
-        "Avant l'activation de paiements réels, Wigolink publiera le nom du prestataire, les frais, les conditions de remboursement, les délais de versement et les informations légalement requises. Les utilisateurs ne doivent jamais payer un autre utilisateur en dehors des moyens officiellement proposés par Wigolink.",
+        "Le paiement de l'expéditeur est traité par Stripe. Le prix accepté, les frais de service appliqués à chaque partie et le total à payer sont affichés avant toute validation. Wigolink n'est pas une banque et ne doit pas être présenté comme un service de séquestre réglementé.",
+        "Après confirmation de la livraison et sous réserve des contrôles de sécurité ou d'un litige, le montant net dû au voyageur est versé manuellement sur le compte bancaire enregistré. Les délais bancaires peuvent varier. Les utilisateurs ne doivent jamais payer un autre utilisateur en dehors des moyens officiellement proposés par Wigolink.",
       ] },
       { id: 'chat', title: '7. Messagerie, photos et localisation', list: [
         'La coordination doit rester dans la messagerie Wigolink. Les numéros, emails, liens, réseaux sociaux et moyens de paiement externes peuvent être bloqués ou modérés pour protéger les utilisateurs.',
@@ -283,7 +286,7 @@ const terms = {
   },
   nl: {
     title: 'Algemene gebruiksvoorwaarden',
-    lastUpdate: '18 juli 2026',
+    lastUpdate: '9 augustus 2026',
     updated: 'Laatst bijgewerkt: {date}',
     warning: 'Tekst vóór publicatie: de velden tussen haakjes en de betalingsvoorwaarden moeten vóór de commerciële lancering worden voltooid en door een advocaat worden gevalideerd.',
     question: 'Een vraag over deze voorwaarden?',
@@ -323,8 +326,8 @@ const terms = {
         'Een overdracht of levering mag alleen worden bevestigd wanneer die werkelijk heeft plaatsgevonden.',
       ] },
       { id: 'payment', title: '6. Betaling en kosten', paragraphs: [
-        'Huidige toestand: de betalings- en bewaringsmodule is een simulatie. Wigolink voert geen echte betaling, inning, bewaring of uitbetaling uit zolang geen erkende betalingsprovider en definitieve voorwaarden actief zijn.',
-        'Vóór echte betalingen publiceert Wigolink de provider, kosten, terugbetalingsvoorwaarden, uitbetalingstermijnen en wettelijk vereiste informatie. Gebruikers mogen elkaar nooit buiten de officieel aangeboden Wigolink-middelen betalen.',
+        'De betaling van de afzender wordt verwerkt door Stripe. De overeengekomen prijs, de servicekosten voor elke partij en het totaalbedrag worden vóór bevestiging getoond. Wigolink is geen bank en mag niet als een gereguleerde escrowdienst worden voorgesteld.',
+        'Na bevestiging van de levering en behoudens veiligheidscontroles of een geschil wordt het nettobedrag handmatig naar de geregistreerde bankrekening van de reiziger overgemaakt. Banktermijnen kunnen variëren. Gebruikers mogen elkaar nooit buiten de officieel aangeboden Wigolink-middelen betalen.',
       ] },
       { id: 'chat', title: '7. Berichten, foto’s en locatie', list: [
         'Coördinatie moet in Wigolink-berichten blijven. Telefoonnummers, e-mails, links, sociale netwerken en externe betaalmiddelen kunnen ter bescherming worden geblokkeerd of gemodereerd.',
@@ -354,7 +357,7 @@ const terms = {
   },
   ar: {
     title: 'الشروط العامة للاستخدام',
-    lastUpdate: '18 يوليو 2026',
+    lastUpdate: '9 أغسطس 2026',
     updated: 'آخر تحديث: {date}',
     warning: 'نص قبل النشر: يجب إكمال الحقول بين القوسين وشروط الدفع واعتمادها من محام قبل أي إطلاق تجاري.',
     question: 'هل لديك سؤال حول هذه الشروط؟',
@@ -394,8 +397,8 @@ const terms = {
         'لا يجوز تأكيد التسليم أو الوصول إلا بعد حدوثه فعليا.',
       ] },
       { id: 'payment', title: '6. الدفع والرسوم', paragraphs: [
-        'الحالة الحالية: وحدة الدفع والضمان محاكاة. لا ينفذ Wigolink أي دفع أو تحصيل أو حجز أو تحويل حقيقي قبل تفعيل مزود دفع معتمد والشروط النهائية.',
-        'قبل تفعيل الدفع الحقيقي، سينشر Wigolink اسم المزود والرسوم وشروط الاسترداد ومهل التحويل والمعلومات القانونية المطلوبة. لا يجوز للمستخدمين الدفع لبعضهم خارج الوسائل الرسمية التي يوفرها Wigolink.',
+        'تتم معالجة دفعة المرسل عبر Stripe. يظهر السعر المتفق عليه ورسوم الخدمة لكل طرف والمبلغ الإجمالي قبل التأكيد. Wigolink ليس بنكا ولا ينبغي تقديمه كخدمة ضمان مالي منظمة.',
+        'بعد تأكيد التسليم، ومع مراعاة فحوص الأمان أو وجود نزاع، يُحوّل المبلغ الصافي يدويا إلى الحساب البنكي المسجل للمسافر. قد تختلف المهل البنكية. لا يجوز للمستخدمين الدفع لبعضهم خارج الوسائل الرسمية التي يوفرها Wigolink.',
       ] },
       { id: 'chat', title: '7. الرسائل والصور والموقع', list: [
         'يجب أن يبقى التنسيق داخل رسائل Wigolink. قد تُحظر أو تُراقب أرقام الهاتف والبريد والروابط والشبكات الاجتماعية ووسائل الدفع الخارجية لحماية المستخدمين.',

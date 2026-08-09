@@ -90,6 +90,8 @@ export function createManualPayoutService({
     const unavailable = availability();
     if (unavailable) return unavailable;
     const client = await getPool().connect();
+    let queuedRequest;
+    let auditPayload;
     try {
       await client.query('begin');
       const result = await client.query(
@@ -154,18 +156,20 @@ export function createManualPayoutService({
       }, now());
       await updateOperation(client, row.operation);
       await client.query('commit');
-      await audit('system', 'manual_payout_requested', 'transaction', operationId, {
+      queuedRequest = request.rows[0];
+      auditPayload = {
         travelerId: row.operation.travelerId,
         amountCents: row.traveler_transfer_cents,
         currency: row.currency,
-      });
-      return success({ request: publicRequest(request.rows[0]) }, 201);
+      };
     } catch (error) {
       await client.query('rollback').catch(() => {});
       throw error;
     } finally {
       client.release();
     }
+    await audit('system', 'manual_payout_requested', 'transaction', operationId, auditPayload);
+    return success({ request: publicRequest(queuedRequest) }, 201);
   }
 
   async function listRequests({ admin, status: requestedStatus }) {
@@ -204,6 +208,8 @@ export function createManualPayoutService({
       return failure(400, 'Ajoutez une reference bancaire valide.');
     }
     const client = await getPool().connect();
+    let sentRequest;
+    let auditPayload;
     try {
       await client.query('begin');
       const result = await client.query(
@@ -243,17 +249,19 @@ export function createManualPayoutService({
       appendEvent(row.operation, 'manual_payout_sent', admin.id, {}, now());
       await updateOperation(client, row.operation);
       await client.query('commit');
-      await audit(admin.id, 'manual_payout_sent', 'transaction', operationId, {
+      sentRequest = updatedRequest.rows[0];
+      auditPayload = {
         amountCents: row.amount_cents,
         currency: row.currency,
-      });
-      return success({ request: publicRequest(updatedRequest.rows[0]) });
+      };
     } catch (error) {
       await client.query('rollback').catch(() => {});
       throw error;
     } finally {
       client.release();
     }
+    await audit(admin.id, 'manual_payout_sent', 'transaction', operationId, auditPayload);
+    return success({ request: publicRequest(sentRequest) });
   }
 
   return { availability, status, saveAccount, queueAfterDelivery, listRequests, markSent };

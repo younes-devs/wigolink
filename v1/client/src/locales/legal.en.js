@@ -2,7 +2,7 @@
 export default {
   "privacy": {
     "title": "Privacy Policy",
-    "lastUpdate": "July 18, 2026",
+    "lastUpdate": "August 9, 2026",
     "updated": "Last update: {date}",
     "warning": "Pre-publication text: complete the bracketed fields, retention periods and company information before commercial launch.",
     "question": "Question regarding your data?",
@@ -59,8 +59,8 @@ export default {
             ],
             [
               "Payment",
-              "Status and amounts of a transaction when real payment will be activated",
-              "Payment provider"
+              "Amounts, fees, Stripe status, and encrypted payout bank details",
+              "You and payment provider"
             ]
           ]
         }
@@ -93,7 +93,8 @@ export default {
           "Vercel: application hosting and server functions.",
           "Resend: sending transactional emails, including email verification.",
           "Google: only if and when the Google OAuth connection is actually activated.",
-          "A payment or KYC provider will only be added after it is activated and this policy is updated.",
+          "Stripe: card payment processing. Payout bank details are encrypted and accessible only to the authorized payout team.",
+          "An external KYC provider will only be added after it is activated and this policy is updated.",
           "Public authorities: only in case of legal obligation or valid request."
         ]
       },
@@ -136,7 +137,7 @@ export default {
   },
   "terms": {
     "title": "General conditions of use",
-    "lastUpdate": "July 18, 2026",
+    "lastUpdate": "August 9, 2026",
     "updated": "Last update: {date}",
     "warning": "Pre-publication text: fields in square brackets and payment conditions must be finalized and validated by a lawyer before any commercial launch.",
     "question": "Question regarding these conditions?",
@@ -199,8 +200,8 @@ export default {
         "id": "payment",
         "title": "6. Payment and fees",
         "paragraphs": [
-          "Current state of the service: the payment and escrow module is simulated. No actual payment, collection, ring-fencing or remittance is executed by Wigolink until an approved payment provider and final terms are active.",
-          "Before activating actual payments, Wigolink will publish the name of the provider, fees, reimbursement conditions, payment deadlines and legally required information. Users should never pay another user outside of the ways officially offered by Wigolink."
+          "The sender's payment is processed by Stripe. The agreed price, the service fee charged to each party, and the total due are displayed before confirmation. Wigolink is not a bank and must not be presented as a regulated escrow service.",
+          "After delivery is confirmed, and subject to security checks or a dispute, the net amount due to the traveler is paid manually to the registered bank account. Bank processing times may vary. Users must never pay another user outside the methods officially offered by Wigolink."
         ]
       },
       {
