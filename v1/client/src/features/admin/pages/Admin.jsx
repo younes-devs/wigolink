@@ -85,6 +85,12 @@ export default function Admin() {
     toast.success(t('admin.toast.decisionSaved'), 2200);
   };
 
+  const refundPayment = async (operationId, reason) => {
+    await api(`/admin/operations/${operationId}/refund`, { method: 'POST', body: { reason } });
+    await Promise.all([load(), loadOps()]);
+    toast.success(t('admin.payments.refundSuccess'), 2600);
+  };
+
   if (error) return <div className="alert alert-danger"><Icon name="alert" size={17} />{error}</div>;
   if (!data) {
     return (
@@ -133,7 +139,7 @@ export default function Admin() {
         <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">{t('admin.stat.flagged')}</div></div>
       </div>
 
-      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} reload={() => { load(); loadOps(); loadFraud(); }} />}
+      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} onRefund={refundPayment} reload={() => { load(); loadOps(); loadFraud(); }} />}
       {tab === 'review' && (
         <>
           {reviewQueue.length === 0 && (

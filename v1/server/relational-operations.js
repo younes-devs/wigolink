@@ -1,5 +1,6 @@
 import { transactionParticipantFilter } from './relational-sql.js';
 import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
+import { stripePaymentsEnabled } from './payments/stripe-config.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -130,7 +131,9 @@ function operationSelect() {
        dispute.data as dispute,
        sender.data as sender,
        traveler.data as traveler,
-       recipient.data as recipient
+       recipient.data as recipient,
+       to_jsonb(payment) as payment_record,
+       to_jsonb(payout) as payout_record
      from public.wigolink_transactions tx
      left join public.wigolink_trips trip
        on trip.id = tx.data->>'tripId'
@@ -150,7 +153,11 @@ function operationSelect() {
      left join public.wigolink_users traveler
        on traveler.id = tx.data->>'travelerId'
      left join public.wigolink_users recipient
-       on recipient.id = tx.data->>'recipientId'`;
+       on recipient.id = tx.data->>'recipientId'
+     left join public.operation_payments payment
+       on payment.operation_id = tx.id
+     left join public.stripe_connected_accounts payout
+       on payout.user_id = tx.data->>'travelerId'`;
 }
 
 function operationView(
@@ -191,6 +198,8 @@ function operationView(
       || trip?.price
       || 0,
     dispute: row.dispute ? disputeView(row.dispute, transaction) : null,
+    paymentDetails: publicPayment(row.payment_record, transaction.payment),
+    payout: publicPayout(row.payout_record),
   };
   delete view.pickupCode;
   delete view.deliveryCode;
@@ -211,6 +220,41 @@ function operationView(
     },
   };
   return view;
+}
+
+function publicPayment(record, snapshot) {
+  if (!record) return snapshot || null;
+  return {
+    currency: record.currency,
+    travelerPriceCents: Number(record.traveler_price_cents || 0),
+    senderFeeCents: Number(record.sender_fee_cents || 0),
+    travelerFeeCents: Number(record.traveler_fee_cents || 0),
+    chargedAmountCents: Number(record.charged_amount_cents || 0),
+    travelerTransferCents: Number(record.traveler_transfer_cents || 0),
+    platformGrossCents: Number(record.platform_gross_cents || 0),
+    feePolicyVersion: record.fee_policy_version,
+    paymentStatus: record.payment_status,
+    transferStatus: record.transfer_status,
+  };
+}
+
+function publicPayout(record) {
+  if (!stripePaymentsEnabled()) return null;
+  if (!record) {
+    return {
+      configured: false,
+      ready: false,
+      status: 'not_configured',
+    };
+  }
+  return {
+    configured: true,
+    ready: record.transfers_capability_status === 'active',
+    status: record.onboarding_status,
+    country: record.country,
+    requirementsDue: Number(record.requirements_due_count || 0),
+    payoutsEnabled: !!record.payouts_enabled,
+  };
 }
 
 function tripView(trip, traveler) {

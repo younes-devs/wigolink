@@ -58,6 +58,7 @@ test('system routes considerent le stockage local pret hors production', async (
     database: 'local',
     email: 'missing',
     storage: 'missing',
+    payments: 'disabled',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -74,6 +75,7 @@ test('system routes exigent la configuration email en production', async () => {
     database: 'connected',
     email: 'missing',
     storage: 'missing',
+    payments: 'disabled',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -91,6 +93,7 @@ test('system routes refusent une base indisponible meme avec l email configure',
     database: 'unavailable',
     email: 'configured',
     storage: 'missing',
+    payments: 'disabled',
     at: FIXED_DATE.toISOString(),
   });
 });
@@ -109,6 +112,21 @@ test('system routes declarent la production prete quand ses dependances le sont'
     database: 'connected',
     email: 'configured',
     storage: 'configured',
+    payments: 'disabled',
     at: FIXED_DATE.toISOString(),
   });
+});
+
+test('system routes refusent Stripe active sans tous ses secrets', async () => {
+  const response = await requestSystem('/health', {
+    isProduction: true,
+    emailReady: true,
+    storageReady: true,
+    paymentsEnabled: true,
+    paymentsReady: false,
+    databaseHealth: () => 'connected',
+  });
+
+  assert.equal(response.status, 503);
+  assert.equal(response.body.payments, 'missing');
 });

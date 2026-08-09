@@ -27,9 +27,27 @@ export default function OperationDetailSimple() {
   const [evidenceText, setEvidenceText] = useState('');
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
+  const paymentReturn = new URLSearchParams(window.location.search).get('paiement');
 
   const load = () => api(`/operations/${id}`).then((data) => setOperation(data.operation)).catch(() => setOperation(false));
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    if (paymentReturn !== 'succes') return undefined;
+    let attempts = 0;
+    const timer = window.setInterval(async () => {
+      attempts += 1;
+      try {
+        const data = await api(`/operations/${id}`);
+        setOperation(data.operation);
+        if (data.operation?.paymentStatus === 'paid' || attempts >= 10) {
+          window.clearInterval(timer);
+        }
+      } catch {
+        if (attempts >= 10) window.clearInterval(timer);
+      }
+    }, 1_500);
+    return () => window.clearInterval(timer);
+  }, [id, paymentReturn]);
 
   const run = async (key, request, successKey) => {
     setBusy(key);
@@ -46,7 +64,10 @@ export default function OperationDetailSimple() {
     }
   };
 
-  const pay = () => run('pay', () => api(`/operations/${id}/pay`, { method: 'POST' }), 'operations.toast.paymentConfirmed');
+  const pay = async () => {
+    const data = await run('pay', () => api(`/operations/${id}/pay`, { method: 'POST' }));
+    if (data?.checkoutUrl) window.location.assign(data.checkoutUrl);
+  };
   const accept = () => run('accept', () => api(`/operations/${id}/confirm`, { method: 'POST' }), 'operations.toast.accepted');
   const reject = () => run('reject', () => api(`/operations/${id}/reject`, { method: 'POST', body: { reason: issue || t('operations.reason.rejected') } }), 'operations.toast.rejected');
   const cancel = () => run('cancel', () => api(`/operations/${id}/cancel`, { method: 'POST', body: { reason: issue || t('operations.reason.cancelled') } }), 'operations.toast.cancelled');
@@ -127,7 +148,10 @@ export default function OperationDetailSimple() {
           onCancel={cancel}
           onReveal={revealCode}
           onConfirm={confirmCode}
+          onSetupPayout={() => nav(`/versements?retour=${encodeURIComponent(`/operations/${id}`)}`)}
         />
+
+        <PaymentBreakdown operation={viewedOperation} />
 
         {operation.descriptionParcel && <div className="operation-description"><span>{t('trips.request.contents')}</span><p>{operation.descriptionParcel}</p></div>}
 
@@ -181,7 +205,7 @@ function OperationJourney({ operation }) {
   );
 }
 
-function OperationAction({ operation, busy, code, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm }) {
+function OperationAction({ operation, busy, code, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm, onSetupPayout }) {
   const status = operation.operationStatus;
   const role = operation.myRole;
   const stage = status === 'paye' ? 'pickup' : status === 'en_transport' ? 'delivery' : null;
@@ -191,11 +215,41 @@ function OperationAction({ operation, busy, code, revealedCode, onCodeChange, on
   if (status === 'termine') return <section className="operation-action-card operation-complete"><Icon name="check" size={22} /><div><b>{t('operations.security.delivery.done')}</b><p>{t('operations.complete')}</p></div></section>;
   if (status === 'litige') return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{t('operations.status.dispute')}</b><p>{t('operations.issue.placeholder')}</p></div></section>;
   if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t(role === 'traveler' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2><p>{t(role === 'traveler' ? 'operations.awaiting.traveler' : 'operations.next.travelerConfirmation')}</p></div>{role === 'traveler' && <div className="operation-action-buttons"><button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button><button className="btn btn-ghost" onClick={onReject} disabled={!!busy}>{t('operations.reject')}</button></div>}{role === 'sender' && <button className="btn btn-ghost btn-sm" onClick={onCancel} disabled={!!busy}>{t('common.cancel')}</button>}</section>;
-  if (status === 'paiement_requis') return <section className="operation-action-card"><div><span>{t(role === 'sender' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'sender' ? t('operations.next.pay') : t('operations.next.waitPayment')}</h2><p>{t(role === 'sender' ? 'operations.guide.sender.paymentHelp' : 'operations.guide.traveler.paymentHelp')}</p></div>{role === 'sender' && <button className="btn btn-primary" onClick={onPay} disabled={!!busy}>{busy === 'pay' ? <span className="spinner" /> : <Icon name="euro" size={17} />}{t('operations.pay')}</button>}</section>;
+  if (status === 'paiement_requis') {
+    const payoutReady = operation.payout?.ready;
+    if (role === 'traveler' && !payoutReady) return <section className="operation-action-card"><div><span>{t('operations.guide.action')}</span><h2>{t('payments.payout.title')}</h2><p>{t('payments.payout.required')}</p></div><button className="btn btn-primary" onClick={onSetupPayout}><Icon name="euro" size={17} />{t('payments.payout.configure')}</button></section>;
+    if (role === 'sender' && !payoutReady) return <section className="operation-action-card"><div><span>{t('operations.guide.waiting')}</span><h2>{t('payments.payout.waitingTitle')}</h2><p>{t('payments.payout.waiting')}</p></div></section>;
+    return <section className="operation-action-card"><div><span>{t(role === 'sender' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'sender' ? t('operations.next.pay') : t('operations.next.waitPayment')}</h2><p>{t(role === 'sender' ? 'operations.guide.sender.paymentHelp' : 'operations.guide.traveler.paymentHelp')}</p></div>{role === 'sender' && <button className="btn btn-primary" onClick={onPay} disabled={!!busy}>{busy === 'pay' ? <span className="spinner" /> : <Icon name="euro" size={17} />}{t('operations.pay')}</button>}</section>;
+  }
   if (status === 'collecte_prevue' || status === 'livraison_prevue') return <section className="operation-action-card"><div><span>{t('operations.guide.waiting')}</span><h2>{t(STATUS_LABELS[status])}</h2><p>{t(status === 'collecte_prevue' ? 'operations.security.pickup.enterHint' : 'operations.security.delivery.enterHint')}</p></div></section>;
   if (!stage) return null;
   if (security?.locked) return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{title}</b><p>{t('operations.security.locked')}</p></div></section>;
   if (security?.canReveal) return <section className="operation-action-card operation-code-card"><div><span>{t('operations.security.title')}</span><h2>{title}</h2>{revealedCode?.stage === stage ? <><output className="operation-code">{revealedCode.value}</output><p>{t(`operations.security.${stage}.share`)}</p></> : <p>{t('operations.security.issued')}</p>}</div><button className="btn btn-primary" onClick={() => onReveal(stage)} disabled={!!busy}>{busy === `reveal-${stage}` ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t(`operations.security.${stage}.get`)}</button></section>;
   if (security?.canEnter) return <section className="operation-action-card operation-code-card operation-code-entry-card"><div><span>{t('operations.security.title')}</span><h2>{t(`operations.security.${stage}.enter`)}</h2><p>{t(`operations.security.${stage}.enterHint`)}</p></div>{security.issued ? <div className="operation-code-entry"><EmailCodeInput label={t('operations.security.codeLabel')} value={code} onChange={onCodeChange} onComplete={(completedCode) => onConfirm(stage, completedCode)} disabled={!!busy} length={8} autoFocus={false} />{busy === `confirm-${stage}` && <div className="email-code-checking"><span className="spinner" />{t('common.loading')}</div>}</div> : <p className="operation-waiting"><Icon name="clock" size={16} />{t('operations.security.waiting')}</p>}</section>;
   return null;
+}
+
+function PaymentBreakdown({ operation }) {
+  const payment = operation.paymentDetails || operation.payment;
+  if (!payment) return null;
+  const currency = payment.currency || operation.currency || 'EUR';
+  const rows = operation.myRole === 'sender'
+    ? [
+        [t('payments.breakdown.transport'), payment.travelerPriceCents],
+        [t('payments.breakdown.service'), payment.senderFeeCents],
+        [t('payments.breakdown.total'), payment.chargedAmountCents, true],
+      ]
+    : [
+        [t('payments.breakdown.accepted'), payment.travelerPriceCents],
+        [t('payments.breakdown.service'), payment.travelerFeeCents],
+        [t('payments.breakdown.receive'), payment.travelerTransferCents, true],
+      ];
+  return <section className="payment-breakdown" aria-label={t('payments.breakdown.title')}><h2>{t('payments.breakdown.title')}</h2>{rows.map(([label, cents, strong]) => <div key={label}><span>{label}</span><b className={strong ? 'payment-total' : ''}>{formatCents(cents, currency)}</b></div>)}</section>;
+}
+
+function formatCents(cents, currency) {
+  return new Intl.NumberFormat(document.documentElement.lang || 'fr', {
+    style: 'currency',
+    currency,
+  }).format(Number(cents || 0) / 100);
 }

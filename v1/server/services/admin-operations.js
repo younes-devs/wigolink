@@ -40,6 +40,14 @@ export function createAdminOperationsService({
     const risk = await adminFraud.summary();
     const riskCount = Object.values(risk).reduce((total, count) => total + count, 0);
     const tasks = [
+      ...(relational?.payments?.incidents ? [{
+        id: 'payment-incidents',
+        severity: 'critical',
+        count: relational.payments.incidents,
+        tab: 'ops',
+        title: 'Incidents de paiement',
+        body: 'Paiements echoues ou contestes a verifier dans Stripe.',
+      }] : []),
       {
         id: 'review-disputes',
         severity: reviewDisputes.length ? 'critical' : 'ok',
@@ -130,6 +138,16 @@ export function createAdminOperationsService({
               user: user ? { name: user.name, email: user.email } : null,
             };
           }),
+        payments: relational?.payments || {
+          count: 0,
+          incidents: 0,
+          chargedCents: 0,
+          grossCents: 0,
+          stripeFeeCents: 0,
+          netCents: 0,
+          recent: [],
+          webhooks: [],
+        },
       },
     };
   }

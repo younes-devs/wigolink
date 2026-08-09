@@ -2,6 +2,7 @@ const REVIEW_LIMIT = 200;
 const DISPUTE_LIMIT = 500;
 const WHITELIST_LIMIT = 500;
 const RECENT_MESSAGE_LIMIT = 8;
+const RECENT_PAYMENT_LIMIT = 25;
 
 export async function relationalAdminOperationState({ pool }) {
   requirePool(pool);
@@ -11,6 +12,9 @@ export async function relationalAdminOperationState({ pool }) {
     reviewResult,
     pendingKycResult,
     whitelistResult,
+    paymentSummaryResult,
+    recentPaymentsResult,
+    webhookEventsResult,
   ] = await Promise.all([
     pool.query(
       `select
@@ -90,6 +94,55 @@ export async function relationalAdminOperationState({ pool }) {
         limit $1`,
       [WHITELIST_LIMIT],
     ),
+    pool.query(
+      `select
+         count(*)::int as count,
+         count(*) filter (where payment_status in ('failed', 'checkout_failed', 'disputed'))::int
+           as incidents,
+         coalesce(sum(charged_amount_cents), 0)::bigint as charged_cents,
+         coalesce(sum(platform_gross_cents), 0)::bigint as gross_cents,
+         coalesce(sum(stripe_fee_cents), 0)::bigint as stripe_fee_cents,
+         coalesce(sum(platform_gross_cents - coalesce(stripe_fee_cents, 0)), 0)::bigint
+           as net_cents
+       from public.operation_payments`,
+    ),
+    pool.query(
+      `select
+         payment.operation_id,
+         payment.currency,
+         payment.traveler_price_cents,
+         payment.sender_fee_cents,
+         payment.traveler_fee_cents,
+         payment.charged_amount_cents,
+         payment.traveler_transfer_cents,
+         payment.platform_gross_cents,
+         payment.stripe_fee_cents,
+         payment.payment_status,
+         payment.transfer_status,
+         payment.stripe_payment_intent_id,
+         payment.stripe_transfer_id,
+         payment.stripe_refund_id,
+         payment.fee_policy_version,
+         payment.paid_at,
+         payment.transferred_at,
+         payment.refunded_at,
+         payment.updated_at,
+         transaction.data as operation
+       from public.operation_payments payment
+       join public.wigolink_transactions transaction
+         on transaction.id = payment.operation_id
+       order by payment.updated_at desc
+       limit $1`,
+      [RECENT_PAYMENT_LIMIT],
+    ),
+    pool.query(
+      `select stripe_event_id, event_type, processing_status, attempts,
+              last_error, processed_at, created_at
+         from public.stripe_webhook_events
+        order by created_at desc
+        limit $1`,
+      [RECENT_PAYMENT_LIMIT],
+    ),
   ]);
 
   const reviewQueue = await enrichReviewQueue({
@@ -97,6 +150,7 @@ export async function relationalAdminOperationState({ pool }) {
     rows: reviewResult.rows,
   });
   const stats = statsResult.rows[0] || {};
+  const paymentSummary = paymentSummaryResult.rows[0] || {};
 
   return {
     stats: {
@@ -116,7 +170,61 @@ export async function relationalAdminOperationState({ pool }) {
       user: privateAdminUser(row.member),
     })),
     customWhitelist: whitelistResult.rows.map((row) => row.data),
+    payments: {
+      count: Number(paymentSummary.count || 0),
+      incidents: Number(paymentSummary.incidents || 0),
+      chargedCents: Number(paymentSummary.charged_cents || 0),
+      grossCents: Number(paymentSummary.gross_cents || 0),
+      stripeFeeCents: Number(paymentSummary.stripe_fee_cents || 0),
+      netCents: Number(paymentSummary.net_cents || 0),
+      recent: recentPaymentsResult.rows.map(adminPaymentView),
+      webhooks: webhookEventsResult.rows.map((row) => ({
+        eventRef: truncateStripeId(row.stripe_event_id),
+        type: row.event_type,
+        status: row.processing_status,
+        attempts: Number(row.attempts || 0),
+        error: row.last_error || null,
+        processedAt: row.processed_at,
+        createdAt: row.created_at,
+      })),
+    },
   };
+}
+
+function adminPaymentView(row) {
+  const operation = row.operation || {};
+  const routeTitle = [operation.from, operation.to].filter(Boolean).join(' -> ');
+  return {
+    operationId: row.operation_id,
+    title: operation.title || routeTitle || 'Operation Stripe',
+    currency: row.currency,
+    travelerPriceCents: Number(row.traveler_price_cents || 0),
+    senderFeeCents: Number(row.sender_fee_cents || 0),
+    travelerFeeCents: Number(row.traveler_fee_cents || 0),
+    chargedAmountCents: Number(row.charged_amount_cents || 0),
+    travelerTransferCents: Number(row.traveler_transfer_cents || 0),
+    platformGrossCents: Number(row.platform_gross_cents || 0),
+    stripeFeeCents: row.stripe_fee_cents === null ? null : Number(row.stripe_fee_cents),
+    platformNetCents: Number(row.platform_gross_cents || 0) - Number(row.stripe_fee_cents || 0),
+    paymentStatus: row.payment_status,
+    transferStatus: row.transfer_status,
+    paymentIntentRef: truncateStripeId(row.stripe_payment_intent_id),
+    transferRef: truncateStripeId(row.stripe_transfer_id),
+    refundRef: truncateStripeId(row.stripe_refund_id),
+    feePolicyVersion: row.fee_policy_version,
+    paidAt: row.paid_at,
+    transferredAt: row.transferred_at,
+    refundedAt: row.refunded_at,
+    updatedAt: row.updated_at,
+    refundable: ['paid', 'transfer_pending', 'transferred'].includes(row.payment_status)
+      && !!row.stripe_payment_intent_id,
+  };
+}
+
+function truncateStripeId(value) {
+  if (!value) return null;
+  const text = String(value);
+  return text.length <= 14 ? text : `${text.slice(0, 8)}...${text.slice(-4)}`;
 }
 
 export async function relationalAdminKpis({

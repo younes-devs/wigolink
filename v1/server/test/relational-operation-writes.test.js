@@ -154,7 +154,58 @@ test('transition relationnelle verrouille uniquement operation et persiste atomi
   assert.equal(client.transactions, 'begin,commit');
 });
 
-function writerHarness({ client, notifications = [], memberState = false }) {
+test('livraison Stripe conserve les fonds puis declenche un seul versement apres commit', async () => {
+  const calls = [];
+  const releases = [];
+  const tx = {
+    id: 'tx-stripe',
+    senderId: 'u-sender',
+    travelerId: 'u-traveler',
+    recipientId: 'u-sender',
+    status: 'in_transit',
+    operationStatus: 'en_transport',
+    paymentStatus: 'paid',
+    escrow: { provider: 'stripe', state: 'held' },
+    securityCodes: { delivery: {} },
+    events: [],
+  };
+  const client = mockClient(async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('wigolink_transactions') && sql.includes('for update')) {
+      return { rows: [{ data: structuredClone(tx) }] };
+    }
+    return { rows: [] };
+  });
+  const writer = writerHarness({
+    client,
+    calls,
+    paymentProvider: 'stripe',
+    onDeliveryConfirmed: async (operationId) => releases.push(operationId),
+  });
+
+  const result = await writer.confirmDelivery({
+    user: { ...verifiedUser(), id: 'u-traveler' },
+    operationId: 'tx-stripe',
+    body: { code: '12345678' },
+  });
+
+  assert.equal(result.status, 200);
+  const update = calls.find(({ sql }) => sql.includes('update public.wigolink_transactions'));
+  const saved = JSON.parse(update.params[1]);
+  assert.equal(saved.status, 'delivery_confirmed');
+  assert.equal(saved.paymentStatus, 'transfer_pending');
+  assert.equal(saved.escrow.state, 'held');
+  assert.deepEqual(releases, ['tx-stripe']);
+  assert.equal(client.transactions, 'begin,commit');
+});
+
+function writerHarness({
+  client,
+  notifications = [],
+  memberState = false,
+  paymentProvider = 'simulated',
+  onDeliveryConfirmed = null,
+}) {
   let latestOperation = null;
   const originalQuery = client.query;
   client.query = async (sql, params = []) => {
@@ -208,6 +259,8 @@ function writerHarness({ client, notifications = [], memberState = false }) {
     now: () => 1_785_312_000_000,
     logger: { error() {} },
     memberStateEnabled: () => memberState,
+    paymentProvider,
+    onDeliveryConfirmed,
   });
 }
 

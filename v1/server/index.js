@@ -142,6 +142,12 @@ import { createAdminOperationsRouter } from './routes/admin-operations.js';
 import { createAdminReviewRouter } from './routes/admin-review.js';
 import { createLocationsRouter } from './routes/locations.js';
 import { createSeoRouter } from './routes/seo.js';
+import { createStripePaymentsRouter } from './routes/stripe-payments.js';
+import {
+  createStripeClient,
+  stripeConfiguration,
+} from './payments/stripe-config.js';
+import { createStripePaymentService } from './payments/stripe-service.js';
 import { publicTripCatalog } from './services/public-trip-catalog.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
@@ -202,6 +208,9 @@ const observability = createObservability({
   environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
   slowRequestMs: Number(process.env.SLOW_REQUEST_MS) || 1_000,
 });
+const STRIPE_CONFIG = stripeConfiguration();
+const stripeClient = createStripeClient(STRIPE_CONFIG);
+let stripePayments = null;
 const EMAIL_READY = !!(emailConfig().apiKey && emailConfig().from);
 const SUPABASE_SECRET_KEY = String(
   process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
@@ -223,6 +232,23 @@ app.use(createSecurityHeaders({
   supabaseRealtimeOrigin: SUPABASE_REALTIME_ORIGIN,
 }));
 app.use(observability.middleware);
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
+  try {
+    if (!stripePayments) {
+      return res.status(503).json({ received: false });
+    }
+    const result = await stripePayments.handleWebhook({
+      rawBody: req.body,
+      signature: req.headers['stripe-signature'],
+    });
+    return res.status(result.status).json(result.body);
+  } catch (error) {
+    observability.write('error', 'stripe_webhook_unhandled', {
+      message: String(error?.message || 'unknown_error').slice(0, 500),
+    });
+    return res.status(500).json({ received: false });
+  }
+});
 // KYC may contain three compressed captures. All other JSON endpoints stay
 // deliberately small so unauthenticated oversized bodies cannot exhaust a
 // serverless instance before authentication runs.
@@ -284,6 +310,8 @@ app.use('/api', createSystemRouter({
   isProduction: IS_PRODUCTION,
   emailReady: EMAIL_READY,
   storageReady: STORAGE_READY,
+  paymentsEnabled: STRIPE_CONFIG.enabled,
+  paymentsReady: STRIPE_CONFIG.ready,
   googleClientId: GOOGLE_CLIENT_ID,
   databaseHealth,
 }));
@@ -420,6 +448,13 @@ app.use('/api', createCronRouter({
   secret: process.env.CRON_SECRET,
   retention,
   capacity,
+  payments: {
+    run: () => stripePayments?.retryPendingTransfers() || {
+      inspected: 0,
+      transferred: 0,
+      failed: 0,
+    },
+  },
 }));
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.
@@ -535,6 +570,19 @@ const {
 const { audit, auditChange } = createAuditService({
   auditLogs: repositories.auditLogs,
 });
+stripePayments = createStripePaymentService({
+  getPool: databasePool,
+  stripe: stripeClient,
+  config: STRIPE_CONFIG,
+  audit,
+});
+
+app.use('/api', createStripePaymentsRouter({
+  auth: relationalOperationWriteAuth,
+  adminOnly,
+  payments: stripePayments,
+  enabled: () => STRIPE_CONFIG.enabled && relationalOperationWritesEnabled(),
+}));
 
 // Les cles i18n sont persistees une fois puis rendues dans la langue du lecteur.
 const notify = createNotificationService({
@@ -963,6 +1011,8 @@ const relationalOperationWriter = createRelationalOperationWriter({
   validPhotos,
   today: TODAY_ISO,
   memberStateEnabled: relationalConversationMembersEnabled,
+  paymentProvider: STRIPE_CONFIG.enabled ? 'stripe' : 'simulated',
+  onDeliveryConfirmed: (operationId) => stripePayments.releaseAfterDelivery(operationId),
 });
 
 app.use('/api', createRelationalOperationWriteRouter({
@@ -1035,6 +1085,7 @@ app.use('/api', createTripOperationsRouter({
   repositories,
   disputeView,
   validPhotos,
+  paymentProvider: STRIPE_CONFIG.enabled ? 'stripe' : 'simulated',
 }));
 
 const conversationMessageService = createConversationMessageService({

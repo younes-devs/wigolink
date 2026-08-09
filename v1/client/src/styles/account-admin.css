@@ -532,6 +532,38 @@
 }
 .ops-risk-pill.on { background: var(--amber-tint); color: var(--amber); }
 .ops-risk-pill b { font-size: 13px; color: var(--ink); }
+.ops-payment-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ops-payment-list { display: grid; gap: 8px; margin-top: 11px; }
+.ops-payment-empty { margin-top: 10px; font-size: 12.5px; }
+.ops-payment-row {
+  display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(220px, 1fr) auto;
+  align-items: center; gap: 12px; min-width: 0; padding: 10px;
+  border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface);
+}
+.ops-payment-main, .ops-payment-amounts, .ops-payment-meta { min-width: 0; }
+.ops-payment-main b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.ops-payment-main span, .ops-payment-amounts span, .ops-payment-meta span { color: var(--ink-soft); font-size: 11px; }
+.ops-payment-amounts { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.ops-payment-amounts b { color: var(--ink); }
+.ops-payment-meta { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
+.ops-payment-meta code { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
+.admin-refund-modal { max-width: 460px; }
+.ops-webhooks { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+.ops-webhooks summary { cursor: pointer; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+.ops-webhooks > div { display: grid; gap: 6px; margin-top: 8px; }
+.ops-webhook-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; padding: 8px; border-radius: 9px; background: var(--surface); }
+.ops-webhook-row > span:first-child { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ops-webhook-row b, .ops-webhook-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
+.ops-webhook-row > span:nth-child(2), .ops-webhook-row small { color: var(--ink-soft); font-size: 10.5px; }
+.ops-webhook-row small { grid-column: 1 / -1; color: var(--danger); overflow-wrap: anywhere; }
+.ops-webhook-row.is-danger { background: var(--danger-tint); }
+@media (min-width: 860px) {
+  .ops-payment-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .ops-payment-row { grid-template-columns: 1fr; gap: 7px; }
+  .ops-payment-meta { justify-content: flex-start; }
+}
 
 /* KPIs admin */
 .kpi-card { padding: 14px 16px; }

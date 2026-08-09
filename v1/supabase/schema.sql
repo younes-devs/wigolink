@@ -153,6 +153,74 @@ create index if not exists wigolink_transactions_participants_idx
 create index if not exists wigolink_transactions_listing_idx on public.wigolink_transactions ((data->>'listingId'));
 create index if not exists wigolink_transactions_trip_idx on public.wigolink_transactions ((data->>'tripId'));
 
+-- Stripe Connect. Ces tables ne contiennent aucune donnee de carte ou coordonnee
+-- bancaire; les identifiants Stripe servent uniquement aux appels serveur.
+create table if not exists public.stripe_connected_accounts (
+  user_id text primary key references public.wigolink_users(id),
+  stripe_account_id text not null unique,
+  country text not null,
+  onboarding_status text not null default 'pending',
+  transfers_capability_status text not null default 'inactive',
+  requirements_due_count integer not null default 0 check (requirements_due_count >= 0),
+  payouts_enabled boolean not null default false,
+  details_submitted boolean not null default false,
+  last_synced_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists stripe_connected_accounts_status_idx
+  on public.stripe_connected_accounts (transfers_capability_status, onboarding_status);
+
+create table if not exists public.operation_payments (
+  operation_id text primary key references public.wigolink_transactions(id),
+  currency text not null check (currency = upper(currency) and length(currency) = 3),
+  traveler_price_cents integer not null check (traveler_price_cents > 0),
+  sender_fee_cents integer not null check (sender_fee_cents >= 0),
+  traveler_fee_cents integer not null check (traveler_fee_cents >= 0),
+  charged_amount_cents integer not null check (charged_amount_cents > 0),
+  traveler_transfer_cents integer not null check (traveler_transfer_cents > 0),
+  platform_gross_cents integer not null check (platform_gross_cents >= 0),
+  stripe_payment_intent_id text unique,
+  stripe_checkout_session_id text unique,
+  stripe_charge_id text unique,
+  stripe_transfer_id text unique,
+  stripe_refund_id text unique,
+  payment_status text not null default 'pending',
+  transfer_status text not null default 'not_ready',
+  checkout_attempt integer not null default 0 check (checkout_attempt >= 0),
+  fee_policy_version text not null,
+  pricing_snapshot_json jsonb not null,
+  stripe_fee_cents integer check (stripe_fee_cents is null or stripe_fee_cents >= 0),
+  paid_at timestamptz,
+  transferred_at timestamptz,
+  refunded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (charged_amount_cents = traveler_price_cents + sender_fee_cents),
+  check (traveler_transfer_cents = traveler_price_cents - traveler_fee_cents),
+  check (platform_gross_cents = sender_fee_cents + traveler_fee_cents)
+);
+create index if not exists operation_payments_payment_status_idx
+  on public.operation_payments (payment_status, updated_at);
+create index if not exists operation_payments_transfer_status_idx
+  on public.operation_payments (transfer_status, updated_at);
+
+create table if not exists public.stripe_webhook_events (
+  stripe_event_id text primary key,
+  event_type text not null,
+  livemode boolean not null,
+  connected_account_id text,
+  payload_hash text not null,
+  processing_status text not null default 'processing',
+  attempts integer not null default 1 check (attempts > 0),
+  processed_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists stripe_webhook_events_status_idx
+  on public.stripe_webhook_events (processing_status, created_at);
+
 create table if not exists public.wigolink_matching_offers (
   id text primary key,
   data jsonb not null,
@@ -378,6 +446,9 @@ revoke all on table public.wigolink_users, public.wigolink_trips, public.wigolin
   public.wigolink_disputes, public.wigolink_review_queue,
   public.wigolink_kyc_submissions, public.wigolink_kyc_decisions, public.wigolink_custom_whitelist,
   public.wigolink_runtime_records from anon, authenticated;
+
+revoke all on table public.stripe_connected_accounts, public.operation_payments,
+  public.stripe_webhook_events from anon, authenticated;
 
 -- Import idempotent des donnees deja presentes dans wigolink_app_state.
 insert into public.notifications (id, user_id, tx_id, type, section, key, params, text, read, at)

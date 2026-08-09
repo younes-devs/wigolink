@@ -42,6 +42,7 @@ const MessagesSimple = lazy(loadMessagesRoute);
 const ConversationDetail = lazy(() => import('../features/messaging/pages/ConversationDetail.jsx'));
 const OperationsSimple = lazy(loadOperationsRoute);
 const OperationDetailSimple = lazy(() => import('../features/operations/pages/OperationDetailSimple.jsx'));
+const PayoutSetup = lazy(() => import('../features/payments/pages/PayoutSetup.jsx'));
 const Profile = lazy(loadProfileRoute);
 const PublicProfile = lazy(() => import('../features/profile/pages/PublicProfile.jsx'));
 const Settings = lazy(() => import('../features/profile/pages/Settings.jsx'));
@@ -324,6 +325,7 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
                 <Route path="/trajets/:id/demande" element={<RequireAuth user={user}><TripRequestSimple /></RequireAuth>} />
                 <Route path="/trajets/:id" element={<TripDetailSimple />} />
                 <Route path="/operations/:id" element={<RequireAuth user={user}><OperationDetailSimple /></RequireAuth>} />
+                <Route path="/versements" element={<RequireAuth user={user}><PayoutSetup /></RequireAuth>} />
                 <Route path="/messages/:id" element={<RequireAuth user={user}><ConversationDetail /></RequireAuth>} />
                 <Route path="/membres/:id" element={<RequireAuth user={user}><PublicProfile /></RequireAuth>} />
                 <Route path="/parametres" element={<RequireAuth user={user}><Settings /></RequireAuth>} />

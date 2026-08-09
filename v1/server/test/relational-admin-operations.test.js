@@ -34,6 +34,51 @@ test('etat admin relationnel utilise agregats et files bornees', async () => {
       }],
     },
     { rows: [{ data: { id: 'documents' } }] },
+    {
+      rows: [{
+        count: 2,
+        incidents: 1,
+        charged_cents: 6450,
+        gross_cents: 900,
+        stripe_fee_cents: 125,
+        net_cents: 775,
+      }],
+    },
+    {
+      rows: [{
+        operation_id: 'tx-1',
+        currency: 'EUR',
+        traveler_price_cents: 5000,
+        sender_fee_cents: 300,
+        traveler_fee_cents: 300,
+        charged_amount_cents: 5300,
+        traveler_transfer_cents: 4700,
+        platform_gross_cents: 600,
+        stripe_fee_cents: 105,
+        payment_status: 'paid',
+        transfer_status: 'not_ready',
+        stripe_payment_intent_id: 'pi_12345678901234567890',
+        stripe_transfer_id: null,
+        stripe_refund_id: null,
+        fee_policy_version: '2026-08-tiered-v1',
+        paid_at: new Date('2026-08-09T12:00:00Z'),
+        transferred_at: null,
+        refunded_at: null,
+        updated_at: new Date('2026-08-09T12:00:00Z'),
+        operation: { id: 'tx-1', title: 'Oujda -> Bruxelles' },
+      }],
+    },
+    {
+      rows: [{
+        stripe_event_id: 'evt_12345678901234567890',
+        event_type: 'checkout.session.completed',
+        processing_status: 'processed',
+        attempts: 1,
+        last_error: null,
+        processed_at: new Date('2026-08-09T12:00:01Z'),
+        created_at: new Date('2026-08-09T12:00:00Z'),
+      }],
+    },
   ];
   const result = await relationalAdminOperationState({
     pool: {
@@ -59,6 +104,11 @@ test('etat admin relationnel utilise agregats et files bornees', async () => {
   assert.equal(result.reviewQueue[0].dispute.id, 'd-1');
   assert.equal(result.pendingKyc[0].user.email, 'alice@example.test');
   assert.equal(result.customWhitelist[0].id, 'documents');
+  assert.equal(result.payments.netCents, 775);
+  assert.equal(result.payments.recent[0].refundable, true);
+  assert.equal(result.payments.recent[0].paymentIntentRef, 'pi_12345...7890');
+  assert.equal(result.payments.webhooks[0].eventRef, 'evt_1234...7890');
+  assert.equal(result.payments.webhooks[0].status, 'processed');
   assert.match(calls[0], /count\(\*\)/);
   assert.match(calls[1], /wigolink_disputes/);
   assert.match(calls[2], /wigolink_review_queue/);

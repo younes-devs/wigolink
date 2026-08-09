@@ -31,7 +31,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 13. Apres validation du parcours demande, confirmation, paiement simule, remise, livraison et litige, definir `RELATIONAL_OPERATION_WRITES=true`. Chaque mutation verrouille uniquement le trajet ou l'operation concernee et les retries d'acceptation sont idempotents.
 14. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
 15. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
-16. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, simulation de paiement et messagerie depuis le domaine final.
+16. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement Stripe en mode test et messagerie depuis le domaine final.
 
 La suppression d'un message en mode relationnel est logique: le membre ne le voit plus, mais le contenu et les medias restent conserves dans la table et dans le bucket prive pour le dossier admin et les obligations de preuve.
 
@@ -40,6 +40,51 @@ La suppression d'un message en mode relationnel est logique: le membre ne le voi
 En production, `DEMO=true` est refuse. Les CORS sont limites a `APP_ORIGIN` et des en-tetes de securite sont poses par l'API. Si `RESEND_API_KEY` ou `EMAIL_FROM` manque, l'API reste observable mais `/api/health` repond `503` et les routes qui envoient un email repondent clairement que la verification doit etre configuree : aucun compte ne contourne cette verification.
 
 Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demarrer afin qu'aucun compte ne contourne la verification d'e-mail.
+
+## Paiements Stripe Connect
+
+Le paiement reel est active uniquement lorsque `PAYMENT_PROVIDER=stripe`. Le
+serveur exige alors `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`; leur absence
+fait passer `/api/health` a `payments: "missing"` et empeche le parcours de
+paiement de demarrer silencieusement.
+
+Variables Vercel requises en Preview et Production:
+
+```text
+PAYMENT_PROVIDER=stripe
+STRIPE_SECRET_KEY=sk_test_... ou sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_CONNECTED_COUNTRIES=BE,FR,NL,DE,ES,IT,PT,GB,CH,CA,US
+APP_URL=https://wigolink.com
+```
+
+Le webhook Stripe pointe vers `https://wigolink.com/api/stripe/webhook`. Les
+evenements minimaux du flux actuel sont `account.updated`,
+`checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.expired`,
+`payment_intent.payment_failed`, `charge.refunded`,
+`charge.dispute.created`, `charge.dispute.closed`, `transfer.failed` et
+`transfer.reversed`.
+Chaque evenement est signe, deduplique en base et rejouable.
+La maintenance quotidienne relance aussi les transferts Stripe echoues ou
+interrompus. La cle `CRON_SECRET` doit donc rester configuree sur Vercel.
+
+Ordre de mise en service:
+
+1. Appliquer les tables `stripe_connected_accounts`, `operation_payments` et
+   `stripe_webhook_events` depuis `supabase/schema.sql`.
+2. Configurer les cles et le webhook Stripe en mode test.
+3. Verifier `/api/health`: `payments` doit valoir `configured`.
+4. Onboarder un voyageur test eligible via `/versements`.
+5. Realiser un paiement avec une carte Stripe test, confirmer la livraison,
+   puis verifier un seul transfert et les montants dans l'administration.
+6. Tester un remboursement avant et apres transfert.
+7. Creer des cles et un webhook distincts avant le passage en mode reel. Ne
+   jamais reutiliser les secrets test en production reelle.
+
+Le Maroc n'est pas annonce comme pays de versement tant que Stripe ne l'a pas
+confirme contractuellement pour ce compte plateforme. L'interface bloque donc
+ce pays cote serveur, meme si un navigateur tente de contourner le formulaire.
 
 ## Base de donnees
 

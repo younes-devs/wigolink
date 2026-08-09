@@ -2,6 +2,11 @@ import { relationalId } from './relational-id.js';
 import {
   ensureConversationMembers,
 } from './relational-conversation-members.js';
+import {
+  centsToEuros,
+  paymentSnapshot,
+  quotePayment,
+} from './payments/pricing.js';
 
 export function relationalOperationWritesEnabled(env = process.env) {
   return env.RELATIONAL_OPERATION_WRITES === 'true';
@@ -24,6 +29,8 @@ export function createRelationalOperationWriter({
   now = Date.now,
   logger = console,
   memberStateEnabled = () => false,
+  paymentProvider = 'simulated',
+  onDeliveryConfirmed = null,
 }) {
   async function accept({ user, tripId, body = {} }) {
     if (user.kycStatus !== 'verified') {
@@ -97,7 +104,10 @@ export function createRelationalOperationWriter({
       if (shipment.error) return await rollbackResponse(client, 400, shipment.error);
 
       const createdAt = now();
-      const commission = money(shipment.price * 0.18);
+      const pricing = quotePayment({
+        travelerPrice: shipment.price,
+        currency: trip.currency || 'EUR',
+      });
       transaction = {
         id: relationalId('tx'),
         tripId: trip.id,
@@ -114,9 +124,10 @@ export function createRelationalOperationWriter({
         weightKg: shipment.weightKg,
         descriptionParcel: String(body.descriptionParcel || '').trim().slice(0, 500),
         paymentStatus: 'pending',
+        payment: paymentSnapshot(pricing),
         escrow: createEscrow({
-          travelerPay: shipment.price,
-          commission,
+          travelerPay: centsToEuros(pricing.travelerTransferCents),
+          commission: centsToEuros(pricing.platformGrossCents),
         }),
         securityCodes: {},
         events: [],
@@ -130,6 +141,10 @@ export function createRelationalOperationWriter({
         shipmentType: shipment.type,
         documentCount: shipment.documentCount,
         weightKg: shipment.weightKg,
+        chargedAmountCents: pricing.chargedAmountCents,
+        travelerTransferCents: pricing.travelerTransferCents,
+        platformGrossCents: pricing.platformGrossCents,
+        feePolicyVersion: pricing.feePolicyVersion,
       }, createdAt);
       await insertRecord(client, 'wigolink_transactions', transaction);
 
@@ -186,6 +201,11 @@ export function createRelationalOperationWriter({
   }
 
   async function pay(context) {
+    if (paymentProvider === 'stripe') {
+      return response(503, {
+        error: 'Le paiement securise Stripe est temporairement indisponible.',
+      });
+    }
     return mutate(context, {
       authorize: (tx, user) => tx.senderId === user.id
         ? null
@@ -270,8 +290,14 @@ export function createRelationalOperationWriter({
           tx.status = 'in_transit';
         } else {
           tx.operationStatus = 'termine';
-          tx.status = 'released';
-          transitionEscrow(tx.escrow, 'released');
+          if (paymentProvider === 'stripe') {
+            tx.status = 'delivery_confirmed';
+            tx.paymentStatus = 'transfer_pending';
+            tx.escrow = { ...tx.escrow, state: 'held' };
+          } else {
+            tx.status = 'released';
+            transitionEscrow(tx.escrow, 'released');
+          }
         }
         addEvent(tx, `${kind}_code_verified`, user.id, {
           ...(pickup ? { proof: 'traveler_code' } : { deliveryConfirmed: true }),
@@ -282,6 +308,9 @@ export function createRelationalOperationWriter({
             ? { proof: 'traveler_code' }
             : { deliveryConfirmed: true },
           incrementCompleted: !pickup,
+          ...(!pickup && paymentProvider === 'stripe' && onDeliveryConfirmed
+            ? { afterCommit: () => onDeliveryConfirmed(tx.id) }
+            : {}),
           notification: {
             users: pickup
               ? [tx.travelerId]
@@ -341,7 +370,9 @@ export function createRelationalOperationWriter({
           ? 'Refus reserve au voyageur'
           : "Annulation reservee a l'expediteur"),
       validate: (tx) => allowed.includes(tx.operationStatus)
-        ? null
+        ? (['creating', 'checkout_open'].includes(tx.paymentStatus)
+          ? invalid('Un paiement Stripe est en cours. Revenez apres son expiration.')
+          : null)
         : invalid(role === 'traveler'
           ? 'Cette operation ne peut plus etre refusee'
           : 'Cette operation ne peut plus etre annulee'),
@@ -539,6 +570,9 @@ export function createRelationalOperationWriter({
         effect.notification.type,
         effect.notification.section,
       ), logger);
+    }
+    if (effect.afterCommit) {
+      await bestEffort(effect.afterCommit, logger);
     }
     if (effect.error) return effect.error;
     const result = await operationResponse({

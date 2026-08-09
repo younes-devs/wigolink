@@ -1,4 +1,9 @@
 import { Router } from 'express';
+import {
+  centsToEuros,
+  paymentSnapshot,
+  quotePayment,
+} from '../payments/pricing.js';
 
 export function createTripOperationsRouter({
   auth,
@@ -23,6 +28,7 @@ export function createTripOperationsRouter({
   repositories,
   disputeView,
   validPhotos,
+  paymentProvider = 'simulated',
 }) {
   const router = Router();
   const TODAY_ISO = todayIso;
@@ -49,7 +55,10 @@ export function createTripOperationsRouter({
       ? documentCount * 3
       : Math.round((view.price / view.capacityKg) * weightKg * 100) / 100;
     const descriptionParcel = String(req.body?.descriptionParcel || '').trim().slice(0, 500);
-    const commission = Math.round(price * 0.18 * 100) / 100;
+    const pricing = quotePayment({
+      travelerPrice: price,
+      currency: view.currency,
+    });
     const tx = {
       id: newId('tx'),
       tripId: trip.id,
@@ -66,14 +75,28 @@ export function createTripOperationsRouter({
       weightKg: shipmentType === 'parcel' ? weightKg : 0,
       descriptionParcel,
       paymentStatus: 'pending',
-      escrow: createEscrow({ travelerPay: price, commission }),
+      payment: paymentSnapshot(pricing),
+      escrow: createEscrow({
+        travelerPay: centsToEuros(pricing.travelerTransferCents),
+        commission: centsToEuros(pricing.platformGrossCents),
+      }),
       securityCodes: {},
       events: [],
       createdAt: Date.now(),
     };
     tx.escrow.state = 'pending';
     delete tx.escrow.heldAt;
-    addEvent(tx, 'trip_accepted', req.user.id, { tripId: trip.id, price, shipmentType, documentCount: tx.documentCount, weightKg: tx.weightKg });
+    addEvent(tx, 'trip_accepted', req.user.id, {
+      tripId: trip.id,
+      price,
+      shipmentType,
+      documentCount: tx.documentCount,
+      weightKg: tx.weightKg,
+      chargedAmountCents: pricing.chargedAmountCents,
+      travelerTransferCents: pricing.travelerTransferCents,
+      platformGrossCents: pricing.platformGrossCents,
+      feePolicyVersion: pricing.feePolicyVersion,
+    });
     db.transactions.push(tx);
     const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
     await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'transactions', 'messages');
@@ -82,6 +105,11 @@ export function createTripOperationsRouter({
   });
   
   router.post('/operations/:id/pay', auth, (req, res) => {
+    if (paymentProvider === 'stripe') {
+      return res.status(503).json({
+        error: 'Le paiement securise Stripe necessite le stockage relationnel.',
+      });
+    }
     const tx = db.transactions.find((t) => t.id === req.params.id);
     if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
     if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'Paiement réservé à l expéditeur' });
