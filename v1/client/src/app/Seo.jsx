@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const SITE_ORIGIN = 'https://wigolink.com';
+export const SITE_ORIGIN = 'https://wigolink.com';
 const DEFAULT_TITLE = 'Wigolink - Trajets pour colis et documents';
 const DEFAULT_DESCRIPTION = 'Trouvez des voyageurs vérifiés pour transporter vos colis et documents entre le Maroc et l’Europe avec Wigolink.';
 const INDEXABLE_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1';

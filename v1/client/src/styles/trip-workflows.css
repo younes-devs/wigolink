@@ -388,8 +388,10 @@
 .trip-post-facts span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .trip-post-facts strong { justify-self: end; color: var(--ink); font-size: 16px; white-space: nowrap; }
 .trip-post-discovery .trip-post-actions { align-items: center; justify-content: space-between; }
+.trip-card-secondary-actions { display: flex; align-items: center; gap: 8px; }
 .trip-save-action { width: 40px; height: 40px; border-color: var(--hairline); background: var(--surface); }
 .trip-save-action.active { border-color: rgba(10, 108, 245, .3); background: var(--accent-tint); color: var(--accent); }
+.trip-share-action { width: 40px; height: 40px; border-color: var(--hairline); background: var(--surface); }
 .trip-view-action { min-width: 128px; justify-content: center; }
 .trip-detail-card { display: grid; gap: 16px; }
 .trip-detail-main, .operation-detail-head {

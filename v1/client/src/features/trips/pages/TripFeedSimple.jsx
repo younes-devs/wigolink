@@ -7,10 +7,11 @@ import { SkeletonList } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { TripTransportIcon } from '../components/TripTransport.jsx';
 import { LocationInput } from '../components/LocationInput.jsx';
-import { dateLocale, t, useLang } from '../../../i18n.js';
+import { dateLocale, getLang, t, useLang } from '../../../i18n.js';
 import { useAuth } from '../../../app/authContext.jsx';
 import { loginPath } from '../../../app/authNavigation.js';
-import { usePageSeo } from '../../../app/Seo.jsx';
+import { SITE_ORIGIN, usePageSeo } from '../../../app/Seo.jsx';
+import { localizePath } from '../../../../../shared/locale-routing.js';
 import {
   invalidateTripFeedCache,
   readTripCache,
@@ -143,6 +144,29 @@ export default function TripFeedSimple() {
       load({ force: true });
     } catch (e) {
       toast.error(e.message);
+    }
+  };
+
+  const shareTrip = async (trip) => {
+    const url = new URL(
+      localizePath(`/trajets/${encodeURIComponent(trip.id)}`, getLang()),
+      SITE_ORIGIN,
+    ).href;
+    const shareData = {
+      title: t('trips.share.title', { from: trip.from, to: trip.to }),
+      text: t('trips.share.text', { from: trip.from, to: trip.to, date: formatDate(trip.departureDate) }),
+      url,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success(t('trips.share.copied'));
+    } catch (error) {
+      if (error?.name !== 'AbortError') toast.error(t('trips.share.failed'));
     }
   };
 
@@ -344,19 +368,30 @@ export default function TripFeedSimple() {
               <strong>{trip.price} {trip.currency}</strong>
             </div>
             <div className="trip-post-actions">
-              <button
-                type="button"
-                className={`icon-btn trip-save-action${trip.saved ? ' active' : ''}`}
-                onClick={() => toggleSaved(trip)}
-                aria-label={t(trip.saved ? 'trips.saved' : 'trips.save')}
-                title={t(trip.saved ? 'trips.saved' : 'trips.save')}
-                aria-pressed={!!trip.saved}
-              >
-                <Icon name="bookmark" size={18} filled={!!trip.saved} />
-              </button>
+              <div className="trip-card-secondary-actions">
+                <button
+                  type="button"
+                  className={`icon-btn trip-save-action${trip.saved ? ' active' : ''}`}
+                  onClick={() => toggleSaved(trip)}
+                  aria-label={t(trip.saved ? 'trips.saved' : 'trips.save')}
+                  title={t(trip.saved ? 'trips.saved' : 'trips.save')}
+                  aria-pressed={!!trip.saved}
+                >
+                  <Icon name="bookmark" size={18} filled={!!trip.saved} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn trip-share-action"
+                  onClick={() => shareTrip(trip)}
+                  aria-label={t('trips.share')}
+                  title={t('trips.share')}
+                >
+                  <Icon name="share" size={18} />
+                </button>
+              </div>
               <Link
-                to={user ? `/trajets/${trip.id}` : loginPath(`/trajets/${trip.id}`)}
-                state={user ? { fromTripsFeed: true } : undefined}
+                to={`/trajets/${trip.id}`}
+                state={{ fromTripsFeed: true }}
                 className="btn btn-primary btn-sm trip-view-action"
               >
                 {t('common.view')} <Icon name="arrowRight" size={16} />
