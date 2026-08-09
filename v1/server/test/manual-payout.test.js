@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import { manualPayoutConfiguration } from '../payments/manual-payout-config.js';
 import { createManualPayoutCipher } from '../payments/manual-payout-crypto.js';
+import { createManualPayoutService } from '../payments/manual-payout-service.js';
 import { createStripePaymentService } from '../payments/stripe-service.js';
 
 test('coordonnees de versement chiffrees restent opaques et authentifiees', () => {
@@ -18,7 +19,9 @@ test('coordonnees de versement chiffrees restent opaques et authentifiees', () =
   assert.equal(encrypted.includes(details.holderName), false);
   assert.equal(encrypted.includes(details.accountIdentifier), false);
   assert.deepEqual(cipher.decrypt(encrypted), details);
-  assert.throws(() => cipher.decrypt(`${encrypted.slice(0, -1)}A`));
+  const tamperedParts = encrypted.split('.');
+  tamperedParts[3] = `${tamperedParts[3][0] === 'A' ? 'B' : 'A'}${tamperedParts[3].slice(1)}`;
+  assert.throws(() => cipher.decrypt(tamperedParts.join('.')));
 });
 
 test('mode manuel reste explicite et borne aux pays du pilote', () => {
@@ -55,4 +58,55 @@ test('livraison en mode manuel cree une demande sans appeler Stripe Transfers', 
 
   assert.equal(result.status, 201);
   assert.deepEqual(calls, ['tx-delivered']);
+});
+
+test('enregistrer la banque libere la connexion avant de reprendre les versements', async () => {
+  let connectionActive = false;
+  const account = {
+    id: 'mpa-test',
+    user_id: 'u-test',
+    country: 'MA',
+    account_last4: '1234',
+    status: 'verified',
+  };
+  const pool = {
+    async connect() {
+      assert.equal(connectionActive, false);
+      connectionActive = true;
+      return {
+        async query(sql) {
+          if (sql.includes('returning *')) return { rows: [account] };
+          return { rows: [] };
+        },
+        release() { connectionActive = false; },
+      };
+    },
+    async query() {
+      assert.equal(connectionActive, false, 'la connexion transactionnelle doit etre liberee');
+      return { rows: [] };
+    },
+  };
+  const service = createManualPayoutService({
+    getPool: () => pool,
+    config: manualPayoutConfiguration({
+      PAYOUT_MODE: 'manual',
+      MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
+      MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+    }),
+  });
+
+  const result = await service.saveAccount({
+    user: { id: 'u-test' },
+    body: {
+      country: 'MA',
+      holderName: 'Yassine Mahmoud',
+      bankName: 'CIH',
+      accountIdentifier: '123456789012345678901234',
+      phone: '0652495627',
+    },
+  });
+
+  assert.equal(result.status, 201);
+  assert.equal(result.body.payout.accountLast4, '1234');
+  assert.equal(connectionActive, false);
 });

@@ -42,6 +42,7 @@ export function createManualPayoutService({
     const pool = getPool();
     const client = await pool.connect();
     const id = `mpa-${crypto.randomUUID()}`;
+    let savedAccount;
     try {
       await client.query('begin');
       await client.query(
@@ -64,24 +65,25 @@ export function createManualPayoutService({
           validated.value.accountIdentifier.slice(-4),
         ],
       );
+      savedAccount = result.rows[0];
       await client.query('commit');
-      await audit(user.id, 'manual_payout_account_saved', 'user', user.id, {
-        payoutAccountId: id,
-        country: validated.value.country,
-        accountLast4: validated.value.accountIdentifier.slice(-4),
-      });
-      const queuedRequests = await resumeAwaitingPayouts(pool, user.id, queueAfterDelivery);
-      return success({
-        mode: 'manual',
-        payout: publicAccount(result.rows[0]),
-        queuedRequests,
-      }, 201);
     } catch (error) {
       await client.query('rollback').catch(() => {});
       throw error;
     } finally {
       client.release();
     }
+    await audit(user.id, 'manual_payout_account_saved', 'user', user.id, {
+      payoutAccountId: id,
+      country: validated.value.country,
+      accountLast4: validated.value.accountIdentifier.slice(-4),
+    });
+    const queuedRequests = await resumeAwaitingPayouts(pool, user.id, queueAfterDelivery);
+    return success({
+      mode: 'manual',
+      payout: publicAccount(savedAccount),
+      queuedRequests,
+    }, 201);
   }
 
   async function queueAfterDelivery(operationId) {
