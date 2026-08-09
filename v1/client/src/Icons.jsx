@@ -56,6 +56,8 @@ PATHS.pin = <><path d="M12 17v5" /><path d="M5 17h14" /><path d="m7 9 3-6h4l3 6"
 PATHS.filter = <path d="M4 5h16l-6.4 7.2v5.2l-3.2 1.6v-6.8Z" />;
 PATHS.checkCheck = <><path d="m2 12 5 5L17 7" /><path d="m9 17 2 2L22 8" /></>;
 PATHS.copy = <><rect width="14" height="14" x="7" y="7" rx="2" /><path d="M4 17c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></>;
+PATHS.bank = <><path d="m3 10 9-7 9 7" /><path d="M5 10v9M9 10v9M15 10v9M19 10v9" /><path d="M3 21h18" /></>;
+PATHS.externalLink = <><path d="M15 3h6v6" /><path d="m10 14 11-11" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>;
 
 // Logo Google officiel (multicolore, fill)
 export function GoogleLogo({ size = 18 }) {

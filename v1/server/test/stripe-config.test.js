@@ -10,7 +10,7 @@ test('Stripe reste inactif sans activation explicite', () => {
   assert.equal(stripePaymentsEnabled({ PAYMENT_PROVIDER: 'stripe' }), true);
 });
 
-test('la configuration exige les deux secrets serveur', () => {
+test('la configuration exige les cles serveur et navigateur', () => {
   const incomplete = stripeConfiguration({
     PAYMENT_PROVIDER: 'stripe',
     STRIPE_SECRET_KEY: 'sk_test_example',
@@ -22,6 +22,7 @@ test('la configuration exige les deux secrets serveur', () => {
     PAYMENT_PROVIDER: 'stripe',
     STRIPE_SECRET_KEY: 'sk_test_example',
     STRIPE_WEBHOOK_SECRET: 'whsec_example',
+    STRIPE_PUBLISHABLE_KEY: 'pk_test_example',
     APP_URL: 'https://wigolink.com/',
   });
   assert.equal(ready.ready, true);

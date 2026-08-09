@@ -122,6 +122,43 @@ export function createStripePaymentService({
     }
   }
 
+  async function createEmbeddedOnboardingSession({ user, country }) {
+    const unavailable = availability();
+    if (unavailable) return unavailable;
+    if (!config.publishableKey) {
+      return failure(503, 'Configuration des versements temporairement indisponible.');
+    }
+    let current = await connectedAccountByUser(getPool(), user.id);
+    if (!current) {
+      const created = await createConnectedAccount({ user, country });
+      if (created.status >= 400) return created;
+      current = await connectedAccountByUser(getPool(), user.id);
+    }
+    try {
+      const session = await stripe.accountSessions.create({
+        account: current.stripe_account_id,
+        components: {
+          account_onboarding: {
+            enabled: true,
+            features: {
+              external_account_collection: true,
+            },
+          },
+        },
+      });
+      return success({
+        clientSecret: session.client_secret,
+        publishableKey: config.publishableKey,
+        expiresAt: session.expires_at,
+      });
+    } catch (error) {
+      logStripeError(logger, 'stripe_embedded_onboarding_session_failed', error, {
+        userId: user.id,
+      });
+      return failure(502, stripeMessage(error, "Impossible d'ouvrir la configuration bancaire."));
+    }
+  }
+
   async function createCheckout({ user, operationId, lang = 'fr' }) {
     const unavailable = availability();
     if (unavailable) return unavailable;
@@ -352,6 +389,7 @@ export function createStripePaymentService({
     connectedStatus,
     createConnectedAccount,
     createOnboardingLink,
+    createEmbeddedOnboardingSession,
     createCheckout,
     handleWebhook,
     releaseAfterDelivery,

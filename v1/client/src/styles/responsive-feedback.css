@@ -310,6 +310,19 @@ textarea:focus-visible {
 .operation-description { display: grid; gap: 4px; }.operation-description > span { color: var(--ink-soft); font-size: 12px; font-weight: 750; }.operation-description p { margin: 0; color: var(--ink); line-height: 1.5; }
 .payment-breakdown { display: grid; gap: 8px; border-top: 1px solid var(--hairline); padding-top: 14px; }.payment-breakdown h2 { margin: 0 0 3px; font-size: 15px; }.payment-breakdown > div { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-soft); font-size: 13px; }.payment-breakdown b { color: var(--ink); white-space: nowrap; }.payment-breakdown .payment-total { color: var(--accent); font-size: 15px; }
 .payout-setup-page { width: min(620px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 50px; }.focus-flow-header { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; align-items: start; }.focus-flow-header > div > span { color: var(--accent); font-size: 12px; font-weight: 850; text-transform: uppercase; }.focus-flow-header h1 { margin: 4px 0 7px; font-size: 32px; }.focus-flow-header p { margin: 0; color: var(--ink-soft); line-height: 1.5; }.payout-setup-content { display: grid; gap: 18px; margin-top: 28px; padding: 22px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }.payout-country-note { margin: -7px 0 0; color: var(--ink-soft); font-size: 12px; }.payout-security, .payout-ready { display: flex; gap: 11px; align-items: flex-start; padding-top: 16px; border-top: 1px solid var(--hairline); }.payout-security p, .payout-ready p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.45; }.payout-ready b { display: block; margin-bottom: 4px; }
+  .payout-complete-panel .btn { justify-self: start; }
+  .payout-inline-intro { display: flex; gap: 13px; align-items: flex-start; }
+  .payout-inline-icon { display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(8, 116, 249, .22); border-radius: 8px; background: rgba(8, 116, 249, .09); color: var(--accent); }
+  .payout-inline-intro h2, .payout-embedded-heading h2 { margin: 0; font-size: 19px; letter-spacing: 0; }
+  .payout-inline-intro p { margin: 5px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+  .payout-start-btn { width: 100%; min-height: 48px; justify-content: center; }
+  .payout-embedded-shell { display: grid; gap: 18px; margin-top: 28px; padding: 22px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
+  .payout-embedded-heading { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+  .payout-embedded-heading span { display: block; margin-bottom: 5px; color: var(--accent); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+  .payout-fallback { display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 14px; border: 1px solid rgba(190, 74, 54, .3); border-radius: 8px; background: rgba(190, 74, 54, .07); }
+  .payout-fallback b { display: block; margin-bottom: 3px; font-size: 14px; }
+  .payout-fallback p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+  .payout-fallback .btn { flex: 0 0 auto; }
 .operation-help { border-top: 1px solid var(--hairline); padding-top: 12px; }.operation-help summary { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 750; cursor: pointer; }.operation-help[open] { display: grid; gap: 11px; }.operation-help .field { margin: 0; }
 @media (max-width: 520px) {
   .operation-action-card, .operation-code-card { display: grid; align-items: stretch; }
@@ -362,7 +375,11 @@ textarea:focus-visible {
 }
 @keyframes operation-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 620px) {
-  .payout-setup-page { width: calc(100% - 28px); padding-top: 20px; }.focus-flow-header h1 { font-size: 26px; }.payout-setup-content { margin-top: 22px; padding: 17px; }
+    .payout-setup-page { width: calc(100% - 28px); padding-top: 20px; }.focus-flow-header h1 { font-size: 26px; }.payout-setup-content, .payout-embedded-shell { margin-top: 22px; padding: 17px; }
+    .payout-embedded-heading, .payout-fallback { display: grid; }
+    .payout-embedded-heading .btn, .payout-fallback .btn { width: 100%; justify-content: center; }
+    .payout-inline-intro h2, .payout-embedded-heading h2 { font-size: 17px; }
+    .payout-complete-panel .btn { width: 100%; justify-content: center; }
   .trip-request-summary { grid-template-columns: 1fr; }
   .operation-journey { gap: 15px; padding: 14px 13px; }
   .operation-journey-head h2 { font-size: 15px; }

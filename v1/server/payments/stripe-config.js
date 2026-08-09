@@ -12,6 +12,7 @@ export function stripePaymentsEnabled(env = process.env) {
 
 export function stripeConfiguration(env = process.env) {
   const secretKey = String(env.STRIPE_SECRET_KEY || '').trim();
+  const publishableKey = String(env.STRIPE_PUBLISHABLE_KEY || '').trim();
   const webhookSecret = String(env.STRIPE_WEBHOOK_SECRET || '').trim();
   const appUrl = String(env.APP_URL || env.APP_ORIGIN || 'http://localhost:5173')
     .trim()
@@ -25,10 +26,11 @@ export function stripeConfiguration(env = process.env) {
   return {
     enabled: stripePaymentsEnabled(env),
     secretKey,
+    publishableKey,
     webhookSecret,
     appUrl,
     allowedConnectedCountries,
-    ready: !!(secretKey && webhookSecret),
+    ready: !!(secretKey && publishableKey && webhookSecret),
   };
 }
 

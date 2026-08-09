@@ -44,7 +44,8 @@ Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demar
 ## Paiements Stripe Connect
 
 Le paiement reel est active uniquement lorsque `PAYMENT_PROVIDER=stripe`. Le
-serveur exige alors `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`; leur absence
+serveur exige alors `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` et
+`STRIPE_WEBHOOK_SECRET`; leur absence
 fait passer `/api/health` a `payments: "missing"` et empeche le parcours de
 paiement de demarrer silencieusement.
 
@@ -53,6 +54,7 @@ Variables Vercel requises en Preview et Production:
 ```text
 PAYMENT_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_test_... ou sk_live_...
+STRIPE_PUBLISHABLE_KEY=pk_test_... ou pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_CONNECTED_COUNTRIES=BE,FR,NL,DE,ES,IT,PT,GB,CH,CA,US
 APP_URL=https://wigolink.com
@@ -75,7 +77,9 @@ Ordre de mise en service:
    `stripe_webhook_events` depuis `supabase/schema.sql`.
 2. Configurer les cles et le webhook Stripe en mode test.
 3. Verifier `/api/health`: `payments` doit valoir `configured`.
-4. Onboarder un voyageur test eligible via `/versements`.
+4. Onboarder un voyageur test eligible via le composant Stripe integre de
+   `/versements`. Le lien Stripe heberge reste uniquement un secours pour les
+   navigateurs integres qui ne prennent pas Connect.js en charge.
 5. Realiser un paiement avec une carte Stripe test, confirmer la livraison,
    puis verifier un seul transfert et les montants dans l'administration.
 6. Tester un remboursement avant et apres transfert.

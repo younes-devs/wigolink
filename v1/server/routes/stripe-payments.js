@@ -34,6 +34,13 @@ export function createStripePaymentsRouter({
     })
   )));
 
+  router.post('/stripe/connect/account-session', auth, dispatch((req) => (
+    payments.createEmbeddedOnboardingSession({
+      user: req.user,
+      country: req.body?.country,
+    })
+  )));
+
   router.post('/operations/:id/pay', auth, dispatch((req) => (
     payments.createCheckout({
       user: req.user,

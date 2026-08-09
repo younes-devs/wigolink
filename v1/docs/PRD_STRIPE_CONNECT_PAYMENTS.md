@@ -104,7 +104,9 @@ Le lancement doit donc prevoir l'un des deux perimetres suivants:
 1. Le voyageur accepte une demande.
 2. Avant de pouvoir recevoir de l'argent, il ouvre "Configurer mes versements".
 3. Wigolink cree ou retrouve son compte connecte Stripe.
-4. Stripe collecte les informations bancaires et reglementaires.
+4. Stripe collecte les informations bancaires et reglementaires dans un
+   composant securise integre a Wigolink. Une page Stripe hebergee reste
+   disponible uniquement en solution de secours.
 5. Wigolink n'autorise l'acceptation payable que lorsque la capacite de
    transfert est active.
 6. Apres livraison validee, le voyageur voit "Versement de 8,50 EUR en cours".
@@ -240,6 +242,8 @@ fois le meme voyageur.
 ## 8. API serveur
 
 - `POST /api/stripe/connect/account`: cree ou retrouve le compte voyageur.
+- `POST /api/stripe/connect/account-session`: cree une session ephemere liee
+  au seul compte connecte du membre authentifie pour l'onboarding integre.
 - `POST /api/stripe/connect/onboarding-link`: genere un lien Stripe a usage
   unique avec URL de retour et de rafraichissement HTTPS.
 - `GET /api/stripe/connect/status`: retourne uniquement un statut applicatif,

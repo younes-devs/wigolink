@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { loadConnectAndInitialize } from '@stripe/connect-js';
+import {
+  ConnectAccountOnboarding,
+  ConnectComponentsProvider,
+} from '@stripe/react-connect-js';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../../core/api.js';
 import { Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
-import { t, useLang } from '../../../i18n.js';
+import { getLang, t, useLang } from '../../../i18n.js';
 
 const COUNTRIES = [
   ['BE', 'Belgique'], ['FR', 'France'], ['NL', 'Pays-Bas'], ['DE', 'Allemagne'],
@@ -17,21 +22,76 @@ export default function PayoutSetup() {
   const toast = useToast();
   const params = new URLSearchParams(window.location.search);
   const returnTo = safeReturn(params.get('retour'));
+  const stripeReturn = params.get('stripe');
   const [country, setCountry] = useState('BE');
   const [payout, setPayout] = useState(null);
+  const [connectInstance, setConnectInstance] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [embeddedError, setEmbeddedError] = useState(false);
+  const initialSecret = useRef(null);
+
+  const refreshStatus = useCallback(async ({ finish = false, refresh = false } = {}) => {
+    const data = await api(`/stripe/connect/status${refresh ? '?refresh=1' : ''}`);
+    setPayout(data.payout);
+    if (data.payout?.country) setCountry(data.payout.country);
+    if (finish && data.payout?.ready) navigate(returnTo, { replace: true });
+    return data.payout;
+  }, [navigate, returnTo]);
 
   useEffect(() => {
-    api(`/stripe/connect/status${params.get('stripe') ? '?refresh=1' : ''}`)
-      .then((data) => {
-        setPayout(data.payout);
-        if (data.payout?.country) setCountry(data.payout.country);
-        if (data.payout?.ready && params.get('stripe') === 'return') navigate(returnTo, { replace: true });
-      })
+    refreshStatus({ finish: stripeReturn === 'return', refresh: !!stripeReturn })
       .catch((error) => toast.error(error.message));
-  }, []);
+  }, [refreshStatus, stripeReturn]);
 
-  const continueOnStripe = async () => {
+  const requestClientSecret = useCallback(async () => {
+    if (initialSecret.current) {
+      const secret = initialSecret.current;
+      initialSecret.current = null;
+      return secret;
+    }
+    const data = await api('/stripe/connect/account-session', {
+      method: 'POST',
+      body: { country },
+    });
+    return data.clientSecret;
+  }, [country]);
+
+  const startEmbeddedOnboarding = async () => {
+    setBusy(true);
+    setEmbeddedError(false);
+    try {
+      const bootstrap = await api('/stripe/connect/account-session', {
+        method: 'POST',
+        body: { country },
+      });
+      initialSecret.current = bootstrap.clientSecret;
+      const dark = document.documentElement.dataset.theme === 'dark';
+      const instance = loadConnectAndInitialize({
+        publishableKey: bootstrap.publishableKey,
+        fetchClientSecret: requestClientSecret,
+        locale: getLang(),
+        appearance: {
+          overlays: 'dialog',
+          variables: {
+            colorPrimary: '#0874f9',
+            colorBackground: dark ? '#171b23' : '#ffffff',
+            colorText: dark ? '#f4f7fb' : '#171a21',
+            colorDanger: '#dc2626',
+            borderRadius: '8px',
+            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+          },
+        },
+      });
+      setConnectInstance(instance);
+    } catch (error) {
+      setEmbeddedError(true);
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openSecureFallback = async () => {
     setBusy(true);
     try {
       const data = await api('/stripe/connect/onboarding-link', {
@@ -45,20 +105,68 @@ export default function PayoutSetup() {
     }
   };
 
+  const finishOnboarding = async () => {
+    setBusy(true);
+    try {
+      const next = await refreshStatus({ finish: true, refresh: true });
+      if (!next?.ready) toast.info(t('payments.payout.reviewPending'));
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  let content;
+  if (payout?.ready) {
+    content = <section className="payout-setup-content payout-complete-panel">
+      <div className="payout-ready"><Icon name="shieldCheck" size={23} /><div><b>{t('payments.payout.ready')}</b><p>{t('payments.payout.readyHelp')}</p></div></div>
+      <button className="btn btn-primary" onClick={() => navigate(returnTo, { replace: true })}><Icon name="check" size={17} />{t('payments.payout.finish')}</button>
+    </section>;
+  } else if (connectInstance) {
+    content = <section className="payout-embedded-shell">
+      <div className="payout-embedded-heading">
+        <div><span>{t('payments.payout.embeddedStep')}</span><h2>{t('payments.payout.embeddedTitle')}</h2></div>
+        <button className="btn btn-ghost btn-sm" type="button" onClick={() => setConnectInstance(null)}>{t('common.back')}</button>
+      </div>
+      <ConnectComponentsProvider connectInstance={connectInstance}>
+        <ConnectAccountOnboarding
+          collectionOptions={{ fields: 'eventually_due', futureRequirements: 'include' }}
+          fullTermsOfServiceUrl={`${window.location.origin}/${getLang()}/cgu`}
+          privacyPolicyUrl={`${window.location.origin}/${getLang()}/confidentialite`}
+          onExit={finishOnboarding}
+          onLoadError={() => setEmbeddedError(true)}
+        />
+      </ConnectComponentsProvider>
+      {embeddedError && <FallbackPanel busy={busy} onFallback={openSecureFallback} />}
+      <div className="payout-security"><Icon name="shieldCheck" size={18} /><p>{t('payments.payout.security')}</p></div>
+    </section>;
+  } else {
+    content = <section className="payout-setup-content">
+      <div className="payout-inline-intro"><span className="payout-inline-icon"><Icon name="bank" size={22} /></span><div><h2>{t('payments.payout.bankTitle')}</h2><p>{t('payments.payout.bankIntro')}</p></div></div>
+      <label className="field"><span>{t('payments.payout.country')}</span><select value={country} onChange={(event) => setCountry(event.target.value)} disabled={payout?.configured}>{COUNTRIES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
+      <p className="payout-country-note">{t('payments.payout.countryHelp')}</p>
+      <button className="btn btn-primary payout-start-btn" onClick={startEmbeddedOnboarding} disabled={busy}>{busy ? <span className="spinner" /> : <Icon name="bank" size={17} />}{payout?.configured ? t('payments.payout.resume') : t('payments.payout.continue')}</button>
+      {embeddedError && <FallbackPanel busy={busy} onFallback={openSecureFallback} />}
+      <div className="payout-security"><Icon name="shieldCheck" size={18} /><p>{t('payments.payout.security')}</p></div>
+    </section>;
+  }
+
   return <main className="focus-flow payout-setup-page">
     <header className="focus-flow-header">
       <Link to={returnTo} className="icon-btn" aria-label={t('common.close')}><Icon name="close" size={21} /></Link>
       <div><span>{t('payments.payout.eyebrow')}</span><h1>{t('payments.payout.title')}</h1><p>{t('payments.payout.intro')}</p></div>
     </header>
-    <section className="payout-setup-content">
-      {payout?.ready ? <div className="payout-ready"><Icon name="shieldCheck" size={23} /><div><b>{t('payments.payout.ready')}</b><p>{t('payments.payout.readyHelp')}</p></div></div> : <>
-        <label className="field"><span>{t('payments.payout.country')}</span><select value={country} onChange={(event) => setCountry(event.target.value)} disabled={payout?.configured}>{COUNTRIES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
-        <p className="payout-country-note">{t('payments.payout.countryHelp')}</p>
-        <button className="btn btn-primary" onClick={continueOnStripe} disabled={busy}>{busy ? <span className="spinner" /> : <Icon name="arrowRight" size={17} />}{t('payments.payout.continue')}</button>
-      </>}
-      <div className="payout-security"><Icon name="shieldCheck" size={18} /><p>{t('payments.payout.security')}</p></div>
-    </section>
+
+    {content}
   </main>;
+}
+
+function FallbackPanel({ busy, onFallback }) {
+  return <div className="payout-fallback" role="alert">
+    <div><b>{t('payments.payout.loadError')}</b><p>{t('payments.payout.loadErrorHelp')}</p></div>
+    <button className="btn btn-secondary btn-sm" type="button" disabled={busy} onClick={onFallback}><Icon name="externalLink" size={15} />{t('payments.payout.fallback')}</button>
+  </div>;
 }
 
 function safeReturn(value) {
