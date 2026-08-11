@@ -27,3 +27,13 @@ test('notifications historiques sont traduites en anglais et espagnol', () => {
   assert.equal(renderLegacyNotification('en', legacy), 'Nora withdrew their offer.');
   assert.equal(renderLegacyNotification('es', legacy), 'Nora retiró su propuesta.');
 });
+
+test('la confirmation de versement est disponible dans les cinq langues', () => {
+  const notification = { key: 'payout.sent' };
+
+  assert.match(renderNotification('fr', notification), /versement.*confirmé/i);
+  assert.match(renderNotification('en', notification), /payout.*confirmed/i);
+  assert.match(renderNotification('es', notification), /pago.*confirmado/i);
+  assert.match(renderNotification('nl', notification), /uitbetaling.*bevestigd/i);
+  assert.match(renderNotification('ar', notification), /تأكيد/);
+});

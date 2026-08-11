@@ -144,9 +144,12 @@ test('creer la demande de versement libere la connexion avant l audit', async ()
 
 test('confirmer le virement admin libere la connexion avant l audit', async () => {
   let connectionActive = false;
+  const queries = [];
   const pool = transactionalPool((sql) => {
+    queries.push(sql);
     if (sql.includes('select request.*')) return { rows: [{
-      operation: { id: 'tx-test', status: 'completed', events: [], escrow: {} },
+      operation: { id: 'tx-test', travelerId: 'u-traveler', status: 'completed', events: [], escrow: {} },
+      traveler_id: 'u-traveler',
       status: 'pending', amount_cents: 750, currency: 'EUR',
     }] };
     if (sql.includes('update public.manual_payout_requests')) return { rows: [{
@@ -166,6 +169,7 @@ test('confirmer le virement admin libere la connexion avant l audit', async () =
 
   assert.equal(result.status, 200);
   assert.equal(result.body.request.status, 'sent');
+  assert.equal(queries.some((sql) => sql.includes('insert into public.notifications')), true);
   assert.equal(connectionActive, false);
 });
 

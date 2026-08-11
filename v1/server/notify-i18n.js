@@ -73,6 +73,13 @@ const TEMPLATES = {
     ar: () => 'تم تسليم الطرد وتأكيده من طرف المستلم. لا تنسَ تقييم شركائك.',
     nl: () => 'Pakket geleverd en bevestigd door de ontvanger. Vergeet niet uw partners te beoordelen.',
   },
+  'payout.sent': {
+    fr: () => 'Votre versement a été confirmé et envoyé sur votre compte bancaire.',
+    en: () => 'Your payout has been confirmed and sent to your bank account.',
+    es: () => 'Tu pago ha sido confirmado y enviado a tu cuenta bancaria.',
+    nl: () => 'Uw uitbetaling is bevestigd en naar uw bankrekening verzonden.',
+    ar: () => 'تم تأكيد دفعتك وإرسالها إلى حسابك البنكي.',
+  },
   'dispute.opened': {
     fr: () => 'Litige ouvert. Soumettez vos preuves sous 72 h.',
     ar: () => 'فُتح نزاع. قدّم أدلتك خلال 72 ساعة.',

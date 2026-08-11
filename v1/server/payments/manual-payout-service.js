@@ -249,6 +249,21 @@ export function createManualPayoutService({
       };
       appendEvent(row.operation, 'manual_payout_sent', admin.id, {}, now());
       await updateOperation(client, row.operation);
+      const travelerId = row.traveler_id || row.operation.travelerId;
+      if (travelerId) {
+        await client.query(
+          `insert into public.notifications (
+             id, user_id, tx_id, type, section, key, params, text, read, at
+           ) values ($1,$2,$3,'transactions','suivi','payout.sent',$4,null,false,to_timestamp($5 / 1000.0))`,
+          [
+            `notification-${crypto.randomUUID()}`,
+            travelerId,
+            operationId,
+            JSON.stringify({}),
+            now(),
+          ],
+        );
+      }
       await client.query('commit');
       sentRequest = updatedRequest.rows[0];
       auditPayload = {
