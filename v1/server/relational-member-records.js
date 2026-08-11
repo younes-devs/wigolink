@@ -139,7 +139,7 @@ export async function relationalActiveOperationCount({ pool, userId }) {
      from public.wigolink_transactions tx
      where ${transactionParticipantFilter('$1')}
        and coalesce(tx.data->>'status', '') not in (
-         'released', 'refunded', 'cancelled'
+         'delivery_confirmed', 'released', 'refunded', 'cancelled'
        )`,
     [userId],
   );

@@ -4,7 +4,12 @@ import { stripePaymentsEnabled } from './payments/stripe-config.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
-const CLOSED_STATUSES = new Set(['released', 'refunded', 'cancelled']);
+const CLOSED_STATUSES = new Set([
+  'delivery_confirmed',
+  'released',
+  'refunded',
+  'cancelled',
+]);
 
 export function relationalOperationReadsEnabled(env = process.env) {
   return env.RELATIONAL_OPERATION_READS === 'true';

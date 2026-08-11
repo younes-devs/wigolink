@@ -180,7 +180,9 @@ export async function listRelationalTrips({ pool, user, query = {}, mine = false
   const activeOperationSql = mine
     ? `, (select count(*)::int from public.wigolink_transactions tx
           where tx.data->>'tripId' = t.id
-            and coalesce(tx.data->>'status', '') not in ('released', 'refunded', 'cancelled')) as active_operations`
+            and coalesce(tx.data->>'status', '') not in (
+              'delivery_confirmed', 'released', 'refunded', 'cancelled'
+            )) as active_operations`
     : '';
   const result = await pool.query(
     `select t.data as trip, u.data as traveler, t.id as sort_id,
@@ -245,7 +247,7 @@ export async function relationalTrip({ pool, user, id, today }) {
          from public.wigolink_transactions operation
          where operation.data->>'tripId' = t.id
            and coalesce(operation.data->>'status', '') not in (
-             'released', 'refunded', 'cancelled'
+             'delivery_confirmed', 'released', 'refunded', 'cancelled'
            )
        ) as active_operations
      from public.wigolink_trips t

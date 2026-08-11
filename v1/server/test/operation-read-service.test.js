@@ -20,6 +20,7 @@ function createService(transactions) {
       'released',
       'refunded',
       'cancelled',
+      'delivery_confirmed',
     ].includes(status),
     isParty: (item, userId) => [
       item.senderId,
@@ -37,6 +38,7 @@ function createService(transactions) {
 test('operation reads separate active operations from history', () => {
   const service = createService([
     transaction({ id: 'tx-old', status: 'released', createdAt: 100 }),
+    transaction({ id: 'tx-delivered', status: 'delivery_confirmed', createdAt: 200 }),
     transaction({ id: 'tx-new', createdAt: 300 }),
     transaction({
       id: 'tx-other',
@@ -53,7 +55,7 @@ test('operation reads separate active operations from history', () => {
   );
   assert.deepEqual(
     service.operations(user, { history: '1' }).operations.map(({ id }) => id),
-    ['tx-old'],
+    ['tx-delivered', 'tx-old'],
   );
 });
 

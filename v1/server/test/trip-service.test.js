@@ -59,7 +59,12 @@ function createHarness(overrides = {}) {
   });
   const dependencies = {
     db,
-    isClosedStatus: (status) => ['released', 'refunded', 'cancelled'].includes(status),
+    isClosedStatus: (status) => [
+      'delivery_confirmed',
+      'released',
+      'refunded',
+      'cancelled',
+    ].includes(status),
     transportModes: new Set(['plane', 'car']),
     normalizeTransportMode: (value) => value === 'car' ? 'car' : 'plane',
     tripView,

@@ -10,7 +10,7 @@ function createService(transactions, unreadMessages = 0) {
       transaction.travelerId,
       transaction.recipientId,
     ].includes(userId),
-    closedStatuses: ['released', 'refunded', 'cancelled'],
+    closedStatuses: ['delivery_confirmed', 'released', 'refunded', 'cancelled'],
     unreadConversationCount: () => unreadMessages,
   });
 }
@@ -34,6 +34,12 @@ test('navigation counts only unread messages and operations requiring action', (
     senderId: 'u-1',
     travelerId: 'traveler',
     status: 'released',
+  }, {
+    id: 'delivered',
+    senderId: 'u-1',
+    travelerId: 'traveler',
+    status: 'delivery_confirmed',
+    operationStatus: 'paiement_requis',
   }, {
     id: 'other',
     senderId: 'other',

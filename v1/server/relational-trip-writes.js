@@ -381,7 +381,7 @@ async function activeOperationCount(client, tripId) {
      from public.wigolink_transactions
      where data->>'tripId' = $1
        and coalesce(data->>'status', '') not in (
-         'released', 'refunded', 'cancelled'
+         'delivery_confirmed', 'released', 'refunded', 'cancelled'
        )`,
     [tripId],
   );

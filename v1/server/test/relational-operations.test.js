@@ -80,8 +80,26 @@ test('operations relationnelles : liste paginee par participant sans secret', as
   assert.match(calls[0].sql, /@> array\[\$1\]::text\[\]/);
   assert.deepEqual(calls[0].params.slice(0, 2), [
     'u-1',
-    ['released', 'refunded', 'cancelled'],
+    ['delivery_confirmed', 'released', 'refunded', 'cancelled'],
   ]);
+});
+
+test('operations relationnelles : une livraison confirmee appartient a l historique', async () => {
+  const calls = [];
+  await listRelationalOperations({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return { rows: [] };
+      },
+    },
+    user: { id: 'u-1' },
+    query: { history: '1' },
+    operationCodePublicState: () => ({}),
+  });
+
+  assert.equal(calls[0].params[2], true);
+  assert.ok(calls[0].params[1].includes('delivery_confirmed'));
 });
 
 test('operations relationnelles : poursuit avec un curseur stable sans offset', async () => {

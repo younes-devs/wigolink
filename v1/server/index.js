@@ -1174,7 +1174,7 @@ app.use('/api', createConversationInboxRouter({
 }));
 
 // ---------- Operations ----------
-const CLOSED_STATUSES = ['released', 'refunded', 'cancelled'];
+const CLOSED_STATUSES = ['delivery_confirmed', 'released', 'refunded', 'cancelled'];
 
 const memberOverviewService = createMemberOverviewService({
   db,
