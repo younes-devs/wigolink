@@ -21,7 +21,8 @@
 /* Avatars & icônes catégorie */
 .avatar {
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 50%; font-weight: 700; letter-spacing: 0;
+  border-radius: 50%; font-weight: 700; letter-spacing: 0; line-height: 1;
+  overflow: hidden; box-sizing: border-box; text-align: center;
   flex: 0 0 auto; border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 1px 3px rgba(22, 24, 29, 0.1);
 }

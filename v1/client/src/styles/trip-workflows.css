@@ -416,7 +416,9 @@
   width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 8px;
   padding: 10px 12px; font: inherit; background: var(--surface); color: var(--ink);
 }
-.saved-trip span, .operation-main span, .operation-person span {
+.saved-trip > .grow > span,
+.operation-main > .grow > span,
+.operation-person > div > span {
   display: block; color: var(--ink-soft); font-size: 12.5px; margin-top: 2px;
 }
 .saved-trip small, .operation-main small { display: block; color: var(--ink-soft); margin-top: 2px; }
