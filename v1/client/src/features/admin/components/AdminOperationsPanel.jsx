@@ -2,10 +2,15 @@ import { useState } from 'react';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonList } from '../../../Skeleton.jsx';
 import { t } from '../../../i18n.js';
-import { formatAdminShortDate, opsTaskCopy } from './adminPanelUtils.js';
+import { opsTaskCopy } from './adminPanelUtils.js';
 
-export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPayout, onRefund }) {
+export function OpsPanel({
+  ops, error, setTab, reload, manualPayouts, manualPayoutPage, manualPayoutsLoaded,
+  loadManualPayouts, loadPayments, onManualPayout, onRefund,
+}) {
   const [refundTarget, setRefundTarget] = useState(null);
+  const [section, setSection] = useState('overview');
+  const [loadingSection, setLoadingSection] = useState('');
   if (error) {
     return (
       <div className="alert alert-danger">
@@ -21,6 +26,17 @@ export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPa
     watch: [t('admin.ops.watch'), t('admin.ops.watchHelp')],
     critical: [t('admin.ops.critical'), t('admin.ops.criticalHelp')],
   }[ops.health.status] || [t('admin.tab.operations'), t('admin.ops.currentState')];
+  const openSection = async (nextSection) => {
+    setSection(nextSection);
+    if (nextSection === 'overview') return;
+    setLoadingSection(nextSection);
+    try {
+      if (nextSection === 'payments') await loadPayments();
+      if (nextSection === 'payouts' && !manualPayoutsLoaded) await loadManualPayouts();
+    } finally {
+      setLoadingSection('');
+    }
+  };
 
   return (
     <div className="ops-panel">
@@ -29,7 +45,7 @@ export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPa
           <h2>{statusCopy[0]}</h2>
           <p>{statusCopy[1]}</p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={reload}><Icon name="repeat" size={15} />{t('common.refresh')}</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => reload(section)}><Icon name="repeat" size={15} />{t('common.refresh')}</button>
       </div>
 
       <div className="ops-metrics">
@@ -39,7 +55,13 @@ export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPa
         <OpsMetric label={t('admin.ops.escrowHeld')} value={`${Math.round(ops.health.escrowHeld)} €`} icon="lock" />
       </div>
 
-      <section className="ops-section ops-payments">
+      <nav className="ops-area-grid" aria-label={t('admin.ops.sections')}>
+        <OpsArea icon="repeat" label={t('admin.ops.overview')} active={section === 'overview'} onClick={() => openSection('overview')} />
+        <OpsArea icon="bank" label={t('admin.payouts.title')} active={section === 'payouts'} loading={loadingSection === 'payouts'} onClick={() => openSection('payouts')} />
+        <OpsArea icon="euro" label={t('admin.payments.title')} active={section === 'payments'} loading={loadingSection === 'payments'} onClick={() => openSection('payments')} />
+      </nav>
+
+      {section === 'payments' && <section className="ops-section ops-payments">
         <div className="ops-section-head">
           <h2><Icon name="euro" size={17} />{t('admin.payments.title')}</h2>
           <span className="pill pill-gray">{t('admin.payments.count', { count: ops.latest.payments.count })}</span>
@@ -92,10 +114,18 @@ export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPa
             </div>
           </details>
         )}
-      </section>
+      </section>}
 
-      <ManualPayoutQueue requests={manualPayouts} onConfirm={onManualPayout} />
+      {section === 'payouts' && (loadingSection === 'payouts' && !manualPayoutsLoaded
+        ? <SkeletonList count={3} avatar={false} lines={3} />
+        : <ManualPayoutQueue
+            requests={manualPayouts}
+            page={manualPayoutPage}
+            onLoadMore={() => loadManualPayouts({ cursor: manualPayoutPage.nextCursor, append: true })}
+            onConfirm={onManualPayout}
+          />)}
 
+      {section === 'overview' && <>
       <div className="ops-task-grid">
         {ops.tasks.map((task) => (
           <button key={task.id} className={`ops-task ops-${task.severity}`} onClick={() => setTab(task.tab)}>
@@ -109,60 +139,7 @@ export function OpsPanel({ ops, error, setTab, reload, manualPayouts, onManualPa
         ))}
       </div>
 
-      <div className="ops-grid">
-        <section className="ops-section">
-          <div className="ops-section-head">
-            <h2><Icon name="fileText" size={17} />{t('admin.ops.latestCases')}</h2>
-            <button className="link-btn" onClick={() => setTab('review')}>{t('common.open')}</button>
-          </div>
-          {ops.latest.reviewQueue.length === 0 ? (
-            <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noReview')}</p>
-          ) : ops.latest.reviewQueue.map((item) => (
-            <button key={item.id} className="ops-row" onClick={() => setTab('review')}>
-              <Icon name={item.type === 'dispute' ? 'alert' : item.type === 'conversation' ? 'chat' : 'package'} size={16} />
-              <span className="grow">
-                <b>{t(item.type === 'dispute' ? 'admin.review.dispute' : item.type === 'conversation' ? 'admin.review.flaggedConversation' : 'admin.review.grayListing')}</b>
-                <small>{item.label || item.refId}</small>
-              </span>
-              <small>{formatAdminShortDate(item.createdAt)}</small>
-            </button>
-          ))}
-        </section>
-
-        <section className="ops-section">
-          <div className="ops-section-head">
-            <h2><Icon name="shieldCheck" size={17} />{t('admin.ops.identitiesToCheck')}</h2>
-            <button className="link-btn" onClick={() => setTab('kyc')}>{t('common.open')}</button>
-          </div>
-          {ops.latest.kyc.length === 0 ? (
-            <p className="muted" style={{ fontSize: 13 }}>{t('admin.ops.noPendingKyc')}</p>
-          ) : ops.latest.kyc.map((item) => (
-            <button key={item.id} className={`ops-row ${item.overdue ? 'is-danger' : ''}`} onClick={() => setTab('kyc')}>
-              <Icon name={item.overdue ? 'alert' : 'user'} size={16} />
-              <span className="grow">
-                <b>{item.legalName}</b>
-                <small>{item.user?.email || item.user?.name}</small>
-              </span>
-              <small>{formatAdminShortDate(item.submittedAt)}</small>
-            </button>
-          ))}
-        </section>
-      </div>
-
-      <section className="ops-section">
-        <div className="ops-section-head">
-          <h2><Icon name="alert" size={17} />{t('admin.ops.riskSignals')}</h2>
-          <button className="link-btn" onClick={() => setTab('fraud')}>{t('admin.ops.analyze')}</button>
-        </div>
-        <div className="ops-risk-list">
-          <RiskPill label={t('admin.risk.linked')} value={ops.risk.linkedAccounts} />
-          <RiskPill label={t('admin.risk.repeatedPairs')} value={ops.risk.repeatPairs} />
-          <RiskPill label={t('admin.risk.offPlatform')} value={ops.risk.flaggedMessaging} />
-          <RiskPill label={t('admin.risk.cancellations')} value={ops.risk.abnormalCancel} />
-          <RiskPill label={t('admin.risk.repeatedDisputes')} value={ops.risk.disputeProne} />
-          <RiskPill label={t('admin.risk.repeatedKyc')} value={ops.risk.kycRepeatRejections} />
-        </div>
-      </section>
+      </>}
 
       {refundTarget && (
         <RefundDialog
@@ -188,13 +165,18 @@ function OpsMetric({ icon, value, label, danger = false }) {
   );
 }
 
-function RiskPill({ label, value }) {
-  return <span className={`ops-risk-pill ${value > 0 ? 'on' : ''}`}><b>{value}</b>{label}</span>;
+function OpsArea({ icon, label, active, loading, onClick }) {
+  return <button type="button" className={`ops-area ${active ? 'active' : ''}`} onClick={onClick}>
+    <span>{loading ? <span className="spinner" /> : <Icon name={icon} size={19} />}</span>
+    <b>{label}</b>
+    <Icon name="arrowRight" size={16} />
+  </button>;
 }
 
-function ManualPayoutQueue({ requests = [], onConfirm }) {
+function ManualPayoutQueue({ requests = [], page, onLoadMore, onConfirm }) {
   const [references, setReferences] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const pending = requests.filter((request) => request.status !== 'sent');
   const submit = async (request) => {
     const reference = String(references[request.operationId] || '').trim();
@@ -235,6 +217,10 @@ function ManualPayoutQueue({ requests = [], onConfirm }) {
         </div>
       </article>)}
     </div>}
+    {page?.hasMore && <button className="btn btn-ghost ops-load-more" type="button" disabled={loadingMore} onClick={async () => {
+      setLoadingMore(true);
+      try { await onLoadMore(); } finally { setLoadingMore(false); }
+    }}>{loadingMore ? <span className="spinner" /> : <Icon name="chevronDown" size={16} />}{t('common.loadMore')}</button>}
   </section>;
 }
 

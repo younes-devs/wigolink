@@ -147,6 +147,8 @@ export default {
   'admin.safety.suspend': 'Schorsen',
   'admin.safety.repeatedAttempts': 'herhaalde pogingen',
   'admin.ops.clear': 'Platform in orde',
+  'admin.ops.sections': 'Onderdelen van operaties',
+  'admin.ops.overview': 'Overzicht en prioriteiten',
   'admin.ops.clearHelp': 'Geen open operationele noodsituatie.',
   'admin.ops.watch': 'Actieve bewaking',
   'admin.ops.watchHelp': 'Dossiers wachten op beoordeling, zonder kritieke overschrijding.',

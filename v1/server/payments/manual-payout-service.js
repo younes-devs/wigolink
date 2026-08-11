@@ -173,31 +173,45 @@ export function createManualPayoutService({
     return success({ request: publicRequest(queuedRequest) }, 201);
   }
 
-  async function listRequests({ admin, status: requestedStatus }) {
+  async function listRequests({ admin, status: requestedStatus, cursor, limit: requestedLimit }) {
     const unavailable = availability();
     if (unavailable) return unavailable;
     const statusFilter = ['pending', 'processing', 'sent', 'failed'].includes(requestedStatus)
       ? requestedStatus
       : null;
+    const limit = Math.min(50, Math.max(1, Number.parseInt(requestedLimit, 10) || 25));
+    const pageCursor = decodePayoutCursor(cursor);
     const result = await getPool().query(
       `select request.*, account.country, account.account_last4, account.details_ciphertext,
               member.data as traveler, tx.data as operation
          from public.manual_payout_requests request
          join public.manual_payout_accounts account on account.id = request.payout_account_id
          join public.wigolink_users member on member.id = request.traveler_id
-         join public.wigolink_transactions tx on tx.id = request.operation_id
+        join public.wigolink_transactions tx on tx.id = request.operation_id
         where ($1::text is null or request.status = $1)
+          and ($2::timestamptz is null or (
+            case when request.status = 'pending' then 0 else 1 end,
+            request.requested_at,
+            request.operation_id
+          ) > ($3::int, $2::timestamptz, $4::text))
         order by case when request.status = 'pending' then 0 else 1 end,
-                 request.requested_at asc
-        limit 200`,
-      [statusFilter],
+                 request.requested_at asc, request.operation_id asc
+        limit $5`,
+      [statusFilter, pageCursor?.requestedAt || null, pageCursor?.priority || 0,
+        pageCursor?.operationId || '', limit + 1],
     );
+    const rows = result.rows.slice(0, limit);
+    const last = rows.at(-1);
     await audit(admin.id, 'manual_payout_queue_viewed', 'admin', admin.id, {
-      count: result.rows.length,
+      count: rows.length,
       status: statusFilter || 'all',
     });
     return success({
-      requests: result.rows.map((row) => adminRequest(row, cipher.decrypt(row.details_ciphertext))),
+      requests: rows.map((row) => adminRequest(row, cipher.decrypt(row.details_ciphertext))),
+      page: {
+        hasMore: result.rows.length > limit,
+        nextCursor: result.rows.length > limit && last ? encodePayoutCursor(last) : null,
+      },
     });
   }
 
@@ -281,6 +295,25 @@ export function createManualPayoutService({
   }
 
   return { availability, status, saveAccount, queueAfterDelivery, listRequests, markSent };
+}
+
+function encodePayoutCursor(row) {
+  return Buffer.from(JSON.stringify({
+    priority: row.status === 'pending' ? 0 : 1,
+    requestedAt: row.requested_at,
+    operationId: row.operation_id,
+  })).toString('base64url');
+}
+
+function decodePayoutCursor(value) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(String(value), 'base64url').toString('utf8'));
+    if (!parsed.requestedAt || !parsed.operationId || ![0, 1].includes(parsed.priority)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 async function resumeAwaitingPayouts(pool, travelerId, queueAfterDelivery) {

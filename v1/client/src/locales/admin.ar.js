@@ -147,6 +147,8 @@ export default {
   'admin.safety.suspend': 'إيقاف',
   'admin.safety.repeatedAttempts': 'محاولات متكررة',
   'admin.ops.clear': 'المنصة مستقرة',
+  'admin.ops.sections': 'أقسام العمليات',
+  'admin.ops.overview': 'نظرة عامة والأولويات',
   'admin.ops.clearHelp': 'لا توجد حالة تشغيلية عاجلة مفتوحة.',
   'admin.ops.watch': 'المراقبة نشطة',
   'admin.ops.watchHelp': 'توجد ملفات تنتظر المراجعة دون تجاوز حرج.',

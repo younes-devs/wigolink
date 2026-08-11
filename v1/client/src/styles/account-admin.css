@@ -520,6 +520,17 @@
 .ops-hero.ops-watch { border-color: rgba(154, 98, 0, 0.25); background: linear-gradient(180deg, var(--amber-tint), var(--glass)); }
 .ops-hero.ops-clear { border-color: rgba(20, 184, 166, 0.24); background: linear-gradient(180deg, var(--green-tint), var(--glass)); }
 .ops-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ops-area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ops-area {
+  min-width: 0; display: grid; grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center; gap: 9px; padding: 11px; border: 1px solid var(--hairline);
+  border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit;
+  text-align: start; cursor: pointer;
+}
+.ops-area:hover, .ops-area.active { border-color: var(--accent); background: var(--accent-tint); }
+.ops-area > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px; background: var(--surface-soft); color: var(--accent); }
+.ops-area b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.ops-area > .icon { color: var(--ink-faint); }
 .ops-metric {
   display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 2px;
   align-items: center; padding: 10px; border-radius: 12px;
@@ -619,6 +630,7 @@
   line-height: 1.3;
 }
 .ops-payout-confirm .btn { width: auto; min-height: 47px; align-self: end; }
+.ops-load-more { width: 100%; justify-content: center; margin-top: 12px; }
 .admin-refund-modal { max-width: 460px; }
 .ops-webhooks { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 10px; }
 .ops-webhooks summary { cursor: pointer; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
@@ -633,6 +645,7 @@
   .ops-payment-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
+  .ops-area-grid { grid-template-columns: minmax(0, 1fr); }
   .ops-payment-row { grid-template-columns: 1fr; gap: 7px; }
   .ops-payment-meta { justify-content: flex-start; }
   .ops-bank-details { grid-template-columns: 1fr; }

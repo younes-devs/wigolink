@@ -147,6 +147,8 @@ export default {
   'admin.safety.suspend': 'Suspendre',
   'admin.safety.repeatedAttempts': 'tentatives répétées',
   'admin.ops.clear': 'Plateforme claire',
+  'admin.ops.sections': 'Rubriques des opérations',
+  'admin.ops.overview': 'Aperçu et priorités',
   'admin.ops.clearHelp': 'Aucune urgence opérationnelle ouverte.',
   'admin.ops.watch': 'Surveillance active',
   'admin.ops.watchHelp': 'Des dossiers attendent une revue, sans dépassement critique.',

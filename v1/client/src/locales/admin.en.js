@@ -148,6 +148,8 @@ export default {
   "admin.safety.suspend": "Suspend",
   "admin.safety.repeatedAttempts": "repeated attempts",
   "admin.ops.clear": "Clear platform",
+  "admin.ops.sections": "Operations sections",
+  "admin.ops.overview": "Overview and priorities",
   "admin.ops.clearHelp": "No operational emergencies open.",
   "admin.ops.watch": "Active monitoring",
   "admin.ops.watchHelp": "Files await review, without critical excess.",

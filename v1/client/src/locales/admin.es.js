@@ -148,6 +148,8 @@ export default {
   "admin.safety.suspend": "Suspender",
   "admin.safety.repeatedAttempts": "intentos repetidos",
   "admin.ops.clear": "Plataforma clara",
+  "admin.ops.sections": "Secciones de operaciones",
+  "admin.ops.overview": "Resumen y prioridades",
   "admin.ops.clearHelp": "No hay emergencias operativas abiertas.",
   "admin.ops.watch": "Monitoreo activo",
   "admin.ops.watchHelp": "Expedientes en espera de revisión, sin exceso crítico.",

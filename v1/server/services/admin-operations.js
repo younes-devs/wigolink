@@ -11,9 +11,9 @@ export function createAdminOperationsService({
   loadRelationalKpis = null,
   now = Date.now,
 }) {
-  async function summary() {
+  async function summary(section = 'overview') {
     const relational = loadRelationalOperationState
-      ? await loadRelationalOperationState()
+      ? await loadRelationalOperationState(section)
       : null;
     const reviewOpen = relational
       ? relational.reviewQueue
@@ -154,7 +154,7 @@ export function createAdminOperationsService({
 
   async function overview() {
     const relational = loadRelationalOperationState
-      ? await loadRelationalOperationState()
+      ? await loadRelationalOperationState('full')
       : null;
     const operationDisputes = relational?.disputes || db.disputes;
     const reviewQueue = relational

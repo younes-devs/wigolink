@@ -7,8 +7,9 @@ export function createAdminOperationsRouter({
 }) {
   const router = Router();
 
-  router.get('/admin/ops', auth, adminOnly, async (_req, res) => {
-    res.json({ ops: await adminOperations.summary() });
+  router.get('/admin/ops', auth, adminOnly, async (req, res) => {
+    const section = req.query.section === 'payments' ? 'payments' : 'overview';
+    res.json({ ops: await adminOperations.summary(section) });
   });
 
   router.get('/admin/overview', auth, adminOnly, async (_req, res) => {

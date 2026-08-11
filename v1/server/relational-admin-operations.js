@@ -4,8 +4,10 @@ const WHITELIST_LIMIT = 500;
 const RECENT_MESSAGE_LIMIT = 8;
 const RECENT_PAYMENT_LIMIT = 25;
 
-export async function relationalAdminOperationState({ pool }) {
+export async function relationalAdminOperationState({ pool, section = 'full' }) {
   requirePool(pool);
+  const includeArchive = section === 'full';
+  const includePaymentDetails = section === 'full' || section === 'payments';
   const [
     statsResult,
     disputesResult,
@@ -40,13 +42,13 @@ export async function relationalAdminOperationState({ pool }) {
           ), 0)::float8
             from public.wigolink_transactions) as escrow_held`,
     ),
-    pool.query(
+    includeArchive ? pool.query(
       `select data
          from public.wigolink_disputes
         order by created_at desc
         limit $1`,
       [DISPUTE_LIMIT],
-    ),
+    ) : Promise.resolve({ rows: [] }),
     pool.query(
       `select
          queue.data as item,
@@ -87,13 +89,13 @@ export async function relationalAdminOperationState({ pool }) {
         limit $1`,
       [REVIEW_LIMIT],
     ),
-    pool.query(
+    includeArchive ? pool.query(
       `select data
          from public.wigolink_custom_whitelist
         order by created_at desc
         limit $1`,
       [WHITELIST_LIMIT],
-    ),
+    ) : Promise.resolve({ rows: [] }),
     pool.query(
       `select
          count(*)::int as count,
@@ -106,7 +108,7 @@ export async function relationalAdminOperationState({ pool }) {
            as net_cents
        from public.operation_payments`,
     ),
-    pool.query(
+    includePaymentDetails ? pool.query(
       `select
          payment.operation_id,
          payment.currency,
@@ -135,15 +137,15 @@ export async function relationalAdminOperationState({ pool }) {
        order by payment.updated_at desc
        limit $1`,
       [RECENT_PAYMENT_LIMIT],
-    ),
-    pool.query(
+    ) : Promise.resolve({ rows: [] }),
+    includePaymentDetails ? pool.query(
       `select stripe_event_id, event_type, processing_status, attempts,
               last_error, processed_at, created_at
          from public.stripe_webhook_events
         order by created_at desc
         limit $1`,
       [RECENT_PAYMENT_LIMIT],
-    ),
+    ) : Promise.resolve({ rows: [] }),
   ]);
 
   const reviewQueue = await enrichReviewQueue({

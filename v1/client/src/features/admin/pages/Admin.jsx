@@ -31,6 +31,8 @@ export default function Admin() {
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [manualPayouts, setManualPayouts] = useState([]);
+  const [manualPayoutPage, setManualPayoutPage] = useState({ hasMore: false, nextCursor: null });
+  const [manualPayoutsLoaded, setManualPayoutsLoaded] = useState(false);
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [team, setTeam] = useState(null);
@@ -41,13 +43,35 @@ export default function Admin() {
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
   }, []);
-  const loadOps = useCallback(() => {
-    api('/admin/ops').then((d) => setOps(d.ops)).catch((e) => setOpsError(e.message));
+  const loadOps = useCallback((section = 'overview') => {
+    const params = new URLSearchParams({ section });
+    return api(`/admin/ops?${params}`).then((d) => {
+      setOps((current) => section === 'payments' && current
+        ? { ...d.ops, latest: { ...d.ops.latest, payments: d.ops.latest.payments } }
+        : d.ops);
+      setOpsError('');
+      return d.ops;
+    }).catch((e) => {
+      setOpsError(e.message);
+      throw e;
+    });
   }, []);
-  const loadManualPayouts = useCallback(() => {
-    api('/admin/payouts/manual')
-      .then((data) => setManualPayouts(data.requests || []))
-      .catch(() => setManualPayouts([]));
+  const loadManualPayouts = useCallback(({ cursor = '', append = false } = {}) => {
+    const params = new URLSearchParams({ limit: '25' });
+    if (cursor) params.set('cursor', cursor);
+    return api(`/admin/payouts/manual?${params}`)
+      .then((result) => {
+        setManualPayouts((current) => append
+          ? [...current, ...(result.requests || [])]
+          : (result.requests || []));
+        setManualPayoutPage(result.page || { hasMore: false, nextCursor: null });
+        setManualPayoutsLoaded(true);
+        return result;
+      })
+      .catch(() => {
+        if (!append) setManualPayouts([]);
+        setManualPayoutsLoaded(true);
+      });
   }, []);
   const loadFraud = useCallback(() => {
     api('/admin/fraud').then(setFraud).catch((e) => setFraudError(e.message));
@@ -76,9 +100,8 @@ export default function Admin() {
   useEffect(() => {
     if (tab === 'ops' && !ops) {
       loadOps();
-      loadManualPayouts();
     }
-  }, [tab, ops, loadOps, loadManualPayouts]);
+  }, [tab, ops, loadOps]);
   useEffect(() => {
     if (tab === 'fraud' && !fraud) loadFraud();
   }, [tab, fraud, loadFraud]);
@@ -98,7 +121,7 @@ export default function Admin() {
 
   const refundPayment = async (operationId, reason) => {
     await api(`/admin/operations/${operationId}/refund`, { method: 'POST', body: { reason } });
-    await Promise.all([load(), loadOps()]);
+    await Promise.all([load(), loadOps('payments')]);
     toast.success(t('admin.payments.refundSuccess'), 2600);
   };
 
@@ -158,7 +181,24 @@ export default function Admin() {
       <AdminHome reviewCount={reviewQueue.length} onOpen={setTab} />
       </>}
 
-      {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} manualPayouts={manualPayouts} onManualPayout={confirmManualPayout} onRefund={refundPayment} reload={() => { load(); loadOps(); loadManualPayouts(); loadFraud(); }} />}
+      {tab === 'ops' && <OpsPanel
+        ops={ops}
+        error={opsError}
+        setTab={setTab}
+        manualPayouts={manualPayouts}
+        manualPayoutPage={manualPayoutPage}
+        manualPayoutsLoaded={manualPayoutsLoaded}
+        loadManualPayouts={loadManualPayouts}
+        loadPayments={() => loadOps('payments')}
+        onManualPayout={confirmManualPayout}
+        onRefund={refundPayment}
+        reload={(activeSection) => {
+          load();
+          if (activeSection === 'payments') loadOps('payments');
+          else loadOps();
+          if (activeSection === 'payouts') loadManualPayouts();
+        }}
+      />}
       {tab === 'review' && (
         <>
           {reviewQueue.length === 0 && (

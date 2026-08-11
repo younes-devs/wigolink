@@ -1293,8 +1293,9 @@ const adminOperationsService = createAdminOperationsService({
   localeForLang,
   kycSlaMs: KYC_SLA_MS,
   loadRelationalOperationState: usesDatabase()
-    ? () => relationalAdminOperationState({
+    ? (section) => relationalAdminOperationState({
       pool: databasePool(),
+      section,
     })
     : null,
   loadRelationalKpis: usesDatabase()
