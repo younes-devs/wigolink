@@ -310,13 +310,18 @@ export function createConversationDomain({
 
   function findOrCreateConversation({ participantIds, tripId = null, operationId = null }) {
     const ids = [...new Set(participantIds)].sort();
-    let conversation = operationId
-      ? db.conversations.find((item) => item.operationId === operationId)
-      : db.conversations.find((item) =>
+    let conversation = tripId
+      ? db.conversations.find((item) =>
         item.participantIds.slice().sort().join('|') === ids.join('|')
         && (item.tripId || null) === (tripId || null)
-        && !item.operationId
-      );
+      )
+      : operationId
+        ? db.conversations.find((item) => item.operationId === operationId)
+        : db.conversations.find((item) =>
+          item.participantIds.slice().sort().join('|') === ids.join('|')
+          && !item.tripId
+          && !item.operationId
+        );
     if (!conversation) {
       conversation = {
         id: newId('conv'),
@@ -327,6 +332,8 @@ export function createConversationDomain({
         createdAt: now(),
       };
       db.conversations.push(conversation);
+    } else if (operationId && conversation.operationId !== operationId) {
+      conversation.operationId = operationId;
     }
     return conversation;
   }

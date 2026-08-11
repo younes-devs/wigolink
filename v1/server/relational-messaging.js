@@ -31,9 +31,11 @@ export async function listRelationalConversations({
     ? `and m.at > coalesce(member.last_read_at, 'epoch'::timestamptz)`
     : `and not (coalesce(m.data->'readBy', '[]'::jsonb) ? $1)`;
   const membershipFilter = memberStateEnabled
-    ? 'where not member.deleted'
+    ? `where not member.deleted
+       and coalesce(nullif(c.data->>'mergedInto', ''), nullif(c.data->>'mergedIntoId', '')) is null`
     : `where c.data->'participantIds' ? $1
-       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)`;
+       and not (coalesce(c.data->'deletedBy', '[]'::jsonb) ? $1)
+       and coalesce(nullif(c.data->>'mergedInto', ''), nullif(c.data->>'mergedIntoId', '')) is null`;
   const params = [user.id];
   let cursorClause = '';
   if (cursor) {
@@ -121,6 +123,17 @@ export async function relationalConversation({
   includeMessages = false,
   memberStateEnabled = false,
 }) {
+  const resolvedIdResult = await pool.query(
+    `select coalesce(
+       nullif(data->>'mergedInto', ''),
+       nullif(data->>'mergedIntoId', ''),
+       id
+     ) as id
+     from public.wigolink_conversations
+     where id = $1`,
+    [id],
+  );
+  const resolvedId = resolvedIdResult.rows[0]?.id || id;
   const memberSelect = memberStateEnabled
     ? `, member.archived as member_archived,
        member.pinned as member_pinned,
@@ -168,7 +181,7 @@ export async function relationalConversation({
      ) unread on true
      where c.id = $2
        ${membershipFilter}`,
-    [user.id, id]
+    [user.id, resolvedId]
   );
   const row = result.rows[0];
   if (!row) return null;
@@ -176,7 +189,7 @@ export async function relationalConversation({
   if (!includeMessages) return { conversation };
   const messagesPage = await relationalConversationMessages({
     pool,
-    conversationId: id,
+    conversationId: resolvedId,
     query,
     memberStateEnabled,
   });

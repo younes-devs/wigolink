@@ -30,7 +30,36 @@ test('messagerie relationnelle : lit les conversations par participant et retour
   assert.equal(data.conversations[0].context.href, '/trajets/t-1');
   assert.match(calls[0].sql, /wigolink_conversations/);
   assert.match(calls[0].sql, /messages/);
+  assert.match(calls[0].sql, /mergedInto/);
   assert.ok(calls[0].params.includes('u-1'));
+});
+
+test('messagerie relationnelle : une ancienne URL fusionnee ouvre la conversation canonique', async () => {
+  const calls = [];
+  const pool = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (sql.includes('select coalesce(')) {
+        return { rows: [{ id: 'conv-canonical' }] };
+      }
+      return {
+        rows: [{
+          ...row,
+          conversation: { ...row.conversation, id: 'conv-canonical' },
+        }],
+      };
+    },
+  };
+
+  const data = await relationalConversation({
+    pool,
+    user: { id: 'u-1' },
+    id: 'conv-duplicate',
+    today: '2026-07-17',
+  });
+
+  assert.equal(data.conversation.id, 'conv-canonical');
+  assert.deepEqual(calls[1].params, ['u-1', 'conv-canonical']);
 });
 
 test('messagerie relationnelle : poursuit la boite avec un curseur stable', async () => {

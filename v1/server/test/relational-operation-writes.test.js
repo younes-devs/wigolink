@@ -83,8 +83,8 @@ test('acceptation relationnelle reutilise une demande active apres un retry', as
     status: 'accepted',
     operationStatus: 'attente_confirmation',
   };
-  const client = mockClient(async (sql) => {
-    calls.push({ sql });
+  const client = mockClient(async (sql, params) => {
+    calls.push({ sql, params });
     if (sql.includes('wigolink_trips')) {
       return {
         rows: [{
@@ -116,6 +116,52 @@ test('acceptation relationnelle reutilise une demande active apres un retry', as
   assert.equal(result.body.operation.id, 'tx-existing');
   assert.equal(result.body.conversation.id, 'conv-existing');
   assert.equal(calls.some(({ sql }) => sql.includes('insert into')), false);
+});
+
+test('acceptation relationnelle transforme la conversation du trajet sans doublon', async () => {
+  const calls = [];
+  const existingConversation = {
+    id: 'conv-trip',
+    participantIds: ['u-sender', 'u-traveler'],
+    tripId: 't-1',
+    operationId: null,
+    createdAt: 1_000,
+    lastMessageAt: 1_500,
+    deletedBy: [],
+  };
+  const client = mockClient(async (sql, params) => {
+    calls.push({ sql, params });
+    if (sql.includes('wigolink_trips') && sql.includes('for update')) {
+      return { rows: [{ data: {
+        id: 't-1', travelerId: 'u-traveler', from: 'Oujda', to: 'Bruxelles',
+        departureDate: '2026-08-20', capacityKg: 6, price: 30,
+        currency: 'EUR', status: 'published',
+      } }] };
+    }
+    if (sql.includes('select data from public.wigolink_transactions')) return { rows: [] };
+    if (sql.includes('select id, data') && sql.includes('wigolink_conversations')) {
+      return { rows: [{ id: existingConversation.id, data: existingConversation }] };
+    }
+    return { rows: [] };
+  });
+  const writer = writerHarness({ client, calls });
+
+  const result = await writer.accept({
+    user: verifiedUser(),
+    tripId: 't-1',
+    body: { shipmentType: 'document', documentCount: 1 },
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.conversation.id, 'conv-trip');
+  assert.equal(calls.filter(({ sql }) => (
+    sql.includes('insert into public.wigolink_conversations')
+  )).length, 0);
+  const update = calls.find(({ sql }) => (
+    sql.includes('update public.wigolink_conversations')
+  ));
+  assert.ok(update);
+  assert.match(update.params[1], /"operationId":"tx-/);
 });
 
 test('transition relationnelle verrouille uniquement operation et persiste atomiquement', async () => {

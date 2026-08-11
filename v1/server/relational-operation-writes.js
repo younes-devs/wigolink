@@ -77,12 +77,15 @@ export function createRelationalOperationWriter({
       );
       const duplicate = duplicateResult.rows[0]?.data;
       if (duplicate) {
+        const participantIds = [duplicate.senderId, duplicate.travelerId].sort();
         const conversationResult = await client.query(
           `select id from public.wigolink_conversations
-           where data->>'operationId' = $1
-             and data->'participantIds' ? $2
+           where data->'participantIds' = $1::jsonb
+             and coalesce(data->>'tripId', '') = $2
+             and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null
+           order by created_at asc, id asc
            limit 1`,
-          [duplicate.id, user.id],
+          [JSON.stringify(participantIds), trip.id],
         );
         await client.query('commit');
         return operationResponse({
@@ -148,20 +151,59 @@ export function createRelationalOperationWriter({
       }, createdAt);
       await insertRecord(client, 'wigolink_transactions', transaction);
 
-      conversation = {
-        id: relationalId('conv'),
-        participantIds: [user.id, trip.travelerId],
-        tripId: trip.id,
-        operationId: transaction.id,
-        createdAt,
-        lastMessageAt: createdAt,
-        archivedBy: [],
-        pinnedBy: [],
-        deletedBy: [],
-      };
-      await insertRecord(client, 'wigolink_conversations', conversation);
+      const participantIds = [user.id, trip.travelerId].sort();
+      await client.query(
+        'select pg_advisory_xact_lock(hashtext($1))',
+        [JSON.stringify([participantIds, trip.id])],
+      );
+      const conversationResult = await client.query(
+        `select id, data
+         from public.wigolink_conversations
+         where data->'participantIds' = $1::jsonb
+           and coalesce(data->>'tripId', '') = $2
+           and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null
+         order by created_at asc, id asc
+         limit 1
+         for update`,
+        [JSON.stringify(participantIds), trip.id],
+      );
+      if (conversationResult.rows[0]) {
+        conversation = {
+          ...conversationResult.rows[0].data,
+          id: conversationResult.rows[0].id,
+          participantIds,
+          tripId: trip.id,
+          operationId: transaction.id,
+          lastMessageAt: Math.max(
+            Number(conversationResult.rows[0].data.lastMessageAt || 0),
+            createdAt,
+          ),
+          deletedBy: (conversationResult.rows[0].data.deletedBy || [])
+            .filter((id) => !participantIds.includes(id)),
+        };
+        await updateRecord(client, 'wigolink_conversations', conversation);
+      } else {
+        conversation = {
+          id: relationalId('conv'),
+          participantIds,
+          tripId: trip.id,
+          operationId: transaction.id,
+          createdAt,
+          lastMessageAt: createdAt,
+          archivedBy: [],
+          pinnedBy: [],
+          deletedBy: [],
+        };
+        await insertRecord(client, 'wigolink_conversations', conversation);
+      }
       if (memberStateEnabled()) {
         await ensureConversationMembers(client, conversation, { now });
+        await client.query(
+          `update public.wigolink_conversation_members
+           set deleted = false, archived = false, updated_at = now()
+           where conversation_id = $1 and user_id = any($2::text[])`,
+          [conversation.id, participantIds],
+        );
       }
       await client.query('commit');
     } catch (error) {

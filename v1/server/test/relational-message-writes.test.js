@@ -508,8 +508,52 @@ test('creation relationnelle reutilise toujours la conversation unique de l oper
   assert.equal(result.status, 200);
   assert.equal(result.body.conversation.id, 'conv-operation');
   assert.ok(harness.queries.some(({ sql, params }) => (
-    sql.includes('pg_advisory_xact_lock') && params[0] === 'operation:tx-1'
+    sql.includes('pg_advisory_xact_lock')
+      && params[0] === JSON.stringify([['u-1', 'u-2'], 'tx-1'])
   )));
+  assert.equal(harness.queries.some(({ sql }) => (
+    sql.includes('insert into public.wigolink_conversations')
+  )), false);
+});
+
+test('creation relationnelle rattache l operation a la conversation existante du trajet', async () => {
+  const existingConversation = {
+    id: 'conv-trip',
+    participantIds: ['u-1', 'u-2'],
+    tripId: 't-1',
+    operationId: null,
+    deletedBy: [],
+  };
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select data from public.wigolink_transactions')) {
+      return {
+        rows: [{ data: {
+          id: 'tx-1', tripId: 't-1', senderId: 'u-1', travelerId: 'u-2',
+        } }],
+        rowCount: 1,
+      };
+    }
+    if (sql.includes('select 1 from public.wigolink_users')) {
+      return { rows: [{ '?column?': 1 }], rowCount: 1 };
+    }
+    if (sql.includes("coalesce(data->>'tripId', '') = $2")) {
+      return { rows: [{ id: existingConversation.id, data: existingConversation }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+
+  const result = await harness.writer.createConversation({
+    user,
+    body: { operationId: 'tx-1' },
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.conversation.id, 'conv-trip');
+  const update = harness.queries.find(({ sql }) => (
+    sql.includes('update public.wigolink_conversations')
+  ));
+  assert.equal(JSON.parse(update.params[1]).operationId, 'tx-1');
   assert.equal(harness.queries.some(({ sql }) => (
     sql.includes('insert into public.wigolink_conversations')
   )), false);

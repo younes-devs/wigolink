@@ -290,6 +290,11 @@ create index if not exists wigolink_conversations_operation_idx on public.wigoli
 create unique index if not exists wigolink_conversations_operation_unique_idx
   on public.wigolink_conversations ((data->>'operationId'))
   where nullif(data->>'operationId', '') is not null;
+drop index if exists public.wigolink_conversations_trip_participants_unique_idx;
+create unique index wigolink_conversations_trip_participants_unique_idx
+  on public.wigolink_conversations ((data->'participantIds'), (data->>'tripId'))
+  where nullif(data->>'tripId', '') is not null
+    and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null;
 create index if not exists wigolink_conversations_participants_idx on public.wigolink_conversations using gin ((data->'participantIds'));
 
 create table if not exists public.wigolink_conversation_members (

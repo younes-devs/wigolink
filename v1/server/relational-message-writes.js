@@ -383,7 +383,7 @@ export function createRelationalMessageWriter({
     let conversationId;
     try {
       await client.query('begin');
-      const tripId = cleanId(body.tripId);
+      let tripId = cleanId(body.tripId);
       const operationId = cleanId(body.operationId);
       let otherId = cleanId(body.userId);
 
@@ -410,6 +410,7 @@ export function createRelationalMessageWriter({
           await client.query('rollback');
           return response(404, { error: 'Operation introuvable' });
         }
+        tripId = cleanId(operation.tripId) || tripId;
         otherId = operation.senderId === user.id
           ? cleanId(operation.travelerId)
           : cleanId(operation.senderId);
@@ -429,18 +430,29 @@ export function createRelationalMessageWriter({
       }
 
       const participantIds = [user.id, otherId].sort();
-      const conversationKey = operationId
-        ? `operation:${operationId}`
-        : JSON.stringify([participantIds, tripId || null]);
+      const conversationKey = JSON.stringify([participantIds, tripId || operationId || null]);
       await client.query(
         'select pg_advisory_xact_lock(hashtext($1))',
         [conversationKey],
       );
-      const existing = operationId
+      const existing = tripId
+        ? await client.query(
+          `select id, data
+           from public.wigolink_conversations
+           where data->'participantIds' = $1::jsonb
+             and coalesce(data->>'tripId', '') = $2
+             and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null
+           order by created_at asc, id asc
+           limit 1
+           for update`,
+          [JSON.stringify(participantIds), tripId],
+        )
+        : operationId
         ? await client.query(
           `select id, data
            from public.wigolink_conversations
            where data->>'operationId' = $1
+             and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null
            order by created_at asc, id asc
            limit 1
            for update`,
@@ -452,6 +464,7 @@ export function createRelationalMessageWriter({
            where data->'participantIds' = $1::jsonb
              and coalesce(data->>'tripId', '') = $2
              and coalesce(data->>'operationId', '') = ''
+             and coalesce(nullif(data->>'mergedInto', ''), nullif(data->>'mergedIntoId', '')) is null
            order by created_at asc, id asc
            limit 1
            for update`,
@@ -462,6 +475,8 @@ export function createRelationalMessageWriter({
         conversationId = existing.rows[0].id;
         const conversation = {
           ...existing.rows[0].data,
+          tripId: tripId || existing.rows[0].data.tripId || null,
+          operationId: operationId || existing.rows[0].data.operationId || null,
           ...(memberStateEnabled()
             ? {}
             : {
@@ -1276,8 +1291,18 @@ export function createRelationalMessageWriter({
 
 async function conversationContext(pool, conversationId, userId, { lock = false } = {}) {
   const result = await pool.query(
-    `select c.data as conversation, other.data as other, operation.data as operation
+    `with requested as (
+       select coalesce(
+         nullif(data->>'mergedInto', ''),
+         nullif(data->>'mergedIntoId', ''),
+         id
+       ) as id
+       from public.wigolink_conversations
+       where id = $1
+     )
+     select c.data as conversation, other.data as other, operation.data as operation
      from public.wigolink_conversations c
+     join requested on requested.id = c.id
      left join lateral (
        select u.data from public.wigolink_users u
        where u.id <> $2 and c.data->'participantIds' ? u.id
@@ -1285,7 +1310,7 @@ async function conversationContext(pool, conversationId, userId, { lock = false 
      ) other on true
      left join public.wigolink_transactions operation
        on operation.id = c.data->>'operationId'
-     where c.id = $1 and c.data->'participantIds' ? $2
+     where c.data->'participantIds' ? $2
      ${lock ? 'for update of c' : ''}`,
     [conversationId, userId],
   );
