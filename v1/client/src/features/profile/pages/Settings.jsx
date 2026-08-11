@@ -118,8 +118,8 @@ function PayoutBankCard({ payout }) {
   const last4 = String(payout.accountLast4 || '').padStart(4, '•');
   return <div className="payout-bank-card">
     <div className="payout-bank-card-head">
-      <span className="payout-bank-brand"><Icon name="bank" size={18} />Wigolink</span>
-      <span className="payout-bank-status"><Icon name="shieldCheck" size={14} />{t('payments.payout.manual.ready')}</span>
+      <span className="payout-bank-brand"><Icon name="bank" size={18} /><span><b>{payout.bankName || country}</b><small>Wigolink</small></span></span>
+      <span className="payout-bank-status" title={t('payments.payout.manual.ready')} aria-label={t('payments.payout.manual.ready')}><Icon name="shieldCheck" size={16} /></span>
     </div>
     <div className="payout-bank-chip" aria-hidden="true"><span /><span /></div>
     <p className="payout-bank-number" aria-label={payoutDescription(payout)}>•••• •••• •••• {last4}</p>

@@ -106,6 +106,8 @@ test('enregistrer la banque libere la connexion avant de reprendre les versement
 
   assert.equal(result.status, 201);
   assert.equal(result.body.payout.accountLast4, '1234');
+  assert.equal(result.body.payout.bankName, 'CIH');
+  assert.equal('accountIdentifier' in result.body.payout, false);
   assert.equal(connectionActive, false);
 });
 

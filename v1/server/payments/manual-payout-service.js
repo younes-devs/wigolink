@@ -19,6 +19,7 @@ export function createManualPayoutService({
     const unavailable = availability();
     if (unavailable) return unavailable;
     const account = await activeAccount(getPool(), user.id);
+    const accountDetails = account ? cipher.decrypt(account.details_ciphertext) : null;
     const requests = await getPool().query(
       `select operation_id, amount_cents, currency, status, requested_at, processed_at
          from public.manual_payout_requests
@@ -29,7 +30,7 @@ export function createManualPayoutService({
     );
     return success({
       mode: 'manual',
-      payout: publicAccount(account),
+      payout: publicAccount(account, accountDetails),
       requests: requests.rows.map(publicRequest),
     });
   }
@@ -81,7 +82,7 @@ export function createManualPayoutService({
     const queuedRequests = await resumeAwaitingPayouts(pool, user.id, queueAfterDelivery);
     return success({
       mode: 'manual',
-      payout: publicAccount(savedAccount),
+      payout: publicAccount(savedAccount, validated.value),
       queuedRequests,
     }, 201);
   }
@@ -317,19 +318,21 @@ function validateAccount(body, allowedCountries) {
   return { value: { country, holderName, bankName, accountIdentifier, bic, phone } };
 }
 
-function publicAccount(row) {
+function publicAccount(row, details = null) {
   return row ? {
     configured: true,
     ready: row.status === 'verified',
     country: row.country,
     status: row.status,
     accountLast4: row.account_last4,
+    bankName: String(details?.bankName || '').trim() || null,
   } : {
     configured: false,
     ready: false,
     country: null,
     status: 'not_configured',
     accountLast4: null,
+    bankName: null,
   };
 }
 
