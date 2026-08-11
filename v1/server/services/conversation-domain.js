@@ -11,6 +11,7 @@ const SYSTEM_EVENT_TEXT = {
   pickup_confirmed: 'Colis remis au voyageur.',
   delivery_confirmed: 'Livraison confirmee.',
   traveler_rejected: 'Operation refusee par le voyageur.',
+  traveler_cancelled: 'Operation annulee par le voyageur.',
   sender_cancelled: 'Operation annulee.',
   dispute_opened: 'Litige ouvert.',
   evidence_added: 'Element ajoute au litige.',
@@ -309,11 +310,13 @@ export function createConversationDomain({
 
   function findOrCreateConversation({ participantIds, tripId = null, operationId = null }) {
     const ids = [...new Set(participantIds)].sort();
-    let conversation = db.conversations.find((item) =>
-      item.participantIds.slice().sort().join('|') === ids.join('|')
-      && (item.tripId || null) === (tripId || null)
-      && (item.operationId || null) === (operationId || null)
-    );
+    let conversation = operationId
+      ? db.conversations.find((item) => item.operationId === operationId)
+      : db.conversations.find((item) =>
+        item.participantIds.slice().sort().join('|') === ids.join('|')
+        && (item.tripId || null) === (tripId || null)
+        && !item.operationId
+      );
     if (!conversation) {
       conversation = {
         id: newId('conv'),

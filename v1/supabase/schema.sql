@@ -287,6 +287,9 @@ create table if not exists public.wigolink_conversations (
 );
 create index if not exists wigolink_conversations_last_message_idx on public.wigolink_conversations ((data->>'lastMessageAt'));
 create index if not exists wigolink_conversations_operation_idx on public.wigolink_conversations ((data->>'operationId'));
+create unique index if not exists wigolink_conversations_operation_unique_idx
+  on public.wigolink_conversations ((data->>'operationId'))
+  where nullif(data->>'operationId', '') is not null;
 create index if not exists wigolink_conversations_participants_idx on public.wigolink_conversations using gin ((data->'participantIds'));
 
 create table if not exists public.wigolink_conversation_members (

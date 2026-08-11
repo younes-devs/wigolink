@@ -349,11 +349,35 @@ export function createRelationalOperationWriter({
   }
 
   async function cancel(context) {
-    return cancelMutation(context, {
-      role: 'sender',
-      allowed: ['attente_confirmation', 'paiement_requis'],
-      event: 'sender_cancelled',
-      notificationKey: 'offer.withdrawn',
+    return mutate(context, {
+      authorize: (tx, user) => [tx.senderId, tx.travelerId].includes(user.id)
+        ? null
+        : forbidden("Annulation reservee aux membres de l'operation"),
+      validate: (tx) => ['attente_confirmation', 'paiement_requis'].includes(tx.operationStatus)
+        ? (['creating', 'checkout_open'].includes(tx.paymentStatus)
+          ? invalid('Un paiement Stripe est en cours. Revenez apres son expiration.')
+          : null)
+        : invalid('Cette operation ne peut plus etre annulee'),
+      apply(tx, user, body) {
+        const travelerCancels = tx.travelerId === user.id;
+        tx.status = 'cancelled';
+        tx.operationStatus = 'termine';
+        tx.paymentStatus = 'cancelled';
+        transitionEscrow(tx.escrow, 'refunded');
+        addEvent(tx, travelerCancels ? 'traveler_cancelled' : 'sender_cancelled', user.id, {
+          reason: String(body?.reason || '').trim().slice(0, 300),
+        }, now());
+        return {
+          notification: {
+            users: [travelerCancels ? tx.senderId : tx.travelerId],
+            payload: travelerCancels
+              ? { key: 'offer.refused' }
+              : { key: 'offer.withdrawn', params: { name: user.name } },
+            type: 'transactions',
+            section: 'suivi',
+          },
+        };
+      },
     });
   }
 
@@ -366,16 +390,12 @@ export function createRelationalOperationWriter({
     return mutate(context, {
       authorize: (tx, user) => tx[`${role}Id`] === user.id
         ? null
-        : forbidden(role === 'traveler'
-          ? 'Refus reserve au voyageur'
-          : "Annulation reservee a l'expediteur"),
+        : forbidden("Annulation reservee aux membres de l'operation"),
       validate: (tx) => allowed.includes(tx.operationStatus)
         ? (['creating', 'checkout_open'].includes(tx.paymentStatus)
           ? invalid('Un paiement Stripe est en cours. Revenez apres son expiration.')
           : null)
-        : invalid(role === 'traveler'
-          ? 'Cette operation ne peut plus etre refusee'
-          : 'Cette operation ne peut plus etre annulee'),
+        : invalid('Cette operation ne peut plus etre annulee'),
       apply(tx, user, body) {
         tx.status = 'cancelled';
         tx.operationStatus = 'termine';

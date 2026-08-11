@@ -412,29 +412,34 @@ export function createRelationalMessageWriter({
       }
 
       const participantIds = [user.id, otherId].sort();
-      const conversationKey = JSON.stringify([
-        participantIds,
-        tripId || null,
-        operationId || null,
-      ]);
+      const conversationKey = operationId
+        ? `operation:${operationId}`
+        : JSON.stringify([participantIds, tripId || null]);
       await client.query(
         'select pg_advisory_xact_lock(hashtext($1))',
         [conversationKey],
       );
-      const existing = await client.query(
-        `select id, data
-         from public.wigolink_conversations
-         where data->'participantIds' = $1::jsonb
-           and coalesce(data->>'tripId', '') = $2
-           and coalesce(data->>'operationId', '') = $3
-         limit 1
-         for update`,
-        [
-          JSON.stringify(participantIds),
-          tripId || '',
-          operationId || '',
-        ],
-      );
+      const existing = operationId
+        ? await client.query(
+          `select id, data
+           from public.wigolink_conversations
+           where data->>'operationId' = $1
+           order by created_at asc, id asc
+           limit 1
+           for update`,
+          [operationId],
+        )
+        : await client.query(
+          `select id, data
+           from public.wigolink_conversations
+           where data->'participantIds' = $1::jsonb
+             and coalesce(data->>'tripId', '') = $2
+             and coalesce(data->>'operationId', '') = ''
+           order by created_at asc, id asc
+           limit 1
+           for update`,
+          [JSON.stringify(participantIds), tripId || ''],
+        );
       const createdAt = now();
       if (existing.rows[0]) {
         conversationId = existing.rows[0].id;

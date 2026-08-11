@@ -154,6 +154,43 @@ test('transition relationnelle verrouille uniquement operation et persiste atomi
   assert.equal(client.transactions, 'begin,commit');
 });
 
+test('expediteur et voyageur peuvent annuler avant le paiement', async () => {
+  for (const actor of [
+    { id: 'u-sender', expectedEvent: 'sender_cancelled', notified: 'u-traveler' },
+    { id: 'u-traveler', expectedEvent: 'traveler_cancelled', notified: 'u-sender' },
+  ]) {
+    const notifications = [];
+    const tx = {
+      id: `tx-cancel-${actor.id}`,
+      senderId: 'u-sender',
+      travelerId: 'u-traveler',
+      recipientId: 'u-sender',
+      status: 'accepted',
+      operationStatus: 'paiement_requis',
+      paymentStatus: 'pending',
+      escrow: { state: 'pending' },
+      events: [],
+    };
+    const client = mockClient(async (sql) => {
+      if (sql.includes('wigolink_transactions') && sql.includes('for update')) {
+        return { rows: [{ data: structuredClone(tx) }] };
+      }
+      return { rows: [] };
+    });
+    const writer = writerHarness({ client, notifications });
+    const result = await writer.cancel({
+      user: { id: actor.id, name: actor.id },
+      operationId: tx.id,
+      body: { reason: 'Changement de programme' },
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.operation.status, 'cancelled');
+    assert.equal(result.body.operation.events.at(-1).type, actor.expectedEvent);
+    assert.equal(notifications[0][0][0], actor.notified);
+  }
+});
+
 test('livraison Stripe conserve les fonds puis declenche un seul versement apres commit', async () => {
   const calls = [];
   const releases = [];

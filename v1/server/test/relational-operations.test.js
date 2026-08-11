@@ -35,6 +35,7 @@ const row = {
   sender: { id: 'u-1', name: 'Younes' },
   traveler: { id: 'u-2', name: 'Karim' },
   recipient: { id: 'u-1', name: 'Younes' },
+  conversation_id: 'conv-1',
 };
 
 test('operations relationnelles : option inactive par defaut', () => {
@@ -66,6 +67,7 @@ test('operations relationnelles : liste paginee par participant sans secret', as
   assert.equal(result.operations[0].title, 'Oujda -> Bruxelles');
   assert.equal(result.operations[0].sender.name, 'Younes');
   assert.equal(result.operations[0].myRole, 'sender');
+  assert.equal(result.operations[0].conversationId, 'conv-1');
   assert.equal(result.operations[0].security.pickup.issued, true);
   assert.equal(result.operations[0].security.pickup.canEnter, false);
   assert.equal('securityCodes' in result.operations[0], false);

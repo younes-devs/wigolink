@@ -243,17 +243,24 @@ export function createTripOperationsRouter({
   router.post('/operations/:id/cancel', auth, async (req, res) => {
     const tx = db.transactions.find((t) => t.id === req.params.id);
     if (!tx || !isPartyToTx(tx, req.user.id)) return res.status(404).json({ error: 'Operation introuvable' });
-    if (tx.senderId !== req.user.id) return res.status(403).json({ error: 'Annulation reservee a l expediteur' });
+    if (![tx.senderId, tx.travelerId].includes(req.user.id)) return res.status(403).json({ error: 'Annulation reservee aux membres de l operation' });
     if (!['attente_confirmation', 'paiement_requis'].includes(tx.operationStatus))
       return res.status(400).json({ error: 'Cette operation ne peut plus etre annulee' });
+    const travelerCancels = tx.travelerId === req.user.id;
     tx.status = 'cancelled';
     tx.operationStatus = 'termine';
     tx.paymentStatus = 'cancelled';
     transitionEscrow(tx.escrow, 'refunded');
-    addEvent(tx, 'sender_cancelled', req.user.id, {
+    addEvent(tx, travelerCancels ? 'traveler_cancelled' : 'sender_cancelled', req.user.id, {
       reason: String(req.body?.reason || '').trim().slice(0, 300),
     });
-    await notify([tx.travelerId], { key: 'offer.withdrawn', params: { name: req.user.name } }, tx.id, 'transactions', 'suivi');
+    await notify(
+      [travelerCancels ? tx.senderId : tx.travelerId],
+      travelerCancels ? { key: 'offer.refused' } : { key: 'offer.withdrawn', params: { name: req.user.name } },
+      tx.id,
+      'transactions',
+      'suivi',
+    );
     save();
     res.json({ operation: operationView(tx, req.user) });
   });

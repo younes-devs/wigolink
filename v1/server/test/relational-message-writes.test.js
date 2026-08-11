@@ -446,6 +446,46 @@ test('creation relationnelle dedoublonne sous verrou sans charger l etat global'
   assert.deepEqual(stored.deletedBy, []);
 });
 
+test('creation relationnelle reutilise toujours la conversation unique de l operation', async () => {
+  const existingConversation = {
+    id: 'conv-operation',
+    participantIds: ['u-1', 'u-2'],
+    tripId: 't-1',
+    operationId: 'tx-1',
+    deletedBy: ['u-1'],
+  };
+  const harness = createActionHarness(async (sql) => {
+    if (sql.includes('select data from public.wigolink_transactions')) {
+      return {
+        rows: [{ data: { id: 'tx-1', senderId: 'u-1', travelerId: 'u-2' } }],
+        rowCount: 1,
+      };
+    }
+    if (sql.includes('select 1 from public.wigolink_users')) {
+      return { rows: [{ '?column?': 1 }], rowCount: 1 };
+    }
+    if (sql.includes("where data->>'operationId' = $1")) {
+      return { rows: [{ id: existingConversation.id, data: existingConversation }], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 1 };
+  });
+
+  const result = await harness.writer.createConversation({
+    user,
+    body: { operationId: 'tx-1' },
+    today: '2026-07-29',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.conversation.id, 'conv-operation');
+  assert.ok(harness.queries.some(({ sql, params }) => (
+    sql.includes('pg_advisory_xact_lock') && params[0] === 'operation:tx-1'
+  )));
+  assert.equal(harness.queries.some(({ sql }) => (
+    sql.includes('insert into public.wigolink_conversations')
+  )), false);
+});
+
 test('signalement relationnel conserve la preuve et la file de revue atomiquement', async () => {
   const harness = createActionHarness(async (sql) => {
     if (sql.includes('select c.data as conversation')) {

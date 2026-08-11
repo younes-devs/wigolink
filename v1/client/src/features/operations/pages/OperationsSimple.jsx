@@ -61,10 +61,14 @@ export default function OperationsSimple() {
     }
   };
 
-  const message = async (operationId) => {
-    setBusy(operationId);
+  const message = async (operation) => {
+    if (operation.conversationId) {
+      nav(`/messages/${operation.conversationId}`);
+      return;
+    }
+    setBusy(operation.id);
     try {
-      const data = await api('/conversations', { method: 'POST', body: { operationId } });
+      const data = await api('/conversations', { method: 'POST', body: { operationId: operation.id } });
       nav(`/messages/${data.conversation.id}`);
     } catch (e) {
       toast.error(e.message);
@@ -109,7 +113,7 @@ export default function OperationsSimple() {
             <div className="operation-side">
               <span className="pill pill-saffron">{t(STATUS_LABELS[operation.operationStatus] || 'messages.operation.active')}</span>
               <Link to={`/operations/${operation.id}`} className="btn btn-primary btn-sm">{t('common.open')}</Link>
-              <button className="btn btn-ghost btn-sm" onClick={() => message(operation.id)} disabled={busy === operation.id}>
+              <button className="btn btn-ghost btn-sm" onClick={() => message(operation)} disabled={busy === operation.id}>
                 {busy === operation.id ? <span className="spinner" /> : <Icon name="chat" size={15} />}
                 {t('messages.title')}
               </button>

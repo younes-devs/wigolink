@@ -132,6 +132,7 @@ function operationSelect() {
        sender.data as sender,
        traveler.data as traveler,
        recipient.data as recipient,
+       conversation.id as conversation_id,
        to_jsonb(payment) as payment_record,
        to_jsonb(manual_payout) as manual_payout_record
      from public.wigolink_transactions tx
@@ -154,6 +155,13 @@ function operationSelect() {
        on traveler.id = tx.data->>'travelerId'
      left join public.wigolink_users recipient
        on recipient.id = tx.data->>'recipientId'
+     left join lateral (
+       select c.id
+       from public.wigolink_conversations c
+       where c.data->>'operationId' = tx.id
+       order by c.created_at asc, c.id asc
+       limit 1
+     ) conversation on true
      left join public.operation_payments payment
        on payment.operation_id = tx.id
      left join public.manual_payout_accounts manual_payout
@@ -201,6 +209,7 @@ function operationView(
     dispute: row.dispute ? disputeView(row.dispute, transaction) : null,
     paymentDetails: publicPayment(row.payment_record, transaction.payment),
     payout: publicPayout(row.manual_payout_record),
+    conversationId: row.conversation_id || null,
   };
   delete view.pickupCode;
   delete view.deliveryCode;
