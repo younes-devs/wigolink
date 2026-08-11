@@ -167,6 +167,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
+import { hydrateTripProfilePhotos } from './services/profile-photo-recovery.js';
 import { createParcelMediaService } from './services/parcel-media.js';
 import { createMemberMediaUploadService } from './services/member-media-uploads.js';
 import { createRetentionService } from './services/retention.js';
@@ -550,29 +551,16 @@ app.use('/api', createRelationalReadsRouter({
   operationCodePublicState: (value) => operationCodePublicState(value),
   disputeView: (value, transaction) => disputeView(value, transaction),
   today: TODAY_ISO,
-  hydrateTripProfilePhotos: async (result) => {
-    const trips = result?.trips || (result?.body?.trip ? [result.body.trip] : []);
-    const travelers = [...new Map(
-      trips
-        .map((trip) => trip?.traveler)
-        .filter((traveler) => traveler?.id && !traveler.photoUrl)
-        .map((traveler) => [traveler.id, traveler]),
-    ).values()];
-    await Promise.all(travelers.map(async (traveler) => {
-      try {
-        const photoUrl = await profileMedia.recoverPublicUrl({ userId: traveler.id });
-        if (!photoUrl) return;
-        await authRepositories.users.updateChanged({ ...traveler, photoUrl }, traveler);
-        traveler.photoUrl = photoUrl;
-      } catch (error) {
-        observability.write('warn', 'profile_photo_recovery_failed', {
-          userId: traveler.id,
-          message: String(error?.message || 'unknown_error').slice(0, 300),
-        });
-      }
-    }));
-    return result;
-  },
+  hydrateTripProfilePhotos: (result) => hydrateTripProfilePhotos({
+    result,
+    pool: databasePool(),
+    profileMedia,
+    persistUser: authRepositories.users.updateChanged,
+    onError: (error, userId) => observability.write('warn', 'profile_photo_recovery_failed', {
+      userId,
+      message: String(error?.message || 'unknown_error').slice(0, 300),
+    }),
+  }),
 }));
 
 app.use('/api', createRelationalNavigationRouter({
