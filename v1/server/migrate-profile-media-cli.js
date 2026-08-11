@@ -29,10 +29,13 @@ try {
     [JSON.stringify(migrated.state)],
   );
   for (const user of migrated.state.users || []) {
-    if (!user?.id) continue;
+    if (!user?.id || !user.photoUrl) continue;
     await pool.query(
-      `update public.wigolink_users set data = $2::jsonb where id = $1`,
-      [user.id, JSON.stringify(user)],
+      `update public.wigolink_users
+       set data = jsonb_set(data, '{photoUrl}', to_jsonb($2::text), true),
+           updated_at = now()
+       where id = $1`,
+      [user.id, user.photoUrl],
     );
   }
   await pool.query('commit');
