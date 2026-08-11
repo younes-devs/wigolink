@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonList, SkeletonStatGrid } from '../../../Skeleton.jsx';
@@ -25,20 +26,41 @@ function fraudSignalCount(f) {
 
 export default function Admin() {
   useLang();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('home');
+  const requestedTab = searchParams.get('tab') || 'home';
+  const tab = ['home', 'review', 'kyc', 'ops', 'members', 'more', 'fraud', 'safety', 'access'].includes(requestedTab)
+    ? requestedTab
+    : 'home';
+  const requestedOpsSection = searchParams.get('section') || 'overview';
+  const opsSection = ['overview', 'payouts', 'payments'].includes(requestedOpsSection)
+    ? requestedOpsSection
+    : 'overview';
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [manualPayouts, setManualPayouts] = useState([]);
   const [manualPayoutPage, setManualPayoutPage] = useState({ hasMore: false, nextCursor: null });
   const [manualPayoutsLoaded, setManualPayoutsLoaded] = useState(false);
+  const [paymentsLoaded, setPaymentsLoaded] = useState(false);
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
   const [team, setTeam] = useState(null);
   const teamRequest = useRef(0);
   const [safety, setSafety] = useState(null);
   const toast = useToast();
+
+  const openTab = useCallback((nextTab) => {
+    const next = new URLSearchParams();
+    if (nextTab !== 'home') next.set('tab', nextTab);
+    setSearchParams(next);
+  }, [setSearchParams]);
+
+  const openOpsSection = useCallback((section) => {
+    const next = new URLSearchParams({ tab: 'ops' });
+    if (section !== 'overview') next.set('section', section);
+    setSearchParams(next);
+  }, [setSearchParams]);
 
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
@@ -50,6 +72,7 @@ export default function Admin() {
         ? { ...d.ops, latest: { ...d.ops.latest, payments: d.ops.latest.payments } }
         : d.ops);
       setOpsError('');
+      if (section === 'payments') setPaymentsLoaded(true);
       return d.ops;
     }).catch((e) => {
       setOpsError(e.message);
@@ -98,10 +121,11 @@ export default function Admin() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (tab === 'ops' && !ops) {
-      loadOps();
-    }
-  }, [tab, ops, loadOps]);
+    if (tab !== 'ops') return;
+    if (!ops) loadOps(opsSection === 'payments' ? 'payments' : 'overview');
+    else if (opsSection === 'payments' && !paymentsLoaded) loadOps('payments');
+    if (opsSection === 'payouts' && !manualPayoutsLoaded) loadManualPayouts();
+  }, [tab, ops, opsSection, paymentsLoaded, manualPayoutsLoaded, loadOps, loadManualPayouts]);
   useEffect(() => {
     if (tab === 'fraud' && !fraud) loadFraud();
   }, [tab, fraud, loadFraud]);
@@ -156,18 +180,18 @@ export default function Admin() {
       <p className="page-sub">{t('admin.subtitle')}</p>
 
       <div className="tabs admin-primary-tabs">
-        <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>{t('admin.title')}</button>
-        <button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>
+        <button className={tab === 'home' ? 'active' : ''} onClick={() => openTab('home')}>{t('admin.title')}</button>
+        <button className={tab === 'review' ? 'active' : ''} onClick={() => openTab('review')}>
           {t('admin.tab.review')} {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
-        <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>
+        <button className={tab === 'kyc' ? 'active' : ''} onClick={() => openTab('kyc')}>
           {t('admin.tab.identities')} {kycPending > 0 ? `(${kycPending})` : ''}
         </button>
-        <button className={tab === 'ops' ? 'active' : ''} onClick={() => setTab('ops')}>
+        <button className={tab === 'ops' ? 'active' : ''} onClick={() => openTab('ops')}>
           {t('admin.tab.operations')} {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
         </button>
-        <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>{t('admin.tab.members')}</button>
-        <button className={['more', 'fraud', 'safety', 'access'].includes(tab) ? 'active' : ''} onClick={() => setTab('more')}>{t('common.other')}</button>
+        <button className={tab === 'members' ? 'active' : ''} onClick={() => openTab('members')}>{t('admin.tab.members')}</button>
+        <button className={['more', 'fraud', 'safety', 'access'].includes(tab) ? 'active' : ''} onClick={() => openTab('more')}>{t('common.other')}</button>
       </div>
 
       {tab === 'home' && <>
@@ -178,13 +202,15 @@ export default function Admin() {
         <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">{t('admin.stat.flagged')}</div></div>
       </div>
 
-      <AdminHome reviewCount={reviewQueue.length} onOpen={setTab} />
+      <AdminHome reviewCount={reviewQueue.length} onOpen={openTab} />
       </>}
 
       {tab === 'ops' && <OpsPanel
         ops={ops}
         error={opsError}
-        setTab={setTab}
+        setTab={openTab}
+        section={opsSection}
+        onSectionChange={openOpsSection}
         manualPayouts={manualPayouts}
         manualPayoutPage={manualPayoutPage}
         manualPayoutsLoaded={manualPayoutsLoaded}
@@ -252,7 +278,7 @@ export default function Admin() {
       {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
       {tab === 'members' && <MembersPanel data={team} reload={loadTeam} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
-      {tab === 'more' && <AdminMore onOpen={setTab} fraudCount={fraudBadgeCount} />}
+      {tab === 'more' && <AdminMore onOpen={openTab} fraudCount={fraudBadgeCount} />}
     </div>
   );
 }

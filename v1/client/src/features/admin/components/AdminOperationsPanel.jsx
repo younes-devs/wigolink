@@ -6,10 +6,9 @@ import { opsTaskCopy } from './adminPanelUtils.js';
 
 export function OpsPanel({
   ops, error, setTab, reload, manualPayouts, manualPayoutPage, manualPayoutsLoaded,
-  loadManualPayouts, loadPayments, onManualPayout, onRefund,
+  loadManualPayouts, loadPayments, onManualPayout, onRefund, section, onSectionChange,
 }) {
   const [refundTarget, setRefundTarget] = useState(null);
-  const [section, setSection] = useState('overview');
   const [loadingSection, setLoadingSection] = useState('');
   if (error) {
     return (
@@ -27,7 +26,7 @@ export function OpsPanel({
     critical: [t('admin.ops.critical'), t('admin.ops.criticalHelp')],
   }[ops.health.status] || [t('admin.tab.operations'), t('admin.ops.currentState')];
   const openSection = async (nextSection) => {
-    setSection(nextSection);
+    onSectionChange(nextSection);
     if (nextSection === 'overview') return;
     setLoadingSection(nextSection);
     try {

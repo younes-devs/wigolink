@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonCard, SkeletonList } from '../../../Skeleton.jsx';
@@ -15,10 +16,27 @@ const KYC_FILTERS = [
 ];
 
 export function KycPanel() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
-  const [filter, setFilter] = useState('pending');
   const [q, setQ] = useState('');
-  const [selected, setSelected] = useState(null);
+  const requestedFilter = searchParams.get('status') || 'pending';
+  const filter = KYC_FILTERS.some((candidate) => candidate.id === requestedFilter)
+    ? requestedFilter
+    : 'pending';
+  const selected = searchParams.get('kyc');
+
+  const selectFilter = (status) => {
+    const next = new URLSearchParams({ tab: 'kyc' });
+    if (status !== 'pending') next.set('status', status);
+    setSearchParams(next);
+  };
+
+  const selectSubmission = (id) => {
+    const next = new URLSearchParams({ tab: 'kyc', kyc: id });
+    if (filter !== 'pending') next.set('status', filter);
+    setSearchParams(next);
+  };
 
   const load = useCallback(() => {
     const params = new URLSearchParams({ status: filter });
@@ -29,7 +47,7 @@ export function KycPanel() {
   useEffect(() => { load(); }, [load]);
 
   if (selected) {
-    return <KycDetail id={selected} onBack={() => setSelected(null)} onDecided={() => { setSelected(null); load(); }} />;
+    return <KycDetail id={selected} onBack={() => navigate(-1)} onDecided={() => { navigate(-1); load(); }} />;
   }
 
   const s = data?.stats || {};
@@ -47,7 +65,7 @@ export function KycPanel() {
 
       <div className="kyc-filters">
         {KYC_FILTERS.map((f) => (
-          <button key={f.id} className={`kyc-filter ${filter === f.id ? 'active' : ''}`} onClick={() => setFilter(f.id)}>{t(f.key)}</button>
+          <button key={f.id} className={`kyc-filter ${filter === f.id ? 'active' : ''}`} onClick={() => selectFilter(f.id)}>{t(f.key)}</button>
         ))}
       </div>
 
@@ -60,7 +78,7 @@ export function KycPanel() {
       )}
 
       {data?.submissions.map((sub) => (
-        <div className="card clickable" key={sub.id} onClick={() => setSelected(sub.id)}>
+        <div className="card clickable" key={sub.id} onClick={() => selectSubmission(sub.id)}>
           <div className="list-row">
             <div className="cat-icon"><Icon name="user" size={20} /></div>
             <div className="grow">

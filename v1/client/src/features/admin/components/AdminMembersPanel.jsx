@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonCard } from '../../../Skeleton.jsx';
@@ -9,9 +10,26 @@ import {
 import { AdminKycDocument } from './AdminKycDocument.jsx';
 
 export function MembersPanel({ data, reload }) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const selectedId = searchParams.get('member');
+  const requestedSection = searchParams.get('section') || 'overview';
+  const caseSection = ['overview', 'kyc', 'messages', 'payments', 'history', 'security'].includes(requestedSection)
+    ? requestedSection
+    : 'overview';
+
+  const selectMember = (userId) => {
+    const next = new URLSearchParams({ tab: 'members', member: userId });
+    setSearchParams(next);
+  };
+
+  const selectCaseSection = (section) => {
+    const next = new URLSearchParams({ tab: 'members', member: selectedId });
+    if (section !== 'overview') next.set('section', section);
+    setSearchParams(next);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => { void reload({ q: query }); }, 250);
@@ -20,7 +38,7 @@ export function MembersPanel({ data, reload }) {
 
   const users = data?.users || [];
   const deletedCount = users.filter((user) => user.deletedAt).length;
-  if (selectedId) return <MemberCaseFile userId={selectedId} onBack={() => setSelectedId(null)} />;
+  if (selectedId) return <MemberCaseFile userId={selectedId} section={caseSection} onSectionChange={selectCaseSection} onBack={() => navigate(-1)} />;
 
   return <section className="card admin-members-card">
     <div className="admin-members-head">
@@ -29,7 +47,7 @@ export function MembersPanel({ data, reload }) {
     </div>
     {data && deletedCount > 0 && <p className="muted" style={{ margin: '12px 0 0' }}>{t(deletedCount > 1 ? 'admin.members.deletedCount.plural' : 'admin.members.deletedCount', { count: deletedCount })}</p>}
     <div className="list-stack" style={{ marginTop: 16 }}>
-      {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => setSelectedId(user.id)}>
+      {users.map((user) => <button type="button" className="list-row admin-member-row" key={user.id} onClick={() => selectMember(user.id)}>
         <div className="cat-icon"><Icon name="user" size={20} /></div>
         <div className="admin-member-identity"><b title={user.name}>{user.name}</b><div className="muted" title={`${user.email}${user.city ? ` - ${user.city}` : ''}`}>{user.email} {user.city ? `- ${user.city}` : ''}</div></div>
         <div className="admin-member-status"><span className={`pill ${user.deletedAt ? 'pill-gray' : user.kycStatus === 'verified' ? 'pill-teal' : 'pill-gray'}`}>{user.deletedAt ? t('admin.member.deleted') : adminStatus(user.kycStatus || 'none')}</span><Icon name="arrowRight" size={17} /></div>
@@ -43,11 +61,10 @@ export function MembersPanel({ data, reload }) {
   </section>;
 }
 
-function MemberCaseFile({ userId, onBack }) {
+function MemberCaseFile({ userId, section, onSectionChange, onBack }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [zoom, setZoom] = useState(null);
-  const [section, setSection] = useState('overview');
 
   const load = useCallback((cursor = '') => {
     const params = new URLSearchParams({ limit: '50' });
@@ -78,12 +95,12 @@ function MemberCaseFile({ userId, onBack }) {
       {member.suspendedUntil && <div className="alert alert-danger mt"><Icon name="alert" size={16} /><span>{t('admin.member.suspendedUntil', { date: formatAdminDate(member.suspendedUntil) })} {member.suspensionReason || ''}</span></div>}
     </section>
     <nav className="admin-case-nav" aria-label={t('admin.members.files')}>
-      <CaseSectionButton active={section === 'overview'} icon="user" label={t('admin.member.activity')} count={(data.recordTotals?.trips ?? data.trips.length) + (data.recordTotals?.listings ?? data.listings.length)} onClick={() => setSection('overview')} />
-      <CaseSectionButton active={section === 'kyc'} icon="shieldCheck" label={t('admin.member.kycFile')} count={data.kyc.length} onClick={() => setSection('kyc')} />
-      <CaseSectionButton active={section === 'messages'} icon="chat" label={t('admin.member.conversations')} count={data.messagePage.total ?? data.messages.length} onClick={() => setSection('messages')} />
-      <CaseSectionButton active={section === 'payments'} icon="euro" label={t('admin.member.operations')} count={data.recordTotals?.transactions ?? data.transactions.length} onClick={() => setSection('payments')} />
-      <CaseSectionButton active={section === 'history'} icon="clock" label={t('admin.member.changeHistory')} count={data.auditLogs.length} onClick={() => setSection('history')} />
-      <CaseSectionButton active={section === 'security'} icon="alert" label={t('admin.member.securityHistory')} count={data.recordTotals?.disputes ?? data.disputes.length} onClick={() => setSection('security')} />
+      <CaseSectionButton active={section === 'overview'} icon="user" label={t('admin.member.activity')} count={(data.recordTotals?.trips ?? data.trips.length) + (data.recordTotals?.listings ?? data.listings.length)} onClick={() => onSectionChange('overview')} />
+      <CaseSectionButton active={section === 'kyc'} icon="shieldCheck" label={t('admin.member.kycFile')} count={data.kyc.length} onClick={() => onSectionChange('kyc')} />
+      <CaseSectionButton active={section === 'messages'} icon="chat" label={t('admin.member.conversations')} count={data.messagePage.total ?? data.messages.length} onClick={() => onSectionChange('messages')} />
+      <CaseSectionButton active={section === 'payments'} icon="euro" label={t('admin.member.operations')} count={data.recordTotals?.transactions ?? data.transactions.length} onClick={() => onSectionChange('payments')} />
+      <CaseSectionButton active={section === 'history'} icon="clock" label={t('admin.member.changeHistory')} count={data.auditLogs.length} onClick={() => onSectionChange('history')} />
+      <CaseSectionButton active={section === 'security'} icon="alert" label={t('admin.member.securityHistory')} count={data.recordTotals?.disputes ?? data.disputes.length} onClick={() => onSectionChange('security')} />
     </nav>
     <div className="admin-case-section">
       {section === 'overview' && <MemberOverview data={data} member={member} />}
