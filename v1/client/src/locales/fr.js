@@ -264,6 +264,8 @@ export default {
   'trips.request.documentHint': '3 EUR par document, quel que soit son type.',
   'trips.request.contents': 'Ce que vous voulez envoyer',
   'trips.request.photos.title': 'Photos du colis',
+  'operations.parcelPhotos.decisionTitle': 'Photos fournies par l’expéditeur',
+  'operations.parcelPhotos.decisionHelp': 'Vérifiez le colis avant d’accepter ou de refuser cette demande.',
   'trips.request.photos.help': 'Ajoutez entre 1 et 5 photos nettes montrant le colis avant sa remise.',
   'trips.request.photos.add': 'Ajouter une photo',
   'trips.request.photos.count': '{count}/5 photos ajoutées',

@@ -250,6 +250,8 @@ export default {
   "trips.request.documentHint": "3 EUR per document, whatever its type.",
   "trips.request.contents": "What you want to send",
   "trips.request.photos.title": "Parcel photos",
+  "operations.parcelPhotos.decisionTitle": "Photos provided by the sender",
+  "operations.parcelPhotos.decisionHelp": "Check the parcel before accepting or refusing this request.",
   "trips.request.photos.help": "Add 1 to 5 clear photos showing the parcel before handover.",
   "trips.request.photos.add": "Add a photo",
   "trips.request.photos.count": "{count}/5 photos added",

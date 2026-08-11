@@ -250,6 +250,8 @@ export default {
   "trips.request.documentHint": "3 EUR por documento, cualquiera que sea su tipo.",
   "trips.request.contents": "Lo que quieres enviar",
   "trips.request.photos.title": "Fotos del paquete",
+  "operations.parcelPhotos.decisionTitle": "Fotos proporcionadas por el remitente",
+  "operations.parcelPhotos.decisionHelp": "Comprueba el paquete antes de aceptar o rechazar esta solicitud.",
   "trips.request.photos.help": "Añade entre 1 y 5 fotos nítidas del paquete antes de entregarlo.",
   "trips.request.photos.add": "Añadir una foto",
   "trips.request.photos.count": "{count}/5 fotos añadidas",

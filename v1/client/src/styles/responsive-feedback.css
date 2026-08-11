@@ -298,6 +298,9 @@ textarea:focus-visible {
 .parcel-photo-review img { flex: 0 0 82px; width: 82px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--hairline); }
 .operation-parcel-photos { display: grid; gap: 10px; }
 .operation-parcel-photos h2 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 15px; }
+.operation-parcel-photos-head { display: grid; gap: 3px; }
+.operation-parcel-photos-head p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
+.operation-parcel-photos-decision { padding: 14px; border: 1px solid rgba(10,108,245,.3); border-radius: 12px; background: color-mix(in srgb, var(--accent-tint) 42%, var(--surface)); }
 .operation-parcel-photo-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .operation-parcel-photo-grid a { aspect-ratio: 1; overflow: hidden; border: 1px solid var(--hairline); border-radius: 9px; background: var(--surface-soft); }
 .operation-parcel-photo-grid img { width: 100%; height: 100%; display: block; object-fit: cover; transition: transform .16s ease; }

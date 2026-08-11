@@ -265,7 +265,7 @@ export function createMemberMediaUploadService({
 
 async function verifyUploads(uploads, media) {
   return Promise.all((uploads || []).map(async (upload) => {
-    const stored = await media?.info(upload.storagePath);
+    const stored = await storedFileInfo(media, upload.storagePath);
     if (
       !stored
       || !MIMES.has(stored.mime || upload.mime)
@@ -277,6 +277,15 @@ async function verifyUploads(uploads, media) {
     }
     return { ...upload, size: stored.size, mime: stored.mime };
   }));
+}
+
+async function storedFileInfo(media, storagePath) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const stored = await media?.info(storagePath);
+    if (stored?.size > 0) return stored;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 180 * (attempt + 1)));
+  }
+  return null;
 }
 
 function validateDescriptor(value = {}) {

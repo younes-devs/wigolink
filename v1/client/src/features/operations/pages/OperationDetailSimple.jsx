@@ -70,6 +70,7 @@ export default function OperationDetailSimple() {
     if (data?.checkoutUrl) window.location.assign(data.checkoutUrl);
   };
   const accept = () => run('accept', () => api(`/operations/${id}/confirm`, { method: 'POST' }), 'operations.toast.accepted');
+  const reject = () => run('reject', () => api(`/operations/${id}/reject`, { method: 'POST', body: { reason: issue || t('operations.reason.rejected') } }), 'operations.toast.rejected');
   const cancel = () => run('cancel', () => api(`/operations/${id}/cancel`, { method: 'POST', body: { reason: issue || t('operations.reason.cancelled') } }), 'operations.toast.cancelled');
   const openDispute = () => run('dispute', () => api(`/operations/${id}/dispute`, { method: 'POST', body: { reason: issue || t('operations.reason.dispute') } }), 'operations.toast.dispute');
 
@@ -140,6 +141,10 @@ export default function OperationDetailSimple() {
           <b>{operation.price} {operation.currency || 'EUR'}</b>
         </div>
 
+        {operation.operationStatus === 'attente_confirmation' && operation.myRole === 'traveler' && (
+          <ParcelPhotoGallery operation={operation} decision />
+        )}
+
         <OperationAction
           operation={viewedOperation}
           busy={busy}
@@ -148,6 +153,7 @@ export default function OperationDetailSimple() {
           onCodeChange={(value) => setCode(value.replace(/\D/g, '').slice(0, 8))}
           onPay={pay}
           onAccept={accept}
+          onReject={reject}
           onCancel={() => setConfirmCancel(true)}
           onReveal={revealCode}
           onConfirm={confirmCode}
@@ -158,17 +164,8 @@ export default function OperationDetailSimple() {
 
         {operation.descriptionParcel && <div className="operation-description"><span>{t('trips.request.contents')}</span><p>{operation.descriptionParcel}</p></div>}
 
-        {operation.shipmentType === 'parcel' && operation.parcelPhotos?.length > 0 && (
-          <section className="operation-parcel-photos">
-            <h2><Icon name="camera" size={17} />{t('trips.request.photos.title')}</h2>
-            <div className="operation-parcel-photo-grid">
-              {operation.parcelPhotos.map((photo, index) => (
-                <a href={photo.url} target="_blank" rel="noreferrer" key={photo.id} aria-label={t('trips.request.photos.enlarge', { number: index + 1 })}>
-                  <img src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} loading="lazy" decoding="async" />
-                </a>
-              ))}
-            </div>
-          </section>
+        {!(operation.operationStatus === 'attente_confirmation' && operation.myRole === 'traveler') && (
+          <ParcelPhotoGallery operation={operation} />
         )}
 
         {!['litige', 'termine'].includes(operation.operationStatus) && (
@@ -233,7 +230,26 @@ function OperationJourney({ operation }) {
   );
 }
 
-function OperationAction({ operation, busy, code, revealedCode, onCodeChange, onPay, onAccept, onCancel, onReveal, onConfirm, onSetupPayout }) {
+function ParcelPhotoGallery({ operation, decision = false }) {
+  if (operation.shipmentType !== 'parcel' || !operation.parcelPhotos?.length) return null;
+  return (
+    <section className={`operation-parcel-photos${decision ? ' operation-parcel-photos-decision' : ''}`}>
+      <div className="operation-parcel-photos-head">
+        <h2><Icon name="camera" size={17} />{t(decision ? 'operations.parcelPhotos.decisionTitle' : 'trips.request.photos.title')}</h2>
+        {decision && <p>{t('operations.parcelPhotos.decisionHelp')}</p>}
+      </div>
+      <div className="operation-parcel-photo-grid">
+        {operation.parcelPhotos.map((photo, index) => (
+          <a href={photo.url} target="_blank" rel="noreferrer" key={photo.id} aria-label={t('trips.request.photos.enlarge', { number: index + 1 })}>
+            <img src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} loading="lazy" decoding="async" />
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OperationAction({ operation, busy, code, revealedCode, onCodeChange, onPay, onAccept, onReject, onCancel, onReveal, onConfirm, onSetupPayout }) {
   const status = operation.operationStatus;
   const role = operation.myRole;
   const stage = status === 'paye' ? 'pickup' : status === 'en_transport' ? 'delivery' : null;
@@ -242,7 +258,7 @@ function OperationAction({ operation, busy, code, revealedCode, onCodeChange, on
 
   if (status === 'termine') return <section className="operation-action-card operation-complete"><Icon name="check" size={22} /><div><b>{t('operations.security.delivery.done')}</b><p>{role === 'traveler' ? t('operations.payout.withinSevenDays') : t('operations.complete')}</p></div></section>;
   if (status === 'litige') return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{t('operations.status.dispute')}</b><p>{t('operations.issue.placeholder')}</p></div></section>;
-  if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t(role === 'traveler' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2><p>{t(role === 'traveler' ? 'operations.awaiting.traveler' : 'operations.next.travelerConfirmation')}</p></div><div className="operation-action-buttons">{role === 'traveler' && <button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button>}<button className="btn btn-danger-ghost" onClick={onCancel} disabled={!!busy}><Icon name="x" size={16} />{t('operations.cancel.action')}</button></div></section>;
+  if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t(role === 'traveler' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2><p>{t(role === 'traveler' ? 'operations.awaiting.traveler' : 'operations.next.travelerConfirmation')}</p></div><div className="operation-action-buttons">{role === 'traveler' && <><button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button><button className="btn btn-danger-ghost" onClick={onReject} disabled={!!busy}>{busy === 'reject' ? <span className="spinner" /> : <Icon name="x" size={16} />}{t('operations.reject')}</button></>}{role !== 'traveler' && <button className="btn btn-danger-ghost" onClick={onCancel} disabled={!!busy}><Icon name="x" size={16} />{t('operations.cancel.action')}</button>}</div></section>;
   if (status === 'paiement_requis') {
     const payoutReady = operation.payout?.ready;
     if (role === 'traveler' && !payoutReady) return <section className="operation-action-card"><div><span>{t('operations.guide.action')}</span><h2>{t('payments.payout.title')}</h2><p>{t('payments.payout.required')}</p></div><div className="operation-action-buttons"><button className="btn btn-primary" onClick={onSetupPayout}><Icon name="euro" size={17} />{t('payments.payout.configure')}</button><button className="btn btn-danger-ghost" onClick={onCancel} disabled={!!busy}><Icon name="x" size={16} />{t('operations.cancel.action')}</button></div></section>;

@@ -6,6 +6,7 @@ export function createParcelPhotosRouter({
   db,
   parcelMedia,
   memberMediaUploads,
+  logger = console,
 }) {
   const router = Router();
 
@@ -17,6 +18,10 @@ export function createParcelPhotosRouter({
       });
       return res.json(value);
     } catch (error) {
+      logger.error('parcel_photo_reservation_failed', {
+        userId: req.user?.id,
+        message: error?.message || 'unknown_error',
+      });
       const invalid = /photo|image|lourde|invalide/i.test(error?.message || '');
       return res.status(invalid ? 400 : 503).json({
         error: invalid
