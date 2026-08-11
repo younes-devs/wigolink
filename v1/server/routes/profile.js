@@ -9,6 +9,7 @@ export function createProfileRouter({
   auth,
   auditChange,
   save,
+  persistUser = null,
   publicUser,
   verifyPassword,
   hashPassword,
@@ -49,17 +50,25 @@ export function createProfileRouter({
 
     const before = { ...req.user };
     Object.assign(req.user, validation.value);
-    await auditChange({
-      actorId: req.user.id,
-      action: 'profile.update',
-      targetType: 'user',
-      targetId: req.user.id,
-      subjectUserId: req.user.id,
-      before,
-      after: req.user,
-      fields: ['name', 'city', 'phone'],
-    });
-    save();
+    try {
+      await auditChange({
+        actorId: req.user.id,
+        action: 'profile.update',
+        targetType: 'user',
+        targetId: req.user.id,
+        subjectUserId: req.user.id,
+        before,
+        after: req.user,
+        fields: ['name', 'city', 'phone'],
+      });
+      if (persistUser) await persistUser(req.user, before);
+      else await save();
+    } catch {
+      Object.assign(req.user, before);
+      return res.status(503).json({
+        error: 'Le profil n a pas pu etre enregistre',
+      });
+    }
     return res.json({ user: publicUser(req.user) });
   });
 
@@ -112,7 +121,14 @@ export function createProfileRouter({
         after: { hasPhoto: !!req.user.photoUrl },
         fields: ['hasPhoto'],
       });
-      await save();
+      if (persistUser) {
+        await persistUser(req.user, {
+          ...req.user,
+          photoUrl: previousPhotoUrl,
+        });
+      } else {
+        await save();
+      }
     } catch {
       req.user.photoUrl = previousPhotoUrl;
       if (claimedUpload) {
@@ -138,20 +154,35 @@ export function createProfileRouter({
       return res.status(validation.status).json({ error: validation.error });
     }
 
+    const previousPasswordHash = req.user.passwordHash;
     req.user.passwordHash = hashPassword(validation.value.password);
-    await clearUserSessions(req.user.id);
-    await auditChange({
-      actorId: req.user.id,
-      action: 'profile.password.update',
-      targetType: 'user',
-      targetId: req.user.id,
-      subjectUserId: req.user.id,
-      before: {},
-      after: {},
-      fields: [],
-      meta: { recordEmpty: true },
-    });
-    save();
+    try {
+      await clearUserSessions(req.user.id);
+      await auditChange({
+        actorId: req.user.id,
+        action: 'profile.password.update',
+        targetType: 'user',
+        targetId: req.user.id,
+        subjectUserId: req.user.id,
+        before: {},
+        after: {},
+        fields: [],
+        meta: { recordEmpty: true },
+      });
+      if (persistUser) {
+        await persistUser(req.user, {
+          ...req.user,
+          passwordHash: previousPasswordHash,
+        });
+      } else {
+        await save();
+      }
+    } catch {
+      req.user.passwordHash = previousPasswordHash;
+      return res.status(503).json({
+        error: 'Le mot de passe n a pas pu etre enregistre',
+      });
+    }
     return res.json({ ok: true, mustRelogin: true });
   });
 

@@ -849,6 +849,9 @@ app.use('/api/profile', createProfileRouter({
   auth,
   auditChange,
   save,
+  persistUser: relationalAuthEnabled()
+    ? authRepositories.users.updateChanged
+    : null,
   publicUser,
   verifyPassword,
   hashPassword,
@@ -1149,6 +1152,19 @@ app.use('/api', createMaintenanceRouter({
   migrateMessageMedia: migrateInlineMessageMedia,
   migrateKycMedia: migrateInlineKycMedia,
   migrateProfileMedia: migrateInlineProfileMedia,
+  syncProfileUsers: relationalAuthEnabled()
+    ? async (users) => {
+        for (const user of users) {
+          if (!user?.id || !user.photoUrl) continue;
+          const current = await authRepositories.users.findById(user.id);
+          if (!current || current.photoUrl === user.photoUrl) continue;
+          await authRepositories.users.updateChanged({
+            ...current,
+            photoUrl: user.photoUrl,
+          }, current);
+        }
+      }
+    : null,
   capacity,
   audit,
   save,

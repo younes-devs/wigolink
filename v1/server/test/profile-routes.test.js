@@ -16,6 +16,7 @@ async function requestProfile({
   auth,
   auditChange,
   save,
+  persistUser,
   publicUser,
   verifyPassword,
   hashPassword,
@@ -33,6 +34,7 @@ async function requestProfile({
     }),
     auditChange,
     save,
+    persistUser,
     publicUser,
     verifyPassword,
     hashPassword,
@@ -132,6 +134,35 @@ test('profile route applique, audite, sauvegarde puis projette la modification',
   });
 });
 
+test('profile route persiste directement la modification en mode relationnel', async () => {
+  const user = {
+    id: 'u-1',
+    name: 'Ancien nom',
+    city: 'Bruxelles',
+    phone: '',
+  };
+  let persisted;
+  const response = await requestProfile({
+    user,
+    body: { name: 'Nouveau nom', city: 'Oujda', phone: '0600000000' },
+    async auditChange() {},
+    save() {
+      assert.fail('la sauvegarde globale ne doit pas etre utilisee');
+    },
+    async persistUser(candidate, before) {
+      persisted = { candidate: { ...candidate }, before };
+    },
+    publicUser(candidate) {
+      return { id: candidate.id, name: candidate.name, city: candidate.city };
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(persisted.candidate.name, 'Nouveau nom');
+  assert.equal(persisted.candidate.city, 'Oujda');
+  assert.equal(persisted.before.name, 'Ancien nom');
+});
+
 test('profile photo route finalise un upload direct puis retire l ancien objet', async () => {
   const user = { id: 'u-1', photoUrl: 'https://cdn.test/old.jpg' };
   const events = [];
@@ -159,6 +190,38 @@ test('profile photo route finalise un upload direct puis retire l ancien objet',
   assert.deepEqual(events, [
     'claim', 'audit', 'save', 'complete', 'remove:https://cdn.test/old.jpg',
   ]);
+});
+
+test('profile photo route persiste l URL publique en mode relationnel', async () => {
+  const user = { id: 'u-1', photoUrl: null };
+  let persisted;
+  const response = await requestProfile({
+    path: '/photo',
+    body: { uploadId: 'media-1' },
+    user,
+    memberMediaUploads: {
+      async claimProfile() {
+        return { uploadId: 'media-1', url: 'https://cdn.test/new.jpg' };
+      },
+      async complete() {},
+    },
+    profileMedia: { async removePublicUrl() {} },
+    async auditChange() {},
+    save() {
+      assert.fail('la sauvegarde globale ne doit pas etre utilisee');
+    },
+    async persistUser(candidate, before) {
+      persisted = { candidate: { ...candidate }, before };
+    },
+    publicUser(candidate) {
+      return { id: candidate.id, photoUrl: candidate.photoUrl };
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.user.photoUrl, 'https://cdn.test/new.jpg');
+  assert.equal(persisted.candidate.photoUrl, 'https://cdn.test/new.jpg');
+  assert.equal(persisted.before.photoUrl, null);
 });
 
 test('profile photo route reserve une URL signee sans recevoir le fichier', async () => {

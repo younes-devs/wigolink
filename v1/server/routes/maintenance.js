@@ -10,6 +10,7 @@ export function createMaintenanceRouter({
   migrateMessageMedia,
   migrateKycMedia = null,
   migrateProfileMedia = null,
+  syncProfileUsers = null,
   capacity = null,
   audit,
   save,
@@ -103,6 +104,9 @@ export function createMaintenanceRouter({
       action: 'maintenance.profile_media',
       targetId: 'profile-media',
       remaining: () => countInlineProfilePhotos(db),
+      afterMigrate: syncProfileUsers
+        ? () => syncProfileUsers(db.users || [])
+        : null,
     });
   });
 
@@ -114,12 +118,14 @@ export function createMaintenanceRouter({
     action,
     targetId,
     remaining,
+    afterMigrate = null,
   }) {
     if (!media?.enabled || !migrate) {
       return res.status(503).json({ error: 'Stockage des images indisponible' });
     }
     try {
       const result = await migrate({ state: db, kycMedia: media, profileMedia: media });
+      if (afterMigrate) await afterMigrate(result);
       await audit(req.user.id, action, 'system', targetId, {
         migrated: result.migrated,
         skipped: result.skipped,

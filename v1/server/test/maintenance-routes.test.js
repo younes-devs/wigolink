@@ -85,6 +85,22 @@ test('maintenance migre separement KYC et avatars', async () => {
   assert.deepEqual(profile.body, { ok: true, migrated: 1, remaining: 0 });
 });
 
+test('maintenance avatars resynchronise les photos relationnelles existantes', async () => {
+  const synced = [];
+  const response = await requestMaintenance('/admin/maintenance/profile-media', {
+    method: 'POST',
+    overrides: {
+      async syncProfileUsers(users) {
+        synced.push(...users.map((user) => ({ ...user })));
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(synced.length, 1);
+  assert.equal(synced[0].photoUrl, 'https://cdn.test/u-1.png');
+});
+
 test('maintenance media migre, audite puis sauvegarde', async () => {
   const response = await requestMaintenance('/admin/maintenance/message-media', { method: 'POST' });
   assert.equal(response.status, 200);
