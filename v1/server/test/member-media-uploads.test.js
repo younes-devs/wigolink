@@ -5,9 +5,11 @@ import { createMemberMediaUploadService } from '../services/member-media-uploads
 function harness() {
   const records = new Map();
   const removed = [];
+  const queries = [];
   const pool = {
     async query(sql, params = []) {
       const normalized = String(sql).replace(/\s+/g, ' ').trim();
+      queries.push({ sql: normalized, params });
       if (normalized.startsWith('insert into public.wigolink_runtime_records')) {
         records.set(params[0], JSON.parse(params[1]));
         return { rowCount: 1, rows: [] };
@@ -66,7 +68,7 @@ function harness() {
     parcelMedia: media('parcel'),
     now: () => 1_000,
   });
-  return { service, records, removed };
+  return { service, records, removed, queries };
 }
 
 test('uploads membre reserve, verifie et consomme un lot KYC une seule fois', async () => {
@@ -97,7 +99,7 @@ test('uploads membre reserve, verifie et consomme un lot KYC une seule fois', as
 });
 
 test('uploads colis impose 1 a 5 images et programme la purge apres cloture', async () => {
-  const { service, records } = harness();
+  const { service, records, queries } = harness();
   await assert.rejects(() => service.reserveParcel({ userId: 'u-1', photos: [] }), /1 et 5/);
   const reserved = await service.reserveParcel({
     userId: 'u-1',
@@ -111,6 +113,7 @@ test('uploads colis impose 1 a 5 images et programme la purge apres cloture', as
   assert.match(claimed.photos[0].id, /^parcel-/);
   await service.finalizeParcel({ uploadId: reserved.uploadId, operationId: 'tx-1' });
   assert.equal(records.get(reserved.uploadId).operationId, 'tx-1');
+  assert.ok(queries.some(({ sql }) => sql.includes("jsonb_build_object('operationId', $2::text)")));
   await service.scheduleParcelPurge({ operationId: 'tx-1' });
   assert.equal(records.get(reserved.uploadId).purgeAt, 1_296_001_000);
 });

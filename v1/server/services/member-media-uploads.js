@@ -152,7 +152,7 @@ export function createMemberMediaUploadService({
     const result = await (client || pool()).query(
       `update public.wigolink_runtime_records
        set kind = 'parcel_media',
-           data = data || jsonb_build_object('operationId', $2),
+           data = data || jsonb_build_object('operationId', $2::text),
            expires_at = null,
            updated_at = now()
        where kind = 'member_media_upload' and id = $1 and data->>'mediaType' = 'parcel'`,
