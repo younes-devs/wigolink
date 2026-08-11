@@ -592,7 +592,14 @@
 .ops-payout-empty { display: flex; align-items: center; gap: 8px; padding: 13px; border: 1px solid var(--hairline); border-radius: 8px; color: var(--green); font-size: 13px; font-weight: 700; }
 .ops-payout-list { display: grid; gap: 12px; }
 .ops-payout-row { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
-.ops-payout-summary, .ops-payout-context, .ops-payout-confirm { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.ops-payout-summary, .ops-payout-context { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.ops-payout-confirm {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) max-content;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+}
 .ops-payout-summary > div { min-width: 0; }
 .ops-payout-summary b, .ops-payout-summary span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ops-payout-summary span, .ops-payout-context { color: var(--ink-soft); font-size: 12px; }
@@ -602,8 +609,16 @@
 .ops-bank-details dt { color: var(--ink-soft); font-size: 10.5px; font-weight: 750; text-transform: uppercase; }
 .ops-bank-details dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 650; }
 .ops-bank-number { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0; }
-.ops-payout-confirm .field { flex: 1 1 auto; margin: 0; }
-.ops-payout-confirm .btn { flex: 0 0 auto; align-self: end; }
+.ops-payout-confirm .field { min-width: 0; margin: 0; }
+.ops-payout-confirm .field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.ops-payout-confirm .btn { width: auto; min-height: 47px; align-self: end; }
 .admin-refund-modal { max-width: 460px; }
 .ops-webhooks { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 10px; }
 .ops-webhooks summary { cursor: pointer; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
@@ -621,8 +636,8 @@
   .ops-payment-row { grid-template-columns: 1fr; gap: 7px; }
   .ops-payment-meta { justify-content: flex-start; }
   .ops-bank-details { grid-template-columns: 1fr; }
-  .ops-payout-summary, .ops-payout-context, .ops-payout-confirm { align-items: stretch; }
-  .ops-payout-confirm { display: grid; }
+  .ops-payout-summary, .ops-payout-context { align-items: stretch; }
+  .ops-payout-confirm { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
   .ops-payout-confirm .btn { width: 100%; justify-content: center; }
 }
 
