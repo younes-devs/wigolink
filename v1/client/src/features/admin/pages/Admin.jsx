@@ -27,7 +27,7 @@ export default function Admin() {
   useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('ops');
+  const [tab, setTab] = useState('home');
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [manualPayouts, setManualPayouts] = useState([]);
@@ -73,8 +73,12 @@ export default function Admin() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { loadOps(); }, [loadOps]);
-  useEffect(() => { loadManualPayouts(); }, [loadManualPayouts]);
+  useEffect(() => {
+    if (tab === 'ops' && !ops) {
+      loadOps();
+      loadManualPayouts();
+    }
+  }, [tab, ops, loadOps, loadManualPayouts]);
   useEffect(() => {
     if (tab === 'fraud' && !fraud) loadFraud();
   }, [tab, fraud, loadFraud]);
@@ -128,32 +132,31 @@ export default function Admin() {
       <h1 className="page-title">{t('admin.title')}</h1>
       <p className="page-sub">{t('admin.subtitle')}</p>
 
-      <div className="tabs">
-        <button className={tab === 'ops' ? 'active' : ''} onClick={() => setTab('ops')}>
-          {t('admin.tab.operations')} {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
-        </button>
+      <div className="tabs admin-primary-tabs">
+        <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>{t('admin.title')}</button>
         <button className={tab === 'review' ? 'active' : ''} onClick={() => setTab('review')}>
           {t('admin.tab.review')} {reviewQueue.length > 0 ? `(${reviewQueue.length})` : ''}
         </button>
         <button className={tab === 'kyc' ? 'active' : ''} onClick={() => setTab('kyc')}>
           {t('admin.tab.identities')} {kycPending > 0 ? `(${kycPending})` : ''}
         </button>
-        <button className={tab === 'fraud' ? 'active' : ''} onClick={() => setTab('fraud')}>
-          {t('admin.tab.fraud')} {fraudBadgeCount > 0 ? `(${fraudBadgeCount})` : ''}
-        </button>
-        <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}>
-          {t('admin.tab.safety')} {(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0) > 0 ? `(${(safety?.riskyUsers?.length || 0) + (safety?.appeals?.filter((appeal) => appeal.status === 'open').length || 0)})` : ''}
+        <button className={tab === 'ops' ? 'active' : ''} onClick={() => setTab('ops')}>
+          {t('admin.tab.operations')} {ops?.health?.status === 'critical' ? '(!)' : ops?.health?.reviewOpen ? `(${ops.health.reviewOpen})` : ''}
         </button>
         <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>{t('admin.tab.members')}</button>
-        <button className={tab === 'access' ? 'active' : ''} onClick={() => setTab('access')}>{t('admin.tab.access')}</button>
+        <button className={['more', 'fraud', 'safety', 'access'].includes(tab) ? 'active' : ''} onClick={() => setTab('more')}>{t('common.other')}</button>
       </div>
 
+      {tab === 'home' && <>
       <div className="stat-grid mb">
         <div className="stat"><div className="num">{stats.users}</div><div className="lbl">{t('admin.stat.members')}</div></div>
         <div className="stat"><div className="num">{stats.released}/{stats.transactions}</div><div className="lbl">{t('admin.stat.delivered')}</div></div>
         <div className="stat"><div className="num">{stats.escrowHeld.toFixed(0)} €</div><div className="lbl">{t('admin.stat.escrow')}</div></div>
         <div className="stat"><div className="num">{stats.flaggedMessages}</div><div className="lbl">{t('admin.stat.flagged')}</div></div>
       </div>
+
+      <AdminHome reviewCount={reviewQueue.length} onOpen={setTab} />
+      </>}
 
       {tab === 'ops' && <OpsPanel ops={ops} error={opsError} setTab={setTab} manualPayouts={manualPayouts} onManualPayout={confirmManualPayout} onRefund={refundPayment} reload={() => { load(); loadOps(); loadManualPayouts(); loadFraud(); }} />}
       {tab === 'review' && (
@@ -209,6 +212,39 @@ export default function Admin() {
       {tab === 'safety' && <SafetyPanel data={safety} reload={loadSafety} />}
       {tab === 'members' && <MembersPanel data={team} reload={loadTeam} />}
       {tab === 'access' && <AccessPanel data={team} reload={loadTeam} />}
+      {tab === 'more' && <AdminMore onOpen={setTab} fraudCount={fraudBadgeCount} />}
     </div>
   );
+}
+
+function AdminHome({ reviewCount, onOpen }) {
+  return <section className="card admin-action-panel">
+    <h2>{t('admin.ops.currentState')}</h2>
+    <div className="admin-action-grid">
+      <AdminAction icon="alert" label={t('admin.tab.review')} help={t('admin.task.disputes.body')} count={reviewCount} onClick={() => onOpen('review')} />
+      <AdminAction icon="shieldCheck" label={t('admin.tab.identities')} help={t('admin.task.kyc.body')} onClick={() => onOpen('kyc')} />
+      <AdminAction icon="euro" label={t('admin.tab.operations')} help={t('admin.ops.escrowHeld')} onClick={() => onOpen('ops')} />
+      <AdminAction icon="user" label={t('admin.tab.members')} help={t('admin.members.filesHelp')} onClick={() => onOpen('members')} />
+    </div>
+  </section>;
+}
+
+function AdminMore({ onOpen, fraudCount }) {
+  return <section className="card admin-action-panel">
+    <h2>{t('common.other')}</h2>
+    <div className="admin-action-grid">
+      <AdminAction icon="alert" label={t('admin.tab.fraud')} help={t('admin.task.fraud.body')} count={fraudCount} onClick={() => onOpen('fraud')} />
+      <AdminAction icon="shieldCheck" label={t('admin.tab.safety')} help={t('admin.safety.signalNotice')} onClick={() => onOpen('safety')} />
+      <AdminAction icon="lock" label={t('admin.tab.access')} help={t('admin.access.grantMessage', { name: t('admin.role.member') })} onClick={() => onOpen('access')} />
+    </div>
+  </section>;
+}
+
+function AdminAction({ icon, label, help, count, onClick }) {
+  return <button type="button" className="admin-action" onClick={onClick}>
+    <span><Icon name={icon} size={21} /></span>
+    <div><b>{label}</b><small>{help}</small></div>
+    {Number(count) > 0 && <em>{count}</em>}
+    <Icon name="arrowRight" size={18} />
+  </button>;
 }
