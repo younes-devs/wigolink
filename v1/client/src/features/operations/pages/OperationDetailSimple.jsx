@@ -256,7 +256,7 @@ function PrivateParcelPhoto({ photo, index }) {
     let objectUrl = '';
     setSource('');
     setFailed(false);
-    apiBlob(photo.url)
+    apiBlob(String(photo.url || '').replace(/^\/api(?=\/)/, ''))
       .then((blob) => {
         if (!active) return;
         objectUrl = URL.createObjectURL(blob);

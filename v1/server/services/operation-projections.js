@@ -33,7 +33,7 @@ export function createOperationProjections({
         id: photo.id,
         mime: photo.mime,
         size: Number(photo.size || 0),
-        url: `/api/operations/${encodeURIComponent(tx.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
+        url: `/operations/${encodeURIComponent(tx.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
       }))
       : [];
 

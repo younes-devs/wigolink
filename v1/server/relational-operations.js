@@ -239,7 +239,7 @@ function publicParcelPhotos(transaction) {
     id: photo.id,
     mime: photo.mime,
     size: Number(photo.size || 0),
-    url: `/api/operations/${encodeURIComponent(transaction.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
+    url: `/operations/${encodeURIComponent(transaction.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
   }));
 }
 
