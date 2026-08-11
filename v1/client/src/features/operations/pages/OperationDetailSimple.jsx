@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api } from '../../../api';
+import { api, apiBlob } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
 import { ConfirmDialog, Stars, Stepper } from '../../../components.jsx';
 import { Avatar, Icon } from '../../../Icons.jsx';
@@ -240,12 +240,44 @@ function ParcelPhotoGallery({ operation, decision = false }) {
       </div>
       <div className="operation-parcel-photo-grid">
         {operation.parcelPhotos.map((photo, index) => (
-          <a href={photo.url} target="_blank" rel="noreferrer" key={photo.id} aria-label={t('trips.request.photos.enlarge', { number: index + 1 })}>
-            <img src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} loading="lazy" decoding="async" />
-          </a>
+          <PrivateParcelPhoto photo={photo} index={index} key={photo.id} />
         ))}
       </div>
     </section>
+  );
+}
+
+function PrivateParcelPhoto({ photo, index }) {
+  const [source, setSource] = useState('');
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    setSource('');
+    setFailed(false);
+    apiBlob(photo.url)
+      .then((blob) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSource(objectUrl);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [photo.url]);
+
+  const label = t('trips.request.photos.alt', { number: index + 1 });
+  if (failed) return <div className="operation-parcel-photo-state"><Icon name="alert" size={19} /><span>{t('trips.request.photos.unavailable')}</span></div>;
+  if (!source) return <div className="operation-parcel-photo-state" aria-label={t('common.loading')}><span className="spinner" /></div>;
+  return (
+    <a href={source} target="_blank" rel="noreferrer" aria-label={t('trips.request.photos.enlarge', { number: index + 1 })}>
+      <img src={source} alt={label} loading="lazy" decoding="async" />
+    </a>
   );
 }
 

@@ -266,6 +266,7 @@ export default {
   'trips.request.photos.title': 'صور الطرد',
   'operations.parcelPhotos.decisionTitle': 'الصور المقدمة من المرسل',
   'operations.parcelPhotos.decisionHelp': 'تحقق من الطرد قبل قبول هذا الطلب أو رفضه.',
+  'trips.request.photos.unavailable': 'الصورة غير متاحة',
   'trips.request.photos.help': 'أضف من صورة واحدة إلى 5 صور واضحة للطرد قبل تسليمه.',
   'trips.request.photos.add': 'إضافة صورة',
   'trips.request.photos.count': 'تمت إضافة {count}/5 صور',

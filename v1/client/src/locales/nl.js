@@ -261,6 +261,7 @@ export default {
   'trips.request.photos.title': 'Foto’s van het pakket',
   'operations.parcelPhotos.decisionTitle': 'Foto’s van de afzender',
   'operations.parcelPhotos.decisionHelp': 'Controleer het pakket voordat u deze aanvraag aanvaardt of weigert.',
+  'trips.request.photos.unavailable': 'Foto niet beschikbaar',
   'trips.request.photos.help': 'Voeg 1 tot 5 duidelijke foto’s toe van het pakket vóór de overdracht.',
   'trips.request.photos.add': 'Foto toevoegen',
   'trips.request.photos.count': '{count}/5 foto’s toegevoegd',

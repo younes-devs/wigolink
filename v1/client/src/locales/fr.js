@@ -266,6 +266,7 @@ export default {
   'trips.request.photos.title': 'Photos du colis',
   'operations.parcelPhotos.decisionTitle': 'Photos fournies par l’expéditeur',
   'operations.parcelPhotos.decisionHelp': 'Vérifiez le colis avant d’accepter ou de refuser cette demande.',
+  'trips.request.photos.unavailable': 'Photo indisponible',
   'trips.request.photos.help': 'Ajoutez entre 1 et 5 photos nettes montrant le colis avant sa remise.',
   'trips.request.photos.add': 'Ajouter une photo',
   'trips.request.photos.count': '{count}/5 photos ajoutées',
