@@ -53,7 +53,7 @@ test('security headers génère un request-id et une CSP locale par défaut', ()
   assert.equal(result.headers['X-Request-Id'], 'req-generated');
   assert.equal(
     result.headers['Content-Security-Policy'],
-    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://*.stripe.com; style-src 'self' 'unsafe-inline' 'sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk='; script-src 'self' 'unsafe-inline' https://accounts.google.com https://connect-js.stripe.com https://js.stripe.com; frame-src https://accounts.google.com https://connect-js.stripe.com https://js.stripe.com; connect-src 'self' https://accounts.google.com https://*.stripe.com; font-src 'self' data:",
+    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; font-src 'self' data:",
   );
 });
 
@@ -65,15 +65,13 @@ test('security headers autorise les origines Supabase HTTP et realtime', () => {
 
   assert.match(
     result.headers['Content-Security-Policy'],
-    /connect-src 'self' https:\/\/accounts\.google\.com https:\/\/\*\.stripe\.com https:\/\/project\.supabase\.co wss:\/\/project\.supabase\.co;/,
+    /connect-src 'self' https:\/\/accounts\.google\.com https:\/\/project\.supabase\.co wss:\/\/project\.supabase\.co;/,
   );
 });
 
-test('security headers autorise uniquement les ressources Stripe Connect requises', () => {
+test('security headers ne charge aucune ressource Stripe dans Wigolink', () => {
   const csp = runMiddleware().headers['Content-Security-Policy'];
 
-  assert.match(csp, /script-src[^;]+https:\/\/connect-js\.stripe\.com https:\/\/js\.stripe\.com;/);
-  assert.match(csp, /frame-src[^;]+https:\/\/connect-js\.stripe\.com https:\/\/js\.stripe\.com;/);
-  assert.match(csp, /img-src[^;]+https:\/\/\*\.stripe\.com;/);
+  assert.equal(csp.includes('stripe.com'), false);
   assert.equal(csp.includes('unsafe-eval'), false);
 });

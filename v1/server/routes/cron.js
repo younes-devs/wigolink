@@ -5,7 +5,6 @@ export function createCronRouter({
   secret,
   retention,
   capacity = null,
-  payments = null,
   logger = console,
 }) {
   const router = Router();
@@ -16,7 +15,6 @@ export function createCronRouter({
     }
     try {
       const result = await retention.run();
-      const paymentsResult = payments ? await payments.run() : null;
       const capacityResult = capacity ? await capacity.snapshot() : null;
       if (capacityResult?.warnings?.length) {
         logger.warn('cron_capacity_warning', {
@@ -28,7 +26,6 @@ export function createCronRouter({
       return res.json({
         ok: true,
         retention: result,
-        ...(paymentsResult ? { payments: paymentsResult } : {}),
         ...(capacityResult ? { capacity: capacityResult } : {}),
       });
     } catch (error) {

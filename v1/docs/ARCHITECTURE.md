@@ -12,6 +12,7 @@ Navigateur
   -> Express dans une fonction Vercel
   -> PostgreSQL et Realtime Supabase
   -> Resend pour les emails transactionnels
+  -> Stripe Checkout pour l'encaissement
 ```
 
 Le frontend et l'API partagent le domaine de production. Les secrets Supabase
@@ -52,7 +53,7 @@ Les modules metier vivent dans `client/src/features`:
 
 - `auth`: connexion, inscription et verification d'email;
 - `trips`: recherche, publication, favoris et demandes;
-- `operations`: suivi, paiement simule, codes de remise et litiges;
+- `operations`: suivi, paiement Stripe, codes de remise et litiges;
 - `messaging`: boite de reception, conversation, medias et temps reel;
 - `profile`: profil public, profil personnel et parametres;
 - `kyc`: capture guidee et envoi du dossier;
@@ -123,9 +124,15 @@ attente_confirmation
   -> termine
 ```
 
-Une operation peut aussi devenir `litige`. Le paiement est actuellement simule:
-les etats d'escrow modelisent le futur branchement au prestataire, sans mouvement
-d'argent reel.
+Une operation peut aussi devenir `litige`. Stripe Checkout encaisse l'expediteur
+sur une page hebergee par Stripe. Wigolink ne charge ni formulaire de carte ni
+Stripe Connect dans son interface. Une fois la livraison confirmee, une demande
+de versement manuel est ajoutee a la file d'administration; l'equipe effectue le
+virement vers le compte bancaire chiffre du voyageur et enregistre sa reference.
+
+Le champ historique `escrow` reste present dans certaines operations afin de
+relire les anciens dossiers. Il sert uniquement de machine a etats interne et ne
+signifie pas que Wigolink fournit un service de sequestre reglemente.
 
 La remise repose sur deux codes temporaires:
 
@@ -145,6 +152,7 @@ pieces jointes explicitement ajoutees au dossier.
 - les tables relationnelles indexees pour les lectures frequentes;
 - les sessions, messages, notifications et journaux d'audit;
 - les dossiers et decisions KYC;
+- les paiements Stripe, comptes de versement chiffres et demandes de virement;
 - les medias de messagerie dans un bucket Supabase prive.
 
 `server/data.json` est reserve au developpement local et n'est pas suivi par Git.

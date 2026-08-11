@@ -26,7 +26,6 @@ test('coordonnees de versement chiffrees restent opaques et authentifiees', () =
 
 test('mode manuel reste explicite et borne aux pays du pilote', () => {
   const config = manualPayoutConfiguration({
-    PAYOUT_MODE: 'manual',
     MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
     MANUAL_PAYOUT_COUNTRIES: 'MA, BE,FR',
   });
@@ -89,7 +88,6 @@ test('enregistrer la banque libere la connexion avant de reprendre les versement
   const service = createManualPayoutService({
     getPool: () => pool,
     config: manualPayoutConfiguration({
-      PAYOUT_MODE: 'manual',
       MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
       MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
     }),
@@ -171,7 +169,6 @@ test('confirmer le virement admin libere la connexion avant l audit', async () =
 
 function manualConfig() {
   return manualPayoutConfiguration({
-    PAYOUT_MODE: 'manual',
     MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
     MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
   });

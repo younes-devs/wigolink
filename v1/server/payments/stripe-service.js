@@ -24,142 +24,6 @@ export function createStripePaymentService({
     return null;
   }
 
-  async function connectedStatus({ user, refresh = false }) {
-    const unavailable = availability();
-    if (unavailable) return unavailable;
-    const pool = getPool();
-    const current = await connectedAccountByUser(pool, user.id);
-    if (!current) return success({ mode: 'stripe_connect', payout: emptyPayoutStatus() });
-    if (!refresh && isFresh(current.last_synced_at, now())) {
-      return success({ mode: 'stripe_connect', payout: publicPayoutStatus(current) });
-    }
-    try {
-      const account = await stripe.accounts.retrieve(current.stripe_account_id);
-      const saved = await saveConnectedAccount(pool, user.id, account);
-      return success({ mode: 'stripe_connect', payout: publicPayoutStatus(saved) });
-    } catch (error) {
-      logStripeError(logger, 'stripe_connected_account_sync_failed', error, {
-        userId: user.id,
-      });
-      return failure(502, stripeMessage(error, 'Impossible de verifier le compte de versement.'));
-    }
-  }
-
-  async function createConnectedAccount({ user, country }) {
-    const unavailable = availability();
-    if (unavailable) return unavailable;
-    const normalizedCountry = String(country || '').trim().toUpperCase();
-    if (!/^[A-Z]{2}$/.test(normalizedCountry)) {
-      return failure(400, 'Choisissez votre pays de residence.');
-    }
-    if (!config.allowedConnectedCountries.has(normalizedCountry)) {
-      return failure(422, 'Les versements Stripe ne sont pas encore disponibles dans ce pays.', {
-        countryUnavailable: true,
-      });
-    }
-    const pool = getPool();
-    const existing = await connectedAccountByUser(pool, user.id);
-    if (existing) return connectedStatus({ user, refresh: true });
-    try {
-      const account = await stripe.accounts.create({
-        type: 'express',
-        country: normalizedCountry,
-        email: user.email,
-        business_type: 'individual',
-        capabilities: {
-          transfers: { requested: true },
-        },
-        business_profile: {
-          product_description: 'Transport de colis et documents entre membres Wigolink',
-          url: config.appUrl,
-        },
-        metadata: {
-          wigolink_user_id: user.id,
-        },
-      }, {
-        idempotencyKey: `connect-account:${user.id}`,
-      });
-      const saved = await saveConnectedAccount(pool, user.id, account);
-      await bestEffort(() => audit(
-        user.id,
-        'stripe_connected_account_created',
-        'user',
-        user.id,
-        { country: normalizedCountry },
-      ), logger);
-      return success({ payout: publicPayoutStatus(saved) }, 201);
-    } catch (error) {
-      logStripeError(logger, 'stripe_connected_account_create_failed', error, {
-        userId: user.id,
-        country: normalizedCountry,
-      });
-      return failure(502, stripeMessage(error, 'Impossible de creer le compte de versement.'));
-    }
-  }
-
-  async function createOnboardingLink({ user, country, returnPath, lang = 'fr' }) {
-    const unavailable = availability();
-    if (unavailable) return unavailable;
-    let current = await connectedAccountByUser(getPool(), user.id);
-    if (!current) {
-      const created = await createConnectedAccount({ user, country });
-      if (created.status >= 400) return created;
-      current = await connectedAccountByUser(getPool(), user.id);
-    }
-    const safeLang = supportedLang(lang);
-    const safeReturnPath = localReturnPath(returnPath, safeLang);
-    try {
-      const link = await stripe.accountLinks.create({
-        account: current.stripe_account_id,
-        type: 'account_onboarding',
-        collect: 'eventually_due',
-        refresh_url: `${config.appUrl}/${safeLang}/versements?stripe=refresh&retour=${encodeURIComponent(safeReturnPath)}`,
-        return_url: `${config.appUrl}/${safeLang}/versements?stripe=return&retour=${encodeURIComponent(safeReturnPath)}`,
-      });
-      return success({ url: link.url, expiresAt: link.expires_at });
-    } catch (error) {
-      logStripeError(logger, 'stripe_onboarding_link_failed', error, { userId: user.id });
-      return failure(502, stripeMessage(error, "Impossible d'ouvrir la configuration des versements."));
-    }
-  }
-
-  async function createEmbeddedOnboardingSession({ user, country }) {
-    const unavailable = availability();
-    if (unavailable) return unavailable;
-    if (!config.publishableKey) {
-      return failure(503, 'Configuration des versements temporairement indisponible.');
-    }
-    let current = await connectedAccountByUser(getPool(), user.id);
-    if (!current) {
-      const created = await createConnectedAccount({ user, country });
-      if (created.status >= 400) return created;
-      current = await connectedAccountByUser(getPool(), user.id);
-    }
-    try {
-      const session = await stripe.accountSessions.create({
-        account: current.stripe_account_id,
-        components: {
-          account_onboarding: {
-            enabled: true,
-            features: {
-              external_account_collection: true,
-            },
-          },
-        },
-      });
-      return success({
-        clientSecret: session.client_secret,
-        publishableKey: config.publishableKey,
-        expiresAt: session.expires_at,
-      });
-    } catch (error) {
-      logStripeError(logger, 'stripe_embedded_onboarding_session_failed', error, {
-        userId: user.id,
-      });
-      return failure(502, stripeMessage(error, "Impossible d'ouvrir la configuration bancaire."));
-    }
-  }
-
   async function createCheckout({ user, operationId, lang = 'fr' }) {
     const unavailable = availability();
     if (unavailable) return unavailable;
@@ -168,11 +32,10 @@ export function createStripePaymentService({
       user,
       operationId,
       now: now(),
-      payoutMode: config.payoutMode,
     });
     if (prepared.error) return prepared.error;
 
-    const { operation, sender, connectedAccount, quote, attempt, existingSessionId } = prepared;
+    const { operation, sender, quote, attempt, existingSessionId } = prepared;
     if (existingSessionId) {
       try {
         const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
@@ -208,10 +71,9 @@ export function createStripePaymentService({
           },
         }],
         payment_intent_data: {
-          transfer_group: operation.id,
-          metadata: paymentMetadata(operation, quote, connectedAccount.stripe_account_id),
+          metadata: paymentMetadata(operation, quote),
         },
-        metadata: paymentMetadata(operation, quote, connectedAccount.stripe_account_id),
+        metadata: paymentMetadata(operation, quote),
         success_url: `${config.appUrl}/${safeLang}/operations/${encodeURIComponent(operation.id)}?paiement=succes`,
         cancel_url: `${config.appUrl}/${safeLang}/operations/${encodeURIComponent(operation.id)}?paiement=annule`,
         expires_at: Math.floor(now() / 1000) + 30 * 60,
@@ -273,43 +135,8 @@ export function createStripePaymentService({
   }
 
   async function releaseAfterDelivery(operationId) {
-    if (config.payoutMode === 'manual') {
-      return manualPayouts?.queueAfterDelivery(operationId)
-        || failure(503, 'Versement manuel temporairement indisponible.');
-    }
-    const unavailable = availability();
-    if (unavailable) return unavailable;
-    const prepared = await prepareTransfer(getPool(), operationId, now());
-    if (prepared.error) return prepared.error;
-    if (prepared.alreadyTransferred) return success({ transfer: publicPayment(prepared.payment) });
-    try {
-      const transfer = await stripe.transfers.create({
-        amount: prepared.payment.traveler_transfer_cents,
-        currency: prepared.payment.currency.toLowerCase(),
-        destination: prepared.connected.stripe_account_id,
-        source_transaction: prepared.payment.stripe_charge_id,
-        transfer_group: operationId,
-        metadata: {
-          wigolink_operation_id: operationId,
-          wigolink_fee_policy: prepared.payment.fee_policy_version,
-        },
-      }, {
-        idempotencyKey: `transfer:${operationId}:${prepared.payment.fee_policy_version}`,
-      });
-      const payment = await completeTransfer(getPool(), operationId, transfer.id, now());
-      await bestEffort(() => audit(
-        'stripe',
-        'stripe_transfer_created',
-        'transaction',
-        operationId,
-        { travelerTransferCents: payment.traveler_transfer_cents },
-      ), logger);
-      return success({ transfer: publicPayment(payment) });
-    } catch (error) {
-      await failTransfer(getPool(), operationId, error);
-      logStripeError(logger, 'stripe_transfer_create_failed', error, { operationId });
-      return failure(502, stripeMessage(error, 'Le versement sera relance automatiquement.'));
-    }
+    return manualPayouts?.queueAfterDelivery(operationId)
+      || failure(503, 'Versement manuel temporairement indisponible.');
   }
 
   async function refundOperation({ admin, operationId, reason }) {
@@ -322,16 +149,6 @@ export function createStripePaymentService({
     const prepared = await prepareRefund(getPool(), operationId, now());
     if (prepared.error) return prepared.error;
     try {
-      let transferReversed = false;
-      if (prepared.payment.stripe_transfer_id
-        && prepared.payment.transfer_status !== 'reversed') {
-        await stripe.transfers.createReversal(
-          prepared.payment.stripe_transfer_id,
-          { metadata: { wigolink_operation_id: operationId } },
-          { idempotencyKey: `transfer-reversal:${operationId}` },
-        );
-        transferReversed = true;
-      }
       const refund = await stripe.refunds.create({
         payment_intent: prepared.payment.stripe_payment_intent_id,
         reason: 'requested_by_customer',
@@ -348,7 +165,6 @@ export function createStripePaymentService({
         operationId,
         refund.id,
         now(),
-        transferReversed,
       );
       await audit(admin.id, 'stripe_refund_created', 'transaction', operationId, {
         reason: normalizedReason,
@@ -362,74 +178,28 @@ export function createStripePaymentService({
     }
   }
 
-  async function retryPendingTransfers({ limit = 20 } = {}) {
-    if (config.payoutMode === 'manual') {
-      return { inspected: 0, transferred: 0, failed: 0, manual: true };
-    }
-    const unavailable = availability();
-    if (unavailable) {
-      return { inspected: 0, transferred: 0, failed: 0, disabled: true };
-    }
-    const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
-    const result = await getPool().query(
-      `select operation_id
-         from public.operation_payments
-        where payment_status in ('paid', 'transfer_pending')
-          and (
-            transfer_status = 'failed'
-            or (transfer_status = 'creating' and updated_at < now() - interval '5 minutes')
-          )
-        order by updated_at asc
-        limit $1`,
-      [safeLimit],
-    );
-    let transferred = 0;
-    let failed = 0;
-    for (const row of result.rows) {
-      const release = await releaseAfterDelivery(row.operation_id);
-      if (release.status < 400) transferred += 1;
-      else failed += 1;
-    }
-    return { inspected: result.rows.length, transferred, failed };
-  }
-
   return {
     availability,
-    connectedStatus,
-    createConnectedAccount,
-    createOnboardingLink,
-    createEmbeddedOnboardingSession,
     createCheckout,
     handleWebhook,
     releaseAfterDelivery,
     refundOperation,
-    retryPendingTransfers,
   };
 }
 
-async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'stripe_connect' }) {
+async function prepareCheckout({ pool, user, operationId, now }) {
   const client = await pool.connect();
   try {
     await client.query('begin');
-    const payoutFields = payoutMode === 'manual'
-      ? `null::text as stripe_account_id, null::text as transfers_capability_status,
-         false as payouts_enabled, manual.id as manual_payout_account_id,
-         manual.status as manual_payout_account_status`
-      : `connected.stripe_account_id, connected.transfers_capability_status,
-         connected.payouts_enabled, null::text as manual_payout_account_id,
-         null::text as manual_payout_account_status`;
-    const payoutJoin = payoutMode === 'manual'
-      ? `left join public.manual_payout_accounts manual
-           on manual.user_id = tx.data->>'travelerId' and manual.active`
-      : `left join public.stripe_connected_accounts connected
-           on connected.user_id = tx.data->>'travelerId'`;
     const result = await client.query(
       `select tx.data as operation, sender.data as sender, traveler.data as traveler,
-              ${payoutFields}
+              manual.id as manual_payout_account_id,
+              manual.status as manual_payout_account_status
          from public.wigolink_transactions tx
          join public.wigolink_users sender on sender.id = tx.data->>'senderId'
          join public.wigolink_users traveler on traveler.id = tx.data->>'travelerId'
-         ${payoutJoin}
+         left join public.manual_payout_accounts manual
+           on manual.user_id = tx.data->>'travelerId' and manual.active
         where tx.id = $1
         for update of tx`,
       [operationId],
@@ -444,10 +214,7 @@ async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'str
     }
     const manualReady = row.manual_payout_account_id
       && row.manual_payout_account_status === 'verified';
-    const stripeReady = row.stripe_account_id
-      && row.transfers_capability_status === 'active'
-      && row.payouts_enabled;
-    if (payoutMode === 'manual' ? !manualReady : !stripeReady) {
+    if (!manualReady) {
       return rollback(client, failure(409, 'Le voyageur doit configurer ses versements avant le paiement.', {
         payoutSetupRequired: true,
       }));
@@ -466,17 +233,13 @@ async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'str
       return rollback(client, failure(409, 'La page de paiement est en cours de preparation.'));
     }
     const attempt = Number(existing?.checkout_attempt || 0) + 1;
-    const manualPayment = payoutMode === 'manual';
-    const payoutColumn = manualPayment ? ', payout_method' : '';
-    const payoutValue = manualPayment ? ',$12' : '';
-    const payoutUpdate = manualPayment ? ', payout_method = excluded.payout_method' : '';
     await client.query(
       `insert into public.operation_payments (
          operation_id, currency, traveler_price_cents, sender_fee_cents,
          traveler_fee_cents, charged_amount_cents, traveler_transfer_cents,
          platform_gross_cents, payment_status, transfer_status, checkout_attempt,
-         fee_policy_version, pricing_snapshot_json${payoutColumn}, created_at, updated_at
-       ) values ($1,$2,$3,$4,$5,$6,$7,$8,'creating','not_ready',$9,$10,$11::jsonb${payoutValue},now(),now())
+         fee_policy_version, pricing_snapshot_json, payout_method, created_at, updated_at
+       ) values ($1,$2,$3,$4,$5,$6,$7,$8,'creating','not_ready',$9,$10,$11::jsonb,'manual',now(),now())
        on conflict (operation_id) do update set
          payment_status = 'creating', checkout_attempt = excluded.checkout_attempt,
          currency = excluded.currency, traveler_price_cents = excluded.traveler_price_cents,
@@ -484,7 +247,8 @@ async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'str
          traveler_fee_cents = excluded.traveler_fee_cents,
          charged_amount_cents = excluded.charged_amount_cents,
          traveler_transfer_cents = excluded.traveler_transfer_cents,
-         platform_gross_cents = excluded.platform_gross_cents${payoutUpdate},
+         platform_gross_cents = excluded.platform_gross_cents,
+         payout_method = 'manual',
          fee_policy_version = excluded.fee_policy_version,
          pricing_snapshot_json = excluded.pricing_snapshot_json, updated_at = now()`,
       [
@@ -499,7 +263,6 @@ async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'str
         attempt,
         quote.feePolicyVersion,
         JSON.stringify(paymentSnapshot(quote)),
-        ...(manualPayment ? ['manual'] : []),
       ],
     );
     row.operation.paymentStatus = 'creating';
@@ -514,7 +277,6 @@ async function prepareCheckout({ pool, user, operationId, now, payoutMode = 'str
       operation: row.operation,
       sender: row.sender,
       traveler: row.traveler,
-      connectedAccount: row,
       quote,
       attempt,
       existingSessionId: existing?.payment_status === 'checkout_open'
@@ -562,103 +324,6 @@ async function markCheckoutFailed(pool, operationId, error) {
   );
 }
 
-async function prepareTransfer(pool, operationId, now) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const result = await client.query(
-      `select payment.*, tx.data as operation, connected.*
-         from public.operation_payments payment
-         join public.wigolink_transactions tx on tx.id = payment.operation_id
-         join public.stripe_connected_accounts connected
-           on connected.user_id = tx.data->>'travelerId'
-        where payment.operation_id = $1
-        for update of payment, tx`,
-      [operationId],
-    );
-    const row = result.rows[0];
-    if (!row) return rollback(client, { error: failure(404, 'Paiement introuvable.') });
-    if (row.stripe_transfer_id || row.transfer_status === 'transferred') {
-      await client.query('commit');
-      return { alreadyTransferred: true, payment: row };
-    }
-    if (!PAID_STATUSES.has(row.payment_status) || !row.stripe_charge_id) {
-      return rollback(client, { error: failure(409, "Le paiement n'est pas pret pour le versement.") });
-    }
-    if (!['termine', 'livraison_confirmee'].includes(row.operation.operationStatus)
-      || row.operation.status === 'disputed') {
-      return rollback(client, { error: failure(409, "La livraison n'est pas confirmee.") });
-    }
-    await client.query(
-      `update public.operation_payments
-          set transfer_status = 'creating', payment_status = 'transfer_pending', updated_at = now()
-        where operation_id = $1`,
-      [operationId],
-    );
-    row.operation.paymentStatus = 'transfer_pending';
-    appendOperationEvent(row.operation, 'stripe_transfer_preparing', 'stripe', {}, now);
-    await updateOperation(client, row.operation);
-    await client.query('commit');
-    return { payment: row, connected: row };
-  } catch (error) {
-    await client.query('rollback').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-async function completeTransfer(pool, operationId, transferId, now) {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const paymentResult = await client.query(
-      `update public.operation_payments set
-         stripe_transfer_id = $2, transfer_status = 'transferred',
-         payment_status = 'transferred', transferred_at = to_timestamp($3 / 1000.0),
-         updated_at = now()
-       where operation_id = $1 returning *`,
-      [operationId, transferId, now],
-    );
-    const operationResult = await client.query(
-      `select data from public.wigolink_transactions where id = $1 for update`,
-      [operationId],
-    );
-    const operation = operationResult.rows[0]?.data;
-    if (operation) {
-      operation.status = 'released';
-      operation.paymentStatus = 'transferred';
-      operation.escrow = {
-        ...operation.escrow,
-        provider: 'stripe',
-        state: 'released',
-        releasedAt: now,
-      };
-      appendOperationEvent(operation, 'stripe_transfer_created', 'stripe', {
-        travelerTransferCents: paymentResult.rows[0]?.traveler_transfer_cents,
-      }, now);
-      await updateOperation(client, operation);
-    }
-    await client.query('commit');
-    return paymentResult.rows[0];
-  } catch (error) {
-    await client.query('rollback').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-async function failTransfer(pool, operationId, error) {
-  await pool.query(
-    `update public.operation_payments
-        set transfer_status = 'failed', payment_status = 'paid', updated_at = now(),
-            pricing_snapshot_json = pricing_snapshot_json || jsonb_build_object('transferError', $2::text)
-      where operation_id = $1`,
-    [operationId, safeError(error)],
-  );
-}
-
 async function prepareRefund(pool, operationId, now) {
   const client = await pool.connect();
   try {
@@ -699,17 +364,16 @@ async function prepareRefund(pool, operationId, now) {
   }
 }
 
-async function completeRefund(pool, operationId, refundId, now, transferReversed = false) {
+async function completeRefund(pool, operationId, refundId, now) {
   const client = await pool.connect();
   try {
     await client.query('begin');
     const paymentResult = await client.query(
       `update public.operation_payments set
-         stripe_refund_id = $2, payment_status = 'refunded', transfer_status = case
-           when $4::boolean then 'reversed' else transfer_status end,
+         stripe_refund_id = $2, payment_status = 'refunded',
          refunded_at = to_timestamp($3 / 1000.0), updated_at = now()
        where operation_id = $1 returning *`,
-      [operationId, refundId, now, transferReversed],
+      [operationId, refundId, now],
     );
     const operationResult = await client.query(
       `select data from public.wigolink_transactions where id = $1 for update`,
@@ -797,11 +461,6 @@ async function enrichWebhookEvent(stripe, event) {
 
 async function applyWebhookEvent({ pool, event, enriched, now }) {
   const object = event.data.object;
-  if (event.type === 'account.updated') {
-    const userId = object.metadata?.wigolink_user_id;
-    if (userId) await saveConnectedAccount(pool, userId, object);
-    return;
-  }
   if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)) {
     if (object.payment_status !== 'paid') return;
     await markPaymentPaid(pool, object, enriched, now);
@@ -826,13 +485,6 @@ async function applyWebhookEvent({ pool, event, enriched, now }) {
   if (event.type === 'charge.dispute.closed' && object.status === 'won') {
     await updatePaymentByCharge(pool, object.charge, 'paid');
     return;
-  }
-  if (event.type === 'transfer.failed') {
-    await updateTransferById(pool, object.id, 'failed');
-    return;
-  }
-  if (event.type === 'transfer.reversed') {
-    await updateTransferById(pool, object.id, 'reversed');
   }
 }
 
@@ -984,14 +636,6 @@ async function updatePaymentByCharge(pool, chargeId, status) {
   );
 }
 
-async function updateTransferById(pool, transferId, status) {
-  await pool.query(
-    `update public.operation_payments set transfer_status = $2, updated_at = now()
-      where stripe_transfer_id = $1`,
-    [transferId, status],
-  );
-}
-
 async function paymentByCharge(pool, chargeId) {
   if (!chargeId) return null;
   const result = await pool.query(
@@ -999,57 +643,6 @@ async function paymentByCharge(pool, chargeId) {
     [chargeId],
   );
   return result.rows[0] || null;
-}
-
-async function connectedAccountByUser(pool, userId) {
-  const result = await pool.query(
-    `select * from public.stripe_connected_accounts where user_id = $1`,
-    [userId],
-  );
-  return result.rows[0] || null;
-}
-
-async function saveConnectedAccount(pool, userId, account) {
-  const requirementsDue = new Set([
-    ...(account.requirements?.currently_due || []),
-    ...(account.requirements?.past_due || []),
-  ]);
-  const transferStatus = account.capabilities?.transfers || 'inactive';
-  const onboardingStatus = transferStatus === 'active' && account.payouts_enabled
-    ? 'ready'
-    : requirementsDue.size > 0
-      ? 'action_required'
-      : account.details_submitted
-        ? 'pending_review'
-        : 'pending';
-  const result = await pool.query(
-    `insert into public.stripe_connected_accounts (
-       user_id, stripe_account_id, country, onboarding_status,
-       transfers_capability_status, requirements_due_count, payouts_enabled,
-       details_submitted, last_synced_at, created_at, updated_at
-     ) values ($1,$2,$3,$4,$5,$6,$7,$8,now(),now(),now())
-     on conflict (user_id) do update set
-       stripe_account_id = excluded.stripe_account_id,
-       country = excluded.country,
-       onboarding_status = excluded.onboarding_status,
-       transfers_capability_status = excluded.transfers_capability_status,
-       requirements_due_count = excluded.requirements_due_count,
-       payouts_enabled = excluded.payouts_enabled,
-       details_submitted = excluded.details_submitted,
-       last_synced_at = now(), updated_at = now()
-     returning *`,
-    [
-      userId,
-      account.id,
-      account.country || 'BE',
-      onboardingStatus,
-      transferStatus,
-      requirementsDue.size,
-      !!account.payouts_enabled,
-      !!account.details_submitted,
-    ],
-  );
-  return result.rows[0];
 }
 
 function quoteFromOperation(operation) {
@@ -1061,30 +654,6 @@ function quoteFromOperation(operation) {
     });
   }
   return quotePayment({ travelerPrice: operation.price, currency: operation.currency || 'EUR' });
-}
-
-function publicPayoutStatus(row) {
-  return {
-    configured: true,
-    country: row.country,
-    status: row.onboarding_status,
-    transfersActive: row.transfers_capability_status === 'active',
-    payoutsEnabled: !!row.payouts_enabled,
-    requirementsDue: Number(row.requirements_due_count || 0),
-    ready: row.transfers_capability_status === 'active' && !!row.payouts_enabled,
-  };
-}
-
-function emptyPayoutStatus() {
-  return {
-    configured: false,
-    country: null,
-    status: 'not_configured',
-    transfersActive: false,
-    payoutsEnabled: false,
-    requirementsDue: 0,
-    ready: false,
-  };
 }
 
 function publicPayment(row) {
@@ -1103,8 +672,8 @@ function publicPayment(row) {
   };
 }
 
-function paymentMetadata(operation, quote, connectedAccountId) {
-  const metadata = {
+function paymentMetadata(operation, quote) {
+  return {
     wigolink_operation_id: operation.id,
     wigolink_sender_id: operation.senderId,
     wigolink_traveler_id: operation.travelerId,
@@ -1112,10 +681,8 @@ function paymentMetadata(operation, quote, connectedAccountId) {
     wigolink_traveler_price_cents: String(quote.travelerPriceCents),
     wigolink_sender_fee_cents: String(quote.senderFeeCents),
     wigolink_traveler_fee_cents: String(quote.travelerFeeCents),
-    wigolink_transfer_cents: String(quote.travelerTransferCents),
+    wigolink_traveler_payout_cents: String(quote.travelerTransferCents),
   };
-  if (connectedAccountId) metadata.wigolink_connected_account_id = connectedAccountId;
-  return metadata;
 }
 
 function checkoutDescription(operation, quote) {
@@ -1123,19 +690,8 @@ function checkoutDescription(operation, quote) {
   return `${type} - prix ${centsToEuros(quote.travelerPriceCents).toFixed(2)} EUR + frais de service ${centsToEuros(quote.senderFeeCents).toFixed(2)} EUR`;
 }
 
-function localReturnPath(value, lang) {
-  const path = String(value || '').trim();
-  if (path.startsWith('/') && !path.startsWith('//') && !path.includes('://')) return path;
-  return `/${lang}/en-cours`;
-}
-
 function supportedLang(value) {
   return ['fr', 'en', 'ar', 'es', 'nl'].includes(value) ? value : 'fr';
-}
-
-function isFresh(value, now) {
-  if (!value) return false;
-  return now - new Date(value).getTime() < 5 * 60_000;
 }
 
 function isYoungerThan(value, now, durationMs) {

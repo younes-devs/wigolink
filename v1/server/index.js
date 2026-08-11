@@ -452,13 +452,6 @@ app.use('/api', createCronRouter({
   secret: process.env.CRON_SECRET,
   retention,
   capacity,
-  payments: {
-    run: () => stripePayments?.retryPendingTransfers() || {
-      inspected: 0,
-      transferred: 0,
-      failed: 0,
-    },
-  },
 }));
 
 // Vercel serverless ne conserve pas suffisamment longtemps une connexion SSE.

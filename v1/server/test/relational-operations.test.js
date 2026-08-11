@@ -134,9 +134,7 @@ test('operations relationnelles : detail refuse un tiers et autorise un admin', 
 
 test('operation voyageur expose le compte manuel et normalise le prix avant paiement', async () => {
   const previousProvider = process.env.PAYMENT_PROVIDER;
-  const previousPayoutMode = process.env.PAYOUT_MODE;
   process.env.PAYMENT_PROVIDER = 'stripe';
-  process.env.PAYOUT_MODE = 'manual';
   try {
     const operationRow = {
       ...row,
@@ -175,7 +173,5 @@ test('operation voyageur expose le compte manuel et normalise le prix avant paie
   } finally {
     if (previousProvider === undefined) delete process.env.PAYMENT_PROVIDER;
     else process.env.PAYMENT_PROVIDER = previousProvider;
-    if (previousPayoutMode === undefined) delete process.env.PAYOUT_MODE;
-    else process.env.PAYOUT_MODE = previousPayoutMode;
   }
 });

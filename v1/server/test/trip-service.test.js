@@ -94,6 +94,7 @@ function createHarness(overrides = {}) {
       sequence += 1;
       return `${prefix}-${sequence}`;
     },
+    now: () => Date.UTC(2026, 6, 25, 12),
     today: () => '2026-07-25',
     ...overrides,
   };

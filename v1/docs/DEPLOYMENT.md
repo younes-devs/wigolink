@@ -28,7 +28,7 @@ Pour Resend, creer une cle API et verifier le domaine utilise dans `EMAIL_FROM`;
 11. Apres avoir applique la colonne `messages.client_id`, son index unique et verifie les lectures admin, definir `RELATIONAL_MESSAGE_WRITES=true`. Les envois, suppressions visuelles, recus de lecture, archives et epingles sont alors ecrits directement par conversation, sans verrouiller `wigolink_app_state`.
 11a. Appliquer `wigolink_conversation_members`, executer son backfill puis verifier que chaque participant possede une ligne. Definir ensuite `RELATIONAL_CONVERSATION_MEMBERS=true`; les lus/non-lus et preferences ne reecrivent plus les messages ni la ligne partagee de conversation.
 12. Definir `RELATIONAL_OPERATION_READS=true` pour servir les listes et details d'operations depuis les tables indexees. Definir `RELATIONAL_TRIP_WRITES=true` pour ecrire les favoris directement dans `wigolink_saved_trips`.
-13. Apres validation du parcours demande, confirmation, paiement simule, remise, livraison et litige, definir `RELATIONAL_OPERATION_WRITES=true`. Chaque mutation verrouille uniquement le trajet ou l'operation concernee et les retries d'acceptation sont idempotents.
+13. Apres validation du parcours demande, confirmation, paiement Stripe, remise, livraison et litige, definir `RELATIONAL_OPERATION_WRITES=true`. Chaque mutation verrouille uniquement le trajet ou l'operation concernee et les retries d'acceptation sont idempotents.
 14. Executer `npm run migrate:relational:verify`. Le resultat doit contenir `"ready": true`.
 15. Executer les quatre garde-fous de `docs/OPERATIONS.md` avant chaque mise en production.
 16. Tester inscription, verification email, reinitialisation de mot de passe, creation de trajet, paiement Stripe en mode test et messagerie depuis le domaine final.
@@ -41,21 +41,21 @@ En production, `DEMO=true` est refuse. Les CORS sont limites a `APP_ORIGIN` et d
 
 Ne definissez jamais `TEST_EMAIL_BYPASS` en production : l'API refusera de demarrer afin qu'aucun compte ne contourne la verification d'e-mail.
 
-## Paiements Stripe Connect
+## Paiements Stripe Checkout et versements manuels
 
-### Mode pilote avec versement manuel
-
-Pour encaisser par Stripe puis traiter les versements voyageurs depuis les
-comptes professionnels Wigolink:
+Stripe encaisse l'expediteur sur sa page Checkout hebergee. Wigolink ne cree
+aucun compte Connect et ne declenche aucun transfert Stripe vers le voyageur.
+Apres une livraison confirmee, l'equipe traite le versement depuis un compte
+professionnel Wigolink:
 
 1. Reexecuter `supabase/schema.sql` afin de creer `manual_payout_accounts`,
    `manual_payout_requests` et la colonne `operation_payments.payout_method`.
 2. Generer une cle aleatoire de 32 octets encodee en base64 et la stocker dans
    `MANUAL_PAYOUT_ENCRYPTION_KEY`. Ne jamais changer cette cle sans migration,
    car les anciens comptes deviendraient illisibles.
-3. Definir `PAYOUT_MODE=manual` et `MANUAL_PAYOUT_COUNTRIES=MA,BE,FR`.
-4. Conserver `PAYMENT_PROVIDER=stripe` et toutes les cles/webhooks Stripe:
-   Stripe continue d'encaisser l'expediteur.
+3. Definir `MANUAL_PAYOUT_COUNTRIES=MA,BE,FR`.
+4. Definir `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY` et
+   `STRIPE_WEBHOOK_SECRET` pour activer l'encaissement.
 5. Tester une livraison complete. Une ligne `manual_payout_requests` doit
    apparaitre dans l'administration, puis passer a `sent` uniquement apres la
    saisie d'une reference de virement.
@@ -66,8 +66,7 @@ uniquement depuis des comptes professionnels rapproches avec le registre
 d'administration.
 
 Le paiement reel est active uniquement lorsque `PAYMENT_PROVIDER=stripe`. Le
-serveur exige alors `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` et
-`STRIPE_WEBHOOK_SECRET`; leur absence
+serveur exige alors `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`; leur absence
 fait passer `/api/health` a `payments: "missing"` et empeche le parcours de
 paiement de demarrer silencieusement.
 
@@ -76,41 +75,39 @@ Variables Vercel requises en Preview et Production:
 ```text
 PAYMENT_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_test_... ou sk_live_...
-STRIPE_PUBLISHABLE_KEY=pk_test_... ou pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_CONNECTED_COUNTRIES=BE,FR,NL,DE,ES,IT,PT,GB,CH,CA,US
+MANUAL_PAYOUT_ENCRYPTION_KEY=une_cle_base64_de_32_octets
+MANUAL_PAYOUT_COUNTRIES=MA,BE,FR
 APP_URL=https://wigolink.com
 ```
 
 Le webhook Stripe pointe vers `https://wigolink.com/api/stripe/webhook`. Les
-evenements minimaux du flux actuel sont `account.updated`,
-`checkout.session.completed`,
+evenements minimaux du flux actuel sont `checkout.session.completed`,
 `checkout.session.async_payment_succeeded`, `checkout.session.expired`,
 `payment_intent.payment_failed`, `charge.refunded`,
-`charge.dispute.created`, `charge.dispute.closed`, `transfer.failed` et
-`transfer.reversed`.
+`charge.dispute.created` et `charge.dispute.closed`.
 Chaque evenement est signe, deduplique en base et rejouable.
-La maintenance quotidienne relance aussi les transferts Stripe echoues ou
-interrompus. La cle `CRON_SECRET` doit donc rester configuree sur Vercel.
+La cle `CRON_SECRET` reste configuree pour la retention des donnees temporaires
+et la surveillance de capacite, pas pour effectuer des versements.
 
 Ordre de mise en service:
 
-1. Appliquer les tables `stripe_connected_accounts`, `operation_payments` et
-   `stripe_webhook_events` depuis `supabase/schema.sql`.
+1. Appliquer les tables `operation_payments`, `stripe_webhook_events`,
+   `manual_payout_accounts` et `manual_payout_requests` depuis le schema.
 2. Configurer les cles et le webhook Stripe en mode test.
 3. Verifier `/api/health`: `payments` doit valoir `configured`.
-4. Onboarder un voyageur test eligible via le composant Stripe integre de
-   `/versements`. Le lien Stripe heberge reste uniquement un secours pour les
-   navigateurs integres qui ne prennent pas Connect.js en charge.
+4. Enregistrer un compte bancaire voyageur test dans `/versements`.
 5. Realiser un paiement avec une carte Stripe test, confirmer la livraison,
-   puis verifier un seul transfert et les montants dans l'administration.
-6. Tester un remboursement avant et apres transfert.
+   puis verifier la demande de versement dans l'administration.
+6. Marquer le virement manuel comme envoye avec une reference et tester un
+   remboursement avant versement. Apres versement, le serveur exige d'abord la
+   recuperation des fonds aupres du voyageur.
 7. Creer des cles et un webhook distincts avant le passage en mode reel. Ne
    jamais reutiliser les secrets test en production reelle.
 
-Le Maroc n'est pas annonce comme pays de versement tant que Stripe ne l'a pas
-confirme contractuellement pour ce compte plateforme. L'interface bloque donc
-ce pays cote serveur, meme si un navigateur tente de contourner le formulaire.
+Les pays proposes sont controles cote serveur par
+`MANUAL_PAYOUT_COUNTRIES`. Leur ajout implique que l'equipe dispose d'un moyen
+legal, rapproche et operationnel d'y effectuer les virements.
 
 ## Base de donnees
 

@@ -18,7 +18,9 @@ create index if not exists manual_payout_accounts_user_history_idx
   on public.manual_payout_accounts (user_id, created_at desc);
 
 alter table public.operation_payments
-  add column if not exists payout_method text not null default 'stripe_connect';
+  add column if not exists payout_method text not null default 'manual';
+alter table public.operation_payments
+  alter column payout_method set default 'manual';
 
 create table if not exists public.manual_payout_requests (
   operation_id text primary key references public.wigolink_transactions(id),

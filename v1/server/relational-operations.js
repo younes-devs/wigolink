@@ -1,7 +1,6 @@
 import { transactionParticipantFilter } from './relational-sql.js';
 import { decodePageCursor, encodePageCursor } from './pagination-cursor.js';
 import { stripePaymentsEnabled } from './payments/stripe-config.js';
-import { manualPayoutConfiguration } from './payments/manual-payout-config.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -134,7 +133,6 @@ function operationSelect() {
        traveler.data as traveler,
        recipient.data as recipient,
        to_jsonb(payment) as payment_record,
-       to_jsonb(payout) as payout_record,
        to_jsonb(manual_payout) as manual_payout_record
      from public.wigolink_transactions tx
      left join public.wigolink_trips trip
@@ -158,8 +156,6 @@ function operationSelect() {
        on recipient.id = tx.data->>'recipientId'
      left join public.operation_payments payment
        on payment.operation_id = tx.id
-     left join public.stripe_connected_accounts payout
-       on payout.user_id = tx.data->>'travelerId'
      left join public.manual_payout_accounts manual_payout
        on manual_payout.user_id = tx.data->>'travelerId'
       and manual_payout.active`;
@@ -204,7 +200,7 @@ function operationView(
       || 0,
     dispute: row.dispute ? disputeView(row.dispute, transaction) : null,
     paymentDetails: publicPayment(row.payment_record, transaction.payment),
-    payout: publicPayout(row.payout_record, row.manual_payout_record),
+    payout: publicPayout(row.manual_payout_record),
   };
   delete view.pickupCode;
   delete view.deliveryCode;
@@ -257,39 +253,22 @@ function publicPayment(record, snapshot) {
   };
 }
 
-function publicPayout(record, manualRecord) {
+function publicPayout(manualRecord) {
   if (!stripePaymentsEnabled()) return null;
-  if (manualPayoutConfiguration().enabled) {
-    if (!manualRecord) {
-      return {
-        configured: false,
-        ready: false,
-        status: 'not_configured',
-        mode: 'manual',
-      };
-    }
-    return {
-      configured: true,
-      ready: manualRecord.status === 'verified',
-      status: manualRecord.status,
-      country: manualRecord.country,
-      mode: 'manual',
-    };
-  }
-  if (!record) {
+  if (!manualRecord) {
     return {
       configured: false,
       ready: false,
       status: 'not_configured',
+      mode: 'manual',
     };
   }
   return {
     configured: true,
-    ready: record.transfers_capability_status === 'active',
-    status: record.onboarding_status,
-    country: record.country,
-    requirementsDue: Number(record.requirements_due_count || 0),
-    payoutsEnabled: !!record.payouts_enabled,
+    ready: manualRecord.status === 'verified',
+    status: manualRecord.status,
+    country: manualRecord.country,
+    mode: 'manual',
   };
 }
 

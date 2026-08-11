@@ -193,9 +193,9 @@ const LEGACY_PATTERNS = [
   {
     re: /^(.+) transporte « (.+) »\. Paiement séquestré\.$/,
     ar: (m) => `${m[1]} ينقل « ${m[2]} ». الدفع محجوز.`,
-    nl: (m) => `${m[1]} vervoert « ${m[2]} ». Betaling in bewaring.`,
-    en: (m) => `${m[1]} is carrying “${m[2]}”. Payment is held in escrow.`,
-    es: (m) => `${m[1]} transporta «${m[2]}». El pago está en depósito.`,
+    nl: (m) => `${m[1]} vervoert « ${m[2]} ». Betaling bevestigd.`,
+    en: (m) => `${m[1]} is carrying “${m[2]}”. Payment confirmed.`,
+    es: (m) => `${m[1]} transporta «${m[2]}». Pago confirmado.`,
   },
   {
     re: /^(.+) vous a envoyé un message\.$/,
@@ -207,7 +207,8 @@ const LEGACY_PATTERNS = [
 ];
 
 function renderLegacyNotification(lang, text) {
-  if (!text || lang === 'fr') return text;
+  if (!text) return text;
+  if (lang === 'fr') return text.replace('Paiement séquestré.', 'Paiement confirmé.');
   for (const template of Object.values(TEMPLATES)) {
     try {
       if (template.fr({}) === text) return (template[lang] || template.fr)({});

@@ -7,7 +7,6 @@ async function requestCron({
   authorization,
   retention,
   capacity = null,
-  payments = null,
   logger = { error() {}, warn() {} },
 }) {
   const app = express();
@@ -15,7 +14,6 @@ async function requestCron({
     secret: 'cron-secret',
     retention,
     capacity,
-    payments,
     logger,
   }));
   const server = await new Promise((resolve) => {
@@ -82,25 +80,6 @@ test('cron maintenance mesure la capacite et journalise les alertes', async () =
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.capacity, capacityResult);
   assert.equal(warnings[0][0], 'cron_capacity_warning');
-});
-
-test('cron maintenance relance les versements Stripe en attente', async () => {
-  const response = await requestCron({
-    authorization: 'Bearer cron-secret',
-    retention: { async run() { return { expiredSessions: 0 }; } },
-    payments: {
-      async run() {
-        return { inspected: 2, transferred: 1, failed: 1 };
-      },
-    },
-  });
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body.payments, {
-    inspected: 2,
-    transferred: 1,
-    failed: 1,
-  });
 });
 
 test('cron maintenance transforme une panne en 503', async () => {

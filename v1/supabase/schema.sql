@@ -153,8 +153,8 @@ create index if not exists wigolink_transactions_participants_idx
 create index if not exists wigolink_transactions_listing_idx on public.wigolink_transactions ((data->>'listingId'));
 create index if not exists wigolink_transactions_trip_idx on public.wigolink_transactions ((data->>'tripId'));
 
--- Stripe Connect. Ces tables ne contiennent aucune donnee de carte ou coordonnee
--- bancaire; les identifiants Stripe servent uniquement aux appels serveur.
+-- Compatibilite historique Stripe Connect. Le parcours actif utilise les
+-- versements manuels; cette table reste lisible pour ne pas perdre les archives.
 create table if not exists public.stripe_connected_accounts (
   user_id text primary key references public.wigolink_users(id),
   stripe_account_id text not null unique,
@@ -203,7 +203,7 @@ create table if not exists public.operation_payments (
   stripe_charge_id text unique,
   stripe_transfer_id text unique,
   stripe_refund_id text unique,
-  payout_method text not null default 'stripe_connect',
+  payout_method text not null default 'manual',
   payment_status text not null default 'pending',
   transfer_status text not null default 'not_ready',
   checkout_attempt integer not null default 0 check (checkout_attempt >= 0),
@@ -222,7 +222,9 @@ create table if not exists public.operation_payments (
 create index if not exists operation_payments_payment_status_idx
   on public.operation_payments (payment_status, updated_at);
 alter table public.operation_payments
-  add column if not exists payout_method text not null default 'stripe_connect';
+  add column if not exists payout_method text not null default 'manual';
+alter table public.operation_payments
+  alter column payout_method set default 'manual';
 create index if not exists operation_payments_transfer_status_idx
   on public.operation_payments (transfer_status, updated_at);
 

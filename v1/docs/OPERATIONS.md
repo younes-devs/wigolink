@@ -50,7 +50,7 @@ d'operation du document global. `RELATIONAL_TRIP_WRITES=true` couvre pour
 l'instant les ajouts et retraits de favoris.
 
 `RELATIONAL_OPERATION_WRITES=true` active les mutations transactionnelles SQL
-du parcours operation : demande, confirmation/refus, paiement simule, codes de
+du parcours operation : demande, confirmation/refus, paiement Stripe, codes de
 remise/livraison, annulation, litige et preuves. PostgreSQL verrouille seulement
 la ligne concernee avec `FOR UPDATE`; une relance de demande sur le meme trajet
 retourne l'operation active existante au lieu d'en creer une seconde.
