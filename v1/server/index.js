@@ -257,7 +257,6 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '
 // deliberately small so unauthenticated oversized bodies cannot exhaust a
 // serverless instance before authentication runs.
 app.use('/api/kyc/submit', express.json({ limit: '3mb' }));
-app.use('/api/conversations/:id/attachments/upload', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '1mb' }));
 // i18n des erreurs API : traduit body.error à la sortie selon Accept-Language.
 app.use(langMiddleware);
@@ -991,11 +990,9 @@ const {
 const relationalMessageWriter = createRelationalMessageWriter({
   getPool: databasePool,
   getConversation: relationalConversationReader,
-  validPhotos,
   analyzeSafety: analyzeMessageSafety,
   safetyError: messageSafetyError,
   messageMedia,
-  allowInlineMediaFallback: !IS_PRODUCTION,
   broadcastConversation,
   memberStateEnabled: relationalConversationMembersEnabled,
 });
@@ -1108,7 +1105,6 @@ const conversationMessageService = createConversationMessageService({
   conversationMessages,
   areParticipantsBlocked: areConversationParticipantsBlocked,
   normalizeLocation: normalizeMessageLocation,
-  validPhotos,
   analyzeSafety: analyzeMessageSafety,
   registerSafetyAttempt: registerMessageSafetyAttempt,
   safetyError: messageSafetyError,
@@ -1117,7 +1113,6 @@ const conversationMessageService = createConversationMessageService({
   save,
   broadcastConversation,
   messageMedia,
-  allowInlineMediaFallback: !IS_PRODUCTION,
   newId,
 });
 

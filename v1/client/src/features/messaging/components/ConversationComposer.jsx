@@ -5,20 +5,11 @@ import { ImagePreview, LocationShareSheet, MessageActions } from './Conversation
 export function ConversationComposer({
   failed,
   send,
-  attachment,
-  setAttachment,
-  attachmentState,
   locationDraft,
   setLocationDraft,
   setLocationSheet,
   unsafeDraftCategories,
   canWrite,
-  fileRef,
-  cameraRef,
-  addAttachment,
-  attachmentMenuRef,
-  attachmentMenuOpen,
-  setAttachmentMenuOpen,
   sending,
   openLocationSheet,
   text,
@@ -47,22 +38,11 @@ export function ConversationComposer({
         <div className="message-send-error">
           <Icon name="alert" size={16} />
           <span>{failed.message}</span>
-          <button type="button" onClick={(event) => send(event, failed.text, failed.clientId, failed.attachment, failed.location)}>
+          <button type="button" onClick={(event) => send(event, failed.text, failed.clientId, failed.location)}>
             {t('common.retry')}
           </button>
         </div>
       )}
-
-      {attachment && (
-        <div className="message-attachment-preview">
-          <img src={attachment.dataUrl} alt={attachment.name || t('messages.attachment.preview')} />
-          <span>{attachment.name || t('messages.attachment.preview')}</span>
-          <button type="button" onClick={() => setAttachment(null)} aria-label={t('messages.attachment.remove')}>
-            <Icon name="x" size={14} />
-          </button>
-        </div>
-      )}
-      {attachmentState && <div className="attachment-progress"><span className="spinner" />{t(attachmentState)}</div>}
 
       {locationDraft && (
         <div className="message-location-preview">
@@ -86,28 +66,16 @@ export function ConversationComposer({
       <div className="message-privacy-note"><Icon name="shieldCheck" size={14} />{t('messages.safety.note')}</div>
 
       <form className={`message-compose ${!canWrite ? 'disabled' : ''}`} onSubmit={send}>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={addAttachment} />
-        <input ref={cameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden onChange={addAttachment} />
-        <div className="compose-attachments" ref={attachmentMenuRef}>
-          <button
-            type="button"
-            className="compose-attach"
-            disabled={!canWrite || sending}
-            onClick={() => setAttachmentMenuOpen((value) => !value)}
-            aria-label={t('messages.attachment.addMenu')}
-            title={t('messages.attachment.addMenu')}
-            aria-expanded={attachmentMenuOpen}
-          >
-            <Icon name="plus" size={19} />
-          </button>
-          {attachmentMenuOpen && (
-            <div className="compose-attachment-menu" role="menu">
-              <button type="button" role="menuitem" onClick={() => cameraRef.current?.click()}><Icon name="camera" size={18} /><span>{t('messages.attachment.camera')}</span></button>
-              <button type="button" role="menuitem" onClick={() => fileRef.current?.click()}><Icon name="image" size={18} /><span>{t('messages.attachment.gallery')}</span></button>
-              <button type="button" role="menuitem" onClick={openLocationSheet}><Icon name="mapPin" size={18} /><span>{t('messages.attachment.location')}</span></button>
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          className="compose-attach"
+          disabled={!canWrite || sending}
+          onClick={openLocationSheet}
+          aria-label={t('messages.attachment.location')}
+          title={t('messages.attachment.location')}
+        >
+          <Icon name="plus" size={19} />
+        </button>
         <textarea
           className={unsafeDraftCategories.length ? 'message-compose-unsafe' : ''}
           value={text}
@@ -120,7 +88,7 @@ export function ConversationComposer({
           }}
         />
         <span className="compose-count">{text.length}/1000</span>
-        <button className="chat-send" disabled={sending || (!text.trim() && !attachment && !locationDraft) || !canWrite} aria-label={t('messages.composer.send')}>
+        <button className="chat-send" disabled={sending || (!text.trim() && !locationDraft) || !canWrite} aria-label={t('messages.composer.send')}>
           {sending ? <span className="spinner" /> : <Icon name="send" size={18} />}
         </button>
       </form>
@@ -140,7 +108,6 @@ export function ConversationComposer({
               setLocationError('messages.location.required');
               return;
             }
-            setAttachment(null);
             setLocationSheet(null);
             setLocationError('');
           }}

@@ -5,7 +5,6 @@ import { useAuth } from '../../../app/authContext.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
-import { dataUrlBlob } from '../../../core/directUpload.js';
 import { markInboxConversationRead } from './MessagesSimple.jsx';
 import { readThreadCache, writeThreadCache } from '../services/messageCache.js';
 import { ConversationChrome } from '../components/ConversationChrome.jsx';
@@ -13,7 +12,7 @@ import { ConversationComposer } from '../components/ConversationComposer.jsx';
 import { ConversationMessages } from '../components/ConversationMessages.jsx';
 import { contextLabel } from '../utils/conversationDisplay.js';
 import {
-  ConversationSkeleton, groupMessages, latestMessageAt, mergeMessages, resizeImage,
+  ConversationSkeleton, groupMessages, latestMessageAt, mergeMessages,
   useDismissibleMenu,
 } from '../components/ConversationThread.jsx';
 
@@ -54,9 +53,6 @@ export default function ConversationDetail() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine);
-  const [attachment, setAttachment] = useState(null);
-  const [attachmentState, setAttachmentState] = useState('');
-  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [locationSheet, setLocationSheet] = useState(null);
   const [locationDraft, setLocationDraft] = useState(null);
   const [locationBusy, setLocationBusy] = useState(false);
@@ -72,9 +68,6 @@ export default function ConversationDetail() {
   const [reportReason, setReportReason] = useState('');
   const threadRef = useRef(null);
   const endRef = useRef(null);
-  const fileRef = useRef(null);
-  const cameraRef = useRef(null);
-  const attachmentMenuRef = useRef(null);
   const menuRef = useRef(null);
   const latestMessageAtRef = useRef(0);
   const nearBottomRef = useRef(true);
@@ -180,9 +173,6 @@ export default function ConversationDetail() {
     latestMessageAtRef.current = 0;
     nearBottomRef.current = true;
     setFailed(null);
-    setAttachment(null);
-    setAttachmentState('');
-    setAttachmentMenuOpen(false);
     setLocationSheet(null);
     setLocationDraft(null);
     setLocationBusy(false);
@@ -305,7 +295,6 @@ export default function ConversationDetail() {
   }, [messages.length, nearBottom]);
 
   useDismissibleMenu(menuOpen, menuRef, () => setMenuOpen(false));
-  useDismissibleMenu(attachmentMenuOpen, attachmentMenuRef, () => setAttachmentMenuOpen(false));
 
   const conversationOpen = conversation && conversation.status !== 'completed' && conversation.status !== 'archived';
   const unsafeDraftCategories = useMemo(() => draftSafety(text), [text]);
@@ -351,19 +340,18 @@ export default function ConversationDetail() {
     }
   };
 
-  const send = async (e, retryText = null, retryClientId = null, retryAttachment = null, retryLocation = null) => {
+  const send = async (e, retryText = null, retryClientId = null, retryLocation = null) => {
     e?.preventDefault();
     const isRetry = retryClientId !== null;
     const bodyText = String(isRetry ? retryText : text).trim();
-    const outgoingAttachment = isRetry ? retryAttachment : attachment;
     const outgoingLocation = isRetry ? retryLocation : locationDraft;
-    if ((!bodyText && !outgoingAttachment && !outgoingLocation) || sending || !canWrite) {
+    if ((!bodyText && !outgoingLocation) || sending || !canWrite) {
       if (!isOnline) toast.error(t('messages.offline.toast'));
       if (unsafeDraftCategories.length) toast.error(t('messages.safety.removeUnsafe'));
       if (conversation?.blocked || conversation?.blockedByOther) toast.error(t('messages.blocked.toast'));
       return;
     }
-    if (!retryText && unsafeDraftCategories.length) {
+    if (!isRetry && unsafeDraftCategories.length) {
       toast.error(t('messages.safety.keepInside'));
       return;
     }
@@ -373,8 +361,8 @@ export default function ConversationDetail() {
       clientId,
       from: user.id,
       text: bodyText,
-      type: outgoingLocation ? 'location' : outgoingAttachment ? 'attachment' : 'text',
-      attachments: outgoingAttachment ? [{ ...outgoingAttachment, id: `${clientId}-attachment` }] : [],
+      type: outgoingLocation ? 'location' : 'text',
+      attachments: [],
       location: outgoingLocation,
       deliveryStatus: 'sending',
       at: Date.now(),
@@ -382,23 +370,18 @@ export default function ConversationDetail() {
     };
     setSending(true);
     setFailed(null);
-    if (!retryText) {
+    if (!isRetry) {
       setMessages((current) => [...current, optimistic]);
       setText('');
-      setAttachment(null);
       setLocationDraft(null);
       sessionStorage.removeItem(`draft:${id}`);
     }
     try {
-      const serverAttachment = outgoingAttachment
-        ? await uploadMessageAttachment(id, outgoingAttachment)
-        : null;
       const data = await api(`/conversations/${id}/messages`, {
         method: 'POST',
         body: {
           text: bodyText,
           clientId,
-          attachments: serverAttachment ? [serverAttachment] : [],
           location: outgoingLocation,
         },
       });
@@ -425,11 +408,11 @@ export default function ConversationDetail() {
     } catch (err) {
       if (err.data?.code === 'message_safety_blocked' || err.data?.code === 'message_safety_cooldown') {
         setMessages((current) => current.filter((message) => message.id !== clientId));
-        if (!retryText) setText(bodyText);
+        if (!isRetry) setText(bodyText);
         toast.error(err.message || t('messages.safety.blocked'));
         return;
       }
-      setFailed({ text: bodyText, clientId, attachment: outgoingAttachment, location: outgoingLocation, message: err.message || t('messages.composer.failed') });
+      setFailed({ text: bodyText, clientId, location: outgoingLocation, message: err.message || t('messages.composer.failed') });
       setMessages((current) => current.map((message) =>
         message.id === clientId ? { ...message, deliveryStatus: 'failed' } : message
       ));
@@ -506,34 +489,7 @@ export default function ConversationDetail() {
     }
   };
 
-  const addAttachment = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error(t('messages.attachment.type'));
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(t('messages.attachment.size'));
-      return;
-    }
-    try {
-      setAttachmentState('messages.attachment.compressing');
-      const dataUrl = await resizeImage(file);
-      setAttachment({ dataUrl, name: file.name, type: 'image' });
-      setLocationDraft(null);
-      setAttachmentMenuOpen(false);
-      setAttachmentState('messages.attachment.ready');
-    } catch {
-      toast.error(t('messages.attachment.failed'));
-    } finally {
-      setTimeout(() => setAttachmentState(''), 1800);
-    }
-  };
-
   const openLocationSheet = () => {
-    setAttachmentMenuOpen(false);
     setLocationError('');
     setLocationSheet('choice');
   };
@@ -660,20 +616,11 @@ export default function ConversationDetail() {
       <ConversationComposer
         failed={failed}
         send={send}
-        attachment={attachment}
-        setAttachment={setAttachment}
-        attachmentState={attachmentState}
         locationDraft={locationDraft}
         setLocationDraft={setLocationDraft}
         setLocationSheet={setLocationSheet}
         unsafeDraftCategories={unsafeDraftCategories}
         canWrite={canWrite}
-        fileRef={fileRef}
-        cameraRef={cameraRef}
-        addAttachment={addAttachment}
-        attachmentMenuRef={attachmentMenuRef}
-        attachmentMenuOpen={attachmentMenuOpen}
-        setAttachmentMenuOpen={setAttachmentMenuOpen}
         sending={sending}
         openLocationSheet={openLocationSheet}
         text={text}
@@ -698,29 +645,4 @@ export default function ConversationDetail() {
       />
     </div>
   );
-}
-
-async function uploadMessageAttachment(conversationId, attachment) {
-  if (!attachment?.dataUrl) return attachment;
-  const blob = await dataUrlBlob(attachment.dataUrl);
-  const stored = (await api(`/conversations/${conversationId}/attachments/upload`, {
-    method: 'POST',
-    body: {
-      mime: blob.type || 'image/jpeg',
-      name: attachment.name,
-      size: blob.size,
-      dataUrl: attachment.dataUrl,
-    },
-  })).upload;
-  if (!stored?.storagePath || !stored?.attachmentId) {
-    throw new Error(t('messages.attachment.failed'));
-  }
-  return {
-    id: stored.attachmentId,
-    type: 'image',
-    name: String(attachment.name || 'image').slice(0, 80),
-    mime: stored.mime,
-    size: blob.size,
-    storagePath: stored.storagePath,
-  };
 }

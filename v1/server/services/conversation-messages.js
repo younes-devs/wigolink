@@ -15,7 +15,6 @@ export function createConversationMessageService({
   conversationMessages,
   areParticipantsBlocked,
   normalizeLocation,
-  validPhotos,
   analyzeSafety,
   registerSafetyAttempt,
   safetyError,
@@ -24,8 +23,6 @@ export function createConversationMessageService({
   save,
   broadcastConversation,
   messageMedia = null,
-  allowInlineMediaFallback = true,
-  logger = console,
   newId,
   now = Date.now,
 }) {
@@ -187,9 +184,12 @@ export function createConversationMessageService({
     }
 
     const text = String(body.text || '').trim().slice(0, 1000);
-    const attachments = Array.isArray(body.attachments)
-      ? body.attachments.slice(0, 1)
-      : [];
+    if (Array.isArray(body.attachments) && body.attachments.length > 0) {
+      return response(400, {
+        code: 'message_attachments_disabled',
+        error: 'Piece jointe invalide',
+      });
+    }
     const createdAt = now();
     const location = normalizeLocation(
       body.location,
@@ -199,80 +199,10 @@ export function createConversationMessageService({
     if (body.location && !location) {
       return response(400, { error: 'Localisation invalide' });
     }
-    if (!text && attachments.length === 0 && !location) {
+    if (!text && !location) {
       return response(400, { error: 'Message vide' });
     }
-    if (
-      attachments.length > 0
-      && !validPhotos(attachments.map((attachment) =>
-        attachment?.dataUrl || attachment
-      ))
-    ) {
-      return response(400, { error: 'Piece jointe invalide' });
-    }
-    if (attachments.length > 0 && !messageMedia?.enabled && !allowInlineMediaFallback) {
-      return response(503, { error: 'Le stockage des images est temporairement indisponible' });
-    }
-
     const messageId = newId('m');
-    let normalizedAttachments;
-    try {
-      normalizedAttachments = await Promise.all(attachments.map(async (attachment, index) => {
-      const dataUrl = typeof attachment === 'string'
-        ? attachment
-        : attachment.dataUrl;
-      const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-      const attachmentId = newId('att');
-      const stored = messageMedia?.enabled
-        ? await messageMedia.storeDataUrl({
-          conversationId: conversation.id,
-          attachmentId,
-          dataUrl,
-        })
-        : null;
-      return {
-        id: attachmentId,
-        type: 'image',
-        name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-        mime: stored?.mime || mime,
-        ...(stored
-          ? {
-            storagePath: stored.storagePath,
-            url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
-            size: stored.size,
-          }
-          : {
-            dataUrl,
-            url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
-            size: dataUrl.length,
-          }),
-      };
-      }));
-    } catch (error) {
-      logger.error('message_media_store_failed', {
-        name: error?.name || 'Error',
-        message: String(error?.message || 'unknown').slice(0, 200),
-      });
-      if (!allowInlineMediaFallback) {
-        return response(503, { error: 'Le stockage des images est temporairement indisponible' });
-      }
-      normalizedAttachments = attachments.map((attachment, index) => {
-        const dataUrl = typeof attachment === 'string'
-          ? attachment
-          : attachment.dataUrl;
-        const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-        const attachmentId = newId('att');
-        return {
-          id: attachmentId,
-          type: 'image',
-          name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-          mime,
-          dataUrl,
-          url: `/conversations/${conversation.id}/messages/${messageId}/attachments/${attachmentId}`,
-          size: dataUrl.length,
-        };
-      });
-    }
     const clientId = String(body.clientId || '').trim().slice(0, 80) || null;
 
     if (clientId) {
@@ -338,12 +268,8 @@ export function createConversationMessageService({
       text,
       flagged: false,
       flagReason: null,
-      type: location
-        ? 'location'
-        : normalizedAttachments.length
-          ? 'attachment'
-          : 'text',
-      attachments: normalizedAttachments,
+      type: location ? 'location' : 'text',
+      attachments: [],
       location,
       deliveryStatus: 'sent',
       readBy: [user.id],

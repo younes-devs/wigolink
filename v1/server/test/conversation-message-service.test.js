@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createConversationMessageService } from '../services/conversation-messages.js';
 
-const IMAGE = 'data:image/png;base64,AAAA';
-
 function createHarness(overrides = {}) {
   const events = [];
   const queue = [];
@@ -293,90 +291,17 @@ test('conversation messages est idempotent par clientId sans notification genera
   ]);
 });
 
-test('conversation messages normalise une image puis sauvegarde et diffuse', async () => {
-  const { db, events, service, users } = createHarness();
+test('conversation messages refuse les nouvelles images', async () => {
+  const { db, service, users } = createHarness();
   const result = await service.sendMessage('conv-1', users[0], {
     attachments: [{
-      dataUrl: IMAGE,
+      dataUrl: 'data:image/png;base64,AAAA',
       name: 'preuve.png',
     }],
   });
 
-  assert.equal(result.status, 200);
-  assert.equal(result.body.message.type, 'attachment');
-  assert.equal(result.body.message.attachments[0].mime, 'image/png');
-  assert.equal(result.body.message.attachments[0].name, 'preuve.png');
-  assert.deepEqual(db.conversations[0].archivedBy, []);
-  assert.deepEqual(events.map(([type]) => type), [
-    'save',
-    'broadcast',
-  ]);
-
-  assert.equal(result.body.message.attachments[0].dataUrl, undefined);
-  const media = await service.attachment(
-    'conv-1',
-    result.body.message.id,
-    result.body.message.attachments[0].id,
-    users[1].id,
-  );
-  assert.equal(media.status, 200);
-  assert.equal(media.contentType, 'image/png');
-  assert.equal(Buffer.isBuffer(media.body), true);
-  assert.equal(
-    (await service.attachment(
-      'conv-1',
-      result.body.message.id,
-      result.body.message.attachments[0].id,
-      'u-outsider',
-    )).status,
-    404,
-  );
-});
-
-test('conversation messages garde un repli inline si Supabase Storage est indisponible', async () => {
-  const logs = [];
-  const { db, service, users } = createHarness({
-    messageMedia: {
-      enabled: true,
-      async storeDataUrl() {
-        throw new Error('Storage indisponible');
-      },
-    },
-    logger: {
-      error(...args) {
-        logs.push(args);
-      },
-    },
-  });
-
-  const result = await service.sendMessage('conv-1', users[0], {
-    attachments: [{ dataUrl: IMAGE, name: 'preuve.png' }],
-  });
-
-  assert.equal(result.status, 200);
-  assert.equal(result.body.message.attachments[0].dataUrl, undefined);
-  assert.match(result.body.message.attachments[0].url, /\/attachments\//);
-  assert.equal(db.messages[0].attachments[0].dataUrl, IMAGE);
-  assert.equal(logs[0][0], 'message_media_store_failed');
-});
-
-test('conversation messages refuse le repli inline en production', async () => {
-  const { db, service, users } = createHarness({
-    messageMedia: {
-      enabled: true,
-      async storeDataUrl() {
-        throw new Error('Storage indisponible');
-      },
-    },
-    allowInlineMediaFallback: false,
-    logger: { error() {} },
-  });
-
-  const result = await service.sendMessage('conv-1', users[0], {
-    attachments: [{ dataUrl: IMAGE, name: 'preuve.png' }],
-  });
-
-  assert.equal(result.status, 503);
+  assert.equal(result.status, 400);
+  assert.equal(result.body.code, 'message_attachments_disabled');
   assert.equal(db.messages.length, 0);
 });
 

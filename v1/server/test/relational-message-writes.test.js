@@ -173,48 +173,8 @@ test('ecritures messages relationnelles : option inactive par defaut', () => {
   );
 });
 
-test('upload direct signe seulement pour un participant et un type image', async () => {
+test('ecritures messages relationnelles : refuse les nouvelles images', async () => {
   const harness = createHarness({ mediaEnabled: true });
-  const result = await harness.writer.createAttachmentUpload({
-    user,
-    conversationId: 'conv-1',
-    body: { mime: 'image/jpeg', size: 42_000 },
-  });
-
-  assert.equal(result.status, 200);
-  assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
-  assert.equal(result.body.upload.maxBytes, 700 * 1024);
-  const reservation = harness.queries.find(({ sql }) => (
-    sql.includes('insert into public.wigolink_runtime_records')
-  ));
-  assert.equal(reservation.params[0], result.body.upload.attachmentId);
-});
-
-test('upload image passe par le serveur quand le transfert direct echoue', async () => {
-  const harness = createHarness({ mediaEnabled: true });
-  const dataUrl = 'data:image/jpeg;base64,aW1hZ2U=';
-  const result = await harness.writer.createAttachmentUpload({
-    user,
-    conversationId: 'conv-1',
-    body: {
-      mime: 'image/jpeg',
-      size: 5,
-      dataUrl,
-    },
-  });
-
-  assert.equal(result.status, 200);
-  assert.equal(result.body.upload.uploaded, true);
-  assert.equal(result.body.upload.signedUrl, undefined);
-  assert.equal(result.body.upload.size, 5);
-  assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
-});
-
-test('message direct conserve uniquement la reference storage verifiee', async () => {
-  const harness = createHarness({
-    mediaEnabled: true,
-    mediaInfo: { mime: 'image/jpeg', size: 42_000 },
-  });
   const result = await harness.writer.send({
     user,
     conversationId: 'conv-1',
@@ -230,22 +190,9 @@ test('message direct conserve uniquement la reference storage verifiee', async (
     today: '2026-07-29',
   });
 
-  assert.equal(result.status, 200);
-  assert.equal(result.body.message.attachments[0].size, 42_000);
-  assert.equal(result.body.message.attachments[0].dataUrl, undefined);
-  const insert = harness.queries.find(({ sql }) =>
-    sql.includes('insert into public.messages')
-  );
-  const persisted = JSON.parse(insert.params[7]);
-  assert.equal(
-    persisted.attachments[0].storagePath,
-    'conversations/conv-1/att-12345678.jpg',
-  );
-  assert.ok(harness.queries.some(({ sql, params }) => (
-    sql.includes("kind = 'message_upload'")
-    && sql.includes('delete')
-    && params[0].includes('att-12345678')
-  )));
+  assert.equal(result.status, 400);
+  assert.equal(result.body.code, 'message_attachments_disabled');
+  assert.equal(result.body.error, 'Piece jointe invalide');
 });
 
 test('ecritures messages relationnelles : insere un message idempotent avec un id serveur', async () => {

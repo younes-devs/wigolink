@@ -8,7 +8,6 @@ const SAFETY_ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SAFETY_COOLDOWN_MS = 30 * 60 * 1000;
 const SAFETY_STRIKE_LIMIT = 3;
 const LOCATION_EXPIRY_MINUTES = new Set([30, 120]);
-const MESSAGE_UPLOAD_TTL_MS = 2 * 60 * 60 * 1000;
 const REPORT_REASON_CODES = new Set([
   'external_payment',
   'abuse',
@@ -24,11 +23,9 @@ export function relationalMessageWritesEnabled(env = process.env) {
 export function createRelationalMessageWriter({
   getPool,
   getConversation,
-  validPhotos,
   analyzeSafety,
   safetyError,
   messageMedia,
-  allowInlineMediaFallback = true,
   broadcastConversation,
   memberStateEnabled = () => false,
   newId = relationalId,
@@ -44,10 +41,9 @@ export function createRelationalMessageWriter({
       body,
       conversation: initial.conversation,
       operation: initial.operation,
-      validPhotos,
       now,
     });
-    if (prepared.error) return prepared;
+    if (prepared.status) return prepared;
     if (isBlocked(initial.conversation, user, initial.other)) {
       return response(403, {
         code: 'conversation_blocked',
@@ -75,18 +71,7 @@ export function createRelationalMessageWriter({
       });
     }
 
-    const media = await storeAttachments({
-      attachments: prepared.attachments,
-      conversationId,
-      userId: user.id,
-      pool,
-      messageId: prepared.messageId,
-      messageMedia,
-      allowInlineMediaFallback,
-      newId,
-      logger,
-    });
-    if (media.error) return media;
+    const messageId = newId('m');
 
     const client = await pool.connect();
     try {
@@ -94,12 +79,10 @@ export function createRelationalMessageWriter({
       const locked = await conversationContext(client, conversationId, user.id, { lock: true });
       if (!locked) {
         await client.query('rollback');
-        await removeStoredMedia(messageMedia, media.storagePaths);
         return response(404, { error: 'Conversation introuvable' });
       }
       if (isBlocked(locked.conversation, user, locked.other)) {
         await client.query('rollback');
-        await removeStoredMedia(messageMedia, media.storagePaths);
         return response(403, {
           code: 'conversation_blocked',
           error: 'Cette conversation est bloquee. Aucun nouveau message ne peut etre envoye.',
@@ -115,7 +98,6 @@ export function createRelationalMessageWriter({
         );
         if (duplicate) {
           await client.query('rollback');
-          await removeStoredMedia(messageMedia, media.storagePaths);
           return successfulMessage({
             pool,
             getConversation,
@@ -149,7 +131,6 @@ export function createRelationalMessageWriter({
           now,
         });
         await client.query('commit');
-        await removeStoredMedia(messageMedia, media.storagePaths);
         return response(
           result.cooldownUntil ? 429 : 422,
           safetyError({
@@ -161,7 +142,7 @@ export function createRelationalMessageWriter({
 
       const createdAt = now();
       const message = {
-        id: media.messageId,
+        id: messageId,
         clientId: prepared.clientId,
         conversationId,
         txId: locked.conversation.operationId || null,
@@ -169,12 +150,8 @@ export function createRelationalMessageWriter({
         text: prepared.text,
         flagged: false,
         flagReason: null,
-        type: prepared.location
-          ? 'location'
-          : media.attachments.length
-            ? 'attachment'
-            : 'text',
-        attachments: media.attachments,
+        type: prepared.location ? 'location' : 'text',
+        attachments: [],
         location: prepared.location,
         deliveryStatus: 'sent',
         readBy: [user.id],
@@ -197,14 +174,6 @@ export function createRelationalMessageWriter({
           JSON.stringify(message),
         ],
       );
-      if (media.reservationIds.length) {
-        await client.query(
-          `delete from public.wigolink_runtime_records
-           where kind = 'message_upload' and id = any($1::text[])`,
-          [media.reservationIds],
-        );
-      }
-
       const conversation = {
         ...locked.conversation,
         lastMessageAt: createdAt,
@@ -250,7 +219,6 @@ export function createRelationalMessageWriter({
       });
     } catch (error) {
       await client.query('rollback').catch(() => {});
-      await removeStoredMedia(messageMedia, media.storagePaths);
       if (isUniqueViolation(error) && prepared.clientId) {
         const duplicate = await existingMessage(
           pool,
@@ -277,103 +245,6 @@ export function createRelationalMessageWriter({
       });
     } finally {
       client.release();
-    }
-  }
-
-  async function createAttachmentUpload({ user, conversationId, body = {} }) {
-    if (!messageMedia?.enabled) {
-      return response(503, {
-        error: 'Le stockage des images est temporairement indisponible',
-      });
-    }
-    const context = await conversationContext(
-      getPool(),
-      conversationId,
-      user.id,
-    );
-    if (!context) {
-      return response(404, { error: 'Conversation introuvable' });
-    }
-    if (isBlocked(context.conversation, user, context.other)) {
-      return response(403, {
-        code: 'conversation_blocked',
-        error: 'Cette conversation est bloquee.',
-      });
-    }
-    const mime = String(body.mime || '').toLowerCase();
-    if (!DIRECT_UPLOAD_MIMES.has(mime)) {
-      return response(400, { error: 'Type image invalide' });
-    }
-    const declaredSize = Number(body.size || 0);
-    if (
-      !Number.isFinite(declaredSize)
-      || declaredSize <= 0
-      || declaredSize > DIRECT_UPLOAD_MAX_BYTES
-    ) {
-      return response(400, { error: 'Image trop volumineuse' });
-    }
-    const attachmentId = newId('att');
-    try {
-      const proxyDataUrl = String(body.dataUrl || '');
-      const proxySize = proxyDataUrl
-        ? directDataUrlSize(proxyDataUrl, mime)
-        : null;
-      if (proxyDataUrl && (!proxySize || proxySize > DIRECT_UPLOAD_MAX_BYTES)) {
-        return response(400, { error: 'Image invalide ou trop volumineuse' });
-      }
-      const upload = proxyDataUrl
-        ? await messageMedia.storeDataUrl({
-          conversationId,
-          attachmentId,
-          dataUrl: proxyDataUrl,
-        })
-        : await messageMedia.createSignedUpload({
-          conversationId,
-          attachmentId,
-          mime,
-        });
-      if (!upload?.storagePath) throw new Error('Stockage image indisponible');
-      const storedSize = proxySize || declaredSize;
-      await getPool().query(
-        `insert into public.wigolink_runtime_records
-           (kind, id, data, expires_at, updated_at)
-         values ('message_upload', $1, $2::jsonb, to_timestamp($3 / 1000.0), now())
-         on conflict (kind, id) do update
-         set data = excluded.data,
-             expires_at = excluded.expires_at,
-             updated_at = now()`,
-        [
-          attachmentId,
-          JSON.stringify({
-            attachmentId,
-            conversationId,
-            userId: user.id,
-            storagePath: upload.storagePath,
-            mime,
-            declaredSize: storedSize,
-            createdAt: now(),
-          }),
-          now() + MESSAGE_UPLOAD_TTL_MS,
-        ],
-      );
-      return response(200, {
-        upload: {
-          attachmentId,
-          storagePath: upload.storagePath,
-          ...(upload.signedUrl ? { signedUrl: upload.signedUrl } : {}),
-          uploaded: !!proxyDataUrl,
-          mime,
-          size: storedSize,
-          maxBytes: DIRECT_UPLOAD_MAX_BYTES,
-        },
-      });
-    } catch (error) {
-      logger.error('relational_message_upload_url_failed', {
-        message: error?.message || 'unknown_error',
-      });
-      return response(503, {
-        error: 'Upload temporairement indisponible. Reessayez.',
-      });
     }
   }
 
@@ -1275,7 +1146,6 @@ export function createRelationalMessageWriter({
     attachment,
     blockConversation,
     createConversation,
-    createAttachmentUpload,
     listBlocked,
     markRead,
     markUnread,
@@ -1317,218 +1187,28 @@ async function conversationContext(pool, conversationId, userId, { lock = false 
   return result.rows[0] || null;
 }
 
-function prepareMessage({ body, conversation, operation, validPhotos, now }) {
+function prepareMessage({ body, conversation, operation, now }) {
   const text = String(body.text || '').trim().slice(0, 1000);
-  const attachments = Array.isArray(body.attachments)
-    ? body.attachments.slice(0, 1)
-    : [];
+  if (Array.isArray(body.attachments) && body.attachments.length > 0) {
+    return response(400, {
+      code: 'message_attachments_disabled',
+      error: 'Piece jointe invalide',
+    });
+  }
   const createdAt = now();
   const location = normalizeLocation(body.location, operation, createdAt);
   if (body.location && !location) {
     return response(400, { error: 'Localisation invalide' });
   }
-  if (!text && attachments.length === 0 && !location) {
+  if (!text && !location) {
     return response(400, { error: 'Message vide' });
-  }
-  if (
-    attachments.length > 0
-    && !attachments.every((attachment) => (
-      isDirectAttachment(attachment, conversation.id)
-      || validPhotos([attachment?.dataUrl || attachment])
-    ))
-  ) {
-    return response(400, { error: 'Piece jointe invalide' });
   }
   return {
     text,
-    attachments,
     location,
     clientId: String(body.clientId || '').trim().slice(0, 80) || null,
-    messageId: null,
     conversation,
   };
-}
-
-async function storeAttachments({
-  attachments,
-  conversationId,
-  userId,
-  pool,
-  messageId: providedMessageId,
-  messageMedia,
-  allowInlineMediaFallback,
-  newId,
-  logger,
-}) {
-  const messageId = providedMessageId || newId('m');
-  if (attachments.length && !messageMedia?.enabled && !allowInlineMediaFallback) {
-    return response(503, {
-      error: 'Le stockage des images est temporairement indisponible',
-    });
-  }
-  const storagePaths = [];
-  const reservationIds = [];
-  try {
-    await validateUploadReservations({
-      attachments,
-      conversationId,
-      userId,
-      pool,
-    });
-    const normalized = await Promise.all(attachments.map(async (attachment, index) => {
-      if (isDirectAttachment(attachment, conversationId)) {
-        const stored = await messageMedia?.info(attachment.storagePath);
-        if (
-          !stored
-          || !DIRECT_UPLOAD_MIMES.has(stored.mime || attachment.mime)
-          || stored.size <= 0
-          || stored.size > DIRECT_UPLOAD_MAX_BYTES
-        ) {
-          throw new Error('Upload direct invalide');
-        }
-        storagePaths.push(attachment.storagePath);
-        reservationIds.push(attachment.id);
-        return {
-          id: attachment.id,
-          type: 'image',
-          name: String(attachment.name || `image-${index + 1}`).slice(0, 80),
-          mime: stored.mime || attachment.mime,
-          storagePath: attachment.storagePath,
-          url: `/conversations/${conversationId}/messages/${messageId}/attachments/${attachment.id}`,
-          size: stored.size,
-        };
-      }
-      const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
-      const mime = dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-      const attachmentId = newId('att');
-      const stored = messageMedia?.enabled
-        ? await messageMedia.storeDataUrl({
-          conversationId,
-          attachmentId,
-          dataUrl,
-        })
-        : null;
-      if (stored?.storagePath) storagePaths.push(stored.storagePath);
-      return {
-        id: attachmentId,
-        type: 'image',
-        name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-        mime: stored?.mime || mime,
-        ...(stored
-          ? {
-            storagePath: stored.storagePath,
-            url: `/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}`,
-            size: stored.size,
-          }
-          : {
-            dataUrl,
-            url: `/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}`,
-            size: dataUrl.length,
-          }),
-      };
-    }));
-    return {
-      attachments: normalized,
-      messageId,
-      storagePaths,
-      reservationIds,
-    };
-  } catch (error) {
-    await removeStoredMedia(messageMedia, storagePaths);
-    logger.error('relational_message_media_store_failed', {
-      message: error?.message || 'unknown_error',
-    });
-    if (!allowInlineMediaFallback) {
-      return response(503, {
-        error: 'Le stockage des images est temporairement indisponible',
-      });
-    }
-    if (attachments.some((attachment) => (
-      isDirectAttachment(attachment, conversationId)
-    ))) {
-      return response(400, { error: 'Upload direct invalide' });
-    }
-    return {
-      attachments: attachments.map((attachment, index) => {
-        const dataUrl = typeof attachment === 'string' ? attachment : attachment.dataUrl;
-        return {
-          id: newId('att'),
-          type: 'image',
-          name: String(attachment?.name || `image-${index + 1}`).slice(0, 80),
-          mime: dataUrl.match(/^data:([^;]+);base64,/)?.[1] || 'image/jpeg',
-          dataUrl,
-          size: dataUrl.length,
-        };
-      }),
-      messageId,
-      storagePaths: [],
-      reservationIds: [],
-    };
-  }
-}
-
-async function validateUploadReservations({
-  attachments,
-  conversationId,
-  userId,
-  pool,
-}) {
-  const direct = attachments.filter((attachment) => (
-    isDirectAttachment(attachment, conversationId)
-  ));
-  if (!direct.length) return;
-  const ids = direct.map((attachment) => attachment.id);
-  const result = await pool.query(
-    `select id, data
-     from public.wigolink_runtime_records
-     where kind = 'message_upload'
-       and id = any($1::text[])
-       and expires_at > now()`,
-    [ids],
-  );
-  const reservations = new Map(
-    result.rows.map((row) => [row.id, row.data]),
-  );
-  const valid = direct.every((attachment) => {
-    const reservation = reservations.get(attachment.id);
-    return reservation
-      && reservation.userId === userId
-      && reservation.conversationId === conversationId
-      && reservation.storagePath === attachment.storagePath;
-  });
-  if (!valid || reservations.size !== direct.length) {
-    throw new Error('Reservation upload invalide');
-  }
-}
-
-const DIRECT_UPLOAD_MIMES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-]);
-const DIRECT_UPLOAD_MAX_BYTES = 700 * 1024;
-
-function directDataUrlSize(dataUrl, expectedMime) {
-  const match = String(dataUrl || '').match(/^data:(image\/(?:jpeg|png|webp));base64,([a-zA-Z0-9+/=]+)$/);
-  if (!match || match[1] !== expectedMime) return 0;
-  try {
-    return Buffer.from(match[2], 'base64').length;
-  } catch {
-    return 0;
-  }
-}
-
-function isDirectAttachment(attachment, conversationId) {
-  if (!attachment || typeof attachment !== 'object') return false;
-  const id = String(attachment.id || '');
-  const mime = String(attachment.mime || '');
-  const path = String(attachment.storagePath || '');
-  if (!/^att-[a-zA-Z0-9-]{8,100}$/.test(id)) return false;
-  if (!DIRECT_UPLOAD_MIMES.has(mime)) return false;
-  const escapedConversation = String(conversationId)
-    .replace(/[^a-zA-Z0-9_-]/g, '')
-    .slice(0, 100);
-  return path.startsWith(`conversations/${escapedConversation}/${id}.`);
 }
 
 async function persistSafetyAttempt({
@@ -1746,12 +1426,6 @@ function isBlocked(conversation, user, other) {
   return (conversation.blockedBy || []).includes(user.id)
     || (!!other?.id && userBlocked.has(other.id))
     || otherBlocked.has(user.id);
-}
-
-async function removeStoredMedia(messageMedia, paths = []) {
-  await Promise.all(paths.map((path) =>
-    messageMedia?.remove?.(path).catch(() => {})
-  ));
 }
 
 function isUniqueViolation(error) {

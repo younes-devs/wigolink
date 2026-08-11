@@ -2,7 +2,6 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TINY_PNG,
   api,
   loginAs,
   startServer,
@@ -174,12 +173,11 @@ test('current trip, conversation and operation workflow', async () => {
     token: tokens.fatima,
     body: {
       text: 'Voici une photo du colis.',
-      attachments: [{ name: 'colis.png', dataUrl: TINY_PNG }],
+      attachments: [{ name: 'colis.png', dataUrl: 'data:image/png;base64,AAAA' }],
     },
   });
-  assert.equal(attached.status, 200, JSON.stringify(attached.body));
-  assert.equal(attached.body.message.attachments[0].type, 'image');
-  assert.equal(attached.body.message.attachments[0].dataUrl, undefined);
+  assert.equal(attached.status, 400, JSON.stringify(attached.body));
+  assert.equal(attached.body.code, 'message_attachments_disabled');
 
   const blocked = await api(`/conversations/${conversationId}/messages`, {
     method: 'POST',
