@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createProfileMediaService } from '../services/profile-media.js';
 
-function storageHarness() {
+function storageHarness(lists = {}) {
   const uploads = [];
   const removals = [];
   const storageClient = {
@@ -14,6 +14,9 @@ function storageHarness() {
     },
     from(bucket) {
       return {
+        async list(path) {
+          return { data: lists[path] || [], error: null };
+        },
         async upload(path, bytes, options) {
           uploads.push({ bucket, path, bytes, options });
           return { data: {}, error: null };
@@ -48,4 +51,19 @@ test('profile media stocke un avatar public cacheable sans base64', async () => 
     'users/u-1/avatar.jpg',
     'users/u-1/avatar.png',
   ]);
+});
+
+test('profile media retrouve la derniere photo orpheline du membre', async () => {
+  const harness = storageHarness({
+    'users/u-1/avatars': [
+      { name: 'old.jpg', updated_at: '2026-08-01T10:00:00.000Z' },
+      { name: 'latest.webp', updated_at: '2026-08-02T10:00:00.000Z' },
+    ],
+    'users/u-1': [{ name: 'avatar.png', updated_at: '2026-07-01T10:00:00.000Z' }],
+  });
+  const service = createProfileMediaService({ storageClient: harness.storageClient });
+
+  const url = await service.recoverPublicUrl({ userId: 'u-1' });
+
+  assert.match(url, /users\/u-1\/avatars\/latest\.webp\?v=/);
 });

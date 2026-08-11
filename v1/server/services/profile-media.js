@@ -92,6 +92,28 @@ export function createProfileMediaService({
     return data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : null;
   }
 
+  async function recoverPublicUrl({ userId }) {
+    if (!enabled || !userId) return null;
+    await ensureBucket();
+    const prefix = `users/${safeSegment(userId)}`;
+    const candidates = [];
+    for (const folder of [`${prefix}/avatars`, prefix]) {
+      const { data, error } = await storage.from(bucket).list(folder, { limit: 100 });
+      if (error) throw error;
+      for (const item of data || []) {
+        if (!item?.name || !EXTENSIONS.some((extension) => item.name.endsWith(`.${extension}`))) {
+          continue;
+        }
+        candidates.push({
+          path: `${folder}/${item.name}`,
+          timestamp: Date.parse(item.updated_at || item.created_at || item.last_accessed_at || '') || 0,
+        });
+      }
+    }
+    const latest = candidates.sort((left, right) => right.timestamp - left.timestamp)[0];
+    return latest ? publicUrl(latest.path) : null;
+  }
+
   async function removePaths(paths) {
     const selected = [...new Set((paths || []).filter(Boolean))];
     if (!enabled || !selected.length) return;
@@ -130,6 +152,7 @@ export function createProfileMediaService({
     createSignedUpload,
     info,
     publicUrl,
+    recoverPublicUrl,
     removePaths,
     removePublicUrl,
     storeDataUrl,

@@ -550,6 +550,29 @@ app.use('/api', createRelationalReadsRouter({
   operationCodePublicState: (value) => operationCodePublicState(value),
   disputeView: (value, transaction) => disputeView(value, transaction),
   today: TODAY_ISO,
+  hydrateTripProfilePhotos: async (result) => {
+    const trips = result?.trips || (result?.body?.trip ? [result.body.trip] : []);
+    const travelers = [...new Map(
+      trips
+        .map((trip) => trip?.traveler)
+        .filter((traveler) => traveler?.id && !traveler.photoUrl)
+        .map((traveler) => [traveler.id, traveler]),
+    ).values()];
+    await Promise.all(travelers.map(async (traveler) => {
+      try {
+        const photoUrl = await profileMedia.recoverPublicUrl({ userId: traveler.id });
+        if (!photoUrl) return;
+        await authRepositories.users.updateChanged({ ...traveler, photoUrl }, traveler);
+        traveler.photoUrl = photoUrl;
+      } catch (error) {
+        observability.write('warn', 'profile_photo_recovery_failed', {
+          userId: traveler.id,
+          message: String(error?.message || 'unknown_error').slice(0, 300),
+        });
+      }
+    }));
+    return result;
+  },
 }));
 
 app.use('/api', createRelationalNavigationRouter({

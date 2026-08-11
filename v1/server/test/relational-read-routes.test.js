@@ -167,6 +167,35 @@ test('relational reads sert le catalogue public sans appeler auth', async () => 
   assert.equal('email' in response.body.trips[0].traveler, false);
 });
 
+test('relational reads restaure les avatars avant de projeter le catalogue public', async () => {
+  let hydrated = false;
+  const harness = createDependencies({
+    async listTrips() {
+      return {
+        trips: [{
+          id: 't-public',
+          from: 'Oujda',
+          to: 'Bruxelles',
+          traveler: { id: 'u-2', name: 'Karim', photoUrl: null },
+        }],
+      };
+    },
+    async hydrateTripProfilePhotos(result) {
+      hydrated = true;
+      result.trips[0].traveler.photoUrl = 'https://cdn.test/karim.webp';
+      return result;
+    },
+  });
+
+  const response = await requestRoute({
+    path: '/public/trips',
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(hydrated, true);
+  assert.equal(response.body.trips[0].traveler.photoUrl, 'https://cdn.test/karim.webp');
+});
+
 test('relational reads sert le detail public avec un utilisateur anonyme', async () => {
   let authCalls = 0;
   const harness = createDependencies({

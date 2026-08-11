@@ -17,6 +17,7 @@ export function createRelationalReadsRouter({
   operationCodePublicState,
   disputeView,
   today,
+  hydrateTripProfilePhotos = async (result) => result,
   logger = console,
 }) {
   const router = Router();
@@ -25,12 +26,12 @@ export function createRelationalReadsRouter({
     if (!tripReadsEnabled()) return next('route');
     try {
       res.set('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
-      const result = await listTrips({
+      const result = await hydrateTripProfilePhotos(await listTrips({
         pool: getPool(),
         user: null,
         query: req.query,
         today: today(),
-      });
+      }));
       return res.json(publicTripCatalog(result));
     } catch (error) {
       logger.error('Echec de recherche publique des trajets', error);
@@ -43,12 +44,12 @@ export function createRelationalReadsRouter({
   router.get('/public/trips/:id', async (req, res, next) => {
     if (!tripReadsEnabled()) return next('route');
     try {
-      const result = await getTrip({
+      const result = await hydrateTripProfilePhotos(await getTrip({
         pool: getPool(),
         user: null,
         id: req.params.id,
         today: today(),
-      });
+      }));
       const publicResult = publicTripDetail(result);
       res.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
       return res.status(publicResult.status).json(publicResult.body);
