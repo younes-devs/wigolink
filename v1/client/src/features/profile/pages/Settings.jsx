@@ -98,14 +98,13 @@ function PayoutAccountSection({ state }) {
   }
   const ready = state.payout?.ready;
   return <div className="settings-card settings-detail-card settings-payout-card">
-    <div className="settings-inline-row is-static">
-      <span className="settings-row-icon"><Icon name={ready ? 'shieldCheck' : 'bank'} size={18} /></span>
+    {ready ? <PayoutBankCard payout={state.payout} /> : <div className="settings-inline-row is-static">
+      <span className="settings-row-icon"><Icon name="bank" size={18} /></span>
       <span className="grow">
-        <span className="settings-row-title">{t(ready ? 'payments.payout.manual.ready' : 'payments.payout.manual.bankTitle')}</span>
-        <span className="settings-row-sub">{ready ? payoutDescription(state.payout) : t('payments.payout.manual.bankIntro')}</span>
+        <span className="settings-row-title">{t('payments.payout.manual.bankTitle')}</span>
+        <span className="settings-row-sub">{t('payments.payout.manual.bankIntro')}</span>
       </span>
-      {ready && <Icon name="check" size={17} />}
-    </div>
+    </div>}
     {state.error && <p className="settings-payout-error">{state.error}</p>}
     <Link className="btn btn-primary settings-payout-action" to="/versements?retour=/parametres">
       <Icon name={ready ? 'edit' : 'plus'} size={17} />
@@ -114,17 +113,38 @@ function PayoutAccountSection({ state }) {
   </div>;
 }
 
+function PayoutBankCard({ payout }) {
+  const country = payoutCountry(payout.country);
+  const last4 = String(payout.accountLast4 || '').padStart(4, '•');
+  return <div className="payout-bank-card">
+    <div className="payout-bank-card-head">
+      <span className="payout-bank-brand"><Icon name="bank" size={18} />Wigolink</span>
+      <span className="payout-bank-status"><Icon name="shieldCheck" size={14} />{t('payments.payout.manual.ready')}</span>
+    </div>
+    <div className="payout-bank-chip" aria-hidden="true"><span /><span /></div>
+    <p className="payout-bank-number" aria-label={payoutDescription(payout)}>•••• •••• •••• {last4}</p>
+    <div className="payout-bank-card-foot">
+      <span><small>{t('payments.payout.manual.bankTitle')}</small><b>{country}</b></span>
+      <Icon name="check" size={20} />
+    </div>
+  </div>;
+}
+
 function payoutDescription(payout) {
-  let country = payout.country;
+  return t('payments.payout.manual.readyHelp', {
+    country: payoutCountry(payout.country),
+    last4: payout.accountLast4,
+  });
+}
+
+function payoutCountry(countryCode) {
+  let country = countryCode;
   try {
-    country = new Intl.DisplayNames([getLang()], { type: 'region' }).of(payout.country) || payout.country;
+    country = new Intl.DisplayNames([getLang()], { type: 'region' }).of(countryCode) || countryCode;
   } catch (error) {
     void error;
   }
-  return t('payments.payout.manual.readyHelp', {
-    country,
-    last4: payout.accountLast4,
-  });
+  return country;
 }
 
 function AccountSecurity({ me, onOpen }) {

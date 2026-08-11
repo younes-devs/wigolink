@@ -38,6 +38,10 @@ test('client i18n charge anglais et espagnol avec locale et manifeste', async ()
   assert.equal(await i18n.setLang('en'), true);
   assert.equal(i18n.t('settings.title'), 'Settings');
   assert.equal(i18n.t('auth.sub.verify', { email: 'test@example.com' }), 'A 6-digit code was sent to test@example.com.');
+  assert.equal(
+    i18n.t('payments.payout.manual.readyHelp', { country: 'Morocco', last4: '1212' }),
+    'Morocco account ending in 1212. The payout will be requested after delivery.',
+  );
   assert.equal(i18n.dateLocale(), 'en-GB');
   assert.equal(document.documentElement.lang, 'en');
   assert.equal(document.documentElement.dir, 'ltr');

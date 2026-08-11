@@ -114,7 +114,9 @@ export function languageUrl(lang, location = window.location) {
 
 export function t(key, vars) {
   let s = (DICT[current] && DICT[current][key]) || DICT.fr[key] || key;
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, v);
+  if (vars) for (const [k, v] of Object.entries(vars)) {
+    s = s.replaceAll(`{{${k}}}`, v).replaceAll(`{${k}}`, v);
+  }
   return s;
 }
 
