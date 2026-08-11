@@ -1,5 +1,5 @@
-// Gestion du thème clair/sombre (PRD UI/UX U9). Le thème initial est posé par un script
-// inline dans index.html (avant le rendu) ; ce module ne gère que la bascule manuelle.
+// Le mode clair est le défaut. Un thème sombre n'est appliqué qu'après un choix explicite
+// enregistré par l'utilisateur dans les paramètres.
 const KEY = 'wigolink_theme';
 const THEME_COLORS = { light: '#0a6cf5', dark: '#0e1116' };
 

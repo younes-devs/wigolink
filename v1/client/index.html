@@ -18,7 +18,7 @@
       (function () {
         var t = localStorage.getItem('wigolink_theme');
         if (t !== 'light' && t !== 'dark') {
-          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          t = 'light';
         }
         document.documentElement.dataset.theme = t;
         var languages = ['fr', 'ar', 'nl', 'en', 'es'];
