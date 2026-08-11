@@ -4,11 +4,15 @@ const UPLOAD_TTL_MS = 15 * 60 * 1000;
 const MAX_BYTES = 700 * 1024;
 const MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const KYC_FIELDS = new Set(['selfiePhoto', 'idFrontPhoto', 'idBackPhoto']);
+const PARCEL_PHOTO_MIN = 1;
+const PARCEL_PHOTO_MAX = 5;
+const PARCEL_RETENTION_MS = 15 * 24 * 60 * 60 * 1000;
 
 export function createMemberMediaUploadService({
   getPool,
   kycMedia,
   profileMedia,
+  parcelMedia,
   now = Date.now,
 }) {
   const pool = () => {
@@ -64,6 +68,26 @@ export function createMemberMediaUploadService({
     return { uploadId, upload: uploads[0] };
   }
 
+  async function reserveParcel({ userId, photos = [] }) {
+    if (!parcelMedia?.enabled) throw new Error('Stockage colis indisponible');
+    if (!Array.isArray(photos) || photos.length < PARCEL_PHOTO_MIN || photos.length > PARCEL_PHOTO_MAX) {
+      throw new Error('Ajoutez entre 1 et 5 photos du colis');
+    }
+    const descriptors = photos.map(validateDescriptor);
+    const uploadId = mediaUploadId();
+    const uploads = await Promise.all(descriptors.map((descriptor, index) => {
+      const photoId = `parcel-${crypto.randomUUID()}`;
+      return parcelMedia.createSignedUpload({
+        userId,
+        uploadId,
+        photoId,
+        mime: descriptor.mime,
+      }).then((upload) => ({ ...upload, field: `photo-${index}`, mime: descriptor.mime, size: descriptor.size }));
+    }));
+    await saveReservation({ uploadId, userId, mediaType: 'parcel', uploads });
+    return { uploadId, uploads };
+  }
+
   async function claimKyc({ userId, uploadId, fields }) {
     const data = await claim({ userId, uploadId, mediaType: 'kyc' });
     const expected = [...new Set(fields || [])].sort();
@@ -101,6 +125,52 @@ export function createMemberMediaUploadService({
     }
   }
 
+  async function claimParcel({ userId, uploadId }) {
+    const data = await claim({ userId, uploadId, mediaType: 'parcel' });
+    if (data.uploads.length < PARCEL_PHOTO_MIN || data.uploads.length > PARCEL_PHOTO_MAX) {
+      await cancel(uploadId, data);
+      throw new Error('Reservation photos colis invalide');
+    }
+    try {
+      const verified = await verifyUploads(data.uploads, parcelMedia);
+      return {
+        uploadId,
+        photos: verified.map((upload) => ({
+          id: upload.photoId,
+          storagePath: upload.storagePath,
+          mime: upload.mime,
+          size: upload.size,
+        })),
+      };
+    } catch (error) {
+      await cancel(uploadId, data);
+      throw error;
+    }
+  }
+
+  async function finalizeParcel({ uploadId, operationId, client = null }) {
+    const result = await (client || pool()).query(
+      `update public.wigolink_runtime_records
+       set kind = 'parcel_media',
+           data = data || jsonb_build_object('operationId', $2),
+           expires_at = null,
+           updated_at = now()
+       where kind = 'member_media_upload' and id = $1 and data->>'mediaType' = 'parcel'`,
+      [String(uploadId), String(operationId)],
+    );
+    if (!result.rowCount) throw new Error('Photos colis non finalisees');
+  }
+
+  async function scheduleParcelPurge({ operationId, client = null }) {
+    const executor = client || pool();
+    return executor.query(
+      `update public.wigolink_runtime_records
+       set expires_at = to_timestamp($2 / 1000.0), updated_at = now()
+       where kind = 'parcel_media' and data->>'operationId' = $1 and expires_at is null`,
+      [String(operationId), now() + PARCEL_RETENTION_MS],
+    );
+  }
+
   async function complete(uploadId) {
     await pool().query(
       `delete from public.wigolink_runtime_records
@@ -119,13 +189,17 @@ export function createMemberMediaUploadService({
     const paths = (data?.uploads || []).map((upload) => upload.storagePath);
     if (data?.mediaType === 'kyc') await kycMedia?.removePaths(paths);
     if (data?.mediaType === 'profile') await profileMedia?.removePaths(paths);
+    if (data?.mediaType === 'parcel') await parcelMedia?.removePaths(paths);
   }
 
   async function cleanupMany(items = []) {
     const kycPaths = [];
     const profilePaths = [];
+    const parcelPaths = [];
     for (const data of items) {
-      const target = data?.mediaType === 'kyc' ? kycPaths : profilePaths;
+      const target = data?.mediaType === 'kyc'
+        ? kycPaths
+        : data?.mediaType === 'parcel' ? parcelPaths : profilePaths;
       for (const upload of data?.uploads || []) {
         if (upload?.storagePath) target.push(upload.storagePath);
       }
@@ -133,6 +207,7 @@ export function createMemberMediaUploadService({
     await Promise.all([
       kycPaths.length ? kycMedia?.removePaths(kycPaths) : null,
       profilePaths.length ? profileMedia?.removePaths(profilePaths) : null,
+      parcelPaths.length ? parcelMedia?.removePaths(parcelPaths) : null,
     ]);
   }
 
@@ -175,8 +250,12 @@ export function createMemberMediaUploadService({
   return {
     reserveKyc,
     reserveProfile,
+    reserveParcel,
     claimKyc,
     claimProfile,
+    claimParcel,
+    finalizeParcel,
+    scheduleParcelPurge,
     complete,
     cancel,
     cleanupData,

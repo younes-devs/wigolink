@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../app/authContext.jsx';
@@ -6,6 +6,7 @@ import { Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { TripTransportIcon } from '../components/TripTransport.jsx';
 import { t, useLang } from '../../../i18n.js';
+import { prepareParcelPhoto, uploadParcelPhotos } from '../services/parcelPhotos.js';
 
 const DOCUMENT_PRICE_EUR = 3;
 
@@ -21,12 +22,21 @@ export default function TripRequestSimple() {
   const [weightKg, setWeightKg] = useState('');
   const [documentCount, setDocumentCount] = useState('1');
   const [description, setDescription] = useState('');
+  const [parcelPhotos, setParcelPhotos] = useState([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInputRef = useRef(null);
+  const parcelPhotosRef = useRef([]);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api(`/trips/${id}`).then(({ trip: loadedTrip }) => setTrip(loadedTrip)).catch(() => setTrip(false));
   }, [id]);
+
+  useEffect(() => { parcelPhotosRef.current = parcelPhotos; }, [parcelPhotos]);
+  useEffect(() => () => {
+    parcelPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.url));
+  }, []);
 
   const quantity = shipmentType === 'document' ? Number(documentCount) : Number(weightKg);
   const calculatedPrice = useMemo(() => {
@@ -43,14 +53,51 @@ export default function TripRequestSimple() {
     : t('trips.request.weight', { weight: weightKg });
 
   const chooseType = (type) => {
+    if (type === 'document') {
+      parcelPhotos.forEach((photo) => URL.revokeObjectURL(photo.url));
+      setParcelPhotos([]);
+    }
     setShipmentType(type);
     setConfirmed(false);
     setStep('details');
   };
 
+  const addPhotos = async (event) => {
+    const files = [...(event.target.files || [])].slice(0, 5 - parcelPhotos.length);
+    event.target.value = '';
+    if (!files.length) return;
+    setPhotoBusy(true);
+    try {
+      const blobs = await Promise.all(files.map(prepareParcelPhoto));
+      setParcelPhotos((current) => [
+        ...current,
+        ...blobs.map((blob) => ({
+          id: crypto.randomUUID(),
+          blob,
+          url: URL.createObjectURL(blob),
+        })),
+      ].slice(0, 5));
+    } catch {
+      toast.error(t('trips.request.photos.error'));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removePhoto = (photoId) => {
+    setParcelPhotos((current) => {
+      const removed = current.find((photo) => photo.id === photoId);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return current.filter((photo) => photo.id !== photoId);
+    });
+  };
+
   const submit = async () => {
     setBusy(true);
     try {
+      const parcelPhotoUploadId = shipmentType === 'parcel'
+        ? await uploadParcelPhotos(parcelPhotos)
+        : undefined;
       const data = await api(`/trips/${trip.id}/accept`, {
         method: 'POST',
         body: {
@@ -58,6 +105,7 @@ export default function TripRequestSimple() {
           shipmentType,
           weightKg: shipmentType === 'parcel' ? weightKg : undefined,
           documentCount: shipmentType === 'document' ? documentCount : undefined,
+          parcelPhotoUploadId,
         },
       });
       toast.success(t('trips.toast.operationCreated'));
@@ -137,14 +185,42 @@ export default function TripRequestSimple() {
           </label>
 
           <div className="request-price-preview" aria-live="polite"><span>{t('trips.request.calculatedPrice')}</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
-          <button type="button" className="btn btn-primary trip-request-next" disabled={!isValid} onClick={() => setStep('review')}><Icon name="arrowRight" size={17} />{t('common.continue')}</button>
+          <button type="button" className="btn btn-primary trip-request-next" disabled={!isValid} onClick={() => setStep(shipmentType === 'parcel' ? 'photos' : 'review')}><Icon name="arrowRight" size={17} />{t('common.continue')}</button>
+        </section>
+      )}
+
+      {step === 'photos' && shipmentType === 'parcel' && (
+        <section className="trip-request-flow card" aria-labelledby="request-photos-title">
+          <div className="trip-request-flow-head">
+            <span>3</span>
+            <div><h2 id="request-photos-title">{t('trips.request.photos.title')}</h2><p>{t('trips.request.photos.help')}</p></div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep('details')}>{t('common.edit')}</button>
+          </div>
+          <input ref={photoInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={addPhotos} />
+          <div className="parcel-photo-grid">
+            {parcelPhotos.map((photo, index) => (
+              <figure className="parcel-photo-preview" key={photo.id}>
+                <img src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} />
+                <button type="button" className="icon-btn" onClick={() => removePhoto(photo.id)} aria-label={t('common.remove')}><Icon name="trash" size={16} /></button>
+              </figure>
+            ))}
+            {parcelPhotos.length < 5 && (
+              <button type="button" className="parcel-photo-add" onClick={() => photoInputRef.current?.click()} disabled={photoBusy}>
+                {photoBusy ? <span className="spinner" /> : <Icon name="camera" size={23} />}
+                <span>{t('trips.request.photos.add')}</span>
+              </button>
+            )}
+          </div>
+          <p className="parcel-photo-count">{t('trips.request.photos.count', { count: parcelPhotos.length })}</p>
+          <p className="parcel-photo-retention"><Icon name="shieldCheck" size={15} />{t('trips.request.photos.retention')}</p>
+          <button type="button" className="btn btn-primary trip-request-next" disabled={parcelPhotos.length < 1 || photoBusy} onClick={() => setStep('review')}><Icon name="arrowRight" size={17} />{t('common.continue')}</button>
         </section>
       )}
 
       {step === 'review' && (
         <section className="trip-request-review trip-request-flow" aria-labelledby="request-review-title">
           <div className="trip-request-flow-head">
-            <span>3</span>
+            <span>{shipmentType === 'parcel' ? 4 : 3}</span>
             <div><p>{t('trips.request.before')}</p><h2 id="request-review-title">{t('trips.request.review')}</h2></div>
           </div>
           <div className="trip-request-summary">
@@ -153,9 +229,10 @@ export default function TripRequestSimple() {
             <div><span>{t('trips.request.calculatedPrice')}</span><b>{calculatedPrice.toFixed(2)} {trip.currency || 'EUR'}</b></div>
             <div><span>{t('common.description')}</span><b>{description}</b></div>
           </div>
+          {shipmentType === 'parcel' && <div className="parcel-photo-review" aria-label={t('trips.request.photos.title')}>{parcelPhotos.map((photo, index) => <img key={photo.id} src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} />)}</div>}
           <label className="request-confirmation"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>{t('trips.request.confirm')}</span></label>
           <div className="trip-detail-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setStep('details')}>{t('common.edit')}</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setStep(shipmentType === 'parcel' ? 'photos' : 'details')}>{t('common.edit')}</button>
             <button type="button" className="btn btn-primary" onClick={submit} disabled={!confirmed || busy}>{busy ? <span className="spinner" /> : <Icon name="shieldCheck" size={17} />}{t('trips.request.send')}</button>
           </div>
         </section>

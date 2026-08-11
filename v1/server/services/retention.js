@@ -30,7 +30,7 @@ export function createRetentionService({
       ),
       pool.query(
         `delete from public.wigolink_runtime_records
-         where kind not in ('message_upload', 'member_media_upload')
+         where kind not in ('message_upload', 'member_media_upload', 'parcel_media')
            and expires_at is not null
            and expires_at <= now()`,
       ),
@@ -67,7 +67,7 @@ async function purgeExpiredUploads({
     const reservations = await pool.query(
       `select kind, id, data
        from public.wigolink_runtime_records
-       where kind in ('message_upload', 'member_media_upload')
+       where kind in ('message_upload', 'member_media_upload', 'parcel_media')
          and expires_at <= now()
        order by expires_at
        limit $1`,
@@ -91,6 +91,24 @@ async function purgeExpiredUploads({
         rows: reservations.rows.filter((row) => row.kind === 'member_media_upload'),
         cleanup: (rows) => memberMediaUploads?.cleanupMany(rows.map((row) => row.data)),
       },
+      {
+        kind: 'parcel_media',
+        rows: reservations.rows.filter((row) => row.kind === 'parcel_media'),
+        cleanup: async (rows) => {
+          await memberMediaUploads?.cleanupMany(rows.map((row) => row.data));
+          for (const row of rows) {
+            const operationId = row.data?.operationId;
+            if (!operationId) continue;
+            await pool.query(
+              `update public.wigolink_transactions
+               set data = (data - 'parcelPhotos') || jsonb_build_object('parcelPhotosPurgedAt', $2::bigint),
+                   updated_at = now()
+               where id = $1`,
+              [String(operationId), Date.now()],
+            );
+          }
+        },
+      },
     ];
     for (const group of groups) {
       if (!group.rows.length) continue;
@@ -109,7 +127,7 @@ async function purgeExpiredUploads({
     if (successfulIds.length) {
       await pool.query(
         `delete from public.wigolink_runtime_records
-         where kind in ('message_upload', 'member_media_upload')
+         where kind in ('message_upload', 'member_media_upload', 'parcel_media')
            and id = any($1::text[])`,
         [successfulIds],
       );

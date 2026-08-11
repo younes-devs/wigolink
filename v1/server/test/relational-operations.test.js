@@ -16,6 +16,8 @@ const row = {
     recipientId: 'u-1',
     status: 'accepted',
     operationStatus: 'paiement_requis',
+    shipmentType: 'parcel',
+    parcelPhotos: [{ id: 'parcel-1', storagePath: 'requests/u/private.jpg', mime: 'image/jpeg', size: 1234 }],
     price: 15,
     createdAt: 300,
     securityCodes: {
@@ -71,6 +73,8 @@ test('operations relationnelles : liste paginee par participant sans secret', as
   assert.equal(result.operations[0].security.pickup.issued, true);
   assert.equal(result.operations[0].security.pickup.canEnter, false);
   assert.equal('securityCodes' in result.operations[0], false);
+  assert.equal(result.operations[0].parcelPhotos[0].storagePath, undefined);
+  assert.equal(result.operations[0].parcelPhotos[0].url, '/api/operations/tx-1/parcel-photos/parcel-1');
   assert.equal(result.page.hasMore, false);
   assert.match(calls[0].sql, /wigolink_transactions/);
   assert.match(calls[0].sql, /@> array\[\$1\]::text\[\]/);

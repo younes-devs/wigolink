@@ -28,6 +28,7 @@ export function createTripOperationsRouter({
   repositories,
   disputeView,
   validPhotos,
+  memberMediaUploads = null,
   paymentProvider = 'simulated',
 }) {
   const router = Router();
@@ -51,6 +52,23 @@ export function createTripOperationsRouter({
       return res.status(400).json({ error: 'Indiquez entre 1 et 20 documents.' });
     if (shipmentType === 'parcel' && (weightKg === null || weightKg > view.capacityKg))
       return res.status(400).json({ error: `Le colis doit peser entre 0 et ${view.capacityKg} kg.` });
+    let claimedParcelUpload = null;
+    if (shipmentType === 'parcel') {
+      const uploadId = String(req.body?.parcelPhotoUploadId || '');
+      if (!/^media-[a-f0-9-]{36}$/.test(uploadId)) {
+        return res.status(400).json({ error: 'Ajoutez entre 1 et 5 photos du colis' });
+      }
+      try {
+        claimedParcelUpload = await memberMediaUploads?.claimParcel({ userId: req.user.id, uploadId });
+      } catch {
+        return res.status(400).json({ error: 'Photos du colis invalides' });
+      }
+      if (!claimedParcelUpload?.photos?.length) {
+        return res.status(400).json({ error: 'Photos du colis invalides' });
+      }
+    } else if (req.body?.parcelPhotoUploadId) {
+      return res.status(400).json({ error: 'Les documents ne necessitent pas de photos' });
+    }
     const price = shipmentType === 'document'
       ? documentCount * 3
       : Math.round((view.price / view.capacityKg) * weightKg * 100) / 100;
@@ -74,6 +92,7 @@ export function createTripOperationsRouter({
       documentCount: shipmentType === 'document' ? documentCount : null,
       weightKg: shipmentType === 'parcel' ? weightKg : 0,
       descriptionParcel,
+      parcelPhotos: claimedParcelUpload?.photos || [],
       paymentStatus: 'pending',
       payment: paymentSnapshot(pricing),
       escrow: createEscrow({
@@ -98,6 +117,18 @@ export function createTripOperationsRouter({
       feePolicyVersion: pricing.feePolicyVersion,
     });
     db.transactions.push(tx);
+    if (claimedParcelUpload) {
+      try {
+        await memberMediaUploads.finalizeParcel({
+          uploadId: claimedParcelUpload.uploadId,
+          operationId: tx.id,
+        });
+      } catch {
+        db.transactions.pop();
+        await memberMediaUploads.cancel(claimedParcelUpload.uploadId).catch(() => {});
+        return res.status(503).json({ error: 'Les photos du colis n ont pas pu etre enregistrees' });
+      }
+    }
     const conversation = findOrCreateConversation({ participantIds: [req.user.id, trip.travelerId], tripId: trip.id, operationId: tx.id });
     await notify([trip.travelerId], { key: 'offer.received', params: { name: req.user.name, title: `${trip.from} -> ${trip.to}` } }, tx.id, 'transactions', 'messages');
     save();
@@ -197,6 +228,9 @@ export function createTripOperationsRouter({
     addEvent(tx, 'delivery_code_verified', req.user.id, { deliveryConfirmed: true });
     await audit(req.user.id, 'operation_delivery_code_verified', 'transaction', tx.id, { deliveryConfirmed: true });
     await notify([tx.senderId, tx.travelerId], { key: 'tx.delivered.sender' }, tx.id, 'shipments', 'suivi');
+    if (tx.parcelPhotos?.length) {
+      await memberMediaUploads?.scheduleParcelPurge({ operationId: tx.id });
+    }
     save();
     res.json({ operation: operationView(tx, req.user) });
   });
@@ -236,6 +270,9 @@ export function createTripOperationsRouter({
       reason: String(req.body?.reason || '').trim().slice(0, 300),
     });
     await notify([tx.senderId], { key: 'offer.refused' }, tx.id, 'transactions', 'suivi');
+    if (tx.parcelPhotos?.length) {
+      await memberMediaUploads?.scheduleParcelPurge({ operationId: tx.id });
+    }
     save();
     res.json({ operation: operationView(tx, req.user) });
   });
@@ -261,6 +298,9 @@ export function createTripOperationsRouter({
       'transactions',
       'suivi',
     );
+    if (tx.parcelPhotos?.length) {
+      await memberMediaUploads?.scheduleParcelPurge({ operationId: tx.id });
+    }
     save();
     res.json({ operation: operationView(tx, req.user) });
   });

@@ -13,6 +13,19 @@ function harness() {
         return { rowCount: 1, rows: [] };
       }
       if (normalized.startsWith('update public.wigolink_runtime_records')) {
+        if (normalized.includes("set kind = 'parcel_media'")) {
+          const data = records.get(params[0]);
+          if (!data) return { rowCount: 0, rows: [] };
+          data.operationId = params[1];
+          data.kind = 'parcel_media';
+          return { rowCount: 1, rows: [] };
+        }
+        if (normalized.includes('set expires_at =')) {
+          for (const data of records.values()) {
+            if (data.operationId === params[0]) data.purgeAt = params[1];
+          }
+          return { rowCount: 1, rows: [] };
+        }
         const data = records.get(params[0]);
         if (!data || data.claimed || data.userId !== params[1] || data.mediaType !== params[2]) {
           return { rowCount: 0, rows: [] };
@@ -32,9 +45,9 @@ function harness() {
   };
   const media = (type) => ({
     enabled: true,
-    async createSignedUpload({ userId, uploadId, field = 'photo', mime }) {
+    async createSignedUpload({ userId, uploadId, photoId, field = 'photo', mime }) {
       const storagePath = `users/${userId}/${uploadId}/${field}.jpg`;
-      return { field, mime, storagePath, signedUrl: `https://upload.test/${storagePath}` };
+      return { field, photoId, mime, storagePath, signedUrl: `https://upload.test/${storagePath}` };
     },
     async info() {
       return { mime: 'image/jpeg', size: 1234 };
@@ -50,6 +63,7 @@ function harness() {
     getPool: () => pool,
     kycMedia: media('kyc'),
     profileMedia: media('profile'),
+    parcelMedia: media('parcel'),
     now: () => 1_000,
   });
   return { service, records, removed };
@@ -80,6 +94,25 @@ test('uploads membre reserve, verifie et consomme un lot KYC une seule fois', as
   }), /invalide ou expiree/);
   await service.complete(reserved.uploadId);
   assert.equal(records.has(reserved.uploadId), false);
+});
+
+test('uploads colis impose 1 a 5 images et programme la purge apres cloture', async () => {
+  const { service, records } = harness();
+  await assert.rejects(() => service.reserveParcel({ userId: 'u-1', photos: [] }), /1 et 5/);
+  const reserved = await service.reserveParcel({
+    userId: 'u-1',
+    photos: [
+      { mime: 'image/jpeg', size: 1200 },
+      { mime: 'image/jpeg', size: 1300 },
+    ],
+  });
+  const claimed = await service.claimParcel({ userId: 'u-1', uploadId: reserved.uploadId });
+  assert.equal(claimed.photos.length, 2);
+  assert.match(claimed.photos[0].id, /^parcel-/);
+  await service.finalizeParcel({ uploadId: reserved.uploadId, operationId: 'tx-1' });
+  assert.equal(records.get(reserved.uploadId).operationId, 'tx-1');
+  await service.scheduleParcelPurge({ operationId: 'tx-1' });
+  assert.equal(records.get(reserved.uploadId).purgeAt, 1_296_001_000);
 });
 
 test('uploads membre refuse un fichier trop lourd et nettoie un profil abandonne', async () => {

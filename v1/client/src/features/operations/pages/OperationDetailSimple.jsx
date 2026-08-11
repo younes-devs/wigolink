@@ -158,6 +158,19 @@ export default function OperationDetailSimple() {
 
         {operation.descriptionParcel && <div className="operation-description"><span>{t('trips.request.contents')}</span><p>{operation.descriptionParcel}</p></div>}
 
+        {operation.shipmentType === 'parcel' && operation.parcelPhotos?.length > 0 && (
+          <section className="operation-parcel-photos">
+            <h2><Icon name="camera" size={17} />{t('trips.request.photos.title')}</h2>
+            <div className="operation-parcel-photo-grid">
+              {operation.parcelPhotos.map((photo, index) => (
+                <a href={photo.url} target="_blank" rel="noreferrer" key={photo.id} aria-label={t('trips.request.photos.enlarge', { number: index + 1 })}>
+                  <img src={photo.url} alt={t('trips.request.photos.alt', { number: index + 1 })} loading="lazy" decoding="async" />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
         {!['litige', 'termine'].includes(operation.operationStatus) && (
           <details className="operation-help">
             <summary><Icon name="alert" size={16} />{t('operations.issue')}</summary>

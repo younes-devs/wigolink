@@ -9,18 +9,19 @@ test('retention purge medias abandonnes et donnees temporaires expirees', async 
   const pool = {
     async query(sql, params = []) {
       calls.push({ sql, params });
-      if (sql.includes("kind in ('message_upload', 'member_media_upload')") && sql.includes('select kind')) {
+      if (sql.includes("kind in ('message_upload', 'member_media_upload', 'parcel_media')") && sql.includes('select kind')) {
         return {
           rows: [
             { kind: 'message_upload', id: 'att-1', data: { storagePath: 'conversations/c-1/att-1.jpg' } },
             { kind: 'message_upload', id: 'att-2', data: { storagePath: 'conversations/c-1/att-2.jpg' } },
             { kind: 'member_media_upload', id: 'media-1', data: { mediaType: 'kyc', uploads: [] } },
+            { kind: 'parcel_media', id: 'parcel-media-1', data: { mediaType: 'parcel', operationId: 'tx-1', uploads: [{ storagePath: 'requests/u/one.jpg' }] } },
           ],
-          rowCount: 3,
+          rowCount: 4,
         };
       }
       if (sql.includes('wigolink_sessions')) return { rowCount: 4, rows: [] };
-      if (sql.includes("kind not in ('message_upload', 'member_media_upload')")) return { rowCount: 3, rows: [] };
+      if (sql.includes("kind not in ('message_upload', 'member_media_upload', 'parcel_media')")) return { rowCount: 3, rows: [] };
       if (sql.includes('public.notifications')) return { rowCount: 5, rows: [] };
       return { rowCount: 2, rows: [] };
     },
@@ -46,9 +47,9 @@ test('retention purge medias abandonnes et donnees temporaires expirees', async 
     'conversations/c-1/att-1.jpg',
     'conversations/c-1/att-2.jpg',
   ]);
-  assert.deepEqual(memberCleaned, ['kyc']);
+  assert.deepEqual(memberCleaned, ['kyc', 'parcel']);
   assert.deepEqual(result, {
-    expiredUploads: 3,
+    expiredUploads: 4,
     uploadFailures: 0,
     expiredSessions: 4,
     expiredRuntimeRecords: 3,
@@ -56,6 +57,7 @@ test('retention purge medias abandonnes et donnees temporaires expirees', async 
     hasMoreUploads: false,
   });
   assert.ok(calls.some(({ sql }) => sql.includes("interval '10 days'")));
+  assert.ok(calls.some(({ sql }) => sql.includes("data - 'parcelPhotos'")));
 });
 
 test('retention conserve une reservation si la suppression storage echoue', async () => {
@@ -88,7 +90,7 @@ test('retention conserve une reservation si la suppression storage echoue', asyn
   assert.equal(result.uploadFailures, 1);
   assert.equal(
     calls.some(({ sql }) => (
-      sql.includes("kind in ('message_upload', 'member_media_upload')")
+      sql.includes("kind in ('message_upload', 'member_media_upload', 'parcel_media')")
       && sql.includes('id = any')
       && sql.startsWith('delete')
     )),

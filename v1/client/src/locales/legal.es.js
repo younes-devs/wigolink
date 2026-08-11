@@ -104,6 +104,7 @@ export default {
         "list": [
           "Cuenta y perfil: durante la duración de la cuenta, luego según {retention}.",
           "Mensajes, fotos y datos de ubicación: {retention}. La visibilidad de una ubicación puede expirar antes de la eliminación técnica de los datos.",
+          "Fotos del paquete adjuntas a una solicitud: eliminadas 15 días después de finalizar o cancelar la operación.",
           "Selfie de piezas y verificación: {retention}, con acceso estrictamente limitado. Las imágenes KYC están excluidas de la exportación estándar.",
           "Registro de seguridad y moderación: {retention}.",
           "En caso de eliminación de la cuenta, Wigolink anonimiza los datos del perfil cuando sea técnica y legalmente posible; Se pueden conservar los elementos necesarios para una obligación legal o una disputa en curso."

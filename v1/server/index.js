@@ -133,6 +133,7 @@ import { createConversationMessageRouter } from './routes/conversation-messages.
 import { createTripsRouter } from './routes/trips.js';
 import { createTripOperationsRouter } from './routes/trip-operations.js';
 import { createOperationReadsRouter } from './routes/operation-reads.js';
+import { createParcelPhotosRouter } from './routes/parcel-photos.js';
 import { createAdminRecordsRouter } from './routes/admin-records.js';
 import { createPublicProfilesRouter } from './routes/public-profiles.js';
 import { createMemberOverviewRouter } from './routes/member-overview.js';
@@ -166,6 +167,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
+import { createParcelMediaService } from './services/parcel-media.js';
 import { createMemberMediaUploadService } from './services/member-media-uploads.js';
 import { createRetentionService } from './services/retention.js';
 import { createCapacityService } from './services/capacity.js';
@@ -434,10 +436,16 @@ const profileMedia = createProfileMediaService({
   secretKey: SUPABASE_SECRET_KEY,
   bucket: String(process.env.SUPABASE_PROFILE_MEDIA_BUCKET || 'wigolink-profile-media').trim(),
 });
+const parcelMedia = createParcelMediaService({
+  url: SUPABASE_URL,
+  secretKey: SUPABASE_SECRET_KEY,
+  bucket: String(process.env.SUPABASE_PARCEL_MEDIA_BUCKET || 'wigolink-parcel-media').trim(),
+});
 const memberMediaUploads = createMemberMediaUploadService({
   getPool: databasePool,
   kycMedia,
   profileMedia,
+  parcelMedia,
 });
 const retention = createRetentionService({
   getPool: databasePool,
@@ -1017,6 +1025,7 @@ const relationalOperationWriter = createRelationalOperationWriter({
   notify,
   audit,
   validPhotos,
+  memberMediaUploads,
   today: TODAY_ISO,
   memberStateEnabled: relationalConversationMembersEnabled,
   paymentProvider: STRIPE_CONFIG.enabled ? 'stripe' : 'simulated',
@@ -1027,6 +1036,14 @@ app.use('/api', createRelationalOperationWriteRouter({
   auth: relationalOperationWriteAuth,
   enabled: relationalOperationWritesEnabled,
   writer: relationalOperationWriter,
+}));
+
+app.use('/api', createParcelPhotosRouter({
+  auth,
+  getPool: databasePool,
+  db,
+  parcelMedia,
+  memberMediaUploads,
 }));
 
 const tripService = createTripService({
@@ -1093,6 +1110,7 @@ app.use('/api', createTripOperationsRouter({
   repositories,
   disputeView,
   validPhotos,
+  memberMediaUploads,
   paymentProvider: STRIPE_CONFIG.enabled ? 'stripe' : 'simulated',
 }));
 

@@ -211,6 +211,7 @@ function operationView(
     payout: publicPayout(row.manual_payout_record),
     conversationId: row.conversation_id || null,
   };
+  view.parcelPhotos = publicParcelPhotos(transaction);
   delete view.pickupCode;
   delete view.deliveryCode;
   delete view.securityCodes;
@@ -230,6 +231,16 @@ function operationView(
     },
   };
   return view;
+}
+
+function publicParcelPhotos(transaction) {
+  if (transaction.shipmentType !== 'parcel') return [];
+  return (transaction.parcelPhotos || []).map((photo) => ({
+    id: photo.id,
+    mime: photo.mime,
+    size: Number(photo.size || 0),
+    url: `/api/operations/${encodeURIComponent(transaction.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
+  }));
 }
 
 function publicPayment(record, snapshot) {

@@ -80,6 +80,7 @@ const privacy = {
       { id: 'retention', title: '6. Conservation et suppression', list: [
         'Compte et profil : pendant la durée du compte, puis selon {retention}.',
         'Messages, photos et données de localisation : {retention}. La visibilité d’une localisation peut expirer avant la suppression technique des données.',
+        'Photos du colis jointes à une demande : supprimées 15 jours après la fin ou l’annulation de l’opération.',
         'Pièces et selfie de vérification : {retention}, avec accès strictement limité. Les images KYC sont exclues de l’export standard.',
         'Journal de sécurité et de modération : {retention}.',
         'En cas de suppression du compte, Wigolink anonymise les données de profil lorsque cela est techniquement et légalement possible ; les éléments nécessaires à une obligation légale ou à un litige en cours peuvent être conservés.',
@@ -136,6 +137,7 @@ const privacy = {
       { id: 'retention', title: '6. Bewaring en verwijdering', list: [
         'Account en profiel: tijdens de looptijd van het account en daarna volgens {retention}.',
         'Berichten, foto’s en locatiegegevens: {retention}. De zichtbaarheid van een locatie kan eerder vervallen dan de technische verwijdering.',
+        'Pakketfoto’s bij een aanvraag: verwijderd 15 dagen na voltooiing of annulering van de operatie.',
         'Identiteitsstukken en verificatieselfie: {retention}, met strikt beperkte toegang. KYC-afbeeldingen zijn uitgesloten van de standaardexport.',
         'Beveiligings- en moderatielogboek: {retention}.',
         'Bij verwijdering van het account anonimiseert Wigolink profielgegevens waar dit technisch en juridisch mogelijk is. Elementen die nodig zijn voor een wettelijke verplichting of lopend geschil kunnen worden bewaard.',
@@ -192,6 +194,7 @@ const privacy = {
       { id: 'retention', title: '6. الاحتفاظ والحذف', list: [
         'الحساب والملف: طوال مدة الحساب ثم وفقا لـ {retention}.',
         'الرسائل والصور وبيانات الموقع: {retention}. قد تنتهي رؤية الموقع قبل الحذف التقني للبيانات.',
+        'صور الطرد المرفقة بالطلب: تُحذف بعد 15 يومًا من اكتمال العملية أو إلغائها.',
         'وثائق الهوية وصورة التحقق: {retention}، مع وصول محدود جدا. صور KYC مستثناة من التصدير العادي.',
         'سجل الأمان والإشراف: {retention}.',
         'عند حذف الحساب، يجهّل Wigolink بيانات الملف حيثما كان ذلك ممكنا تقنيا وقانونيا. ويمكن الاحتفاظ بالعناصر اللازمة لالتزام قانوني أو نزاع جارٍ.',

@@ -28,6 +28,14 @@ export function createOperationProjections({
       price: tx.price || tx.escrow?.travelerPay || listing?.travelerPay || trip?.price || 0,
       dispute: dispute ? disputeView(dispute, tx) : null,
     };
+    view.parcelPhotos = tx.shipmentType === 'parcel'
+      ? (tx.parcelPhotos || []).map((photo) => ({
+        id: photo.id,
+        mime: photo.mime,
+        size: Number(photo.size || 0),
+        url: `/api/operations/${encodeURIComponent(tx.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
+      }))
+      : [];
 
     delete view.pickupCode;
     delete view.deliveryCode;

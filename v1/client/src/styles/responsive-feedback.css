@@ -285,6 +285,23 @@ textarea:focus-visible {
 .trip-request-flow .field { margin: 0; }
 .trip-request-flow .price-input { max-width: 260px; }
 .trip-request-next { justify-self: end; min-width: 160px; }
+.parcel-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.parcel-photo-preview, .parcel-photo-add { position: relative; min-width: 0; aspect-ratio: 4 / 3; margin: 0; overflow: hidden; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface-soft); }
+.parcel-photo-preview img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.parcel-photo-preview .icon-btn { position: absolute; top: 7px; right: 7px; width: 34px; height: 34px; border-color: rgba(255,255,255,.72); background: rgba(20,28,42,.78); color: #fff; }
+.parcel-photo-add { display: grid; place-content: center; justify-items: center; gap: 7px; color: var(--accent); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.parcel-photo-add:hover, .parcel-photo-add:focus-visible { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent); outline-offset: 2px; }
+.parcel-photo-count { margin: -8px 0 0; color: var(--ink-soft); font-size: 12px; }
+.parcel-photo-retention { display: flex; align-items: flex-start; gap: 7px; margin: -7px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.4; }
+.parcel-photo-retention svg { flex: 0 0 auto; margin-top: 1px; color: var(--green); }
+.parcel-photo-review { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
+.parcel-photo-review img { flex: 0 0 82px; width: 82px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--hairline); }
+.operation-parcel-photos { display: grid; gap: 10px; }
+.operation-parcel-photos h2 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 15px; }
+.operation-parcel-photo-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.operation-parcel-photo-grid a { aspect-ratio: 1; overflow: hidden; border: 1px solid var(--hairline); border-radius: 9px; background: var(--surface-soft); }
+.operation-parcel-photo-grid img { width: 100%; height: 100%; display: block; object-fit: cover; transition: transform .16s ease; }
+.operation-parcel-photo-grid a:hover img { transform: scale(1.035); }
 .operation-simple-page { max-width: 720px; }
 @media (max-width: 899px) {
   .phone:has(.operation-simple-page) .app-header,
@@ -293,6 +310,10 @@ textarea:focus-visible {
     padding-bottom: calc(28px + env(safe-area-inset-bottom));
     scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom));
   }
+}
+@media (max-width: 560px) {
+  .parcel-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .operation-parcel-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .operation-detail-simple { display: grid; gap: 16px; }
 .operation-detail-simple .operation-person { margin: 0; }

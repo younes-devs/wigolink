@@ -53,6 +53,7 @@ test('acceptation relationnelle verrouille le trajet et cree operation plus conv
       shipmentType: 'parcel',
       weightKg: 3,
       descriptionParcel: 'Diplome',
+      parcelPhotoUploadId: 'media-11111111-1111-4111-8111-111111111111',
     },
   });
 
@@ -288,6 +289,17 @@ function writerHarness({
   memberState = false,
   paymentProvider = 'simulated',
   onDeliveryConfirmed = null,
+  memberMediaUploads = {
+    async claimParcel({ uploadId }) {
+      return {
+        uploadId,
+        photos: [{ id: 'parcel-1', storagePath: 'requests/u/one.jpg', mime: 'image/jpeg', size: 1200 }],
+      };
+    },
+    async finalizeParcel() {},
+    async scheduleParcelPurge() {},
+    async cancel() {},
+  },
 }) {
   let latestOperation = null;
   const originalQuery = client.query;
@@ -344,6 +356,7 @@ function writerHarness({
     memberStateEnabled: () => memberState,
     paymentProvider,
     onDeliveryConfirmed,
+    memberMediaUploads,
   });
 }
 

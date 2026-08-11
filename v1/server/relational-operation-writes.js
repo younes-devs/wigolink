@@ -25,6 +25,7 @@ export function createRelationalOperationWriter({
   notify,
   audit,
   validPhotos,
+  memberMediaUploads = null,
   today,
   now = Date.now,
   logger = console,
@@ -43,6 +44,7 @@ export function createRelationalOperationWriter({
     const client = await pool.connect();
     let transaction;
     let conversation;
+    let claimedParcelUpload = null;
     let tripLabel = 'Envoi en cours';
     try {
       await client.query('begin');
@@ -105,6 +107,18 @@ export function createRelationalOperationWriter({
       const basePrice = Number(trip.price ?? trip.proposedPrice ?? 25);
       const shipment = shipmentFor(body, capacityKg, basePrice);
       if (shipment.error) return await rollbackResponse(client, 400, shipment.error);
+      if (shipment.type === 'parcel') {
+        const uploadId = String(body.parcelPhotoUploadId || '');
+        if (!/^media-[a-f0-9-]{36}$/.test(uploadId)) {
+          return await rollbackResponse(client, 400, { error: 'Ajoutez entre 1 et 5 photos du colis' });
+        }
+        claimedParcelUpload = await memberMediaUploads?.claimParcel({ userId: user.id, uploadId });
+        if (!claimedParcelUpload?.photos?.length) {
+          return await rollbackResponse(client, 400, { error: 'Photos du colis invalides' });
+        }
+      } else if (body.parcelPhotoUploadId) {
+        return await rollbackResponse(client, 400, { error: 'Les documents ne necessitent pas de photos' });
+      }
 
       const createdAt = now();
       const pricing = quotePayment({
@@ -126,6 +140,7 @@ export function createRelationalOperationWriter({
         documentCount: shipment.documentCount,
         weightKg: shipment.weightKg,
         descriptionParcel: String(body.descriptionParcel || '').trim().slice(0, 500),
+        parcelPhotos: claimedParcelUpload?.photos || [],
         paymentStatus: 'pending',
         payment: paymentSnapshot(pricing),
         escrow: createEscrow({
@@ -205,9 +220,19 @@ export function createRelationalOperationWriter({
           [conversation.id, participantIds],
         );
       }
+      if (claimedParcelUpload) {
+        await memberMediaUploads.finalizeParcel({
+          uploadId: claimedParcelUpload.uploadId,
+          operationId: transaction.id,
+          client,
+        });
+      }
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => {});
+      if (claimedParcelUpload) {
+        await memberMediaUploads?.cancel(claimedParcelUpload.uploadId).catch(() => {});
+      }
       logger.error('relational_operation_accept_failed', {
         message: error?.message || 'unknown_error',
       });
@@ -600,6 +625,9 @@ export function createRelationalOperationWriter({
         return await rollbackResult(client, effect.error);
       }
       await updateRecord(client, 'wigolink_transactions', tx);
+      if (tx.operationStatus === 'termine') {
+        await memberMediaUploads?.scheduleParcelPurge({ operationId: tx.id, client });
+      }
       if (effect.incrementCompleted) {
         await incrementCompleted(client, tx.senderId);
         await incrementCompleted(client, tx.travelerId);

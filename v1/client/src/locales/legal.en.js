@@ -104,6 +104,7 @@ export default {
         "list": [
           "Account and profile: for the duration of the account, then according to {retention}.",
           "Messages, photos and location data: {retention}. Visibility of a location may expire before technical deletion of the data.",
+          "Parcel photos attached to a request: deleted 15 days after the operation is completed or cancelled.",
           "Parts and verification selfie: {retention}, with strictly limited access. KYC images are excluded from the standard export.",
           "Security and moderation log: {retention}.",
           "In the event of deletion of the account, Wigolink anonymizes the profile data when technically and legally possible; elements necessary for a legal obligation or an ongoing dispute may be retained."

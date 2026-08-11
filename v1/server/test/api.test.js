@@ -200,15 +200,15 @@ test('current trip, conversation and operation workflow', async () => {
     method: 'POST',
     token: tokens.fatima,
     body: {
-      descriptionParcel: 'Petit colis propre de 2 kg.',
-      shipmentType: 'parcel',
-      weightKg: 2,
+      descriptionParcel: 'Diplome protege dans une enveloppe.',
+      shipmentType: 'document',
+      documentCount: 2,
     },
   });
   assert.equal(request.status, 200, JSON.stringify(request.body));
   const operation = request.body.operation;
   assert.equal(operation.operationStatus, 'attente_confirmation');
-  assert.equal(operation.price, 8);
+  assert.equal(operation.price, 6);
 
   const payTooSoon = await api(`/operations/${operation.id}/pay`, {
     method: 'POST',
