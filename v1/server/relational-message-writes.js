@@ -314,11 +314,26 @@ export function createRelationalMessageWriter({
     }
     const attachmentId = newId('att');
     try {
-      const upload = await messageMedia.createSignedUpload({
-        conversationId,
-        attachmentId,
-        mime,
-      });
+      const proxyDataUrl = String(body.dataUrl || '');
+      const proxySize = proxyDataUrl
+        ? directDataUrlSize(proxyDataUrl, mime)
+        : null;
+      if (proxyDataUrl && (!proxySize || proxySize > DIRECT_UPLOAD_MAX_BYTES)) {
+        return response(400, { error: 'Image invalide ou trop volumineuse' });
+      }
+      const upload = proxyDataUrl
+        ? await messageMedia.storeDataUrl({
+          conversationId,
+          attachmentId,
+          dataUrl: proxyDataUrl,
+        })
+        : await messageMedia.createSignedUpload({
+          conversationId,
+          attachmentId,
+          mime,
+        });
+      if (!upload?.storagePath) throw new Error('Stockage image indisponible');
+      const storedSize = proxySize || declaredSize;
       await getPool().query(
         `insert into public.wigolink_runtime_records
            (kind, id, data, expires_at, updated_at)
@@ -335,7 +350,7 @@ export function createRelationalMessageWriter({
             userId: user.id,
             storagePath: upload.storagePath,
             mime,
-            declaredSize,
+            declaredSize: storedSize,
             createdAt: now(),
           }),
           now() + MESSAGE_UPLOAD_TTL_MS,
@@ -343,10 +358,12 @@ export function createRelationalMessageWriter({
       );
       return response(200, {
         upload: {
-          attachmentId: upload.attachmentId,
+          attachmentId,
           storagePath: upload.storagePath,
-          signedUrl: upload.signedUrl,
+          ...(upload.signedUrl ? { signedUrl: upload.signedUrl } : {}),
+          uploaded: !!proxyDataUrl,
           mime,
+          size: storedSize,
           maxBytes: DIRECT_UPLOAD_MAX_BYTES,
         },
       });
@@ -1465,6 +1482,16 @@ const DIRECT_UPLOAD_MIMES = new Set([
   'image/webp',
 ]);
 const DIRECT_UPLOAD_MAX_BYTES = 700 * 1024;
+
+function directDataUrlSize(dataUrl, expectedMime) {
+  const match = String(dataUrl || '').match(/^data:(image\/(?:jpeg|png|webp));base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match || match[1] !== expectedMime) return 0;
+  try {
+    return Buffer.from(match[2], 'base64').length;
+  } catch {
+    return 0;
+  }
+}
 
 function isDirectAttachment(attachment, conversationId) {
   if (!attachment || typeof attachment !== 'object') return false;

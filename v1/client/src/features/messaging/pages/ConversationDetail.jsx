@@ -714,20 +714,40 @@ async function uploadMessageAttachment(conversationId, attachment) {
   if (!upload?.signedUrl || !upload?.storagePath || !upload?.attachmentId) {
     throw new Error(t('messages.attachment.failed'));
   }
-  const form = new FormData();
-  form.append('cacheControl', '86400');
-  form.append('', blob);
-  const response = await fetch(upload.signedUrl, {
-    method: 'PUT',
-    body: form,
-  });
-  if (!response.ok) throw new Error(t('messages.attachment.failed'));
+  let directUploadSucceeded;
+  try {
+    const form = new FormData();
+    form.append('cacheControl', '86400');
+    form.append('', blob);
+    const response = await fetch(upload.signedUrl, {
+      method: 'PUT',
+      headers: { 'x-upsert': 'false' },
+      body: form,
+    });
+    directUploadSucceeded = response.ok;
+  } catch {
+    directUploadSucceeded = false;
+  }
+  const stored = directUploadSucceeded
+    ? upload
+    : (await api(`/conversations/${conversationId}/attachments/upload`, {
+      method: 'POST',
+      body: {
+        mime: blob.type || 'image/jpeg',
+        name: attachment.name,
+        size: blob.size,
+        dataUrl: attachment.dataUrl,
+      },
+    })).upload;
+  if (!stored?.storagePath || !stored?.attachmentId) {
+    throw new Error(t('messages.attachment.failed'));
+  }
   return {
-    id: upload.attachmentId,
+    id: stored.attachmentId,
     type: 'image',
     name: String(attachment.name || 'image').slice(0, 80),
-    mime: upload.mime,
+    mime: stored.mime,
     size: blob.size,
-    storagePath: upload.storagePath,
+    storagePath: stored.storagePath,
   };
 }

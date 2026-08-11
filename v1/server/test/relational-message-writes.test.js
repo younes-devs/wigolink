@@ -127,6 +127,15 @@ function createHarness({
           mime,
         };
       },
+      async storeDataUrl({ conversationId, attachmentId, dataUrl }) {
+        const mime = String(dataUrl).slice(5, String(dataUrl).indexOf(';'));
+        const extension = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+        return {
+          storagePath: `conversations/${conversationId}/${attachmentId}.${extension}`,
+          mime,
+          size: Buffer.from(String(dataUrl).split(',')[1] || '', 'base64').length,
+        };
+      },
       async info() {
         return mediaInfo;
       },
@@ -179,6 +188,26 @@ test('upload direct signe seulement pour un participant et un type image', async
     sql.includes('insert into public.wigolink_runtime_records')
   ));
   assert.equal(reservation.params[0], result.body.upload.attachmentId);
+});
+
+test('upload image passe par le serveur quand le transfert direct echoue', async () => {
+  const harness = createHarness({ mediaEnabled: true });
+  const dataUrl = 'data:image/jpeg;base64,aW1hZ2U=';
+  const result = await harness.writer.createAttachmentUpload({
+    user,
+    conversationId: 'conv-1',
+    body: {
+      mime: 'image/jpeg',
+      size: 5,
+      dataUrl,
+    },
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.upload.uploaded, true);
+  assert.equal(result.body.upload.signedUrl, undefined);
+  assert.equal(result.body.upload.size, 5);
+  assert.match(result.body.upload.storagePath, /^conversations\/conv-1\/att-/);
 });
 
 test('message direct conserve uniquement la reference storage verifiee', async () => {
