@@ -5,6 +5,7 @@ import { useAuth } from '../../../app/authContext.jsx';
 import { Icon } from '../../../Icons.jsx';
 import { t, useLang } from '../../../i18n.js';
 import { useToast } from '../../../Toast.jsx';
+import { dataUrlBlob } from '../../../core/directUpload.js';
 import { markInboxConversationRead } from './MessagesSimple.jsx';
 import { readThreadCache, writeThreadCache } from '../services/messageCache.js';
 import { ConversationChrome } from '../components/ConversationChrome.jsx';
@@ -701,44 +702,16 @@ export default function ConversationDetail() {
 
 async function uploadMessageAttachment(conversationId, attachment) {
   if (!attachment?.dataUrl) return attachment;
-  const blob = await fetch(attachment.dataUrl).then((response) => response.blob());
-  const data = await api(`/conversations/${conversationId}/attachments/upload`, {
+  const blob = await dataUrlBlob(attachment.dataUrl);
+  const stored = (await api(`/conversations/${conversationId}/attachments/upload`, {
     method: 'POST',
     body: {
       mime: blob.type || 'image/jpeg',
       name: attachment.name,
       size: blob.size,
+      dataUrl: attachment.dataUrl,
     },
-  });
-  const upload = data.upload;
-  if (!upload?.signedUrl || !upload?.storagePath || !upload?.attachmentId) {
-    throw new Error(t('messages.attachment.failed'));
-  }
-  let directUploadSucceeded;
-  try {
-    const form = new FormData();
-    form.append('cacheControl', '86400');
-    form.append('', blob);
-    const response = await fetch(upload.signedUrl, {
-      method: 'PUT',
-      headers: { 'x-upsert': 'false' },
-      body: form,
-    });
-    directUploadSucceeded = response.ok;
-  } catch {
-    directUploadSucceeded = false;
-  }
-  const stored = directUploadSucceeded
-    ? upload
-    : (await api(`/conversations/${conversationId}/attachments/upload`, {
-      method: 'POST',
-      body: {
-        mime: blob.type || 'image/jpeg',
-        name: attachment.name,
-        size: blob.size,
-        dataUrl: attachment.dataUrl,
-      },
-    })).upload;
+  })).upload;
   if (!stored?.storagePath || !stored?.attachmentId) {
     throw new Error(t('messages.attachment.failed'));
   }

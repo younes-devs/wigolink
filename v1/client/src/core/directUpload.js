@@ -1,7 +1,12 @@
 export async function dataUrlBlob(dataUrl) {
-  const response = await fetch(dataUrl);
-  if (!response.ok) throw new Error('Image illisible');
-  return response.blob();
+  const match = String(dataUrl || '').match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match) throw new Error('Image illisible');
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: match[1] });
 }
 
 export async function uploadSignedBlob(signedUrl, blob, cacheControl = '300') {
