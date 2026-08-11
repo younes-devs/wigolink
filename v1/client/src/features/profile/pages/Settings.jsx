@@ -14,10 +14,16 @@ export default function Settings() {
   useLang();
   const { user, login, logout } = useAuth();
   const [me, setMe] = useState(null);
+  const [payoutState, setPayoutState] = useState({ loading: true, payout: null, error: '' });
   const [section, setSection] = useState('');
   const [modal, setModal] = useState('');
 
   useEffect(() => { api('/me').then(setMe).catch(() => {}); }, []);
+  useEffect(() => {
+    api('/payouts/status')
+      .then((data) => setPayoutState({ loading: false, payout: data.payout, error: '' }))
+      .catch((error) => setPayoutState({ loading: false, payout: null, error: error.message || '' }));
+  }, []);
 
   const closeModal = () => setModal('');
   const completePasswordSetup = (data) => {
@@ -30,6 +36,7 @@ export default function Settings() {
   if (section) {
     const detail = {
       account: { title: t('settings.section.account'), content: <AccountSecurity me={me} onOpen={setModal} /> },
+      payout: { title: t('payments.payout.manual.bankTitle'), content: <PayoutAccountSection state={payoutState} /> },
       notifications: { title: t('settings.section.notifications'), content: <NotificationsSection /> },
       appearance: { title: t('settings.section.appearance'), content: <AppearanceSection /> },
       legal: { title: t('settings.section.legal'), content: <LegalSection /> },
@@ -57,6 +64,7 @@ export default function Settings() {
       </div>
 
       <SettingsEntry icon="shieldCheck" title={t('settings.section.account')} sub={account?.email || t('settings.section.account.sub')} onClick={() => setSection('account')} />
+      <SettingsEntry icon="bank" title={t('payments.payout.manual.bankTitle')} sub={<PayoutSummary state={payoutState} />} onClick={() => setSection('payout')} />
       <SettingsEntry icon="bell" title={t('settings.section.notifications')} sub={t('settings.section.notifications.sub')} onClick={() => setSection('notifications')} />
       <SettingsEntry icon="moon" title={t('settings.section.appearance')} sub={t('settings.section.appearance.sub')} onClick={() => setSection('appearance')} />
       <SettingsEntry icon="fileText" title={t('settings.section.legal')} sub={t('settings.section.legal.sub')} onClick={() => setSection('legal')} />
@@ -76,6 +84,47 @@ function SettingsEntry({ icon, title, sub, onClick }) {
       <Icon name="arrowRight" size={17} className="settings-arrow" />
     </button>
   );
+}
+
+function PayoutSummary({ state }) {
+  if (state.loading) return t('common.loading');
+  if (!state.payout?.ready) return t('payments.payout.manual.bankIntro');
+  return payoutDescription(state.payout);
+}
+
+function PayoutAccountSection({ state }) {
+  if (state.loading) {
+    return <div className="settings-empty-state"><span className="spinner" />{t('common.loading')}</div>;
+  }
+  const ready = state.payout?.ready;
+  return <div className="settings-card settings-detail-card settings-payout-card">
+    <div className="settings-inline-row is-static">
+      <span className="settings-row-icon"><Icon name={ready ? 'shieldCheck' : 'bank'} size={18} /></span>
+      <span className="grow">
+        <span className="settings-row-title">{t(ready ? 'payments.payout.manual.ready' : 'payments.payout.manual.bankTitle')}</span>
+        <span className="settings-row-sub">{ready ? payoutDescription(state.payout) : t('payments.payout.manual.bankIntro')}</span>
+      </span>
+      {ready && <Icon name="check" size={17} />}
+    </div>
+    {state.error && <p className="settings-payout-error">{state.error}</p>}
+    <Link className="btn btn-primary settings-payout-action" to="/versements?retour=/parametres">
+      <Icon name={ready ? 'edit' : 'plus'} size={17} />
+      {t(ready ? 'payments.payout.manual.change' : 'payments.payout.continue')}
+    </Link>
+  </div>;
+}
+
+function payoutDescription(payout) {
+  let country = payout.country;
+  try {
+    country = new Intl.DisplayNames([getLang()], { type: 'region' }).of(payout.country) || payout.country;
+  } catch (error) {
+    void error;
+  }
+  return t('payments.payout.manual.readyHelp', {
+    country,
+    last4: payout.accountLast4,
+  });
 }
 
 function AccountSecurity({ me, onOpen }) {
