@@ -340,6 +340,7 @@ export default {
   "operations.security.pickup.done": "Descuento confirmado. El viajero ahora lleva su envío.",
   "operations.security.delivery.done": "Entrega confirmada.",
   "operations.complete": "Operación completada",
+  "operations.payout.withinSevenDays": "Recibirás tu dinero en un plazo de 7 días.",
   "operations.amount": "Monto",
   "operations.payment": "Pago",
   "operations.progress": "Progreso",

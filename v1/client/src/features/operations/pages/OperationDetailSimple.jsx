@@ -154,7 +154,7 @@ export default function OperationDetailSimple() {
           onSetupPayout={() => nav(`/versements?retour=${encodeURIComponent(`/operations/${id}`)}`)}
         />
 
-        <PaymentBreakdown operation={viewedOperation} />
+        {operation.operationStatus !== 'termine' && <PaymentBreakdown operation={viewedOperation} />}
 
         {operation.descriptionParcel && <div className="operation-description"><span>{t('trips.request.contents')}</span><p>{operation.descriptionParcel}</p></div>}
 
@@ -175,7 +175,7 @@ export default function OperationDetailSimple() {
           </section>
         )}
 
-        {operation.status === 'released' && (
+        {operation.operationStatus === 'termine' && (
           <section className="operation-rating">
             <h2><Icon name="star" size={17} />{t('operations.rating.title', { name: other?.name || t('operations.rating.member') })}</h2>
             {(operation.ratings || []).some((item) => item.by === user?.id && item.target === other?.id) ? <span className="pill pill-teal"><Icon name="check" size={13} />{t('operations.rating.sent')}</span> : <><Stars value={rating} onChange={setRating} />{rating > 0 && <><textarea rows={2} value={review} onChange={(event) => setReview(event.target.value)} maxLength={400} placeholder={t('operations.rating.placeholder')} /><button className="btn btn-primary btn-sm" onClick={submitRating} disabled={busy === 'rating'}>{t('operations.rating.send')}</button></>}</>}
@@ -227,7 +227,7 @@ function OperationAction({ operation, busy, code, revealedCode, onCodeChange, on
   const security = stage ? operation.security?.[stage] : null;
   const title = stage ? t(`operations.security.${stage}.title`) : null;
 
-  if (status === 'termine') return <section className="operation-action-card operation-complete"><Icon name="check" size={22} /><div><b>{t('operations.security.delivery.done')}</b><p>{t('operations.complete')}</p></div></section>;
+  if (status === 'termine') return <section className="operation-action-card operation-complete"><Icon name="check" size={22} /><div><b>{t('operations.security.delivery.done')}</b><p>{role === 'traveler' ? t('operations.payout.withinSevenDays') : t('operations.complete')}</p></div></section>;
   if (status === 'litige') return <section className="operation-action-card operation-locked"><Icon name="alert" size={22} /><div><b>{t('operations.status.dispute')}</b><p>{t('operations.issue.placeholder')}</p></div></section>;
   if (status === 'attente_confirmation') return <section className="operation-action-card"><div><span>{t(role === 'traveler' ? 'operations.guide.action' : 'operations.guide.waiting')}</span><h2>{role === 'traveler' ? t('operations.action.accept') : t('operations.awaiting.sender')}</h2><p>{t(role === 'traveler' ? 'operations.awaiting.traveler' : 'operations.next.travelerConfirmation')}</p></div><div className="operation-action-buttons">{role === 'traveler' && <button className="btn btn-primary" onClick={onAccept} disabled={!!busy}>{busy === 'accept' ? <span className="spinner" /> : <Icon name="check" size={17} />}{t('operations.action.accept')}</button>}<button className="btn btn-danger-ghost" onClick={onCancel} disabled={!!busy}><Icon name="x" size={16} />{t('operations.cancel.action')}</button></div></section>;
   if (status === 'paiement_requis') {

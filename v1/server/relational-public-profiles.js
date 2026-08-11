@@ -117,7 +117,10 @@ export async function rateRelationalOperation({
       [transactionId],
     );
     const transaction = transactionResult.rows[0]?.data;
-    if (!transaction || transaction.status !== 'released') {
+    if (!transaction || (
+      transaction.status !== 'released'
+      && transaction.operationStatus !== 'termine'
+    )) {
       return await rollback(client, 400, {
         error: 'Notation apres livraison uniquement',
       });

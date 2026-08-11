@@ -354,6 +354,7 @@ export default {
   'operations.security.pickup.done': 'تم تأكيد التسليم. المسافر ينقل شحنتك الآن.',
   'operations.security.delivery.done': 'تم تأكيد التسليم.',
   'operations.complete': 'اكتملت العملية',
+  'operations.payout.withinSevenDays': 'ستتلقى أموالك خلال 7 أيام.',
   'operations.amount': 'المبلغ',
   'operations.payment': 'الدفع',
   'operations.progress': 'التقدم',

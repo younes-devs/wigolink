@@ -349,6 +349,7 @@ export default {
   'operations.security.pickup.done': 'Overhandiging bevestigd. De reiziger vervoert uw zending nu.',
   'operations.security.delivery.done': 'Levering bevestigd.',
   'operations.complete': 'Operatie afgerond',
+  'operations.payout.withinSevenDays': 'U ontvangt uw geld binnen 7 dagen.',
   'operations.amount': 'Bedrag',
   'operations.payment': 'Betaling',
   'operations.progress': 'Voortgang',

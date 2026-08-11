@@ -24,7 +24,10 @@ export function createPublicProfileService({
     const transaction = db.transactions.find(
       (candidate) => candidate.id === transactionId,
     );
-    if (!transaction || transaction.status !== 'released') {
+    if (!transaction || (
+      transaction.status !== 'released'
+      && transaction.operationStatus !== 'termine'
+    )) {
       return response(400, {
         error: 'Notation après livraison uniquement',
       });
