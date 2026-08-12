@@ -14,7 +14,7 @@ function Stop-WithMessage {
 }
 
 try {
-    if (-not (Test-Path -LiteralPath "$repo\.git")) {
+    if (-not (Test-Path -LiteralPath $repo)) {
         Stop-WithMessage "Depot Wigolink introuvable : $repo"
     }
 
@@ -25,6 +25,11 @@ try {
     Set-Location -LiteralPath $repo
     Write-Host "Wigolink - contribution GitHub" -ForegroundColor Cyan
     Write-Host "Verification du depot..."
+
+    & $git rev-parse --is-inside-work-tree 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Stop-WithMessage "Le dossier Wigolink n'est pas reconnu comme depot Git."
+    }
 
     $branch = (& $git branch --show-current).Trim()
     if ($LASTEXITCODE -ne 0 -or $branch -ne "main") {
