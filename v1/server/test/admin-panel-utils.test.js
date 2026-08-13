@@ -5,13 +5,15 @@ globalThis.document = { documentElement: { lang: 'fr' } };
 const utilsPromise = import('../../client/src/features/admin/components/adminPanelUtils.js');
 const i18nPromise = import('../../client/src/i18n.js');
 
-test('admin UI masque les cles techniques inconnues', async () => {
+test('admin UI traduit les actions administratives connues et masque les inconnues', async () => {
   const [{ auditAction }, { loadAdminTranslations }] = await Promise.all([
     utilsPromise,
     i18nPromise,
   ]);
   await loadAdminTranslations();
-  assert.equal(auditAction('manual_payout_queue_viewed'), 'Événement administratif');
+  assert.equal(auditAction('manual_payout_queue_viewed'), 'File de versements consultée');
+  assert.equal(auditAction('admin.member_case.view'), 'Dossier membre consulté');
+  assert.equal(auditAction('action.inconnue'), 'Événement administratif');
 });
 
 test('admin UI interprete les timestamps numeriques en texte comme des millisecondes', async () => {
