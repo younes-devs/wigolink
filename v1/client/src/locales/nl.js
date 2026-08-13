@@ -9,6 +9,7 @@ export default {
   'nav.admin': 'Admin',
   'app.title': 'Wigolink — Verstuur met vertrouwen',
   'header.tagline': 'Verstuur met vertrouwen · Brussel ↔ Casablanca',
+  'header.shareTrip': 'Mijn reis delen',
   'common.continue': 'Doorgaan',
   'common.back': 'Terug',
   'common.cancel': 'Annuleren',

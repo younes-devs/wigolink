@@ -32,8 +32,8 @@ export function Header({ user }) {
           </span>
         )}
         {!user && (
-          <Link className="header-login" to={loginPath(returnTo)}>
-            {t('auth.tab.login')}
+          <Link className="header-login" to={loginPath('/trajets/nouveau')}>
+            {t('header.shareTrip')}
           </Link>
         )}
       </div>

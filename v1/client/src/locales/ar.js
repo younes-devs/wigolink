@@ -10,6 +10,7 @@ export default {
   'nav.admin': 'الإدارة',
   'app.title': 'Wigolink — أرسل بثقة',
   'header.tagline': 'أرسل بثقة · بروكسل ↔ الدار البيضاء',
+  'header.shareTrip': 'شارك رحلتي',
   'common.continue': 'متابعة',
   'common.back': 'رجوع',
   'common.cancel': 'إلغاء',

@@ -8,6 +8,7 @@ export default {
   "nav.admin": "Admin",
   "app.title": "Wigolink — Send with confidence",
   "header.tagline": "Send with confidence · Brussels ↔ Casablanca",
+  "header.shareTrip": "Share my trip",
   "common.continue": "Continue",
   "common.back": "Back",
   "common.cancel": "Cancel",
