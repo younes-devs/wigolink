@@ -40,6 +40,7 @@ function ensureCanonical() {
 
 function isPublicSearchPage(pathname) {
   if (['/trajets', '/cgu', '/confidentialite'].includes(pathname)) return true;
+  if (/^\/(envoyer-colis|envoyer-document|send-parcel|send-document|enviar-paquete|enviar-documento|pakket-versturen|document-versturen|sift-colis|sift-watiqa)\//.test(pathname)) return true;
   return /^\/trajets\/[^/]+$/.test(pathname) && pathname !== '/trajets/nouveau';
 }
 
@@ -51,7 +52,7 @@ export function RouteSeoPolicy() {
   return null;
 }
 
-export function usePageSeo({ title, description, canonicalPath, path, jsonLd } = {}) {
+export function usePageSeo({ title, description, canonicalPath, path, alternates, jsonLd } = {}) {
   useEffect(() => {
     const pageTitle = title || DEFAULT_SEO.title;
     const pageDescription = description || DEFAULT_SEO.description;
@@ -63,7 +64,7 @@ export function usePageSeo({ title, description, canonicalPath, path, jsonLd } =
     ensureCanonical().setAttribute('href', canonicalUrl);
 
     document.head.querySelectorAll('link[data-wigolink-seo="alternate"]').forEach((element) => element.remove());
-    for (const alternate of alternateLinks(pagePath)) {
+    for (const alternate of alternates || alternateLinks(pagePath)) {
       const link = document.createElement('link');
       link.rel = 'alternate';
       link.hreflang = alternate.locale;
@@ -72,7 +73,7 @@ export function usePageSeo({ title, description, canonicalPath, path, jsonLd } =
       document.head.appendChild(link);
     }
 
-    ensurePropertyMeta('og:type').setAttribute('content', jsonLd ? 'product' : 'website');
+    ensurePropertyMeta('og:type').setAttribute('content', jsonLd?.['@type'] === 'Offer' ? 'product' : 'website');
     ensurePropertyMeta('og:site_name').setAttribute('content', 'Wigolink');
     ensurePropertyMeta('og:title').setAttribute('content', pageTitle);
     ensurePropertyMeta('og:description').setAttribute('content', pageDescription);
@@ -96,7 +97,7 @@ export function usePageSeo({ title, description, canonicalPath, path, jsonLd } =
       script?.remove();
     }
     return () => document.head.querySelector('script[data-wigolink-seo="json-ld"]')?.remove();
-  }, [canonicalPath, description, jsonLd, path, title]);
+  }, [alternates, canonicalPath, description, jsonLd, path, title]);
 }
 
 export function tripSeo(trip, locale = 'fr') {

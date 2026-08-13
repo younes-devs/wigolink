@@ -54,6 +54,7 @@ const PrivacyPolicy = lazy(() => import('../pages/PrivacyPolicy.jsx'));
 const Terms = lazy(() => import('../pages/Terms.jsx'));
 const Kyc = lazy(() => import('../features/kyc/pages/Kyc.jsx'));
 const NotFound = lazy(() => import('../pages/NotFound.jsx'));
+const SeoLanding = lazy(() => import('../pages/SeoLanding.jsx'));
 
 const routeScrollPositions = new Map();
 const SCROLL_SESSION_PREFIX = 'wigolink:scroll:';
@@ -316,6 +317,21 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
                 <Route path="/connexion" element={user ? <LoginReturn /> : <Login />} />
                 <Route path="/confidentialite" element={<PrivacyPolicy />} />
                 <Route path="/cgu" element={<Terms />} />
+                <Route path="/envoyer-colis/maroc-belgique" element={<SeoLanding />} />
+                <Route path="/envoyer-colis/maroc-france" element={<SeoLanding />} />
+                <Route path="/envoyer-document/maroc-europe" element={<SeoLanding />} />
+                <Route path="/send-parcel/morocco-belgium" element={<SeoLanding />} />
+                <Route path="/send-parcel/morocco-france" element={<SeoLanding />} />
+                <Route path="/send-document/morocco-europe" element={<SeoLanding />} />
+                <Route path="/enviar-paquete/marruecos-belgica" element={<SeoLanding />} />
+                <Route path="/enviar-paquete/marruecos-francia" element={<SeoLanding />} />
+                <Route path="/enviar-documento/marruecos-europa" element={<SeoLanding />} />
+                <Route path="/pakket-versturen/marokko-belgie" element={<SeoLanding />} />
+                <Route path="/pakket-versturen/marokko-frankrijk" element={<SeoLanding />} />
+                <Route path="/document-versturen/marokko-europa" element={<SeoLanding />} />
+                <Route path="/sift-colis/maghrib-belgique" element={<SeoLanding />} />
+                <Route path="/sift-colis/maghrib-france" element={<SeoLanding />} />
+                <Route path="/sift-watiqa/maghrib-europe" element={<SeoLanding />} />
                 <Route path="/trajets" element={<TripFeedSimple />} />
                 <Route path="/en-cours" element={user ? <OperationsSimple /> : <GuestAccess area="operations" />} />
                 <Route path="/enregistres" element={user ? <SavedTrips /> : <GuestAccess area="saved" />} />

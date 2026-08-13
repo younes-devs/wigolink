@@ -1,0 +1,31 @@
+/* Public SEO guides share one restrained layout across desktop and mobile. */
+.seo-landing{max-width:980px;margin:0 auto;padding:24px 0 72px;color:var(--text)}
+.seo-landing-hero{padding:36px 0 42px;border-bottom:1px solid var(--line)}
+.seo-landing-eyebrow{display:block;margin-bottom:12px;color:var(--accent);font-size:13px;font-weight:800;text-transform:uppercase}
+.seo-landing h1{max-width:760px;margin:0;font-size:58px;line-height:1.08;letter-spacing:0}
+.seo-landing-hero>p{max-width:720px;margin:18px 0 26px;color:var(--muted);font-size:20px;line-height:1.55}
+.seo-landing-cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:auto;min-height:52px;padding:0 22px;text-decoration:none}
+.seo-landing-section{padding:38px 0;border-bottom:1px solid var(--line)}
+.seo-landing-section h2{margin:0 0 22px;font-size:28px;letter-spacing:0}
+.seo-landing-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:0;padding:0;list-style:none}
+.seo-landing-steps li{min-width:0}
+.seo-landing-steps span{display:grid;width:38px;height:38px;margin-bottom:14px;place-items:center;border:1px solid var(--accent);border-radius:50%;color:var(--accent);font-weight:800}
+.seo-landing-steps p,.seo-landing-detail p,.seo-landing-faq p{margin:0;color:var(--muted);font-size:17px;line-height:1.6}
+.seo-landing-detail{display:flex;align-items:flex-start;gap:18px}
+.seo-landing-detail h2{margin-bottom:10px}
+.seo-landing-faq details{padding:18px 0;border-top:1px solid var(--line)}
+.seo-landing-faq details:last-child{border-bottom:1px solid var(--line)}
+.seo-landing-faq summary{cursor:pointer;font-size:18px;font-weight:750}
+.seo-landing-faq p{max-width:760px;padding-top:12px}
+.seo-landing-footer{padding:34px 0;text-align:center}
+
+@media(max-width:700px){
+  .seo-landing{padding:8px 4px 96px}
+  .seo-landing-hero{padding:24px 0 30px}
+  .seo-landing h1{font-size:34px}
+  .seo-landing-hero>p{font-size:17px}
+  .seo-landing-cta{width:100%}
+  .seo-landing-section{padding:28px 0}
+  .seo-landing-section h2{font-size:24px}
+  .seo-landing-steps{grid-template-columns:1fr;gap:22px}
+}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { SUPPORTED_LOCALES } from '../../shared/locale-routing.js';
 import { SITE_ORIGIN, staticPageSeo, tripPageSeo } from '../../shared/seo-metadata.js';
+import { getSeoLanding, listSeoLandings } from '../../shared/seo-landings.js';
 import { loadClientTemplate, renderSeoHtml } from '../services/seo-html.js';
 
 const SITEMAP_LIMIT = 10_000;
@@ -19,6 +20,7 @@ export function createSeoRouter({ listPublicTrips, getPublicTrip, getTemplate = 
           sitemapUrl(`/${locale}/trajets`),
           sitemapUrl(`/${locale}/cgu`),
           sitemapUrl(`/${locale}/confidentialite`),
+          ...listSeoLandings(locale).map((landing) => sitemapUrl(`/${locale}${landing.path}`)),
           ...trips.map((trip) => sitemapUrl(
             `/${locale}/trajets/${encodeURIComponent(trip.id)}`,
             trip.updatedAt || trip.createdAt,
@@ -37,10 +39,16 @@ export function createSeoRouter({ listPublicTrips, getPublicTrip, getTemplate = 
 
   router.get('/public/seo-page', async (req, res) => {
     const locale = SUPPORTED.has(req.query.locale) ? req.query.locale : 'fr';
-    const page = ['trips', 'terms', 'privacy', 'trip'].includes(req.query.page) ? req.query.page : null;
+    const page = ['trips', 'terms', 'privacy', 'trip', 'landing'].includes(req.query.page) ? req.query.page : null;
     if (!page) return res.status(404).send('Page introuvable');
     try {
       const template = await getTemplate();
+      if (page === 'landing') {
+        const landing = getSeoLanding(locale, String(req.query.path || ''));
+        if (!landing) return res.status(404).send('Page introuvable');
+        return res.status(200).type('html').set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
+          .send(renderSeoHtml({ template, locale, seo: landing, page, landing }));
+      }
       if (page === 'trip') {
         const result = await getPublicTrip(String(req.query.id || ''));
         if (result?.status !== 200 || !result?.body?.trip) {

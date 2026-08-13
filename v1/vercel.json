@@ -52,6 +52,10 @@
       "dest": "/api/seo-page.js?locale=$1&page=trips"
     },
     {
+      "src": "/(fr|ar|nl|en|es)/(envoyer-colis/maroc-(?:belgique|france)|envoyer-document/maroc-europe|send-parcel/morocco-(?:belgium|france)|send-document/morocco-europe|enviar-paquete/marruecos-(?:belgica|francia)|enviar-documento/marruecos-europa|pakket-versturen/marokko-(?:belgie|frankrijk)|document-versturen/marokko-europa|sift-colis/maghrib-(?:belgique|france)|sift-watiqa/maghrib-europe)",
+      "dest": "/api/seo-page.js?locale=$1&page=landing&path=$2"
+    },
+    {
       "src": "/(fr|ar|nl|en|es)/trajets/nouveau",
       "headers": {
         "X-Robots-Tag": "noindex, nofollow"

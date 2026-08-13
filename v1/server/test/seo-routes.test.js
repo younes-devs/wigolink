@@ -37,6 +37,9 @@ test('sitemap publie les pages publiques et pagine les trajets', async () => {
     assert.match(xml, /https:\/\/wigolink\.com\/fr\/trajets\/t%203<\/loc>/);
     assert.match(xml, /https:\/\/wigolink\.com\/en\/trajets\/t-1<\/loc>/);
     assert.match(xml, /https:\/\/wigolink\.com\/ar\/confidentialite<\/loc>/);
+    assert.match(xml, /https:\/\/wigolink\.com\/fr\/envoyer-colis\/maroc-belgique<\/loc>/);
+    assert.match(xml, /https:\/\/wigolink\.com\/en\/send-parcel\/morocco-belgium<\/loc>/);
+    assert.match(xml, /https:\/\/wigolink\.com\/ar\/sift-watiqa\/maghrib-europe<\/loc>/);
     assert.deepEqual(calls, [
       { limit: 100, offset: 0 },
       { limit: 100, offset: 2 },
@@ -45,6 +48,32 @@ test('sitemap publie les pages publiques et pagine les trajets', async () => {
     await new Promise((resolve, reject) => server.close((error) => (
       error ? reject(error) : resolve()
     )));
+  }
+});
+
+test('guide SEO darija contient contenu utile, hreflang localise et liens vers les trajets', async () => {
+  const app = express();
+  app.use('/api', createSeoRouter({
+    getTemplate: async () => '<html><head><meta name="robots" content="noindex, nofollow" /><meta name="description" content="default" /><title>Default</title></head><body><div id="root"></div></body></html>',
+    listPublicTrips: async () => ({ trips: [], page: { hasMore: false } }),
+    getPublicTrip: async () => ({ status: 404, body: {} }),
+  }));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
+  });
+  try {
+    const path = encodeURIComponent('/sift-colis/maghrib-belgique');
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public/seo-page?locale=ar&page=landing&path=${path}`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /<html lang="ar" dir="rtl">/);
+    assert.match(html, /صيفط كولية من المغرب لبلجيكا/);
+    assert.match(html, /href="\/ar\/trajets"/);
+    assert.match(html, /hreflang="fr" href="https:\/\/wigolink\.com\/fr\/envoyer-colis\/maroc-belgique"/);
+    assert.match(html, /hreflang="en" href="https:\/\/wigolink\.com\/en\/send-parcel\/morocco-belgium"/);
+    assert.match(html, /FAQPage/);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
 

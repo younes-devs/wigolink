@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import {
   alternateLinks, INDEXABLE_ROBOTS, localizedUrl, seoCopy, SOCIAL_IMAGE,
 } from '../../shared/seo-metadata.js';
+import { listSeoLandings } from '../../shared/seo-landings.js';
 
 let templatePromise;
 
@@ -10,12 +11,12 @@ export async function loadClientTemplate() {
   return templatePromise;
 }
 
-export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = null, status = 200 }) {
+export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = null, landing = null, status = 200 }) {
   const canonical = localizedUrl(locale, seo.path);
   const jsonLd = seo.jsonLd || websiteJsonLd(canonical);
   const head = [
     `<link rel="canonical" href="${escapeAttribute(canonical)}">`,
-    ...alternateLinks(seo.path).map(({ locale: code, href }) => (
+    ...(seo.alternates || alternateLinks(seo.path)).map(({ locale: code, href }) => (
       `<link rel="alternate" hreflang="${escapeAttribute(code)}" href="${escapeAttribute(href)}">`
     )),
     propertyMeta('og:type', trip ? 'product' : 'website'),
@@ -32,7 +33,7 @@ export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = 
   ].join('\n    ');
   const content = status === 404
     ? `<main><h1>Page introuvable</h1><p>Cette page n existe pas ou n est plus disponible.</p></main>`
-    : renderPageContent({ locale, page, trips, trip });
+    : renderPageContent({ locale, page, trips, trip, landing });
 
   return template
     .replace(/<html\b[^>]*>/i, `<html lang="${escapeAttribute(locale)}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}">`)
@@ -42,7 +43,7 @@ export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = 
     .replace('<div id="root"></div>', `<div id="root">${content}</div>`);
 }
 
-function renderPageContent({ locale, page, trips, trip }) {
+function renderPageContent({ locale, page, trips, trip, landing }) {
   const copy = seoCopy(locale);
   if (page === 'trip' && trip) {
     return `<main data-seo-prerender="trip">
@@ -57,7 +58,26 @@ function renderPageContent({ locale, page, trips, trip }) {
       `<li><a href="/${escapeAttribute(locale)}/trajets/${encodeURIComponent(item.id)}">${escapeHtml(item.from)} - ${escapeHtml(item.to)}</a>`
       + ` <span>${escapeHtml(item.departureDate)} · ${escapeHtml(item.capacityKg)} kg · ${escapeHtml(item.price)} ${escapeHtml(item.currency)}</span></li>`
     )).join('');
-    return `<main data-seo-prerender="trips"><h1>${escapeHtml(copy.feedHeading)}</h1><p>${escapeHtml(copy.feedIntro)}</p><ul>${links}</ul></main>`;
+    const guides = listSeoLandings(locale).map((item) => (
+      `<li><a href="/${escapeAttribute(locale)}${escapeAttribute(item.path)}">${escapeHtml(item.h1)}</a></li>`
+    )).join('');
+    return `<main data-seo-prerender="trips"><h1>${escapeHtml(copy.feedHeading)}</h1><p>${escapeHtml(copy.feedIntro)}</p><ul>${links}</ul><nav aria-label="Guides"><ul>${guides}</ul></nav></main>`;
+  }
+  if (page === 'landing' && landing) {
+    const steps = landing.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('');
+    const faqs = landing.faqs.map(([question, answer]) => (
+      `<section><h3>${escapeHtml(question)}</h3><p>${escapeHtml(answer)}</p></section>`
+    )).join('');
+    return `<main data-seo-prerender="landing">
+      <p>${escapeHtml(landing.eyebrow)}</p>
+      <h1>${escapeHtml(landing.h1)}</h1>
+      <p>${escapeHtml(landing.intro)}</p>
+      <p><a href="/${escapeAttribute(locale)}/trajets">${escapeHtml(landing.cta)}</a></p>
+      <h2>${escapeHtml(landing.howTitle)}</h2><ol>${steps}</ol>
+      <h2>${escapeHtml(landing.detailsTitle)}</h2><p>${escapeHtml(landing.details)}</p>
+      <h2>${escapeHtml(landing.faqTitle)}</h2>${faqs}
+      <p><a href="/${escapeAttribute(locale)}/trajets">${escapeHtml(landing.cta)}</a></p>
+    </main>`;
   }
   return `<main data-seo-prerender="legal"><h1>${escapeHtml(page === 'terms' ? copy.termsTitle : copy.privacyTitle)}</h1><p>${escapeHtml(page === 'terms' ? copy.termsDescription : copy.privacyDescription)}</p></main>`;
 }
