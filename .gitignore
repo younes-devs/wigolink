@@ -14,3 +14,4 @@ docs/marketing/video-03/demo-data.json
 docs/marketing/video-03/demo-token.txt
 docs/marketing/video-03/raw-real-demo.webm
 docs/marketing/video-03/qa-*.png
+docs/marketing/video-*/qa/
