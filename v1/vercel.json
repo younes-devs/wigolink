@@ -41,6 +41,13 @@
       "dest": "/api/sitemap.js"
     },
     {
+      "src": "/(fr|ar|nl|en|es)/?",
+      "status": 308,
+      "headers": {
+        "Location": "/$1/trajets"
+      }
+    },
+    {
       "src": "/(fr|ar|nl|en|es)/trajets",
       "dest": "/api/seo-page.js?locale=$1&page=trips"
     },
@@ -71,10 +78,6 @@
       "headers": {
         "X-Robots-Tag": "noindex, nofollow"
       },
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(fr|ar|nl|en|es)",
       "dest": "/index.html"
     },
     {
