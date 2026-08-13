@@ -1,0 +1,18 @@
+{
+  "name": "wigolink-video-03",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node scripts/capture-demo.mjs",
+    "music": "node scripts/make-music.mjs",
+    "render": "remotion render src/index.jsx WigolinkAd output/wigolink-video-03.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.419",
+    "@remotion/google-fonts": "^4.0.419",
+    "playwright": "^1.62.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remotion": "^4.0.419"
+  }
+}

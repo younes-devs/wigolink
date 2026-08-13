@@ -41,7 +41,7 @@ export default defineConfig({
     proxy: {
       // Le proxy Vite→API tourne côté serveur (pas dans le navigateur) : HTTP interne
       // suffit, seule la connexion navigateur→Vite doit être HTTPS pour la caméra.
-      '/api': 'http://localhost:4517',
+      '/api': process.env.VITE_API_TARGET || 'http://localhost:4517',
     },
   },
 });

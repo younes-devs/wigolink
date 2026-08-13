@@ -8,3 +8,9 @@ v1/server/data.test-*.json
 v1/.cert/
 .claude/settings.local.json
 v1/client/dist/
+.playwright-cli/
+docs/marketing/video-03/capture/
+docs/marketing/video-03/demo-data.json
+docs/marketing/video-03/demo-token.txt
+docs/marketing/video-03/raw-real-demo.webm
+docs/marketing/video-03/qa-*.png
