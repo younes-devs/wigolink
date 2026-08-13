@@ -21,7 +21,7 @@ export default function OperationsSimple() {
   useLang();
   const [operations, setOperations] = useState(null);
   const [page, setPage] = useState(null);
-  const [view, setView] = useState('active');
+  const [view, setView] = useState('parcel');
   const [busy, setBusy] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const nav = useNavigate();
@@ -33,6 +33,7 @@ export default function OperationsSimple() {
     setPage(null);
     const params = new URLSearchParams({ limit: '40' });
     if (view === 'history') params.set('history', '1');
+    else params.set('shipmentType', view);
     api(`/operations?${params}`).then((data) => {
       if (!active) return;
       setOperations(data.operations);
@@ -49,6 +50,7 @@ export default function OperationsSimple() {
     try {
       const params = new URLSearchParams({ limit: String(page.limit || 40) });
       if (view === 'history') params.set('history', '1');
+      else params.set('shipmentType', view);
       if (page.nextCursor) params.set('cursor', page.nextCursor);
       else params.set('offset', String(page.nextOffset));
       const data = await api(`/operations?${params}`);
@@ -82,7 +84,8 @@ export default function OperationsSimple() {
       <p className="page-sub">{t('operations.subtitle')}</p>
 
       <div className="tabs operations-tabs" role="tablist" aria-label={t('operations.filter.aria')}>
-        <button type="button" className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>{t('operations.tab.active')}</button>
+        <button type="button" className={view === 'parcel' ? 'active' : ''} onClick={() => setView('parcel')}>{t('operations.tab.parcelRequests')}</button>
+        <button type="button" className={view === 'document' ? 'active' : ''} onClick={() => setView('document')}>{t('operations.tab.documentRequests')}</button>
         <button type="button" className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>{t('operations.tab.history')}</button>
       </div>
 
@@ -90,8 +93,8 @@ export default function OperationsSimple() {
       {operations?.length === 0 && (
         <div className="card center empty-state">
           <Icon name="repeat" size={34} />
-          <p className="muted">{t(view === 'history' ? 'operations.empty.history' : 'operations.empty.active')}</p>
-          {view === 'active' && <Link to="/trajets" className="btn btn-primary btn-sm">{t('operations.findTrip')}</Link>}
+          <p className="muted">{t(view === 'history' ? 'operations.empty.history' : view === 'document' ? 'operations.empty.document' : 'operations.empty.parcel')}</p>
+          {view !== 'history' && <Link to="/trajets" className="btn btn-primary btn-sm">{t('operations.findTrip')}</Link>}
         </div>
       )}
       <div className="operation-list">

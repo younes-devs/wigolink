@@ -6,6 +6,9 @@ export function createOperationReadService({
 }) {
   function operations(user, query = {}) {
     const history = query.history === '1';
+    const shipmentType = ['parcel', 'document'].includes(query.shipmentType)
+      ? query.shipmentType
+      : null;
     return {
       operations: db.transactions
         .filter((transaction) => isParty(transaction, user.id))
@@ -13,6 +16,13 @@ export function createOperationReadService({
           history
             ? isClosedStatus(transaction.status)
             : !isClosedStatus(transaction.status)
+        ))
+        .filter((transaction) => (
+          history
+          || !shipmentType
+          || (shipmentType === 'document'
+            ? transaction.shipmentType === 'document'
+            : (transaction.shipmentType || 'parcel') === 'parcel')
         ))
         .sort((a, b) => b.createdAt - a.createdAt)
         .map((transaction) => operationView(transaction, user)),

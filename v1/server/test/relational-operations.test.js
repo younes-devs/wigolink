@@ -58,7 +58,7 @@ test('operations relationnelles : liste paginee par participant sans secret', as
       },
     },
     user: { id: 'u-1' },
-    query: { history: '0', limit: 20 },
+    query: { history: '0', shipmentType: 'parcel', limit: 20 },
     operationCodePublicState: (code) => ({
       issued: !!code,
       expiresAt: code?.expiresAt || null,
@@ -82,6 +82,8 @@ test('operations relationnelles : liste paginee par participant sans secret', as
     'u-1',
     ['delivery_confirmed', 'released', 'refunded', 'cancelled'],
   ]);
+  assert.equal(calls[0].params[3], 'parcel');
+  assert.match(calls[0].sql, /shipmentType/);
 });
 
 test('operations relationnelles : une livraison confirmee appartient a l historique', async () => {
@@ -99,6 +101,7 @@ test('operations relationnelles : une livraison confirmee appartient a l histori
   });
 
   assert.equal(calls[0].params[2], true);
+  assert.equal(calls[0].params[3], null);
   assert.ok(calls[0].params[1].includes('delivery_confirmed'));
 });
 
@@ -120,9 +123,9 @@ test('operations relationnelles : poursuit avec un curseur stable sans offset', 
     operationCodePublicState: () => ({}),
   });
 
-  assert.match(calls[0].sql, /tx\.id > \$5/);
+  assert.match(calls[0].sql, /tx\.id > \$6/);
   assert.doesNotMatch(calls[0].sql, /offset \$/i);
-  assert.deepEqual(calls[0].params.slice(2), [false, 400, 'tx-0', 21]);
+  assert.deepEqual(calls[0].params.slice(2), [false, null, 400, 'tx-0', 21]);
 });
 
 test('operations relationnelles : detail refuse un tiers et autorise un admin', async () => {

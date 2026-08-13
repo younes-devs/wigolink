@@ -40,6 +40,7 @@ test('operation reads separate active operations from history', () => {
     transaction({ id: 'tx-old', status: 'released', createdAt: 100 }),
     transaction({ id: 'tx-delivered', status: 'delivery_confirmed', createdAt: 200 }),
     transaction({ id: 'tx-new', createdAt: 300 }),
+    transaction({ id: 'tx-document', shipmentType: 'document', createdAt: 350 }),
     transaction({
       id: 'tx-other',
       senderId: 'u-other',
@@ -51,7 +52,15 @@ test('operation reads separate active operations from history', () => {
 
   assert.deepEqual(
     service.operations(user).operations.map(({ id }) => id),
+    ['tx-document', 'tx-new'],
+  );
+  assert.deepEqual(
+    service.operations(user, { shipmentType: 'parcel' }).operations.map(({ id }) => id),
     ['tx-new'],
+  );
+  assert.deepEqual(
+    service.operations(user, { shipmentType: 'document' }).operations.map(({ id }) => id),
+    ['tx-document'],
   );
   assert.deepEqual(
     service.operations(user, { history: '1' }).operations.map(({ id }) => id),

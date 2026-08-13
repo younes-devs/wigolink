@@ -424,7 +424,7 @@
 .saved-trip small, .operation-main small { display: block; color: var(--ink-soft); margin-top: 2px; }
 .saved-actions, .operation-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .operation-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.operations-tabs { max-width: 340px; }
+.operations-tabs { max-width: 620px; }
 .operation-card-archived { background: var(--surface-soft); }
 .operation-detail { display: grid; gap: 16px; }
 .operation-detail-head p { margin: 4px 0 0; color: var(--ink-soft); }

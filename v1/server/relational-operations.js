@@ -23,10 +23,13 @@ export async function listRelationalOperations({
   disputeView,
 }) {
   const history = query.history === '1';
+  const shipmentType = !history && ['parcel', 'document'].includes(query.shipmentType)
+    ? query.shipmentType
+    : null;
   const limit = boundedLimit(query.limit);
   const cursor = decodeOperationCursor(query.cursor);
   const offset = cursor ? 0 : boundedOffset(query.offset);
-  const params = [user.id, [...CLOSED_STATUSES], history];
+  const params = [user.id, [...CLOSED_STATUSES], history, shipmentType];
   let cursorClause = '';
   if (cursor) {
     params.push(cursor.at, cursor.id);
@@ -57,6 +60,11 @@ export async function listRelationalOperations({
     `${operationSelect()}
      where ${transactionParticipantFilter('$1')}
        and ((coalesce(tx.data->>'status', '') = any($2::text[])) = $3)
+       and (
+         $4::text is null
+         or ($4 = 'document' and tx.data->>'shipmentType' = 'document')
+         or ($4 = 'parcel' and coalesce(nullif(tx.data->>'shipmentType', ''), 'parcel') = 'parcel')
+       )
        ${cursorClause}
      order by coalesce(
        nullif(tx.data->>'createdAt', '')::bigint,
