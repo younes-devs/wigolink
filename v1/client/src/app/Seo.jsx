@@ -1,16 +1,28 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import {
+  alternateLinks, INDEXABLE_ROBOTS, PRIVATE_ROBOTS, SITE_ORIGIN, SOCIAL_IMAGE,
+  staticPageSeo, tripPageSeo,
+} from '../../../shared/seo-metadata.js';
 
-export const SITE_ORIGIN = 'https://wigolink.com';
-const DEFAULT_TITLE = 'Wigolink - Trajets pour colis et documents';
-const DEFAULT_DESCRIPTION = 'Trouvez des voyageurs vérifiés pour transporter vos colis et documents entre le Maroc et l’Europe avec Wigolink.';
-const INDEXABLE_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1';
+export { SITE_ORIGIN };
+const DEFAULT_SEO = staticPageSeo('trips', 'fr');
 
 function ensureMeta(name) {
   let element = document.head.querySelector(`meta[name="${name}"]`);
   if (!element) {
     element = document.createElement('meta');
     element.setAttribute('name', name);
+    document.head.appendChild(element);
+  }
+  return element;
+}
+
+function ensurePropertyMeta(property) {
+  let element = document.head.querySelector(`meta[property="${property}"]`);
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute('property', property);
     document.head.appendChild(element);
   }
   return element;
@@ -33,25 +45,43 @@ function isPublicSearchPage(pathname) {
 
 export function RouteSeoPolicy() {
   const { pathname } = useLocation();
-
   useEffect(() => {
-    ensureMeta('robots').setAttribute(
-      'content',
-      isPublicSearchPage(pathname) ? INDEXABLE_ROBOTS : 'noindex, nofollow',
-    );
+    ensureMeta('robots').setAttribute('content', isPublicSearchPage(pathname) ? INDEXABLE_ROBOTS : PRIVATE_ROBOTS);
   }, [pathname]);
-
   return null;
 }
 
-export function usePageSeo({ title, description, canonicalPath, jsonLd } = {}) {
+export function usePageSeo({ title, description, canonicalPath, path, jsonLd } = {}) {
   useEffect(() => {
-    document.title = title || DEFAULT_TITLE;
-    ensureMeta('description').setAttribute('content', description || DEFAULT_DESCRIPTION);
-
+    const pageTitle = title || DEFAULT_SEO.title;
+    const pageDescription = description || DEFAULT_SEO.description;
     const lang = document.documentElement.lang || 'fr';
-    const path = canonicalPath || '/trajets';
-    ensureCanonical().setAttribute('href', `${SITE_ORIGIN}/${lang}${path}`);
+    const pagePath = canonicalPath || path || '/trajets';
+    const canonicalUrl = `${SITE_ORIGIN}/${lang}${pagePath}`;
+    document.title = pageTitle;
+    ensureMeta('description').setAttribute('content', pageDescription);
+    ensureCanonical().setAttribute('href', canonicalUrl);
+
+    document.head.querySelectorAll('link[data-wigolink-seo="alternate"]').forEach((element) => element.remove());
+    for (const alternate of alternateLinks(pagePath)) {
+      const link = document.createElement('link');
+      link.rel = 'alternate';
+      link.hreflang = alternate.locale;
+      link.href = alternate.href;
+      link.dataset.wigolinkSeo = 'alternate';
+      document.head.appendChild(link);
+    }
+
+    ensurePropertyMeta('og:type').setAttribute('content', jsonLd ? 'product' : 'website');
+    ensurePropertyMeta('og:site_name').setAttribute('content', 'Wigolink');
+    ensurePropertyMeta('og:title').setAttribute('content', pageTitle);
+    ensurePropertyMeta('og:description').setAttribute('content', pageDescription);
+    ensurePropertyMeta('og:url').setAttribute('content', canonicalUrl);
+    ensurePropertyMeta('og:image').setAttribute('content', SOCIAL_IMAGE);
+    ensureMeta('twitter:card').setAttribute('content', 'summary_large_image');
+    ensureMeta('twitter:title').setAttribute('content', pageTitle);
+    ensureMeta('twitter:description').setAttribute('content', pageDescription);
+    ensureMeta('twitter:image').setAttribute('content', SOCIAL_IMAGE);
 
     let script = document.head.querySelector('script[data-wigolink-seo="json-ld"]');
     if (jsonLd) {
@@ -65,49 +95,11 @@ export function usePageSeo({ title, description, canonicalPath, jsonLd } = {}) {
     } else {
       script?.remove();
     }
-
-    return () => {
-      document.head.querySelector('script[data-wigolink-seo="json-ld"]')?.remove();
-    };
-  }, [canonicalPath, description, jsonLd, title]);
+    return () => document.head.querySelector('script[data-wigolink-seo="json-ld"]')?.remove();
+  }, [canonicalPath, description, jsonLd, path, title]);
 }
 
 export function tripSeo(trip, locale = 'fr') {
-  if (!trip) return {};
-  const route = `${trip.from} vers ${trip.to}`;
-  const formattedDate = new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${trip.departureDate}T00:00:00Z`));
-  const title = `${route} le ${formattedDate} | Wigolink`;
-  const description = `${route} le ${formattedDate}. ${trip.capacityKg} kg disponibles à ${trip.price} ${trip.currency}. ${trip.description || ''}`.trim();
-  const url = `${SITE_ORIGIN}/${locale}/trajets/${trip.id}`;
-
-  return {
-    title,
-    description,
-    canonicalPath: `/trajets/${trip.id}`,
-    jsonLd: {
-      '@context': 'https://schema.org',
-      '@type': 'Offer',
-      name: title,
-      description,
-      url,
-      price: trip.price,
-      priceCurrency: trip.currency,
-      availability: 'https://schema.org/InStock',
-      validThrough: trip.departureDate,
-      itemOffered: {
-        '@type': 'Service',
-        name: `Transport de colis et documents de ${trip.from} à ${trip.to}`,
-        serviceType: 'Transport collaboratif de colis et documents',
-        provider: trip.traveler?.name ? {
-          '@type': 'Person',
-          name: trip.traveler.name,
-        } : undefined,
-      },
-    },
-  };
+  const seo = tripPageSeo(trip, locale);
+  return { ...seo, canonicalPath: seo.path };
 }

@@ -3,6 +3,8 @@ import { Icon } from '../Icons.jsx';
 import { t, useLang } from '../i18n.js';
 import { formatLegalText, getLegalCopy } from '../legalCopy.js';
 import { useIndexable } from '../useIndexable.js';
+import { usePageSeo } from '../app/Seo.jsx';
+import { staticPageSeo } from '../../../shared/seo-metadata.js';
 
 function LegalSection({ copy, section }) {
   const format = (text) => formatLegalText(text, copy);
@@ -25,6 +27,7 @@ export default function Terms() {
   const nav = useNavigate();
   useLang();
   useIndexable();
+  usePageSeo(staticPageSeo('terms', document.documentElement.lang || 'fr'));
   const copy = getLegalCopy('terms');
 
   return <div>

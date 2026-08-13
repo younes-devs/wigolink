@@ -5,6 +5,18 @@
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build",
   "outputDirectory": "client/dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com; media-src 'self' blob: https://*.supabase.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; font-src 'self' data:" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+      ]
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/maintenance",
@@ -17,6 +29,10 @@
       "dest": "/api/locale-entry.js"
     },
     {
+      "src": "/(trajets|cgu|confidentialite)",
+      "dest": "/api/locale-entry.js?path=$1"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/[...path].js"
     },
@@ -25,26 +41,45 @@
       "dest": "/api/sitemap.js"
     },
     {
-      "src": "/cgu",
+      "src": "/(fr|ar|nl|en|es)/trajets",
+      "dest": "/api/seo-page.js?locale=$1&page=trips"
+    },
+    {
+      "src": "/(fr|ar|nl|en|es)/trajets/nouveau",
+      "headers": {
+        "X-Robots-Tag": "noindex, nofollow"
+      },
       "dest": "/index.html"
     },
     {
-      "src": "/confidentialite",
-      "dest": "/index.html"
+      "src": "/(fr|ar|nl|en|es)/trajets/([^/]+)",
+      "dest": "/api/seo-page.js?locale=$1&page=trip&id=$2"
+    },
+    {
+      "src": "/(fr|ar|nl|en|es)/cgu",
+      "dest": "/api/seo-page.js?locale=$1&page=terms"
+    },
+    {
+      "src": "/(fr|ar|nl|en|es)/confidentialite",
+      "dest": "/api/seo-page.js?locale=$1&page=privacy"
     },
     {
       "handle": "filesystem"
     },
     {
-      "src": "/(.*)",
+      "src": "/(fr|ar|nl|en|es)/(connexion|messages(?:/.*)?|en-cours(?:/.*)?|enregistres(?:/.*)?|profil(?:/.*)?|parametres(?:/.*)?|verification(?:/.*)?|admin(?:/.*)?|trajets/nouveau|trajets/[^/]+/demande|operations(?:/.*)?|versements(?:/.*)?|membres(?:/.*)?)",
       "headers": {
-        "Content-Security-Policy": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com; media-src 'self' blob: https://*.supabase.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; font-src 'self' data:",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "camera=(self), microphone=(), geolocation=()"
+        "X-Robots-Tag": "noindex, nofollow"
       },
       "dest": "/index.html"
+    },
+    {
+      "src": "/(fr|ar|nl|en|es)",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/not-found.js"
     }
   ]
 }

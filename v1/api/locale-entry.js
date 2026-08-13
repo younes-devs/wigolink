@@ -6,8 +6,11 @@ export default function localeEntry(req, res) {
     acceptLanguage: req.headers['accept-language'],
   });
 
+  const requestedPath = ['trajets', 'cgu', 'confidentialite'].includes(req.query?.path)
+    ? `/${req.query.path}`
+    : '';
   res.statusCode = 307;
-  res.setHeader('Location', `/${locale}`);
+  res.setHeader('Location', `/${locale}${requestedPath}`);
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vary', 'Cookie, Accept-Language');
   res.end();

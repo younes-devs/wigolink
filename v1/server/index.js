@@ -152,7 +152,7 @@ import { createStripePaymentService } from './payments/stripe-service.js';
 import { manualPayoutConfiguration } from './payments/manual-payout-config.js';
 import { createManualPayoutService } from './payments/manual-payout-service.js';
 import { createManualPayoutsRouter } from './routes/manual-payouts.js';
-import { publicTripCatalog } from './services/public-trip-catalog.js';
+import { publicTripCatalog, publicTripDetail } from './services/public-trip-catalog.js';
 import { createAuditService } from './services/audit.js';
 import { createNotificationService } from './services/notifications.js';
 import { createAccountEmailService } from './services/account-email.js';
@@ -1098,6 +1098,21 @@ app.use('/api', createSeoRouter({
         today: TODAY_ISO(),
       })
       : tripService.publicList(query),
+  ),
+  getPublicTrip: async (id) => publicTripDetail(
+    relationalTripReadsEnabled()
+      ? await hydrateTripProfilePhotos({
+        result: await relationalTrip({
+          pool: databasePool(),
+          user: null,
+          id,
+          today: TODAY_ISO(),
+        }),
+        pool: databasePool(),
+        profileMedia,
+        persistUser: authRepositories.users.updateChanged,
+      })
+      : tripService.detail(id, null),
   ),
 }));
 
