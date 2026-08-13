@@ -99,24 +99,33 @@ export function CategoryIcon({ categoryId, size = 22 }) {
 
 // Avatar : photo si disponible, sinon initiales avec teinte déterministe.
 export function Avatar({ name = '?', photo = null, size = 44 }) {
-  if (photo) {
-    return (
-      <span className="avatar" style={{ width: size, height: size, overflow: 'hidden' }}>
-        <img src={photo} alt={name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      </span>
-    );
-  }
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   const initials = name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const fallbackStyle = {
+    width: size, height: size, fontSize: size * 0.38,
+    background: `linear-gradient(135deg, hsl(${h} 45% 90%), hsl(${h} 40% 80%))`,
+    color: `hsl(${h} 45% 30%)`,
+  };
+  if (photo) {
+    return (
+      <span className="avatar" role="img" aria-label={name} style={{ ...fallbackStyle, overflow: 'hidden', position: 'relative' }}>
+        {initials}
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={(event) => { event.currentTarget.style.display = 'none'; }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </span>
+    );
+  }
   return (
     <span
       className="avatar"
-      style={{
-        width: size, height: size, fontSize: size * 0.38,
-        background: `linear-gradient(135deg, hsl(${h} 45% 90%), hsl(${h} 40% 80%))`,
-        color: `hsl(${h} 45% 30%)`,
-      }}
+      style={fallbackStyle}
     >
       {initials}
     </span>

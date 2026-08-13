@@ -53,7 +53,7 @@ test('security headers génère un request-id et une CSP locale par défaut', ()
   assert.equal(result.headers['X-Request-Id'], 'req-generated');
   assert.equal(
     result.headers['Content-Security-Policy'],
-    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; font-src 'self' data:",
+    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; font-src 'self' data:",
   );
 });
 
@@ -66,6 +66,10 @@ test('security headers autorise les origines Supabase HTTP et realtime', () => {
   assert.match(
     result.headers['Content-Security-Policy'],
     /connect-src 'self' https:\/\/accounts\.google\.com https:\/\/project\.supabase\.co wss:\/\/project\.supabase\.co;/,
+  );
+  assert.match(
+    result.headers['Content-Security-Policy'],
+    /img-src 'self' data: blob: https:\/\/project\.supabase\.co https:\/\/lh3\.googleusercontent\.com;/,
   );
 });
 
