@@ -94,6 +94,7 @@ export default {
   'auth.method.google': 'Continuer avec Google',
   'auth.method.back': 'Changer de méthode',
   'auth.secure': 'Connexion chiffrée et protégée',
+  'auth.footer.rights': 'Tous droits réservés.',
   'auth.email': 'Email',
   'auth.email.placeholder': 'nom@exemple.com',
   'auth.password': 'Mot de passe',

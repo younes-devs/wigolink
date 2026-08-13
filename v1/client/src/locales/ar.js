@@ -94,6 +94,7 @@ export default {
   'auth.method.google': 'المتابعة باستخدام Google',
   'auth.method.back': 'اختيار طريقة أخرى',
   'auth.secure': 'اتصال مشفر ومحمي',
+  'auth.footer.rights': 'جميع الحقوق محفوظة.',
   'auth.email': 'البريد الإلكتروني',
   'auth.email.placeholder': 'name@example.com',
   'auth.password': 'كلمة المرور',

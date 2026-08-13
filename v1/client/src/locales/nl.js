@@ -89,6 +89,7 @@ export default {
   'auth.method.google': 'Doorgaan met Google',
   'auth.method.back': 'Andere methode kiezen',
   'auth.secure': 'Versleutelde en beveiligde verbinding',
+  'auth.footer.rights': 'Alle rechten voorbehouden.',
   'auth.email': 'E-mail',
   'auth.email.placeholder': 'naam@voorbeeld.be',
   'auth.password': 'Wachtwoord',

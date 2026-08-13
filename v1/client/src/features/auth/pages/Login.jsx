@@ -430,6 +430,11 @@ export default function Login() {
           )}
 
           <p className="auth-secure-note"><Icon name="lock" size={14} />{t('auth.secure')}</p>
+          <footer className="auth-page-footer">
+            <a href="mailto:support@wigolink.com">support@wigolink.com</a>
+            <span aria-hidden="true">·</span>
+            <span>© {new Date().getFullYear()} Wigolink. {t('auth.footer.rights')}</span>
+          </footer>
         </main>
       </div>
     </div>

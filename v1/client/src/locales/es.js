@@ -82,6 +82,7 @@ export default {
   "auth.method.google": "Continuar con Google",
   "auth.method.back": "Cambiar método",
   "auth.secure": "Conexión cifrada y protegida",
+  "auth.footer.rights": "Todos los derechos reservados.",
   "auth.email": "Correo electrónico",
   "auth.email.placeholder": "nombre@ejemplo.com",
   "auth.password": "Contraseña",
