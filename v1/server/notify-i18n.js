@@ -80,6 +80,13 @@ const TEMPLATES = {
     nl: () => 'Uw uitbetaling is bevestigd en naar uw bankrekening verzonden.',
     ar: () => 'تم تأكيد دفعتك وإرسالها إلى حسابك البنكي.',
   },
+  'trip.removedByAdmin': {
+    fr: (p) => `Votre trajet « ${p.from} → ${p.to} » a été retiré car il ne respecte pas les règles de Wigolink. Motif : ${p.reason}.`,
+    en: (p) => `Your “${p.from} → ${p.to}” trip was removed because it does not comply with Wigolink rules. Reason: ${p.reason}.`,
+    es: (p) => `Tu viaje «${p.from} → ${p.to}» fue retirado porque no cumple las normas de Wigolink. Motivo: ${p.reason}.`,
+    nl: (p) => `Uw reis “${p.from} → ${p.to}” is verwijderd omdat deze niet voldoet aan de regels van Wigolink. Reden: ${p.reason}.`,
+    ar: (p) => `تم حذف رحلتك «${p.from} ← ${p.to}» لأنها لا تحترم قواعد Wigolink. السبب: ${p.reason}.`,
+  },
   'dispute.opened': {
     fr: () => 'Litige ouvert. Soumettez vos preuves sous 72 h.',
     ar: () => 'فُتح نزاع. قدّم أدلتك خلال 72 ساعة.',

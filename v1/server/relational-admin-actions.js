@@ -110,6 +110,106 @@ export function createRelationalAdminMemberMutations({ getPool }) {
       });
     },
 
+    async listTrips({ userId, limit, offset }) {
+      const member = await pool().query(
+        'select 1 from public.wigolink_users where id = $1',
+        [String(userId)],
+      );
+      if (!member.rowCount) return { kind: 'not_found' };
+      const [rows, total] = await Promise.all([
+        pool().query(
+          `select trip.data,
+                  (select count(*)::int
+                     from public.wigolink_transactions operation
+                    where operation.data->>'tripId' = trip.id
+                      and coalesce(operation.data->>'status', '') not in (
+                        'delivery_confirmed','released','refunded','cancelled',
+                        'completed','refused','rejected'
+                      )) as active_operations
+             from public.wigolink_trips trip
+            where trip.data->>'travelerId' = $1
+            order by trip.created_at desc, trip.id desc
+            limit $2 offset $3`,
+          [String(userId), limit, offset],
+        ),
+        pool().query(
+          `select count(*)::int as count from public.wigolink_trips
+            where data->>'travelerId' = $1`,
+          [String(userId)],
+        ),
+      ]);
+      const trips = rows.rows.map((row) => ({
+        ...row.data,
+        activeOperations: Number(row.active_operations || 0),
+      }));
+      const count = Number(total.rows[0]?.count || 0);
+      return {
+        kind: 'ok',
+        page: {
+          trips,
+          page: {
+            total: count,
+            hasMore: offset + trips.length < count,
+            nextCursor: offset + trips.length < count ? String(offset + trips.length) : null,
+          },
+        },
+      };
+    },
+
+    async removeTrip({ actorId, userId, tripId, reason, at, today }) {
+      return transaction(pool(), async (client) => {
+        const result = await client.query(
+          `select data from public.wigolink_trips
+            where id = $1 and data->>'travelerId' = $2
+            for update`,
+          [String(tripId), String(userId)],
+        );
+        const trip = result.rows[0]?.data;
+        if (!trip) return { kind: 'not_found' };
+        if ((trip.status || 'published') !== 'published'
+          || String(trip.departureDate || trip.date || '') < today) {
+          return { kind: 'not_removable' };
+        }
+        const active = await client.query(
+          `select 1 from public.wigolink_transactions
+            where data->>'tripId' = $1
+              and coalesce(data->>'status', '') not in (
+                'delivery_confirmed','released','refunded','cancelled',
+                'completed','refused','rejected'
+              ) limit 1`,
+          [String(tripId)],
+        );
+        if (active.rowCount) return { kind: 'active_operation' };
+        const previousStatus = trip.status || 'published';
+        trip.status = 'removed';
+        trip.removedAt = at;
+        trip.removedBy = actorId;
+        trip.removalReason = reason;
+        await client.query(
+          `update public.wigolink_trips
+              set data = $2::jsonb, updated_at = now()
+            where id = $1`,
+          [String(tripId), JSON.stringify(trip)],
+        );
+        await client.query(
+          `delete from public.wigolink_saved_trips
+            where data->>'tripId' = $1`,
+          [String(tripId)],
+        );
+        await client.query(
+          `insert into public.audit_logs
+             (actor_id, action, target_type, target_id, meta)
+           values ($1, 'trip.admin_remove', 'trip', $2, $3::jsonb)`,
+          [String(actorId), String(tripId), JSON.stringify({
+            subjectUserId: userId,
+            reason,
+            changes: [{ field: 'status', before: previousStatus, after: 'removed' }],
+          })],
+        );
+        return { kind: 'ok', trip };
+      });
+    },
+
     async removeWhitelist({ actorId, categoryId }) {
       return transaction(pool(), async (client) => {
         const result = await client.query(

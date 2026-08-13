@@ -51,6 +51,33 @@ export function createAdminActionsRouter({
     ),
   );
 
+  router.get(
+    '/admin/users/:id/trips',
+    ...protect,
+    async (req, res) => sendResult(
+      res,
+      await adminActions.listMemberTrips(
+        req.user,
+        req.params.id,
+        req.query,
+      ),
+    ),
+  );
+
+  router.post(
+    '/admin/users/:id/trips/:tripId/remove',
+    ...protect,
+    async (req, res) => sendResult(
+      res,
+      await adminActions.removeMemberTrip(
+        req.user,
+        req.params.id,
+        req.params.tripId,
+        req.body,
+      ),
+    ),
+  );
+
   // A suspended member may appeal with the existing session token.
   router.post('/safety/appeals', async (req, res) => {
     const token = req.headers.authorization?.replace('Bearer ', '');

@@ -204,6 +204,84 @@ export function createAdminActionService({
     });
   }
 
+  async function listMemberTrips(_actor, userId, query = {}) {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 50));
+    const offset = Math.max(0, Number.parseInt(query.cursor, 10) || 0);
+    if (adminMemberMutations?.listTrips) {
+      const result = await adminMemberMutations.listTrips({ userId, limit, offset });
+      return result.kind === 'not_found'
+        ? response(404, { error: 'Membre introuvable' })
+        : response(200, result.page);
+    }
+    if (!findUser(userId)) return response(404, { error: 'Membre introuvable' });
+    const all = db.trips
+      .filter((trip) => trip.travelerId === userId)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const trips = all.slice(offset, offset + limit).map((trip) => ({
+      ...trip,
+      activeOperations: (db.transactions || []).filter((operation) => (
+        operation.tripId === trip.id
+        && !['delivery_confirmed', 'released', 'refunded', 'cancelled', 'completed', 'refused', 'rejected'].includes(operation.status)
+      )).length,
+    }));
+    return response(200, {
+      trips,
+      page: {
+        total: all.length,
+        hasMore: offset + trips.length < all.length,
+        nextCursor: offset + trips.length < all.length ? String(offset + trips.length) : null,
+      },
+    });
+  }
+
+  async function removeMemberTrip(actor, userId, tripId, body = {}) {
+    const reason = String(body.reason || '').trim().slice(0, 500);
+    if (reason.length < 10) {
+      return response(400, { error: 'Motif obligatoire (10 caracteres minimum)' });
+    }
+    const at = now();
+    const today = new Date(at).toISOString().slice(0, 10);
+    let trip;
+    if (adminMemberMutations?.removeTrip) {
+      const result = await adminMemberMutations.removeTrip({
+        actorId: actor.id, userId, tripId, reason, at, today,
+      });
+      if (result.kind === 'not_found') return response(404, { error: 'Trajet introuvable' });
+      if (result.kind === 'not_removable') return response(409, { error: 'Un trajet termine, annule ou deja retire ne peut pas etre supprime' });
+      if (result.kind === 'active_operation') return response(409, { error: 'Impossible de retirer un trajet avec une operation en cours' });
+      trip = result.trip;
+    } else {
+      const target = db.trips.find((item) => item.id === tripId && item.travelerId === userId);
+      if (!target) return response(404, { error: 'Trajet introuvable' });
+      if ((target.status || 'published') !== 'published' || String(target.departureDate || target.date || '') < today) {
+        return response(409, { error: 'Un trajet termine, annule ou deja retire ne peut pas etre supprime' });
+      }
+      const active = (db.transactions || []).some((operation) => (
+        operation.tripId === target.id
+        && !['delivery_confirmed', 'released', 'refunded', 'cancelled', 'completed', 'refused', 'rejected'].includes(operation.status)
+      ));
+      if (active) return response(409, { error: 'Impossible de retirer un trajet avec une operation en cours' });
+      const before = structuredClone(target);
+      target.status = 'removed';
+      target.removedAt = at;
+      target.removedBy = actor.id;
+      target.removalReason = reason;
+      db.savedTrips = (db.savedTrips || []).filter((saved) => saved.tripId !== target.id);
+      await audit(actor.id, 'trip.admin_remove', 'trip', target.id, {
+        subjectUserId: userId,
+        reason,
+        changes: [{ field: 'status', before: before.status || 'published', after: 'removed' }],
+      });
+      save();
+      trip = target;
+    }
+    await notify([userId], {
+      key: 'trip.removedByAdmin',
+      params: { from: trip.from, to: trip.to, reason },
+    }, null, 'security', 'trips');
+    return response(200, { ok: true, trip });
+  }
+
   async function submitAppeal(token, body = {}) {
     const session = await activeSession(token);
     const user = session ? await findUser(session.userId) : null;
@@ -446,6 +524,8 @@ export function createAdminActionService({
     recordCaseAccess,
     changeRole,
     moderateUser,
+    listMemberTrips,
+    removeMemberTrip,
     submitAppeal,
     reviewAppeal,
     removeWhitelist,

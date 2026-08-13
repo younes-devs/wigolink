@@ -74,6 +74,14 @@ test('routes actions transmettent acteur, identifiant et corps', async () => {
       calls.push(['safety', ...args]);
       return successResult();
     },
+    async listMemberTrips(...args) {
+      calls.push(['trips', ...args]);
+      return successResult();
+    },
+    async removeMemberTrip(...args) {
+      calls.push(['removeTrip', ...args]);
+      return successResult();
+    },
     async submitAppeal(...args) {
       calls.push(['submitAppeal', ...args]);
       return successResult();
@@ -109,6 +117,16 @@ test('routes actions transmettent acteur, identifiant et corps', async () => {
     adminActions,
   });
   await requestAction({
+    path: '/admin/users/member/trips?limit=25',
+    method: 'GET',
+    adminActions,
+  });
+  await requestAction({
+    path: '/admin/users/member/trips/trip-1/remove',
+    body: { reason: 'Regle enfreinte' },
+    adminActions,
+  });
+  await requestAction({
     path: '/safety/appeals',
     body: { reason: 'explication' },
     adminActions,
@@ -133,6 +151,8 @@ test('routes actions transmettent acteur, identifiant et corps', async () => {
     ['case', actor, 'member', { section: 'messages' }],
     ['role', actor, 'member', { role: 'admin' }],
     ['safety', actor, 'member', { action: 'warn' }],
+    ['trips', actor, 'member', { limit: '25' }],
+    ['removeTrip', actor, 'member', 'trip-1', { reason: 'Regle enfreinte' }],
     [
       'submitAppeal',
       'session-token',

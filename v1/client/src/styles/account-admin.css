@@ -900,6 +900,34 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .admin-operation-tabs button { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 750; cursor: pointer; }
 .admin-operation-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 .admin-operation-tabs small { min-width: 23px; padding: 2px 6px; border-radius: 999px; background: var(--hairline); color: var(--ink-soft); font-size: 11px; }
+.admin-member-trips > h2 { display: flex; align-items: center; gap: 8px; }
+.admin-member-trips .admin-operation-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-trip-list { display: grid; gap: 10px; }
+.admin-member-trip-card { min-width: 0; display: grid; gap: 12px; padding: 15px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
+.admin-member-trip-main, .admin-member-trip-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-member-trip-main > div { min-width: 0; }
+.admin-member-trip-main h3 { margin: 0; overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-member-trip-main p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
+.admin-member-trip-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--ink-soft); font-size: 12px; }
+.admin-member-trip-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.admin-trip-removal-reason { margin: 0; padding: 10px; border-radius: 7px; background: var(--surface-soft); color: var(--ink-soft); overflow-wrap: anywhere; font-size: 12px; }
+.admin-trip-removal-reason b { color: var(--ink); }
+.admin-member-trip-actions { justify-content: flex-end; }
+.admin-member-trip-actions .btn { width: auto; }
+.admin-trip-menu-wrap { position: relative; }
+.admin-trip-menu { position: absolute; z-index: 20; inset-inline-end: 0; top: calc(100% + 6px); width: min(260px, calc(100vw - 48px)); padding: 7px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-md); }
+.admin-trip-menu button { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-weight: 750; text-align: start; cursor: pointer; }
+.admin-trip-menu button:hover:not(:disabled) { background: var(--danger-tint); }
+.admin-trip-menu button:disabled { color: var(--ink-faint); cursor: not-allowed; }
+.admin-trip-menu small { display: block; padding: 7px 10px 4px; color: var(--ink-soft); line-height: 1.35; }
+.admin-trip-remove-modal { width: min(500px, calc(100vw - 28px)); max-width: 500px; }
+.admin-trip-remove-body { display: grid; gap: 14px; }
+.admin-trip-remove-body > p, .admin-trip-remove-body > small { margin: 0; color: var(--ink-soft); line-height: 1.45; }
+.admin-trip-remove-body label { display: grid; gap: 7px; color: var(--ink); font-weight: 750; }
+.admin-trip-remove-body textarea { width: 100%; min-width: 0; resize: vertical; padding: 11px; border: 1px solid var(--hairline-strong); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); font: inherit; line-height: 1.4; }
+.admin-trip-remove-body textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+.admin-trip-remove-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.admin-trip-remove-actions .btn { width: auto; }
 .admin-member-operation-card { min-width: 0; display: grid; gap: 13px; padding: 15px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
 .admin-member-operation-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .admin-member-operation-card h3 { margin: 0; overflow-wrap: anywhere; font-size: 16px; }
@@ -953,6 +981,12 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .admin-operation-parties { grid-template-columns: minmax(0, 1fr); }
   .admin-operation-parties > .icon { justify-self: center; transform: rotate(90deg); }
   .admin-operation-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-member-trips .admin-operation-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .admin-member-trips .admin-operation-tabs button { flex: 0 0 auto; padding-inline: 14px; }
+  .admin-member-trip-main { align-items: flex-start; }
+  .admin-member-trip-actions { justify-content: space-between; }
+  .admin-trip-remove-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-trip-remove-actions .btn { width: 100%; }
   .admin-audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-audit-search { grid-column: 1 / -1; }
   .admin-action small { white-space: normal; line-height: 1.35; }

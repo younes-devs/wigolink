@@ -37,3 +37,17 @@ test('la confirmation de versement est disponible dans les cinq langues', () => 
   assert.match(renderNotification('nl', notification), /uitbetaling.*bevestigd/i);
   assert.match(renderNotification('ar', notification), /تأكيد/);
 });
+
+test('le retrait admin du trajet est explique dans les cinq langues', () => {
+  const notification = {
+    key: 'trip.removedByAdmin',
+    params: { from: 'Oujda', to: 'Paris', reason: 'Annonce trompeuse' },
+  };
+
+  for (const lang of ['fr', 'en', 'es', 'nl', 'ar']) {
+    const rendered = renderNotification(lang, notification);
+    assert.match(rendered, /Oujda/);
+    assert.match(rendered, /Paris/);
+    assert.match(rendered, /Annonce trompeuse/);
+  }
+});

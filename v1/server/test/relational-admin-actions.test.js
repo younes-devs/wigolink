@@ -169,3 +169,40 @@ test('retrait whitelist et audit partagent la meme transaction', async () => {
   )));
   assert.ok(harness.calls.some(({ sql }) => sql === 'commit'));
 });
+
+test('retrait trajet relationnel refuse une operation active et audite le succes', async () => {
+  let activeOperation = true;
+  const calls = [];
+  const trip = {
+    id: 'trip-1', travelerId: 'member', status: 'published',
+    departureDate: '2099-08-20', from: 'Oujda', to: 'Paris',
+  };
+  const client = {
+    async query(sql, params = []) {
+      calls.push({ sql: String(sql), params });
+      if (/select data from public\.wigolink_trips/.test(sql)) {
+        return { rowCount: 1, rows: [{ data: structuredClone(trip) }] };
+      }
+      if (/select 1 from public\.wigolink_transactions/.test(sql)) {
+        return { rowCount: activeOperation ? 1 : 0, rows: activeOperation ? [{}] : [] };
+      }
+      return { rowCount: 1, rows: [] };
+    },
+    release() {},
+  };
+  const pool = { connect: async () => client, query: (...args) => client.query(...args) };
+  const repository = createRelationalAdminMemberMutations({ getPool: () => pool });
+  const input = {
+    actorId: 'admin', userId: 'member', tripId: trip.id,
+    reason: 'Annonce trompeuse', at: 1234, today: '2026-08-13',
+  };
+
+  assert.equal((await repository.removeTrip(input)).kind, 'active_operation');
+  activeOperation = false;
+  const result = await repository.removeTrip(input);
+
+  assert.equal(result.kind, 'ok');
+  assert.equal(result.trip.status, 'removed');
+  assert.ok(calls.some(({ sql }) => /update public\.wigolink_trips/.test(sql)));
+  assert.ok(calls.some(({ sql }) => /trip\.admin_remove/.test(sql)));
+});

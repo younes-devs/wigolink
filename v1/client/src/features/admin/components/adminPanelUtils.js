@@ -11,6 +11,7 @@ export function auditAction(action) {
     'trip.create': 'admin.audit.tripCreate',
     'trip.update': 'admin.audit.tripUpdate',
     'trip.remove': 'admin.audit.tripRemove',
+    'trip.admin_remove': 'admin.audit.tripAdminRemove',
     'listing.create': 'admin.audit.listingCreate',
     'listing.update': 'admin.audit.listingUpdate',
     'listing.cancel': 'admin.audit.listingCancel',

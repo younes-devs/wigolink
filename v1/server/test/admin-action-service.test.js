@@ -12,6 +12,8 @@ function createHarness({
   rejectedCount = 0,
   sessionUserId = null,
   whitelist = [],
+  trips = [],
+  transactions = [],
   adminMemberMutations = null,
   safetyAppealRepository = null,
 } = {}) {
@@ -19,7 +21,7 @@ function createHarness({
   const notifications = [];
   const queue = [];
   let saves = 0;
-  const db = { users, safetyAppeals };
+  const db = { users, safetyAppeals, trips, transactions, savedTrips: [] };
   const service = createAdminActionService({
     db,
     findUser: (id) => users.find((user) => user.id === id),
@@ -191,6 +193,44 @@ test('actions membres peuvent etre deleguees au stockage relationnel', async () 
   ]);
   assert.equal(harness.saves(), 0);
   assert.equal(harness.audits.length, 0);
+});
+
+test('un admin retire seulement un trajet actif sans operation', async () => {
+  const admin = { id: 'admin' };
+  const member = { id: 'member' };
+  const removable = {
+    id: 'trip-open', travelerId: member.id, status: 'published',
+    departureDate: '2099-08-20', from: 'Oujda', to: 'Paris',
+  };
+  const completed = {
+    id: 'trip-done', travelerId: member.id, status: 'cancelled',
+    departureDate: '2099-08-20', from: 'Rabat', to: 'Bruxelles',
+  };
+  const busy = {
+    id: 'trip-busy', travelerId: member.id, status: 'published',
+    departureDate: '2099-08-20', from: 'Fes', to: 'Lille',
+  };
+  const harness = createHarness({
+    users: [admin, member],
+    trips: [removable, completed, busy],
+    transactions: [{ id: 'operation-1', tripId: busy.id, status: 'paid' }],
+  });
+
+  const removed = await harness.service.removeMemberTrip(admin, member.id, removable.id, {
+    reason: 'Ce trajet enfreint les regles de publication.',
+  });
+
+  assert.equal(removed.status, 200);
+  assert.equal(removable.status, 'removed');
+  assert.equal(harness.audits[0][1], 'trip.admin_remove');
+  assert.equal(harness.notifications[0][0][0], member.id);
+  assert.equal(harness.notifications[0][1].key, 'trip.removedByAdmin');
+  assert.equal((await harness.service.removeMemberTrip(admin, member.id, completed.id, {
+    reason: 'Ce trajet enfreint les regles de publication.',
+  })).status, 409);
+  assert.equal((await harness.service.removeMemberTrip(admin, member.id, busy.id, {
+    reason: 'Ce trajet enfreint les regles de publication.',
+  })).status, 409);
 });
 
 test('rôles protègent auto-destitution et dernier admin', async () => {

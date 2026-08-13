@@ -16,10 +16,10 @@ export function MembersPanel({ data, reload }) {
   const [query, setQuery] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const selectedId = searchParams.get('member');
-  const requestedSection = searchParams.get('section') || 'overview';
-  const caseSection = ['overview', 'kyc', 'messages', 'payments', 'history', 'security'].includes(requestedSection)
+  const requestedSection = searchParams.get('section') || 'trips';
+  const caseSection = ['trips', 'kyc', 'messages', 'payments', 'history', 'security'].includes(requestedSection)
     ? requestedSection
-    : 'overview';
+    : 'trips';
 
   const selectMember = (userId) => {
     const next = new URLSearchParams({ tab: 'members', member: userId });
@@ -28,7 +28,7 @@ export function MembersPanel({ data, reload }) {
 
   const selectCaseSection = (section) => {
     const next = new URLSearchParams({ tab: 'members', member: selectedId });
-    if (section !== 'overview') next.set('section', section);
+    if (section !== 'trips') next.set('section', section);
     setSearchParams(next);
   };
 
@@ -96,7 +96,7 @@ function MemberCaseFile({ userId, section, onSectionChange, onBack }) {
       {member.suspendedUntil && <div className="alert alert-danger mt"><Icon name="alert" size={16} /><span>{t('admin.member.suspendedUntil', { date: formatAdminDate(member.suspendedUntil) })} {member.suspensionReason || ''}</span></div>}
     </section>
     <nav className="admin-case-nav" aria-label={t('admin.members.files')}>
-      <CaseSectionButton active={section === 'overview'} icon="user" label={t('admin.member.activity')} count={(data.recordTotals?.trips ?? data.trips.length) + (data.recordTotals?.listings ?? data.listings.length)} onClick={() => onSectionChange('overview')} />
+      <CaseSectionButton active={section === 'trips'} icon="plane" label={t('admin.member.publishedTrips')} count={data.recordTotals?.trips ?? data.trips.length} onClick={() => onSectionChange('trips')} />
       <CaseSectionButton active={section === 'kyc'} icon="shieldCheck" label={t('admin.member.kycFile')} count={data.kyc.length} onClick={() => onSectionChange('kyc')} />
       <CaseSectionButton active={section === 'messages'} icon="chat" label={t('admin.member.conversations')} count={data.messagePage.total ?? data.messages.length} onClick={() => onSectionChange('messages')} />
       <CaseSectionButton active={section === 'payments'} icon="euro" label={t('admin.member.operations')} count={data.recordTotals?.transactions ?? data.transactions.length} onClick={() => onSectionChange('payments')} />
@@ -104,7 +104,7 @@ function MemberCaseFile({ userId, section, onSectionChange, onBack }) {
       <CaseSectionButton active={section === 'security'} icon="alert" label={t('admin.member.securityHistory')} count={data.recordTotals?.disputes ?? data.disputes.length} onClick={() => onSectionChange('security')} />
     </nav>
     <div className="admin-case-section">
-      {section === 'overview' && <MemberOverview data={data} member={member} />}
+      {section === 'trips' && <MemberTripsSection userId={userId} />}
       {section === 'kyc' && <MemberKycSection submissions={data.kyc} onZoom={setZoom} />}
       {section === 'messages' && <MemberMessagesSection data={data} load={load} />}
       {section === 'payments' && <MemberPaymentsSection transactions={data.transactions} />}
@@ -121,16 +121,77 @@ function CaseSectionButton({ active, icon, label, count, onClick }) {
   </button>;
 }
 
-function MemberOverview({ data, member }) {
-  return <section className="card"><h2><Icon name="user" size={18} />{t('admin.member.activity')}</h2>
-    <div className="admin-case-facts">
-      <div><span>{t('admin.member.city')}</span><b>{member.city || '-'}</b></div>
-      <div><span>{t('admin.member.joined')}</span><b>{formatAdminDate(member.createdAt)}</b></div>
-      <div><span>{t('admin.member.email')}</span><b>{member.emailVerified ? t('common.verified') : t('common.notVerified')}</b></div>
-      <div><span>{t('admin.member.login')}</span><b>{member.provider || 'email'}</b></div>
-      <div><span>{t('admin.member.trips')}</span><b>{data.recordTotals?.trips ?? data.trips.length}</b></div>
-      <div><span>{t('admin.member.listings')}</span><b>{data.recordTotals?.listings ?? data.listings.length}</b></div>
+function MemberTripsSection({ userId }) {
+  const [data, setData] = useState(null);
+  const [view, setView] = useState('active');
+  const [menuId, setMenuId] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async (cursor = '') => {
+    const response = await api(`/admin/users/${userId}/trips?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+    setData((current) => cursor && current ? {
+      trips: [...current.trips, ...response.trips],
+      page: response.page,
+    } : response);
+  }, [userId]);
+
+  useEffect(() => { void load().catch((reasonValue) => setError(reasonValue.message || t('common.load.error'))); }, [load]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const groups = { active: [], history: [], removed: [] };
+  for (const trip of data?.trips || []) {
+    const status = trip.status || 'published';
+    const date = String(trip.departureDate || trip.date || '');
+    if (status === 'removed') groups.removed.push(trip);
+    else if (status !== 'published' || date < today) groups.history.push(trip);
+    else groups.active.push(trip);
+  }
+
+  const confirmRemoval = async () => {
+    if (!removing || reason.trim().length < 10) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/admin/users/${userId}/trips/${removing.id}/remove`, { method: 'POST', body: { reason } });
+      setRemoving(null);
+      setReason('');
+      setMenuId(null);
+      await load();
+      setView('removed');
+    } catch (reasonValue) {
+      setError(reasonValue.message || t('admin.member.tripRemoveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!data && !error) return <SkeletonCard lines={5} />;
+  const visible = groups[view];
+  return <section className="card admin-member-trips">
+    <h2><Icon name="plane" size={18} />{t('admin.member.publishedTrips')}</h2>
+    <div className="admin-operation-tabs" role="tablist" aria-label={t('admin.member.publishedTrips')}>
+      {['active', 'history', 'removed'].map((item) => <button type="button" role="tab" aria-selected={view === item} className={view === item ? 'active' : ''} onClick={() => setView(item)} key={item}>{t(`admin.member.tripTab.${item}`)}<small>{groups[item].length}</small></button>)}
     </div>
+    {error && <div className="alert alert-danger mt"><Icon name="alert" size={16} />{error}</div>}
+    <div className="admin-trip-list mt">
+      {visible.length === 0 ? <p className="muted admin-operation-empty">{t(`admin.member.noTrips.${view}`)}</p> : visible.map((trip) => {
+        const canRemove = view === 'active' && Number(trip.activeOperations || 0) === 0;
+        return <article className="admin-member-trip-card" key={trip.id}>
+          <div className="admin-member-trip-main"><div><h3>{trip.from} <span aria-hidden="true">→</span> {trip.to}</h3><p>{formatAdminDate(trip.departureDate || trip.date)}</p></div><span className={`pill ${view === 'active' ? 'pill-teal' : 'pill-gray'}`}>{t(`admin.member.tripStatus.${view}`)}</span></div>
+          <div className="admin-member-trip-meta"><span><Icon name={trip.transportMode === 'car' ? 'car' : 'plane'} size={15} />{t(`trips.transport.${trip.transportMode === 'car' ? 'car' : 'plane'}`)}</span><span><Icon name="package" size={15} />{trip.capacityKg || 0} kg</span><span><Icon name="euro" size={15} />{Number(trip.price || 0).toFixed(2)} EUR</span><span><Icon name="repeat" size={15} />{t('admin.member.tripOperations', { count: trip.activeOperations || 0 })}</span></div>
+          {trip.removalReason && <p className="admin-trip-removal-reason"><b>{t('admin.member.tripRemovalReason')}:</b> {trip.removalReason}</p>}
+          <div className="admin-member-trip-actions">
+            <a className="btn btn-ghost btn-sm" href={`/${document.documentElement.lang || 'fr'}/trajets/${encodeURIComponent(trip.id)}`} target="_blank" rel="noreferrer"><Icon name="externalLink" size={15} />{t('admin.member.viewTrip')}</a>
+            {view === 'active' && <div className="admin-trip-menu-wrap"><button type="button" className="icon-btn" aria-label={t('admin.member.tripActions')} aria-expanded={menuId === trip.id} onClick={() => setMenuId((current) => current === trip.id ? null : trip.id)}><Icon name="moreVertical" size={18} /></button>{menuId === trip.id && <div className="admin-trip-menu"><button type="button" disabled={!canRemove} onClick={() => { setRemoving(trip); setReason(''); setError(''); }}><Icon name="trash" size={15} />{t('admin.member.removeTrip')}</button>{!canRemove && <small>{t('admin.member.tripHasActiveOperation')}</small>}</div>}</div>}
+          </div>
+        </article>;
+      })}
+    </div>
+    {data?.page?.hasMore && <button type="button" className="btn btn-ghost btn-sm mt" onClick={() => void load(data.page.nextCursor)}>{t('common.loadMore')}</button>}
+    {removing && <div className="modal-backdrop" onMouseDown={() => !busy && setRemoving(null)}><div className="modal admin-trip-remove-modal" role="dialog" aria-modal="true" aria-labelledby="admin-trip-remove-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-head"><Icon name="alert" size={20} /><h3 id="admin-trip-remove-title">{t('admin.member.removeTripTitle')}</h3><button type="button" className="icon-btn" onClick={() => setRemoving(null)} disabled={busy} aria-label={t('common.close')}><Icon name="x" size={18} /></button></div><div className="admin-trip-remove-body"><p>{t('admin.member.removeTripHelp', { from: removing.from, to: removing.to })}</p><label>{t('admin.member.tripRemovalReason')}<textarea rows={4} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t('admin.member.tripRemovalPlaceholder')} autoFocus /></label><small>{t('admin.member.tripRemovalNotice')}</small><div className="admin-trip-remove-actions"><button type="button" className="btn btn-ghost" onClick={() => setRemoving(null)} disabled={busy}>{t('common.cancel')}</button><button type="button" className="btn btn-danger" onClick={confirmRemoval} disabled={busy || reason.trim().length < 10}>{busy ? t('common.loading') : t('admin.member.confirmTripRemoval')}</button></div></div></div></div>}
   </section>;
 }
 
