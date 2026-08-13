@@ -20,6 +20,7 @@ export function createManualPayoutsRouter({ auth, adminOnly, payouts, enabled })
   router.get('/admin/payouts/manual', auth, adminOnly, dispatch((req) => payouts.listRequests({
     admin: req.user,
     status: req.query.status,
+    country: req.query.country,
     cursor: req.query.cursor,
     limit: req.query.limit,
   })));

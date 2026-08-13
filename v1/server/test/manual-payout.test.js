@@ -173,6 +173,64 @@ test('confirmer le virement admin libere la connexion avant l audit', async () =
   assert.equal(connectionActive, false);
 });
 
+test('la file admin commence par les compteurs de versement par pays', async () => {
+  const audits = [];
+  const pool = {
+    async query(sql) {
+      assert.match(sql, /group by account\.country/);
+      return { rows: [{ country: 'MA', count: 4 }, { country: 'FR', count: 2 }] };
+    },
+  };
+  const service = createManualPayoutService({
+    getPool: () => pool,
+    config: manualConfig(),
+    audit: async (...args) => audits.push(args),
+  });
+
+  const result = await service.listRequests({ admin: { id: 'u-admin' } });
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.requests, []);
+  assert.deepEqual(result.body.counts, { MA: 4, BE: 0, FR: 2 });
+  assert.equal(result.body.selectedCountry, null);
+  assert.equal(audits[0][1], 'manual_payout_countries_viewed');
+});
+
+test('la file admin filtre les versements dans le pays choisi', async () => {
+  const key = crypto.randomBytes(32).toString('base64');
+  const config = manualPayoutConfiguration({
+    MANUAL_PAYOUT_ENCRYPTION_KEY: key,
+    MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+  });
+  const cipher = createManualPayoutCipher(key);
+  const queries = [];
+  const pool = {
+    async query(sql, params = []) {
+      queries.push({ sql, params });
+      if (sql.includes('group by account.country')) return { rows: [{ country: 'BE', count: 1 }] };
+      return { rows: [{
+        operation_id: 'tx-be', traveler_id: 'u-traveler', amount_cents: 850,
+        currency: 'EUR', status: 'pending', requested_at: new Date('2026-08-13T10:00:00Z'),
+        country: 'BE', details_ciphertext: cipher.encrypt({
+          holderName: 'Aya Stouti', bankName: 'Belfius',
+          accountIdentifier: 'BE68539007547034', bic: 'GKCCBEBB', phone: '',
+        }),
+        traveler: { name: 'Aya Stouti', email: 'aya@example.com', kycStatus: 'verified' },
+        operation: { from: 'Bruxelles', to: 'Paris' },
+      }] };
+    },
+  };
+  const service = createManualPayoutService({ getPool: () => pool, config });
+
+  const result = await service.listRequests({ admin: { id: 'u-admin' }, country: 'BE' });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.selectedCountry, 'BE');
+  assert.equal(result.body.requests.length, 1);
+  assert.equal(result.body.requests[0].bank.country, 'BE');
+  assert.equal(queries[1].params[1], 'BE');
+});
+
 function manualConfig() {
   return manualPayoutConfiguration({
     MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),

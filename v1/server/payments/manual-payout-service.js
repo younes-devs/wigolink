@@ -173,15 +173,34 @@ export function createManualPayoutService({
     return success({ request: publicRequest(queuedRequest) }, 201);
   }
 
-  async function listRequests({ admin, status: requestedStatus, cursor, limit: requestedLimit }) {
+  async function listRequests({ admin, status: requestedStatus, country: requestedCountry, cursor, limit: requestedLimit }) {
     const unavailable = availability();
     if (unavailable) return unavailable;
     const statusFilter = ['pending', 'processing', 'sent', 'failed'].includes(requestedStatus)
       ? requestedStatus
       : null;
+    const countryFilter = config.allowedCountries.has(String(requestedCountry || '').toUpperCase())
+      ? String(requestedCountry).toUpperCase()
+      : null;
     const limit = Math.min(50, Math.max(1, Number.parseInt(requestedLimit, 10) || 25));
     const pageCursor = decodePayoutCursor(cursor);
-    const result = await getPool().query(
+    const pool = getPool();
+    const countResult = await pool.query(
+      `select account.country, count(*)::int as count
+         from public.manual_payout_requests request
+         join public.manual_payout_accounts account on account.id = request.payout_account_id
+        where request.status <> 'sent'
+        group by account.country`,
+    );
+    const counts = Object.fromEntries([...config.allowedCountries].map((country) => [country, 0]));
+    countResult.rows.forEach((row) => {
+      if (Object.hasOwn(counts, row.country)) counts[row.country] = Number(row.count || 0);
+    });
+    if (!countryFilter) {
+      await audit(admin.id, 'manual_payout_countries_viewed', 'admin', admin.id, { counts });
+      return success({ requests: [], counts, selectedCountry: null, page: { hasMore: false, nextCursor: null } });
+    }
+    const result = await pool.query(
       `select request.*, account.country, account.account_last4, account.details_ciphertext,
               member.data as traveler, tx.data as operation
          from public.manual_payout_requests request
@@ -189,15 +208,16 @@ export function createManualPayoutService({
          join public.wigolink_users member on member.id = request.traveler_id
         join public.wigolink_transactions tx on tx.id = request.operation_id
         where ($1::text is null or request.status = $1)
-          and ($2::timestamptz is null or (
+          and account.country = $2
+          and ($3::timestamptz is null or (
             case when request.status = 'pending' then 0 else 1 end,
             request.requested_at,
             request.operation_id
-          ) > ($3::int, $2::timestamptz, $4::text))
+          ) > ($4::int, $3::timestamptz, $5::text))
         order by case when request.status = 'pending' then 0 else 1 end,
                  request.requested_at asc, request.operation_id asc
-        limit $5`,
-      [statusFilter, pageCursor?.requestedAt || null, pageCursor?.priority || 0,
+        limit $6`,
+      [statusFilter, countryFilter, pageCursor?.requestedAt || null, pageCursor?.priority || 0,
         pageCursor?.operationId || '', limit + 1],
     );
     const rows = result.rows.slice(0, limit);
@@ -205,9 +225,12 @@ export function createManualPayoutService({
     await audit(admin.id, 'manual_payout_queue_viewed', 'admin', admin.id, {
       count: rows.length,
       status: statusFilter || 'all',
+      country: countryFilter,
     });
     return success({
       requests: rows.map((row) => adminRequest(row, cipher.decrypt(row.details_ciphertext))),
+      counts,
+      selectedCountry: countryFilter,
       page: {
         hasMore: result.rows.length > limit,
         nextCursor: result.rows.length > limit && last ? encodePayoutCursor(last) : null,

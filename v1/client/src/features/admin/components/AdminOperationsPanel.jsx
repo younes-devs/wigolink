@@ -6,7 +6,8 @@ import { opsTaskCopy } from './adminPanelUtils.js';
 
 export function OpsPanel({
   ops, error, setTab, reload, manualPayouts, manualPayoutPage, manualPayoutsLoaded,
-  loadManualPayouts, loadPayments, onManualPayout, onRefund, section, onSectionChange,
+  manualPayoutCounts, payoutCountry, loadManualPayouts, loadPayments, onManualPayout,
+  onRefund, section, onSectionChange, onPayoutCountryChange,
 }) {
   const [refundTarget, setRefundTarget] = useState(null);
   const [loadingSection, setLoadingSection] = useState('');
@@ -31,7 +32,6 @@ export function OpsPanel({
     setLoadingSection(nextSection);
     try {
       if (nextSection === 'payments') await loadPayments();
-      if (nextSection === 'payouts' && !manualPayoutsLoaded) await loadManualPayouts();
     } finally {
       setLoadingSection('');
     }
@@ -115,12 +115,15 @@ export function OpsPanel({
         )}
       </section>}
 
-      {section === 'payouts' && (loadingSection === 'payouts' && !manualPayoutsLoaded
+      {section === 'payouts' && (!manualPayoutsLoaded
         ? <SkeletonList count={3} avatar={false} lines={3} />
         : <ManualPayoutQueue
             requests={manualPayouts}
+            counts={manualPayoutCounts}
+            country={payoutCountry}
             page={manualPayoutPage}
-            onLoadMore={() => loadManualPayouts({ cursor: manualPayoutPage.nextCursor, append: true })}
+            onCountryChange={onPayoutCountryChange}
+            onLoadMore={() => loadManualPayouts({ country: payoutCountry, cursor: manualPayoutPage.nextCursor, append: true })}
             onConfirm={onManualPayout}
           />)}
 
@@ -172,7 +175,13 @@ function OpsArea({ icon, label, active, loading, onClick }) {
   </button>;
 }
 
-function ManualPayoutQueue({ requests = [], page, onLoadMore, onConfirm }) {
+const PAYOUT_COUNTRIES = [
+  { code: 'MA', icon: 'bank' },
+  { code: 'FR', icon: 'bank' },
+  { code: 'BE', icon: 'bank' },
+];
+
+function ManualPayoutQueue({ requests = [], counts = {}, country, page, onCountryChange, onLoadMore, onConfirm }) {
   const [references, setReferences] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -187,12 +196,28 @@ function ManualPayoutQueue({ requests = [], page, onLoadMore, onConfirm }) {
       setBusyId(null);
     }
   };
-  return <section className="ops-section ops-manual-payouts">
+  if (!country) return <section className="ops-section ops-manual-payouts">
     <div className="ops-section-head">
       <h2><Icon name="bank" size={17} />{t('admin.payouts.title')}</h2>
-      <span className="pill pill-gray">{pending.length}</span>
+      <span className="pill pill-gray">{Object.values(counts).reduce((total, value) => total + Number(value || 0), 0)}</span>
     </div>
     <p className="muted ops-payout-intro">{t('admin.payouts.intro')}</p>
+    <div className="ops-payout-countries">
+      {PAYOUT_COUNTRIES.map(({ code, icon }) => <button type="button" className="ops-payout-country" key={code} onClick={() => onCountryChange(code)}>
+        <span><Icon name={icon} size={20} /></span>
+        <div><b>{t(`admin.payouts.country.${code}`)}</b><small>{t('admin.payouts.country.requests', { count: Number(counts[code] || 0) })}</small></div>
+        <Icon name="arrowRight" size={18} />
+      </button>)}
+    </div>
+  </section>;
+
+  return <section className="ops-section ops-manual-payouts">
+    <button type="button" className="ops-payout-back" onClick={() => onCountryChange('')}><Icon name="arrowLeft" size={17} />{t('admin.payouts.country.back')}</button>
+    <div className="ops-section-head ops-payout-country-head">
+      <h2><Icon name="bank" size={17} />{t(`admin.payouts.country.${country}`)}</h2>
+      <span className="pill pill-gray">{Number(counts[country] || 0)}</span>
+    </div>
+    <p className="muted ops-payout-intro">{t('admin.payouts.country.intro', { country: t(`admin.payouts.country.${country}`) })}</p>
     {pending.length === 0 ? <div className="ops-payout-empty"><Icon name="check" size={18} />{t('admin.payouts.empty')}</div> : <div className="ops-payout-list">
       {pending.map((request) => <article className="ops-payout-row" key={request.operationId}>
         <div className="ops-payout-summary">

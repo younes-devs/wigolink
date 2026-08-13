@@ -37,11 +37,15 @@ export default function Admin() {
   const opsSection = ['overview', 'payouts', 'payments'].includes(requestedOpsSection)
     ? requestedOpsSection
     : 'overview';
+  const requestedPayoutCountry = String(searchParams.get('country') || '').toUpperCase();
+  const payoutCountry = ['MA', 'FR', 'BE'].includes(requestedPayoutCountry) ? requestedPayoutCountry : '';
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [manualPayouts, setManualPayouts] = useState([]);
+  const [manualPayoutCounts, setManualPayoutCounts] = useState({ MA: 0, FR: 0, BE: 0 });
   const [manualPayoutPage, setManualPayoutPage] = useState({ hasMore: false, nextCursor: null });
   const [manualPayoutsLoaded, setManualPayoutsLoaded] = useState(false);
+  const manualPayoutRequest = useRef(0);
   const [paymentsLoaded, setPaymentsLoaded] = useState(false);
   const [fraud, setFraud] = useState(null);
   const [fraudError, setFraudError] = useState('');
@@ -62,6 +66,12 @@ export default function Admin() {
     setSearchParams(next);
   }, [setSearchParams]);
 
+  const openPayoutCountry = useCallback((country = '') => {
+    const next = new URLSearchParams({ tab: 'ops', section: 'payouts' });
+    if (country) next.set('country', country);
+    setSearchParams(next);
+  }, [setSearchParams]);
+
   const load = useCallback(() => {
     api('/admin/overview').then(setData).catch((e) => setError(e.message));
   }, []);
@@ -79,19 +89,25 @@ export default function Admin() {
       throw e;
     });
   }, []);
-  const loadManualPayouts = useCallback(({ cursor = '', append = false } = {}) => {
+  const loadManualPayouts = useCallback(({ country = '', cursor = '', append = false } = {}) => {
+    const requestId = ++manualPayoutRequest.current;
+    if (!append) setManualPayoutsLoaded(false);
     const params = new URLSearchParams({ limit: '25' });
+    if (country) params.set('country', country);
     if (cursor) params.set('cursor', cursor);
     return api(`/admin/payouts/manual?${params}`)
       .then((result) => {
+        if (requestId !== manualPayoutRequest.current) return result;
         setManualPayouts((current) => append
           ? [...current, ...(result.requests || [])]
           : (result.requests || []));
         setManualPayoutPage(result.page || { hasMore: false, nextCursor: null });
+        setManualPayoutCounts(result.counts || { MA: 0, FR: 0, BE: 0 });
         setManualPayoutsLoaded(true);
         return result;
       })
       .catch(() => {
+        if (requestId !== manualPayoutRequest.current) return;
         if (!append) setManualPayouts([]);
         setManualPayoutsLoaded(true);
       });
@@ -124,8 +140,11 @@ export default function Admin() {
     if (tab !== 'ops') return;
     if (!ops) loadOps(opsSection === 'payments' ? 'payments' : 'overview');
     else if (opsSection === 'payments' && !paymentsLoaded) loadOps('payments');
-    if (opsSection === 'payouts' && !manualPayoutsLoaded) loadManualPayouts();
-  }, [tab, ops, opsSection, paymentsLoaded, manualPayoutsLoaded, loadOps, loadManualPayouts]);
+  }, [tab, ops, opsSection, paymentsLoaded, loadOps]);
+  useEffect(() => {
+    if (tab !== 'ops' || opsSection !== 'payouts') return;
+    loadManualPayouts({ country: payoutCountry });
+  }, [tab, opsSection, payoutCountry, loadManualPayouts]);
   useEffect(() => {
     if (tab === 'fraud' && !fraud) loadFraud();
   }, [tab, fraud, loadFraud]);
@@ -154,7 +173,7 @@ export default function Admin() {
       method: 'POST',
       body: { reference },
     });
-    await Promise.all([load(), loadOps(), loadManualPayouts()]);
+    await Promise.all([load(), loadOps(), loadManualPayouts({ country: payoutCountry })]);
     toast.success(t('admin.payouts.sentSuccess'), 2600);
   };
 
@@ -212,9 +231,12 @@ export default function Admin() {
         section={opsSection}
         onSectionChange={openOpsSection}
         manualPayouts={manualPayouts}
+        manualPayoutCounts={manualPayoutCounts}
+        payoutCountry={payoutCountry}
         manualPayoutPage={manualPayoutPage}
         manualPayoutsLoaded={manualPayoutsLoaded}
         loadManualPayouts={loadManualPayouts}
+        onPayoutCountryChange={openPayoutCountry}
         loadPayments={() => loadOps('payments')}
         onManualPayout={confirmManualPayout}
         onRefund={refundPayment}
@@ -222,7 +244,7 @@ export default function Admin() {
           load();
           if (activeSection === 'payments') loadOps('payments');
           else loadOps();
-          if (activeSection === 'payouts') loadManualPayouts();
+          if (activeSection === 'payouts') loadManualPayouts({ country: payoutCountry });
         }}
       />}
       {tab === 'review' && (

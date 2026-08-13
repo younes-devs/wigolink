@@ -600,6 +600,23 @@
 .ops-payment-meta { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
 .ops-payment-meta code { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; }
 .ops-payout-intro { margin: 0 0 12px; font-size: 12.5px; }
+.ops-payout-countries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ops-payout-country {
+  width: 100%; min-width: 0; min-height: 82px; display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 18px; align-items: center; gap: 11px;
+  padding: 13px; border: 1px solid var(--hairline); border-radius: 8px;
+  background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer;
+}
+.ops-payout-country:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--hairline)); background: var(--accent-tint); }
+.ops-payout-country > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 8px; background: var(--accent-tint); color: var(--accent); }
+.ops-payout-country > div { min-width: 0; }
+.ops-payout-country b, .ops-payout-country small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ops-payout-country b { font-size: 14px; }
+.ops-payout-country small { margin-top: 3px; color: var(--ink-soft); font-size: 11px; }
+.ops-payout-country > .icon:last-child { color: var(--ink-soft); }
+.ops-payout-back { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; margin: 0 0 12px; padding: 0 10px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.ops-payout-back:hover { border-color: var(--accent); color: var(--accent); }
+.ops-payout-country-head { padding-top: 2px; }
 .ops-payout-empty { display: flex; align-items: center; gap: 8px; padding: 13px; border: 1px solid var(--hairline); border-radius: 8px; color: var(--green); font-size: 13px; font-weight: 700; }
 .ops-payout-list { display: grid; gap: 12px; }
 .ops-payout-row { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
@@ -652,6 +669,8 @@
   .ops-payout-summary, .ops-payout-context { align-items: stretch; }
   .ops-payout-confirm { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
   .ops-payout-confirm .btn { width: 100%; justify-content: center; }
+  .ops-payout-countries { grid-template-columns: 1fr; }
+  .ops-payout-country { min-height: 72px; }
 }
 
 /* KPIs admin */
