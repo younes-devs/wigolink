@@ -8,7 +8,7 @@ export default function localeEntry(req, res) {
 
   const requestedPath = ['trajets', 'cgu', 'confidentialite'].includes(req.query?.path)
     ? `/${req.query.path}`
-    : '';
+    : '/trajets';
   res.statusCode = 307;
   res.setHeader('Location', `/${locale}${requestedPath}`);
   res.setHeader('Cache-Control', 'private, no-store');
