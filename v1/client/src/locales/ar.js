@@ -424,6 +424,7 @@ export default {
   'payments.payout.wizard.error.bank': 'أدخل اسم البنك.',
   'payments.payout.wizard.error.rib': 'يجب أن يتكون RIB المغربي من 24 رقما بالضبط.',
   'payments.payout.wizard.error.iban': 'أدخل رقم IBAN صالحا.',
+  'payments.payout.wizard.error.ibanCountry': 'يجب أن يتطابق رقم IBAN مع البلد المختار.',
   'payments.payout.wizard.error.phone': 'أدخل رقم هاتف صالحا.',
   'payments.payout.wizard.error.bic': 'رمز BIC أو SWIFT غير صالح.',
   'payments.payout.manual.bankTitle': 'حساب استلام الأرباح',

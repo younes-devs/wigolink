@@ -5,6 +5,7 @@ import { Icon } from '../../../Icons.jsx';
 import { SkeletonList, SkeletonStatGrid } from '../../../Skeleton.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { t, useLang } from '../../../i18n.js';
+import { emptyManualPayoutCounts, isManualPayoutCountry } from '../../../../../shared/manual-payout-countries.js';
 import {
   AccessPanel, ConversationReviewCard, FraudPanel, KycPanel,
   ListingReviewCard, MembersPanel, OpsPanel, SafetyPanel,
@@ -38,11 +39,11 @@ export default function Admin() {
     ? requestedOpsSection
     : 'overview';
   const requestedPayoutCountry = String(searchParams.get('country') || '').toUpperCase();
-  const payoutCountry = ['MA', 'FR', 'BE'].includes(requestedPayoutCountry) ? requestedPayoutCountry : '';
+  const payoutCountry = isManualPayoutCountry(requestedPayoutCountry) ? requestedPayoutCountry : '';
   const [ops, setOps] = useState(null);
   const [opsError, setOpsError] = useState('');
   const [manualPayouts, setManualPayouts] = useState([]);
-  const [manualPayoutCounts, setManualPayoutCounts] = useState({ MA: 0, FR: 0, BE: 0 });
+  const [manualPayoutCounts, setManualPayoutCounts] = useState(emptyManualPayoutCounts);
   const [manualPayoutPage, setManualPayoutPage] = useState({ hasMore: false, nextCursor: null });
   const [manualPayoutsLoaded, setManualPayoutsLoaded] = useState(false);
   const manualPayoutRequest = useRef(0);
@@ -102,7 +103,7 @@ export default function Admin() {
           ? [...current, ...(result.requests || [])]
           : (result.requests || []));
         setManualPayoutPage(result.page || { hasMore: false, nextCursor: null });
-        setManualPayoutCounts(result.counts || { MA: 0, FR: 0, BE: 0 });
+        setManualPayoutCounts(result.counts || emptyManualPayoutCounts());
         setManualPayoutsLoaded(true);
         return result;
       })

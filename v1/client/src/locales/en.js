@@ -410,6 +410,7 @@ export default {
   "payments.payout.wizard.error.bank": "Enter your bank name.",
   "payments.payout.wizard.error.rib": "A Moroccan RIB must contain exactly 24 digits.",
   "payments.payout.wizard.error.iban": "Enter a valid IBAN.",
+  "payments.payout.wizard.error.ibanCountry": "The IBAN must match the selected country.",
   "payments.payout.wizard.error.phone": "Enter a valid phone number.",
   "payments.payout.wizard.error.bic": "The BIC or SWIFT code is invalid.",
   "payments.payout.manual.bankTitle": "Payout account",

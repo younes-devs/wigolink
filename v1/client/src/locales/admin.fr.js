@@ -312,6 +312,8 @@ export default {
   'admin.payouts.country.MA': 'Maroc',
   'admin.payouts.country.FR': 'France',
   'admin.payouts.country.BE': 'Belgique',
+  'admin.payouts.country.ES': 'Espagne',
+  'admin.payouts.country.NL': 'Pays-Bas',
   'admin.payouts.country.requests': '{{count}} demande(s) à traiter',
   'admin.payouts.country.back': 'Tous les pays',
   'admin.payouts.country.intro': 'Pays du compte bancaire destinataire : {{country}}.',

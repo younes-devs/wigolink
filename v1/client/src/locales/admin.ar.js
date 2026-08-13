@@ -312,6 +312,8 @@ export default {
   'admin.payouts.country.MA': 'المغرب',
   'admin.payouts.country.FR': 'فرنسا',
   'admin.payouts.country.BE': 'بلجيكا',
+  'admin.payouts.country.ES': 'إسبانيا',
+  'admin.payouts.country.NL': 'هولندا',
   'admin.payouts.country.requests': '{{count}} طلبات للمعالجة',
   'admin.payouts.country.back': 'جميع البلدان',
   'admin.payouts.country.intro': 'طلبات التحويل إلى حساب بنكي في {{country}}.',

@@ -312,6 +312,8 @@ export default {
   'admin.payouts.country.MA': 'Marokko',
   'admin.payouts.country.FR': 'Frankrijk',
   'admin.payouts.country.BE': 'België',
+  'admin.payouts.country.ES': 'Spanje',
+  'admin.payouts.country.NL': 'Nederland',
   'admin.payouts.country.requests': '{{count}} verzoek(en) te verwerken',
   'admin.payouts.country.back': 'Alle landen',
   'admin.payouts.country.intro': 'Uitbetalingsverzoeken naar een bankrekening in {{country}}.',

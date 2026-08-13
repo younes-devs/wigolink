@@ -313,6 +313,8 @@ export default {
   "admin.payouts.country.MA": "Marruecos",
   "admin.payouts.country.FR": "Francia",
   "admin.payouts.country.BE": "Bélgica",
+  "admin.payouts.country.ES": "España",
+  "admin.payouts.country.NL": "Países Bajos",
   "admin.payouts.country.requests": "{{count}} solicitud(es) por procesar",
   "admin.payouts.country.back": "Todos los países",
   "admin.payouts.country.intro": "Solicitudes de pago a una cuenta bancaria en {{country}}.",

@@ -419,6 +419,7 @@ export default {
   'payments.payout.wizard.error.bank': 'Voer de naam van uw bank in.',
   'payments.payout.wizard.error.rib': 'Een Marokkaanse RIB moet exact 24 cijfers bevatten.',
   'payments.payout.wizard.error.iban': 'Voer een geldig IBAN in.',
+  'payments.payout.wizard.error.ibanCountry': 'Het IBAN moet bij het gekozen land horen.',
   'payments.payout.wizard.error.phone': 'Voer een geldig telefoonnummer in.',
   'payments.payout.wizard.error.bic': 'De BIC- of SWIFT-code is ongeldig.',
   'payments.payout.manual.bankTitle': 'Uitbetalingsrekening',

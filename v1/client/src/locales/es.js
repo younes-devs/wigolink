@@ -410,6 +410,7 @@ export default {
   "payments.payout.wizard.error.bank": "Introduce el nombre de tu banco.",
   "payments.payout.wizard.error.rib": "El RIB marroquí debe contener exactamente 24 dígitos.",
   "payments.payout.wizard.error.iban": "Introduce un IBAN válido.",
+  "payments.payout.wizard.error.ibanCountry": "El IBAN debe corresponder al país seleccionado.",
   "payments.payout.wizard.error.phone": "Introduce un número de teléfono válido.",
   "payments.payout.wizard.error.bic": "El código BIC o SWIFT no es válido.",
   "payments.payout.manual.bankTitle": "Cuenta de pago",

@@ -384,6 +384,8 @@ function validateAccount(body, allowedCountries) {
     if (!/^\+?[0-9 ()-]{8,20}$/.test(phone)) return { error: 'Ajoutez un numero de telephone valide.' };
   } else if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(accountIdentifier)) {
     return { error: 'Ajoutez un IBAN valide.' };
+  } else if (!accountIdentifier.startsWith(country)) {
+    return { error: "L'IBAN doit correspondre au pays de versement choisi." };
   }
   if (bic && !/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(bic)) return { error: 'Le code BIC/SWIFT est invalide.' };
   return { value: { country, holderName, bankName, accountIdentifier, bic, phone } };

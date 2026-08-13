@@ -53,7 +53,7 @@ professionnel Wigolink:
 2. Generer une cle aleatoire de 32 octets encodee en base64 et la stocker dans
    `MANUAL_PAYOUT_ENCRYPTION_KEY`. Ne jamais changer cette cle sans migration,
    car les anciens comptes deviendraient illisibles.
-3. Definir `MANUAL_PAYOUT_COUNTRIES=MA,BE,FR`.
+3. Definir `MANUAL_PAYOUT_COUNTRIES=MA,FR,BE,ES,NL`.
 4. Definir `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY` et
    `STRIPE_WEBHOOK_SECRET` pour activer l'encaissement.
 5. Tester une livraison complete. Une ligne `manual_payout_requests` doit
@@ -77,7 +77,7 @@ PAYMENT_PROVIDER=stripe
 STRIPE_SECRET_KEY=sk_test_... ou sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 MANUAL_PAYOUT_ENCRYPTION_KEY=une_cle_base64_de_32_octets
-MANUAL_PAYOUT_COUNTRIES=MA,BE,FR
+MANUAL_PAYOUT_COUNTRIES=MA,FR,BE,ES,NL
 APP_URL=https://wigolink.com
 ```
 

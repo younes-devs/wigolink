@@ -27,11 +27,19 @@ test('coordonnees de versement chiffrees restent opaques et authentifiees', () =
 test('mode manuel reste explicite et borne aux pays du pilote', () => {
   const config = manualPayoutConfiguration({
     MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
-    MANUAL_PAYOUT_COUNTRIES: 'MA, BE,FR',
+    MANUAL_PAYOUT_COUNTRIES: 'MA,FR,BE,ES,NL',
   });
 
   assert.equal(config.enabled, true);
-  assert.deepEqual([...config.allowedCountries], ['MA', 'BE', 'FR']);
+  assert.deepEqual([...config.allowedCountries], ['MA', 'FR', 'BE', 'ES', 'NL']);
+});
+
+test('les cinq pays de versement sont actifs par defaut', () => {
+  const config = manualPayoutConfiguration({
+    MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
+  });
+
+  assert.deepEqual([...config.allowedCountries], ['MA', 'FR', 'BE', 'ES', 'NL']);
 });
 
 test('livraison en mode manuel cree une demande sans appeler Stripe Transfers', async () => {
@@ -89,7 +97,7 @@ test('enregistrer la banque libere la connexion avant de reprendre les versement
     getPool: () => pool,
     config: manualPayoutConfiguration({
       MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
-      MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+      MANUAL_PAYOUT_COUNTRIES: 'MA,FR,BE,ES,NL',
     }),
   });
 
@@ -191,7 +199,7 @@ test('la file admin commence par les compteurs de versement par pays', async () 
 
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.requests, []);
-  assert.deepEqual(result.body.counts, { MA: 4, BE: 0, FR: 2 });
+  assert.deepEqual(result.body.counts, { MA: 4, FR: 2, BE: 0, ES: 0, NL: 0 });
   assert.equal(result.body.selectedCountry, null);
   assert.equal(audits[0][1], 'manual_payout_countries_viewed');
 });
@@ -200,7 +208,7 @@ test('la file admin filtre les versements dans le pays choisi', async () => {
   const key = crypto.randomBytes(32).toString('base64');
   const config = manualPayoutConfiguration({
     MANUAL_PAYOUT_ENCRYPTION_KEY: key,
-    MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+    MANUAL_PAYOUT_COUNTRIES: 'MA,FR,BE,ES,NL',
   });
   const cipher = createManualPayoutCipher(key);
   const queries = [];
@@ -234,7 +242,7 @@ test('la file admin filtre les versements dans le pays choisi', async () => {
 function manualConfig() {
   return manualPayoutConfiguration({
     MANUAL_PAYOUT_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64'),
-    MANUAL_PAYOUT_COUNTRIES: 'MA,BE,FR',
+    MANUAL_PAYOUT_COUNTRIES: 'MA,FR,BE,ES,NL',
   });
 }
 

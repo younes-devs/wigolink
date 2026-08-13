@@ -5,10 +5,7 @@ import { api } from '../../../core/api.js';
 import { Icon } from '../../../Icons.jsx';
 import { useToast } from '../../../Toast.jsx';
 import { getLang, t, useLang } from '../../../i18n.js';
-
-const COUNTRIES = [
-  ['MA', 'Maroc'], ['BE', 'Belgique'], ['FR', 'France'],
-];
+import { MANUAL_PAYOUT_COUNTRIES } from '../../../../../shared/manual-payout-countries.js';
 
 const EMPTY_BANK = {
   holderName: '', bankName: '', accountIdentifier: '', bic: '', phone: '',
@@ -49,7 +46,7 @@ export default function PayoutSetup() {
   };
 
   const validationMessage = (targetStep = step) => {
-    if (targetStep === 0 && !COUNTRIES.some(([code]) => code === country)) {
+    if (targetStep === 0 && !MANUAL_PAYOUT_COUNTRIES.includes(country)) {
       return t('payments.payout.wizard.error.country');
     }
     if (targetStep === 1) {
@@ -63,6 +60,9 @@ export default function PayoutSetup() {
       }
       if (country !== 'MA' && !/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(account)) {
         return t('payments.payout.wizard.error.iban');
+      }
+      if (country !== 'MA' && !account.startsWith(country)) {
+        return t('payments.payout.wizard.error.ibanCountry');
       }
       if (country === 'MA' && !/^\+?[0-9 ()-]{8,20}$/.test(bank.phone.trim())) {
         return t('payments.payout.wizard.error.phone');
@@ -174,7 +174,7 @@ function PayoutWizard({ bank, busy, country, countryName, error, onCountryChange
       <PayoutStepIntro step={step} />
 
       {step === 0 && <div className="payout-country-grid" role="radiogroup" aria-label={t('payments.payout.country')}>
-        {COUNTRIES.map(([code, fallback]) => <button
+        {MANUAL_PAYOUT_COUNTRIES.map((code) => <button
           className={`payout-country-choice${country === code ? ' active' : ''}`}
           key={code}
           type="button"
@@ -183,7 +183,7 @@ function PayoutWizard({ bank, busy, country, countryName, error, onCountryChange
           onClick={() => onCountryChange(code)}
         >
           <span className="payout-country-code">{code}</span>
-          <span><b>{countryName(code, fallback)}</b><small>{t('payments.payout.wizard.country.available')}</small></span>
+          <span><b>{countryName(code)}</b><small>{t('payments.payout.wizard.country.available')}</small></span>
           <Icon name={country === code ? 'check' : 'arrowRight'} size={18} />
         </button>)}
         <p className="payout-expansion-note"><Icon name="info" size={17} />{t('payments.payout.wizard.country.expansion')}</p>

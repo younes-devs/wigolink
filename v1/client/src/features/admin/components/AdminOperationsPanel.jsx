@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonList } from '../../../Skeleton.jsx';
 import { t } from '../../../i18n.js';
+import { MANUAL_PAYOUT_COUNTRIES } from '../../../../../shared/manual-payout-countries.js';
 import { opsTaskCopy } from './adminPanelUtils.js';
 
 export function OpsPanel({
@@ -175,12 +176,6 @@ function OpsArea({ icon, label, active, loading, onClick }) {
   </button>;
 }
 
-const PAYOUT_COUNTRIES = [
-  { code: 'MA', icon: 'bank' },
-  { code: 'FR', icon: 'bank' },
-  { code: 'BE', icon: 'bank' },
-];
-
 function ManualPayoutQueue({ requests = [], counts = {}, country, page, onCountryChange, onLoadMore, onConfirm }) {
   const [references, setReferences] = useState({});
   const [busyId, setBusyId] = useState(null);
@@ -203,8 +198,8 @@ function ManualPayoutQueue({ requests = [], counts = {}, country, page, onCountr
     </div>
     <p className="muted ops-payout-intro">{t('admin.payouts.intro')}</p>
     <div className="ops-payout-countries">
-      {PAYOUT_COUNTRIES.map(({ code, icon }) => <button type="button" className="ops-payout-country" key={code} onClick={() => onCountryChange(code)}>
-        <span><Icon name={icon} size={20} /></span>
+      {MANUAL_PAYOUT_COUNTRIES.map((code) => <button type="button" className="ops-payout-country" key={code} onClick={() => onCountryChange(code)}>
+        <span><Icon name="bank" size={20} /></span>
         <div><b>{t(`admin.payouts.country.${code}`)}</b><small>{t('admin.payouts.country.requests', { count: Number(counts[code] || 0) })}</small></div>
         <Icon name="arrowRight" size={18} />
       </button>)}
