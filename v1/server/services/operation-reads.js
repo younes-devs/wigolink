@@ -9,6 +9,17 @@ export function createOperationReadService({
     const shipmentType = ['parcel', 'document'].includes(query.shipmentType)
       ? query.shipmentType
       : null;
+    const activeTransactions = db.transactions
+      .filter((transaction) => isParty(transaction, user.id))
+      .filter((transaction) => !isClosedStatus(transaction.status));
+    if (query.summary === '1') {
+      return {
+        activeTypes: {
+          parcel: activeTransactions.some((transaction) => (transaction.shipmentType || 'parcel') === 'parcel'),
+          document: activeTransactions.some((transaction) => transaction.shipmentType === 'document'),
+        },
+      };
+    }
     return {
       operations: db.transactions
         .filter((transaction) => isParty(transaction, user.id))

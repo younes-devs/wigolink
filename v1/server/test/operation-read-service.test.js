@@ -66,6 +66,10 @@ test('operation reads separate active operations from history', () => {
     service.operations(user, { history: '1' }).operations.map(({ id }) => id),
     ['tx-delivered', 'tx-old'],
   );
+  assert.deepEqual(
+    service.operations(user, { summary: '1' }).activeTypes,
+    { parcel: true, document: true },
+  );
 });
 
 test('operation detail protects third parties and allows administrators', () => {

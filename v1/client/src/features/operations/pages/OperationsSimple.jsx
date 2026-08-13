@@ -22,10 +22,19 @@ export default function OperationsSimple() {
   const [operations, setOperations] = useState(null);
   const [page, setPage] = useState(null);
   const [view, setView] = useState('parcel');
+  const [activeTypes, setActiveTypes] = useState({ parcel: false, document: false });
   const [busy, setBusy] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const nav = useNavigate();
   const toast = useToast();
+
+  useEffect(() => {
+    let active = true;
+    api('/operations?summary=1').then((data) => {
+      if (active && data.activeTypes) setActiveTypes(data.activeTypes);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -84,8 +93,14 @@ export default function OperationsSimple() {
       <p className="page-sub">{t('operations.subtitle')}</p>
 
       <div className="tabs operations-tabs" role="tablist" aria-label={t('operations.filter.aria')}>
-        <button type="button" className={view === 'parcel' ? 'active' : ''} onClick={() => setView('parcel')}>{t('operations.tab.parcelRequests')}</button>
-        <button type="button" className={view === 'document' ? 'active' : ''} onClick={() => setView('document')}>{t('operations.tab.documentRequests')}</button>
+        <button type="button" className={view === 'parcel' ? 'active' : ''} onClick={() => setView('parcel')}>
+          {t('operations.tab.parcelRequests')}
+          {activeTypes.parcel && <span className="operations-tab-dot" aria-hidden="true" />}
+        </button>
+        <button type="button" className={view === 'document' ? 'active' : ''} onClick={() => setView('document')}>
+          {t('operations.tab.documentRequests')}
+          {activeTypes.document && <span className="operations-tab-dot" aria-hidden="true" />}
+        </button>
         <button type="button" className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>{t('operations.tab.history')}</button>
       </div>
 

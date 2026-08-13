@@ -22,6 +22,23 @@ export async function listRelationalOperations({
   operationCodePublicState,
   disputeView,
 }) {
+  if (query.summary === '1') {
+    const result = await pool.query(
+      `select
+         coalesce(bool_or(coalesce(nullif(tx.data->>'shipmentType', ''), 'parcel') = 'parcel'), false) as parcel,
+         coalesce(bool_or(tx.data->>'shipmentType' = 'document'), false) as document
+       from public.wigolink_transactions tx
+       where ${transactionParticipantFilter('$1')}
+         and not (coalesce(tx.data->>'status', '') = any($2::text[]))`,
+      [user.id, [...CLOSED_STATUSES]],
+    );
+    return {
+      activeTypes: {
+        parcel: Boolean(result.rows[0]?.parcel),
+        document: Boolean(result.rows[0]?.document),
+      },
+    };
+  }
   const history = query.history === '1';
   const shipmentType = !history && ['parcel', 'document'].includes(query.shipmentType)
     ? query.shipmentType

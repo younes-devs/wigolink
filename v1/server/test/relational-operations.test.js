@@ -105,6 +105,28 @@ test('operations relationnelles : une livraison confirmee appartient a l histori
   assert.ok(calls[0].params[1].includes('delivery_confirmed'));
 });
 
+test('operations relationnelles : resume les types actifs sans charger les listes', async () => {
+  const calls = [];
+  const result = await listRelationalOperations({
+    pool: {
+      query(sql, params) {
+        calls.push({ sql, params });
+        return { rows: [{ parcel: true, document: false }] };
+      },
+    },
+    user: { id: 'u-1' },
+    query: { summary: '1' },
+  });
+
+  assert.deepEqual(result.activeTypes, { parcel: true, document: false });
+  assert.match(calls[0].sql, /bool_or/);
+  assert.match(calls[0].sql, /not \(coalesce\(tx\.data->>'status'/);
+  assert.deepEqual(calls[0].params, [
+    'u-1',
+    ['delivery_confirmed', 'released', 'refunded', 'cancelled'],
+  ]);
+});
+
 test('operations relationnelles : poursuit avec un curseur stable sans offset', async () => {
   const calls = [];
   await listRelationalOperations({

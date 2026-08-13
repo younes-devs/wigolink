@@ -425,6 +425,15 @@
 .saved-actions, .operation-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .operation-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .operations-tabs { max-width: 620px; }
+.operations-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.operations-tab-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary, #0878ff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0878ff) 14%, transparent);
+}
 .operation-card-archived { background: var(--surface-soft); }
 .operation-detail { display: grid; gap: 16px; }
 .operation-detail-head p { margin: 4px 0 0; color: var(--ink-soft); }
