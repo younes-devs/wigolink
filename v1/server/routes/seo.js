@@ -11,22 +11,27 @@ const SUPPORTED = new Set(SUPPORTED_LOCALES);
 export function createSeoRouter({ listPublicTrips, getPublicTrip, getTemplate = loadClientTemplate, logger = console }) {
   const router = Router();
 
-  router.get('/public/sitemap.xml', async (_req, res) => {
+  router.get('/public/sitemap.xml', async (req, res) => {
     try {
-      const trips = await collectTrips(listPublicTrips);
-      const urls = [];
-      for (const locale of SUPPORTED_LOCALES) {
-        urls.push(
-          sitemapUrl(`/${locale}/trajets`),
-          sitemapUrl(`/${locale}/cgu`),
-          sitemapUrl(`/${locale}/confidentialite`),
-          ...listSeoLandings(locale).map((landing) => sitemapUrl(`/${locale}${landing.path}`)),
-          ...trips.map((trip) => sitemapUrl(
-            `/${locale}/trajets/${encodeURIComponent(trip.id)}`,
-            trip.updatedAt || trip.createdAt,
-          )),
-        );
+      const locale = SUPPORTED.has(req.query.locale) ? req.query.locale : null;
+      if (!locale) {
+        const maps = SUPPORTED_LOCALES.map((code) => sitemapReference(`/sitemap-${code}.xml`));
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${maps.join('\n')}\n</sitemapindex>`;
+        res.set('Content-Type', 'application/xml; charset=utf-8');
+        res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+        return res.send(xml);
       }
+      const trips = await collectTrips(listPublicTrips);
+      const urls = [
+        sitemapUrl(`/${locale}/trajets`),
+        sitemapUrl(`/${locale}/cgu`),
+        sitemapUrl(`/${locale}/confidentialite`),
+        ...listSeoLandings(locale).map((landing) => sitemapUrl(`/${locale}${landing.path}`)),
+        ...trips.map((trip) => sitemapUrl(
+          `/${locale}/trajets/${encodeURIComponent(trip.id)}`,
+          trip.updatedAt || trip.createdAt,
+        )),
+      ];
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
       res.set('Content-Type', 'application/xml; charset=utf-8');
       res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
@@ -88,6 +93,10 @@ async function collectTrips(listPublicTrips) {
 function sitemapUrl(path, lastModified) {
   const lastmod = lastModified ? `\n    <lastmod>${escapeXml(new Date(lastModified).toISOString())}</lastmod>` : '';
   return `  <url>\n    <loc>${escapeXml(`${SITE_ORIGIN}${path}`)}</loc>${lastmod}\n  </url>`;
+}
+
+function sitemapReference(path) {
+  return `  <sitemap>\n    <loc>${escapeXml(`${SITE_ORIGIN}${path}`)}</loc>\n  </sitemap>`;
 }
 
 function escapeXml(value) {

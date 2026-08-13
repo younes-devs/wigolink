@@ -4,6 +4,8 @@ export const SITE_ORIGIN = 'https://wigolink.com';
 export const SOCIAL_IMAGE = `${SITE_ORIGIN}/assets/logo-mark-512.png`;
 export const INDEXABLE_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1';
 export const PRIVATE_ROBOTS = 'noindex, nofollow';
+const TITLE_LIMIT = 62;
+const DESCRIPTION_LIMIT = 160;
 
 const COPY = {
   fr: {
@@ -88,21 +90,50 @@ export function tripPageSeo(trip, locale = DEFAULT_LOCALE) {
   const formattedDate = new Intl.DateTimeFormat(locale, {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(`${trip.departureDate}T00:00:00Z`));
-  const title = `${route} ${copy.datePrefix} ${formattedDate} | Wigolink`;
-  const description = `${route} ${copy.datePrefix} ${formattedDate}. ${trip.capacityKg} kg ${copy.available} a ${trip.price} ${trip.currency}. ${trip.description || ''}`.trim();
+  const title = truncateText(`${route} ${copy.datePrefix} ${formattedDate} | Wigolink`, TITLE_LIMIT);
+  const description = truncateText(`${route} ${copy.datePrefix} ${formattedDate}. ${trip.capacityKg} kg ${copy.available} a ${trip.price} ${trip.currency}. ${trip.description || ''}`.trim(), DESCRIPTION_LIMIT);
   const path = `/trajets/${encodeURIComponent(trip.id)}`;
   const url = localizedUrl(locale, path);
   return {
     title, description, path,
     jsonLd: {
-      '@context': 'https://schema.org', '@type': 'Offer', name: title, description, url,
-      price: trip.price, priceCurrency: trip.currency,
-      availability: 'https://schema.org/InStock', validThrough: trip.departureDate,
-      itemOffered: {
-        '@type': 'Service', name: `${copy.service}: ${trip.from} - ${trip.to}`,
-        serviceType: copy.service,
-        provider: trip.traveler?.name ? { '@type': 'Person', name: trip.traveler.name } : undefined,
-      },
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage', '@id': `${url}#webpage`, name: title, description, url,
+          inLanguage: locale, datePublished: trip.createdAt, dateModified: trip.updatedAt || trip.createdAt,
+          mainEntity: { '@id': `${url}#offer` },
+        },
+        {
+          '@type': 'Offer', '@id': `${url}#offer`, name: title, description, url,
+          price: trip.price, priceCurrency: trip.currency,
+          availability: 'https://schema.org/InStock', validThrough: trip.departureDate,
+          itemOffered: {
+            '@type': 'Service', name: `${copy.service}: ${trip.from} - ${trip.to}`,
+            serviceType: copy.service,
+            areaServed: [{ '@type': 'City', name: trip.from }, { '@type': 'City', name: trip.to }],
+            provider: trip.traveler?.name ? { '@type': 'Person', name: trip.traveler.name } : undefined,
+          },
+        },
+        breadcrumbJsonLd(locale, path, route),
+      ],
     },
   };
+}
+
+export function breadcrumbJsonLd(locale, path, currentName) {
+  const copy = seoCopy(locale);
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: copy.feedHeading, item: localizedUrl(locale, '/trajets') },
+      { '@type': 'ListItem', position: 2, name: currentName, item: localizedUrl(locale, path) },
+    ],
+  };
+}
+
+function truncateText(value, limit) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
 }

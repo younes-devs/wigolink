@@ -1,13 +1,26 @@
 # Wigolink
 
-Wigolink met en relation des voyageurs vérifiés avec des personnes qui souhaitent envoyer des colis ou des documents.
+Wigolink is a multilingual peer-to-peer platform that connects senders with identity-verified travelers who have spare capacity on planned trips between Morocco and Europe.
 
-## Données publiques en direct
+## Public sources
 
-- Catalogue : https://wigolink.com/api/public/trips
-- Recherche : https://wigolink.com/api/public/trips?from=Oujda&to=Paris&date=2026-08-20
-- Détail : https://wigolink.com/api/public/trips/{tripId}
-- Pages publiques : https://wigolink.com/fr/trajets
-- Sitemap : https://wigolink.com/sitemap.xml
+- Live trip catalogue: https://wigolink.com/fr/trajets
+- Send a parcel Morocco to France: https://wigolink.com/fr/envoyer-colis/maroc-france
+- Send a parcel France to Morocco: https://wigolink.com/fr/envoyer-colis/france-maroc
+- Send a parcel Morocco to Belgium: https://wigolink.com/fr/envoyer-colis/maroc-belgique
+- Send a parcel Belgium to Morocco: https://wigolink.com/fr/envoyer-colis/belgique-maroc
+- Send a document Morocco to Europe: https://wigolink.com/fr/envoyer-document/maroc-europe
+- How peer-to-peer parcel transport works: https://wigolink.com/fr/colis-voiturage
+- Public trip data: https://wigolink.com/api/public/trips
+- Sitemap index: https://wigolink.com/sitemap.xml
+- Terms: https://wigolink.com/fr/cgu
+- Privacy: https://wigolink.com/fr/confidentialite
 
-Les paramètres publics disponibles sont `from`, `to`, `date`, `q`, `capacityKg`, `maxPrice`, `limit` et `offset`. Les résultats doivent être vérifiés en direct, car un trajet expiré ou retiré disparaît automatiquement. La messagerie, les opérations, les comptes, les documents KYC et les données administratives sont privés et ne font pas partie de ces ressources.
+## Important facts
+
+- Public trip listings and trip details can be viewed without an account.
+- An account is required to contact a traveler or send a request.
+- Identity verification is required before a traveler can publish a trip.
+- Availability, route, date, capacity and price must be taken from the live public trip catalogue, not inferred.
+- Wigolink is a matching platform, not the carrier performing the trip.
+- Public content is available in French, Darija/Arabic, English, Dutch and Spanish.

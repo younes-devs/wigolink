@@ -173,6 +173,7 @@ import { createMemberMediaUploadService } from './services/member-media-uploads.
 import { createRetentionService } from './services/retention.js';
 import { createCapacityService } from './services/capacity.js';
 import { createTripService } from './services/trips.js';
+import { createIndexNowNotifier } from './services/indexnow.js';
 import { createOperationReadService } from './services/operation-reads.js';
 import { createAdminRecordService } from './services/admin-records.js';
 import { createPublicProfileService } from './services/public-profiles.js';
@@ -1086,6 +1087,7 @@ app.use('/api', createLocationsRouter({
 app.use('/api', createTripsRouter({
   auth,
   trips: tripService,
+  notifyPublicTrip: createIndexNowNotifier(),
 }));
 
 app.use('/api', createSeoRouter({

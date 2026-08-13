@@ -319,19 +319,34 @@ function AppWorkspace({ user, onboarding, setOnboarding }) {
                 <Route path="/cgu" element={<Terms />} />
                 <Route path="/envoyer-colis/maroc-belgique" element={<SeoLanding />} />
                 <Route path="/envoyer-colis/maroc-france" element={<SeoLanding />} />
+                <Route path="/envoyer-colis/france-maroc" element={<SeoLanding />} />
+                <Route path="/envoyer-colis/belgique-maroc" element={<SeoLanding />} />
                 <Route path="/envoyer-document/maroc-europe" element={<SeoLanding />} />
                 <Route path="/send-parcel/morocco-belgium" element={<SeoLanding />} />
                 <Route path="/send-parcel/morocco-france" element={<SeoLanding />} />
+                <Route path="/send-parcel/france-morocco" element={<SeoLanding />} />
+                <Route path="/send-parcel/belgium-morocco" element={<SeoLanding />} />
                 <Route path="/send-document/morocco-europe" element={<SeoLanding />} />
                 <Route path="/enviar-paquete/marruecos-belgica" element={<SeoLanding />} />
                 <Route path="/enviar-paquete/marruecos-francia" element={<SeoLanding />} />
+                <Route path="/enviar-paquete/francia-marruecos" element={<SeoLanding />} />
+                <Route path="/enviar-paquete/belgica-marruecos" element={<SeoLanding />} />
                 <Route path="/enviar-documento/marruecos-europa" element={<SeoLanding />} />
                 <Route path="/pakket-versturen/marokko-belgie" element={<SeoLanding />} />
                 <Route path="/pakket-versturen/marokko-frankrijk" element={<SeoLanding />} />
+                <Route path="/pakket-versturen/frankrijk-marokko" element={<SeoLanding />} />
+                <Route path="/pakket-versturen/belgie-marokko" element={<SeoLanding />} />
                 <Route path="/document-versturen/marokko-europa" element={<SeoLanding />} />
                 <Route path="/sift-colis/maghrib-belgique" element={<SeoLanding />} />
                 <Route path="/sift-colis/maghrib-france" element={<SeoLanding />} />
+                <Route path="/sift-colis/france-maghrib" element={<SeoLanding />} />
+                <Route path="/sift-colis/belgique-maghrib" element={<SeoLanding />} />
                 <Route path="/sift-watiqa/maghrib-europe" element={<SeoLanding />} />
+                <Route path="/colis-voiturage" element={<SeoLanding />} />
+                <Route path="/parcel-crowdshipping" element={<SeoLanding />} />
+                <Route path="/transporte-colaborativo-paquetes" element={<SeoLanding />} />
+                <Route path="/pakket-meenemen-reiziger" element={<SeoLanding />} />
+                <Route path="/naql-colis-m3a-mosafir" element={<SeoLanding />} />
                 <Route path="/trajets" element={<TripFeedSimple />} />
                 <Route path="/en-cours" element={user ? <OperationsSimple /> : <GuestAccess area="operations" />} />
                 <Route path="/enregistres" element={user ? <SavedTrips /> : <GuestAccess area="saved" />} />

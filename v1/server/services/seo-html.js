@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import {
-  alternateLinks, INDEXABLE_ROBOTS, localizedUrl, seoCopy, SOCIAL_IMAGE,
+  alternateLinks, INDEXABLE_ROBOTS, localizedUrl, seoCopy, SITE_ORIGIN, SOCIAL_IMAGE,
 } from '../../shared/seo-metadata.js';
 import { listSeoLandings } from '../../shared/seo-landings.js';
 
@@ -13,7 +13,9 @@ export async function loadClientTemplate() {
 
 export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = null, landing = null, status = 200 }) {
   const canonical = localizedUrl(locale, seo.path);
-  const jsonLd = seo.jsonLd || websiteJsonLd(canonical);
+  const jsonLd = seo.jsonLd || (page === 'trips'
+    ? tripCollectionJsonLd({ canonical, locale, seo, trips })
+    : websiteJsonLd(canonical));
   const head = [
     `<link rel="canonical" href="${escapeAttribute(canonical)}">`,
     ...(seo.alternates || alternateLinks(seo.path)).map(({ locale: code, href }) => (
@@ -21,14 +23,17 @@ export function renderSeoHtml({ template, locale, seo, page, trips = [], trip = 
     )),
     propertyMeta('og:type', trip ? 'product' : 'website'),
     propertyMeta('og:site_name', 'Wigolink'),
+    propertyMeta('og:locale', openGraphLocale(locale)),
     propertyMeta('og:title', seo.title),
     propertyMeta('og:description', seo.description),
     propertyMeta('og:url', canonical),
     propertyMeta('og:image', SOCIAL_IMAGE),
+    propertyMeta('og:image:alt', 'Wigolink - transport collaboratif entre voyageurs et expediteurs'),
     nameMeta('twitter:card', 'summary_large_image'),
     nameMeta('twitter:title', seo.title),
     nameMeta('twitter:description', seo.description),
     nameMeta('twitter:image', SOCIAL_IMAGE),
+    nameMeta('twitter:image:alt', 'Wigolink - transport collaboratif entre voyageurs et expediteurs'),
     `<script type="application/ld+json" data-wigolink-seo="json-ld">${safeJson(jsonLd)}</script>`,
   ].join('\n    ');
   const content = status === 404
@@ -47,6 +52,7 @@ function renderPageContent({ locale, page, trips, trip, landing }) {
   const copy = seoCopy(locale);
   if (page === 'trip' && trip) {
     return `<main data-seo-prerender="trip">
+      <nav aria-label="Breadcrumb"><a href="/${escapeAttribute(locale)}/trajets">${escapeHtml(copy.feedHeading)}</a></nav>
       <h1>${escapeHtml(trip.from)} - ${escapeHtml(trip.to)}</h1>
       <p>${escapeHtml(trip.departureDate)} · ${escapeHtml(trip.capacityKg)} kg · ${escapeHtml(trip.price)} ${escapeHtml(trip.currency)}</p>
       <p>${escapeHtml(trip.description)}</p>
@@ -89,6 +95,33 @@ function websiteJsonLd(url) {
     name: 'Wigolink',
     url,
   };
+}
+
+function tripCollectionJsonLd({ canonical, locale, seo, trips }) {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebSite', '@id': `${SITE_ORIGIN}/#website`, name: 'Wigolink', url: SITE_ORIGIN },
+      {
+        '@type': 'CollectionPage', '@id': `${canonical}#webpage`, name: seo.title,
+        description: seo.description, url: canonical, inLanguage: locale,
+        mainEntity: { '@id': `${canonical}#trips` },
+      },
+      {
+        '@type': 'ItemList', '@id': `${canonical}#trips`,
+        numberOfItems: trips.length,
+        itemListElement: trips.map((trip, index) => ({
+          '@type': 'ListItem', position: index + 1,
+          name: `${trip.from} - ${trip.to}`,
+          url: localizedUrl(locale, `/trajets/${encodeURIComponent(trip.id)}`),
+        })),
+      },
+    ],
+  };
+}
+
+function openGraphLocale(locale) {
+  return ({ fr: 'fr_FR', en: 'en_GB', es: 'es_ES', nl: 'nl_NL', ar: 'ar_MA' })[locale] || 'fr_FR';
 }
 
 function nameMeta(name, content) {

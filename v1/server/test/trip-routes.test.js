@@ -237,3 +237,29 @@ test('trip routes transmet les favoris et leur suppression', async () => {
     ['remove', 't-1', { id: 'u-1' }],
   ]);
 });
+
+test('trip routes notifie IndexNow apres les mutations publiques reussies', async () => {
+  const notified = [];
+  const trips = {
+    create: async () => ({ status: 200, body: { trip: { id: 't-new' } } }),
+    update: async (id) => ({ status: 200, body: { trip: { id } } }),
+    remove: async () => ({ status: 200, body: { ok: true } }),
+  };
+  const auth = (req, _res, next) => { req.user = { id: 'u-1' }; next(); };
+  const app = express();
+  app.use(express.json());
+  app.use('/api', createTripsRouter({ auth, trips, notifyPublicTrip: async (id) => notified.push(id) }));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
+  });
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    await fetch(`${origin}/api/trips`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    await fetch(`${origin}/api/trips/t-new`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    await fetch(`${origin}/api/trips/t-new`, { method: 'DELETE' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(notified, ['t-new', 't-new', 't-new']);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

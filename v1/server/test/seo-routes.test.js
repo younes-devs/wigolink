@@ -3,7 +3,30 @@ import express from 'express';
 import test from 'node:test';
 import { createSeoRouter } from '../routes/seo.js';
 
-test('sitemap publie les pages publiques et pagine les trajets', async () => {
+test('index sitemap publie un sitemap distinct par langue', async () => {
+  const app = express();
+  app.use('/api', createSeoRouter({
+    getTemplate: async () => '',
+    getPublicTrip: async () => ({ status: 404, body: {} }),
+    listPublicTrips: async () => ({ trips: [], page: { hasMore: false } }),
+  }));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
+  });
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public/sitemap.xml`);
+    const xml = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(xml, /<sitemapindex/);
+    assert.match(xml, /https:\/\/wigolink\.com\/sitemap-fr\.xml/);
+    assert.match(xml, /https:\/\/wigolink\.com\/sitemap-ar\.xml/);
+    assert.doesNotMatch(xml, /<urlset/);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('sitemap localise publie les pages publiques et pagine les trajets', async () => {
   const calls = [];
   const app = express();
   app.use('/api', createSeoRouter({
@@ -28,18 +51,15 @@ test('sitemap publie les pages publiques et pagine les trajets', async () => {
   });
 
   try {
-    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public/sitemap.xml`);
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public/sitemap.xml?locale=fr`);
     const xml = await response.text();
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type'), /application\/xml/);
     assert.match(xml, /https:\/\/wigolink\.com\/fr\/trajets<\/loc>/);
     assert.match(xml, /https:\/\/wigolink\.com\/fr\/trajets\/t-1<\/loc>/);
     assert.match(xml, /https:\/\/wigolink\.com\/fr\/trajets\/t%203<\/loc>/);
-    assert.match(xml, /https:\/\/wigolink\.com\/en\/trajets\/t-1<\/loc>/);
-    assert.match(xml, /https:\/\/wigolink\.com\/ar\/confidentialite<\/loc>/);
     assert.match(xml, /https:\/\/wigolink\.com\/fr\/envoyer-colis\/maroc-belgique<\/loc>/);
-    assert.match(xml, /https:\/\/wigolink\.com\/en\/send-parcel\/morocco-belgium<\/loc>/);
-    assert.match(xml, /https:\/\/wigolink\.com\/ar\/sift-watiqa\/maghrib-europe<\/loc>/);
+    assert.doesNotMatch(xml, /https:\/\/wigolink\.com\/en\//);
     assert.deepEqual(calls, [
       { limit: 100, offset: 0 },
       { limit: 100, offset: 2 },
@@ -71,6 +91,31 @@ test('guide SEO darija contient contenu utile, hreflang localise et liens vers l
     assert.match(html, /href="\/ar\/trajets"/);
     assert.match(html, /hreflang="fr" href="https:\/\/wigolink\.com\/fr\/envoyer-colis\/maroc-belgique"/);
     assert.match(html, /hreflang="en" href="https:\/\/wigolink\.com\/en\/send-parcel\/morocco-belgium"/);
+    assert.match(html, /FAQPage/);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('guide France vers Maroc repond a une intention inverse avec cinq alternates', async () => {
+  const app = express();
+  app.use('/api', createSeoRouter({
+    getTemplate: async () => '<html><head><meta name="robots" content="noindex, nofollow" /><meta name="description" content="default" /><title>Default</title></head><body><div id="root"></div></body></html>',
+    listPublicTrips: async () => ({ trips: [], page: { hasMore: false } }),
+    getPublicTrip: async () => ({ status: 404, body: {} }),
+  }));
+  const server = await new Promise((resolve) => {
+    const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
+  });
+  try {
+    const path = encodeURIComponent('/envoyer-colis/france-maroc');
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/public/seo-page?locale=fr&page=landing&path=${path}`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /Envoyer un colis de France au Maroc avec un voyageur/);
+    assert.match(html, /href="\/fr\/trajets"/);
+    assert.match(html, /hreflang="nl" href="https:\/\/wigolink\.com\/nl\/pakket-versturen\/frankrijk-marokko"/);
+    assert.match(html, /BreadcrumbList/);
     assert.match(html, /FAQPage/);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

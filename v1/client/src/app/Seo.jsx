@@ -41,6 +41,7 @@ function ensureCanonical() {
 function isPublicSearchPage(pathname) {
   if (['/trajets', '/cgu', '/confidentialite'].includes(pathname)) return true;
   if (/^\/(envoyer-colis|envoyer-document|send-parcel|send-document|enviar-paquete|enviar-documento|pakket-versturen|document-versturen|sift-colis|sift-watiqa)\//.test(pathname)) return true;
+  if (/^\/(colis-voiturage|parcel-crowdshipping|transporte-colaborativo-paquetes|pakket-meenemen-reiziger|naql-colis-m3a-mosafir)$/.test(pathname)) return true;
   return /^\/trajets\/[^/]+$/.test(pathname) && pathname !== '/trajets/nouveau';
 }
 

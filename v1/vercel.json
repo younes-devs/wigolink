@@ -41,6 +41,14 @@
       "dest": "/api/sitemap.js"
     },
     {
+      "src": "/sitemap-(fr|ar|nl|en|es).xml",
+      "dest": "/api/sitemap.js?locale=$1"
+    },
+    {
+      "src": "/86e478f064a649f7869ac72d50497c25.txt",
+      "dest": "/api/indexnow-key.js"
+    },
+    {
       "src": "/(fr|ar|nl|en|es)/?",
       "status": 308,
       "headers": {
@@ -52,7 +60,7 @@
       "dest": "/api/seo-page.js?locale=$1&page=trips"
     },
     {
-      "src": "/(fr|ar|nl|en|es)/(envoyer-colis/maroc-(?:belgique|france)|envoyer-document/maroc-europe|send-parcel/morocco-(?:belgium|france)|send-document/morocco-europe|enviar-paquete/marruecos-(?:belgica|francia)|enviar-documento/marruecos-europa|pakket-versturen/marokko-(?:belgie|frankrijk)|document-versturen/marokko-europa|sift-colis/maghrib-(?:belgique|france)|sift-watiqa/maghrib-europe)",
+      "src": "/(fr|ar|nl|en|es)/(envoyer-colis/(?:maroc-(?:belgique|france)|(?:belgique|france)-maroc)|envoyer-document/maroc-europe|send-parcel/(?:morocco-(?:belgium|france)|(?:belgium|france)-morocco)|send-document/morocco-europe|enviar-paquete/(?:marruecos-(?:belgica|francia)|(?:belgica|francia)-marruecos)|enviar-documento/marruecos-europa|pakket-versturen/(?:marokko-(?:belgie|frankrijk)|(?:belgie|frankrijk)-marokko)|document-versturen/marokko-europa|sift-colis/(?:maghrib-(?:belgique|france)|(?:belgique|france)-maghrib)|sift-watiqa/maghrib-europe|colis-voiturage|parcel-crowdshipping|transporte-colaborativo-paquetes|pakket-meenemen-reiziger|naql-colis-m3a-mosafir)",
       "dest": "/api/seo-page.js?locale=$1&page=landing&path=$2"
     },
     {
