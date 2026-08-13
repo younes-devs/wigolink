@@ -67,11 +67,11 @@ export function createTripService({
     }
     const fromLocation = canonicalizeLocation(from, {
       locationId: body.fromLocationId,
-      countryCode: body.fromCountryCode || 'MA',
+      countryCode: body.fromCountryCode || 'ALL',
     });
     const toLocation = canonicalizeLocation(to, {
       locationId: body.toLocationId,
-      countryCode: body.toCountryCode || 'MA',
+      countryCode: body.toCountryCode || 'ALL',
     });
     if (
       (fromLocation.id && fromLocation.id === toLocation.id)
@@ -189,13 +189,13 @@ export function createTripService({
       locationId: from === undefined
         ? (body.fromLocationId ?? trip.fromLocationId)
         : body.fromLocationId,
-      countryCode: body.fromCountryCode || trip.fromCountryCode || 'MA',
+      countryCode: body.fromCountryCode || trip.fromCountryCode || 'ALL',
     });
     const toLocation = canonicalizeLocation(nextTo, {
       locationId: to === undefined
         ? (body.toLocationId ?? trip.toLocationId)
         : body.toLocationId,
-      countryCode: body.toCountryCode || trip.toCountryCode || 'MA',
+      countryCode: body.toCountryCode || trip.toCountryCode || 'ALL',
     });
     const nextTransportMode = transportMode === undefined
       ? normalizeTransportMode(trip.transportMode)

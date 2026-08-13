@@ -183,6 +183,8 @@ export default {
   "locations.noResult": "Ninguna ciudad marroquí reconocida",
   "locations.keepText": "Puedes conservar tu entrada para una ciudad extranjera.",
   "locations.country.ma": "Marruecos",
+  "locations.country.fr": "Francia",
+  "locations.country.be": "Bélgica",
   "locations.correctedFrom": "Coincide con “{value}”",
   "trips.filter.title": "Filtrar viajes",
   "trips.filter.subtitle": "Refina los viajeros que coinciden con tu envío.",

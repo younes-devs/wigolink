@@ -32,20 +32,16 @@ test('recherche corrige une faute non repertoriee et une inversion', () => {
   assert.equal(suggestLocations('agda ir')[0]?.name, 'Agadir');
 });
 
-test('recherche refuse une ville etrangere sans candidat marocain fiable', () => {
-  assert.deepEqual(suggestLocations('Bruxelles'), []);
-  assert.deepEqual(suggestLocations('Paris'), []);
+test('catalogues francais et belge proposent leurs villes et variantes', () => {
+  assert.equal(suggestLocations('Pari')[0]?.name, 'Paris');
+  assert.equal(suggestLocations('Bruxelle')[0]?.name, 'Bruxelles');
+  assert.equal(suggestLocations('Anvers')[0]?.name, 'Anvers');
+  assert.equal(suggestLocations('Liege')[0]?.name, 'Liège');
 });
 
-test('canonisation conserve une ville etrangere libre', () => {
-  assert.deepEqual(canonicalizeLocation('Bruxelles'), {
-    id: null,
-    countryCode: null,
-    name: 'Bruxelles',
-    latitude: null,
-    longitude: null,
-    confidence: 0,
-  });
+test('canonisation reconnait une ville belge ou francaise', () => {
+  assert.equal(canonicalizeLocation('Bruxelles').countryCode, 'BE');
+  assert.equal(canonicalizeLocation('Paris').countryCode, 'FR');
 });
 
 test('matching relie alias et nom canonique', () => {
@@ -54,7 +50,7 @@ test('matching relie alias et nom canonique', () => {
   assert.equal(locationMatches('Rabat', 'wjda'), false);
 });
 
-test('migration canonise les trajets marocains et conserve les villes etrangeres', () => {
+test('migration canonise les villes des trois pays', () => {
   const result = canonicalizeTripLocations({
     id: 't-1',
     from: 'wjda',
@@ -65,7 +61,8 @@ test('migration canonise les trajets marocains et conserve les villes etrangeres
   assert.equal(result.trip.fromLocationId, 'ma-2540483');
   assert.equal(result.trip.fromCountryCode, 'MA');
   assert.equal(result.trip.to, 'Bruxelles');
-  assert.equal(result.trip.toLocationId, undefined);
+  assert.match(result.trip.toLocationId, /^be-/);
+  assert.equal(result.trip.toCountryCode, 'BE');
 
   const second = canonicalizeTripLocations(result.trip);
   assert.equal(second.changed, false);

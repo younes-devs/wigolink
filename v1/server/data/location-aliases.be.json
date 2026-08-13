@@ -1,0 +1,8 @@
+{
+  "Brussels": ["bruxelle", "bruxelles", "brussel", "brussells"],
+  "Antwerp": ["anvers", "antwerpen", "antwerpe"],
+  "Gent": ["gand", "ghent"],
+  "Liège": ["liege", "luik"],
+  "Leuven": ["louvain"],
+  "Mons": ["bergen"]
+}

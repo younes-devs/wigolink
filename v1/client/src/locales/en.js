@@ -183,6 +183,8 @@ export default {
   "locations.noResult": "No Moroccan city recognized",
   "locations.keepText": "You can keep your entry for a foreign city.",
   "locations.country.ma": "Morocco",
+  "locations.country.fr": "France",
+  "locations.country.be": "Belgium",
   "locations.correctedFrom": "Matches “{value}”",
   "trips.filter.title": "Filter trips",
   "trips.filter.subtitle": "Refine the travelers who match your shipment.",

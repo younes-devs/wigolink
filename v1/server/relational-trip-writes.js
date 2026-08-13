@@ -287,13 +287,13 @@ function prepareTrip({
     locationId: body.from === undefined
       ? (body.fromLocationId ?? current.fromLocationId)
       : body.fromLocationId,
-    countryCode: body.fromCountryCode || current.fromCountryCode || 'MA',
+    countryCode: body.fromCountryCode || current.fromCountryCode || 'ALL',
   });
   const toLocation = canonicalizeLocation(to, {
     locationId: body.to === undefined
       ? (body.toLocationId ?? current.toLocationId)
       : body.toLocationId,
-    countryCode: body.toCountryCode || current.toCountryCode || 'MA',
+    countryCode: body.toCountryCode || current.toCountryCode || 'ALL',
   });
   if (
     (fromLocation.id && fromLocation.id === toLocation.id)

@@ -7,7 +7,8 @@ if (!inputPath) {
   process.exit(1);
 }
 
-const MIN_CITY_POPULATION = 500;
+const MIN_CITY_POPULATION = countryCode.toUpperCase() === 'MA' ? 500 : 5000;
+const MAX_ALIASES = countryCode.toUpperCase() === 'MA' ? 80 : 16;
 const ADMIN_SEAT = /^PPLA\d*$|^PPLC$/;
 const outputPath = path.resolve(
   import.meta.dirname,
@@ -65,11 +66,11 @@ function parseGeoName(line) {
     || (populationNumber < MIN_CITY_POPULATION && !ADMIN_SEAT.test(featureCode))
   ) return null;
 
-  const aliases = uniqueNames([
+  const aliases = usefulAliases(uniqueNames([
     name,
     asciiName,
     ...(alternateNames || '').split(','),
-  ]).filter((alias) => normalize(alias) !== normalize(name));
+  ]).filter((alias) => normalize(alias) !== normalize(name))).slice(0, MAX_ALIASES);
 
   return {
     id: `${countryCode.toLowerCase()}-${geonameId}`,
@@ -83,6 +84,18 @@ function parseGeoName(line) {
     population: populationNumber,
     featureCode,
   };
+}
+
+function usefulAliases(values) {
+  return values.sort((left, right) => (
+    latinPriority(left) - latinPriority(right)
+    || left.length - right.length
+    || left.localeCompare(right, 'fr', { sensitivity: 'base' })
+  ));
+}
+
+function latinPriority(value) {
+  return /^[\p{Script=Latin}\p{Number}\p{Separator}\p{Punctuation}]+$/u.test(value) ? 0 : 1;
 }
 
 function uniqueNames(values) {

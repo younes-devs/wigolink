@@ -192,6 +192,8 @@ export default {
   'locations.noResult': 'Geen Marokkaanse stad herkend',
   'locations.keepText': 'U kunt uw invoer behouden voor een buitenlandse stad.',
   'locations.country.ma': 'Marokko',
+  'locations.country.fr': 'Frankrijk',
+  'locations.country.be': 'België',
   'locations.correctedFrom': 'Komt overeen met ‘{value}’',
   'trips.filter.title': 'Reizen filteren',
   'trips.filter.subtitle': 'Verfijn de reizigers die bij uw zending passen.',

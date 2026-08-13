@@ -197,6 +197,8 @@ export default {
   'locations.noResult': 'Aucune ville marocaine reconnue',
   'locations.keepText': 'Vous pouvez conserver votre saisie pour une ville étrangère.',
   'locations.country.ma': 'Maroc',
+  'locations.country.fr': 'France',
+  'locations.country.be': 'Belgique',
   'locations.correctedFrom': 'Correspond à « {value} »',
   'trips.filter.title': 'Filtrer les trajets',
   'trips.filter.subtitle': 'Affinez les voyageurs qui correspondent à votre envoi.',

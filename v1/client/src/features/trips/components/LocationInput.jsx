@@ -43,7 +43,7 @@ export function LocationInput({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const data = await api(`/locations/suggest?q=${encodeURIComponent(trimmedValue)}&country=MA&limit=6`);
+        const data = await api(`/locations/suggest?q=${encodeURIComponent(trimmedValue)}&country=ALL&limit=6`);
         if (requestId !== requestRef.current) return;
         setSuggestions(data.locations || []);
         setActiveIndex(-1);
@@ -154,7 +154,7 @@ export function LocationInput({
                 <small>
                   {location.matchedAlias && location.matchedAlias.toLocaleLowerCase() !== location.name.toLocaleLowerCase()
                     ? t('locations.correctedFrom', { value: location.matchedAlias })
-                    : t('locations.country.ma')}
+                    : t(`locations.country.${location.countryCode.toLocaleLowerCase()}`)}
                 </small>
               </span>
               {location.id === locationId && countryCode === location.countryCode && <Icon name="check" size={16} />}

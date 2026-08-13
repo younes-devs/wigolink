@@ -39,13 +39,13 @@ export function createTripProjections({
     if (query.from) {
       trips = trips.filter((trip) => locationMatches(trip.from, query.from, {
         locationId: trip.fromLocationId,
-        countryCode: trip.fromCountryCode || 'MA',
+        countryCode: trip.fromCountryCode || 'ALL',
       }));
     }
     if (query.to) {
       trips = trips.filter((trip) => locationMatches(trip.to, query.to, {
         locationId: trip.toLocationId,
-        countryCode: trip.toCountryCode || 'MA',
+        countryCode: trip.toCountryCode || 'ALL',
       }));
     }
     if (query.date) trips = trips.filter((trip) => (trip.departureDate || trip.date) >= String(query.date));
@@ -62,11 +62,11 @@ export function createTripProjections({
       trips = trips.filter((trip) => (
         locationMatches(trip.from, query.q, {
           locationId: trip.fromLocationId,
-          countryCode: trip.fromCountryCode || 'MA',
+          countryCode: trip.fromCountryCode || 'ALL',
         })
         || locationMatches(trip.to, query.q, {
           locationId: trip.toLocationId,
-          countryCode: trip.toCountryCode || 'MA',
+          countryCode: trip.toCountryCode || 'ALL',
         })
         || normalizeLocationText(
           `${trip.description || ''} ${findUser(trip.travelerId)?.name || ''}`,

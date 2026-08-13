@@ -197,6 +197,8 @@ export default {
   'locations.noResult': 'لم يتم التعرف على مدينة مغربية',
   'locations.keepText': 'يمكنك الاحتفاظ بالنص لمدينة خارج المغرب.',
   'locations.country.ma': 'المغرب',
+  'locations.country.fr': 'فرنسا',
+  'locations.country.be': 'بلجيكا',
   'locations.correctedFrom': 'مطابقة لـ « {value} »',
   'trips.filter.title': 'تصفية الرحلات',
   'trips.filter.subtitle': 'حدد المسافرين الذين يناسبون شحنتك بدقة.',

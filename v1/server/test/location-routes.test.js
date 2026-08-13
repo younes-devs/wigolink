@@ -49,7 +49,7 @@ test('location routes expose fiche et statistiques du catalogue', async () => {
   const location = await requestLocation('/locations/ma-2540483', {
     findById(id, country) {
       assert.equal(id, 'ma-2540483');
-      assert.equal(country, 'MA');
+      assert.equal(country, 'ALL');
       return { id, name: 'Oujda', countryCode: country };
     },
   });

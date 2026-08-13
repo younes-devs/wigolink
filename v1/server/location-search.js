@@ -1,6 +1,12 @@
 import locationsMA from './data/locations/MA.json' with { type: 'json' };
 import aliasesMA from './data/location-aliases.ma.json' with { type: 'json' };
 import namesMA from './data/location-names.ma.json' with { type: 'json' };
+import locationsFR from './data/locations/FR.json' with { type: 'json' };
+import aliasesFR from './data/location-aliases.fr.json' with { type: 'json' };
+import namesFR from './data/location-names.fr.json' with { type: 'json' };
+import locationsBE from './data/locations/BE.json' with { type: 'json' };
+import aliasesBE from './data/location-aliases.be.json' with { type: 'json' };
+import namesBE from './data/location-names.be.json' with { type: 'json' };
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_SUGGESTIONS = 12;
@@ -8,7 +14,10 @@ const MAX_CACHE_ENTRIES = 300;
 const suggestionCache = new Map();
 const COUNTRY_DATA = {
   MA: prepareCountry(locationsMA, aliasesMA, namesMA),
+  FR: prepareCountry(locationsFR, aliasesFR, namesFR),
+  BE: prepareCountry(locationsBE, aliasesBE, namesBE),
 };
+const SUPPORTED_COUNTRIES = Object.keys(COUNTRY_DATA);
 
 export function normalizeLocationText(value) {
   return String(value || '')
@@ -26,20 +35,23 @@ export function compactLocationText(value) {
 }
 
 export function suggestLocations(query, {
-  countryCode = 'MA',
+  countryCode = 'ALL',
   limit = 8,
 } = {}) {
   const normalized = normalizeLocationText(query);
   const compact = compactLocationText(normalized);
   if (compact.length < MIN_QUERY_LENGTH) return [];
-  const country = COUNTRY_DATA[String(countryCode).toUpperCase()];
-  if (!country) return [];
-  const cacheKey = `${countryCode}:${compact}:${boundedLimit(limit)}`;
+  const countryCodes = resolveCountryCodes(countryCode);
+  if (!countryCodes.length) return [];
+  const cacheKey = `${countryCodes.join(',')}:${compact}:${boundedLimit(limit)}`;
   const cached = suggestionCache.get(cacheKey);
   if (cached) return cached.map((item) => ({ ...item }));
 
   const threshold = scoreThreshold(compact.length);
-  const results = country.locations
+  const initial = compact[0];
+  const results = countryCodes.flatMap((code) => (
+    COUNTRY_DATA[code].byInitial.get(initial) || COUNTRY_DATA[code].locations
+  ))
     .map((location) => scoreLocation(location, normalized, compact))
     .filter((result) => result.score >= threshold)
     .sort(compareResults)
@@ -52,15 +64,16 @@ export function suggestLocations(query, {
   return results.map((item) => ({ ...item }));
 }
 
-export function findLocationById(id, countryCode = 'MA') {
-  const country = COUNTRY_DATA[String(countryCode).toUpperCase()];
-  const location = country?.byId.get(String(id || ''));
+export function findLocationById(id, countryCode = 'ALL') {
+  const location = resolveCountryCodes(countryCode)
+    .map((code) => COUNTRY_DATA[code].byId.get(String(id || '')))
+    .find(Boolean);
   return location ? publicResult({ location, score: 1, matchedName: location.displayName }) : null;
 }
 
 export function canonicalizeLocation(value, {
   locationId,
-  countryCode = 'MA',
+  countryCode = 'ALL',
   minimumScore = 0.84,
 } = {}) {
   const selected = locationId ? findLocationById(locationId, countryCode) : null;
@@ -87,7 +100,7 @@ export function canonicalizeLocation(value, {
 
 export function locationMatches(value, query, {
   locationId,
-  countryCode = 'MA',
+  countryCode = 'ALL',
 } = {}) {
   const needle = normalizeLocationText(query);
   if (!needle) return true;
@@ -104,12 +117,12 @@ export function locationMatches(value, query, {
 }
 
 export function locationQueryTerms(query, {
-  countryCode = 'MA',
+  countryCode = 'ALL',
   limit = 10,
 } = {}) {
   const suggestion = suggestLocations(query, { countryCode, limit: 1 })[0];
   if (!suggestion) return [String(query || '').trim()].filter(Boolean);
-  const country = COUNTRY_DATA[String(countryCode).toUpperCase()];
+  const country = COUNTRY_DATA[suggestion.countryCode];
   const location = country?.byId.get(suggestion.id);
   return unique([
     query,
@@ -120,12 +133,12 @@ export function locationQueryTerms(query, {
   ]).slice(0, Math.max(1, limit));
 }
 
-export function locationCatalogStats(countryCode = 'MA') {
-  const country = COUNTRY_DATA[String(countryCode).toUpperCase()];
+export function locationCatalogStats(countryCode = 'ALL') {
+  const countries = resolveCountryCodes(countryCode).map((code) => COUNTRY_DATA[code]);
   return {
     countryCode: String(countryCode).toUpperCase(),
-    locations: country?.locations.length || 0,
-    names: country?.locations.reduce((total, location) => total + location.names.length, 0) || 0,
+    locations: countries.reduce((total, country) => total + country.locations.length, 0),
+    names: countries.reduce((total, country) => total + country.locations.reduce((sum, location) => sum + location.names.length, 0), 0),
   };
 }
 
@@ -136,7 +149,7 @@ export function canonicalizeTripLocations(trip) {
     const prefix = endpoint;
     const canonical = canonicalizeLocation(trip?.[endpoint], {
       locationId: trip?.[`${prefix}LocationId`],
-      countryCode: trip?.[`${prefix}CountryCode`] || 'MA',
+      countryCode: trip?.[`${prefix}CountryCode`] || 'ALL',
     });
     if (!canonical.id) continue;
     const fields = {
@@ -191,7 +204,20 @@ function prepareCountry(data, customAliases, preferredNames) {
   return {
     locations,
     byId: new Map(locations.map((location) => [location.id, location])),
+    byInitial: indexLocationsByInitial(locations),
   };
+}
+
+function indexLocationsByInitial(locations) {
+  const index = new Map();
+  for (const location of locations) {
+    const initials = new Set(location.names.map((name) => name.compact[0]).filter(Boolean));
+    for (const initial of initials) {
+      if (!index.has(initial)) index.set(initial, []);
+      index.get(initial).push(location);
+    }
+  }
+  return index;
 }
 
 function scoreLocation(location, query, compactQuery) {
@@ -323,6 +349,12 @@ function damerauLevenshtein(left, right) {
 function boundedLimit(value) {
   const numeric = Number(value || 8);
   return Math.max(1, Math.min(MAX_SUGGESTIONS, Number.isFinite(numeric) ? Math.floor(numeric) : 8));
+}
+
+function resolveCountryCodes(value) {
+  const requested = String(value || 'ALL').toUpperCase();
+  if (requested === 'ALL') return SUPPORTED_COUNTRIES;
+  return requested.split(',').map((code) => code.trim()).filter((code) => COUNTRY_DATA[code]);
 }
 
 function unique(values) {
