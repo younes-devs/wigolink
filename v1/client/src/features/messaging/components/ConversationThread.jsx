@@ -157,14 +157,14 @@ export function LocationShareSheet({ step, draft, busy, error, onClose, onCurren
           </div>
         ) : (
           <div className="location-confirm">
-            <div className="location-privacy"><Icon name="shieldCheck" size={17} /><span>{t(current ? 'messages.location.approximateHint' : 'messages.location.expiryHint')}</span></div>
+            <div className="location-privacy"><Icon name="shieldCheck" size={17} /><span>{t(current ? 'messages.location.exactHint' : 'messages.location.expiryHint')}</span></div>
             {!current && (
               <>
                 <label>{t('messages.location.placeName')}<input value={draft?.label || ''} onChange={(event) => onChange({ ...draft, label: event.target.value.slice(0, 120) })} placeholder={t('messages.location.placePlaceholder')} autoFocus /></label>
                 <label>{t('messages.location.city')}<input value={draft?.city || ''} onChange={(event) => onChange({ ...draft, city: event.target.value.slice(0, 80) })} placeholder={t('messages.location.cityPlaceholder')} /></label>
               </>
             )}
-            {current && <div className="location-current-summary"><Icon name="mapPin" size={20} /><span>{t('messages.location.ready')}</span></div>}
+            {current && <div className="location-current-summary"><Icon name="mapPin" size={20} /><span>{draft?.accuracy ? t('messages.location.readyAccuracy', { meters: Math.round(draft.accuracy) }) : t('messages.location.ready')}</span></div>}
             <label>{t('messages.location.duration')}<select value={draft?.expiresInMinutes || 120} onChange={(event) => onChange({ ...draft, expiresInMinutes: Number(event.target.value) })}><option value={30}>{t('messages.location.30min')}</option><option value={120}>{t('messages.location.2hours')}</option></select></label>
             <button type="button" className="btn btn-primary location-confirm-button" onClick={onConfirm}>{t('messages.location.add')}</button>
           </div>
@@ -186,10 +186,9 @@ function LocationMessage({ location }) {
       <div className="location-message-icon"><Icon name="mapPin" size={19} /></div>
       <div>
         <b>{expired ? t('messages.location.expired') : location.labelKey ? t(location.labelKey) : location.label || t('messages.location.shared')}</b>
-        <span>{expired ? t('messages.location.expired.sub') : location.city || t(location.precision === 'approximate' ? 'messages.location.approximate' : 'messages.location.meetingPosition')}</span>
+        <span>{expired ? t('messages.location.expired.sub') : location.city || t(location.kind === 'current' ? 'messages.location.exact' : 'messages.location.meetingPosition')}</span>
         {!expired && <a href={mapUrl} target="_blank" rel="noreferrer">{t('messages.location.directions')}</a>}
       </div>
-      {!expired && location.precision === 'approximate' && <small>{t('messages.location.approx')}</small>}
     </div>
   );
 }

@@ -514,7 +514,7 @@ export default function ConversationDetail() {
         setLocationBusy(false);
         setLocationError('messages.location.denied');
       },
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 }
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }
     );
   };
 

@@ -17,6 +17,36 @@ const SYSTEM_EVENT_TEXT = {
   evidence_added: 'Element ajoute au litige.',
 };
 
+export function normalizeMessageLocation(value, timestamp = Date.now()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const kind = value.kind === 'place' ? 'place' : value.kind === 'current' ? 'current' : null;
+  if (!kind) return null;
+  const label = String(value.label || '').trim().slice(0, 120);
+  const city = String(value.city || '').trim().slice(0, 80);
+  const latitude = Number(value.latitude);
+  const longitude = Number(value.longitude);
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
+    && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+  if (kind === 'current' && !hasCoordinates) return null;
+  if (kind === 'place' && !label && !city) return null;
+  const expiresInMinutes = LOCATION_EXPIRY_MINUTES.has(Number(value.expiresInMinutes))
+    ? Number(value.expiresInMinutes)
+    : 120;
+  return {
+    kind,
+    labelKey: label ? null : (kind === 'current' ? 'messages.location.myCurrent' : 'messages.location.meeting'),
+    label: label || (kind === 'current' ? 'Position actuelle' : 'Lieu de rendez-vous'),
+    city: city || null,
+    latitude: hasCoordinates ? latitude : null,
+    longitude: hasCoordinates ? longitude : null,
+    accuracy: hasCoordinates && Number.isFinite(Number(value.accuracy))
+      ? Math.round(Math.max(0, Math.min(Number(value.accuracy), 10000)))
+      : null,
+    precision: hasCoordinates ? 'exact' : 'place',
+    expiresAt: timestamp + expiresInMinutes * 60 * 1000,
+  };
+}
+
 export function createConversationDomain({
   db,
   repositories,
@@ -35,45 +65,6 @@ export function createConversationDomain({
         realtime.broadcast(userId, { conversationId: conversation.id, ...payload, at: now() });
       }
     }
-  }
-
-  function locationCanBePrecise(conversation) {
-    const operation = conversation.operationId
-      ? db.transactions.find((item) => item.id === conversation.operationId)
-      : null;
-    const status = operation?.operationStatus || operation?.status;
-    return ['paye', 'collecte_prevue', 'en_transport'].includes(status);
-  }
-
-  function normalizeMessageLocation(value, conversation, timestamp = now()) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const kind = value.kind === 'place' ? 'place' : value.kind === 'current' ? 'current' : null;
-    if (!kind) return null;
-    const label = String(value.label || '').trim().slice(0, 120);
-    const city = String(value.city || '').trim().slice(0, 80);
-    const latitude = Number(value.latitude);
-    const longitude = Number(value.longitude);
-    const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude)
-      && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
-    if (kind === 'current' && !hasCoordinates) return null;
-    if (kind === 'place' && !label && !city) return null;
-    const precise = hasCoordinates && locationCanBePrecise(conversation);
-    const expiresInMinutes = LOCATION_EXPIRY_MINUTES.has(Number(value.expiresInMinutes))
-      ? Number(value.expiresInMinutes)
-      : 120;
-    return {
-      kind,
-      labelKey: label ? null : (kind === 'current' ? 'messages.location.myCurrent' : 'messages.location.meeting'),
-      label: label || (kind === 'current' ? 'Position actuelle' : 'Lieu de rendez-vous'),
-      city: city || null,
-      latitude: hasCoordinates ? (precise ? latitude : Number(latitude.toFixed(2))) : null,
-      longitude: hasCoordinates ? (precise ? longitude : Number(longitude.toFixed(2))) : null,
-      accuracy: hasCoordinates && Number.isFinite(Number(value.accuracy))
-        ? Math.round(Math.max(0, Math.min(Number(value.accuracy), 10000)))
-        : null,
-      precision: precise ? 'exact' : 'approximate',
-      expiresAt: timestamp + expiresInMinutes * 60 * 1000,
-    };
   }
 
   function conversationParticipants(conversation) {
@@ -467,7 +458,7 @@ export function createConversationDomain({
     findOrCreateConversation,
     markConversationRead,
     messageSafetyError,
-    normalizeMessageLocation,
+    normalizeMessageLocation: (value, _conversation, timestamp = now()) => normalizeMessageLocation(value, timestamp),
     registerMessageSafetyAttempt,
     unreadConversationCount,
   };
