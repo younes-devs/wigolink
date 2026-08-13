@@ -310,16 +310,22 @@ export async function relationalAdminMessageArchive({
     `select
        c.data as conversation,
        count(m.id)::int as message_count,
-       coalesce(reports.data, '[]'::jsonb) as reports
+       coalesce(reports.data, '[]'::jsonb) as reports,
+       trip.data as trip,
+       operation.data as operation
      from public.wigolink_conversations c
      left join public.messages m on m.conversation_id = c.id
+     left join public.wigolink_transactions operation
+       on operation.id = c.data->>'operationId'
+     left join public.wigolink_trips trip
+       on trip.id = coalesce(c.data->>'tripId', operation.data->>'tripId')
      left join lateral (
        select jsonb_agg(report.data order by report.created_at desc) as data
        from public.wigolink_conversation_reports report
        where report.conversation_id = c.id
      ) reports on true
      where c.id = any($1::text[])
-     group by c.id, c.data, c.created_at, reports.data
+     group by c.id, c.data, c.created_at, reports.data, trip.data, operation.data
      order by coalesce(
        (c.data->>'lastMessageAt')::bigint,
        extract(epoch from c.created_at) * 1000
@@ -331,6 +337,7 @@ export async function relationalAdminMessageArchive({
   return {
     conversations: conversationsResult.rows.map((row) => ({
       ...(row.conversation || {}),
+      context: adminConversationContext(row.trip, row.operation),
       reports: Array.isArray(row.reports) ? row.reports : [],
       messageCount: Number(row.message_count || 0),
     })),
@@ -347,6 +354,17 @@ export async function relationalAdminMessageArchive({
       at: last.at instanceof Date ? last.at.getTime() : new Date(last.at).getTime(),
       id: String(last.id),
     }) : null,
+  };
+}
+
+function adminConversationContext(trip, operation) {
+  const from = trip?.from || operation?.from || null;
+  const to = trip?.to || operation?.to || null;
+  return {
+    type: operation ? 'operation' : trip ? 'trip' : 'direct',
+    from,
+    to,
+    label: from && to ? `${from} -> ${to}` : null,
   };
 }
 

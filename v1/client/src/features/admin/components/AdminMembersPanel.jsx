@@ -5,7 +5,8 @@ import { Icon } from '../../../Icons.jsx';
 import { SkeletonCard } from '../../../Skeleton.jsx';
 import { t } from '../../../i18n.js';
 import {
-  adminStatus, auditAction, auditField, auditValue, formatAdminDate,
+  adminStatus, auditAction, auditField, auditValue, conversationContextLabel,
+  formatAdminDate,
 } from './adminPanelUtils.js';
 import { AdminKycDocument } from './AdminKycDocument.jsx';
 
@@ -145,7 +146,7 @@ function MemberKycSection({ submissions, onZoom }) {
 function MemberMessagesSection({ data, load }) {
   return <section className="card"><h2><Icon name="chat" size={18} />{t('admin.member.conversations')}</h2>
     <p className="muted mt">{t('admin.member.messageSummary', { conversations: data.messagePage.conversationTotal ?? data.conversations.length, messages: data.messagePage.total ?? data.messages.length })}</p>
-    <div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b><span>{formatAdminDate(message.at)} - {adminStatus(message.type)}</span></div><div className="admin-message-route"><span>{t('admin.member.from')}: <b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b></span><span>{t('admin.member.to')}: <b>{message.to?.map((recipient) => recipient.name || recipient.id).join(', ') || t('admin.member.recipientMissing')}</b></span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.labelKey ? t(message.location.labelKey) : message.location.label || t('messages.location')}</small>}{message.flagged && <span className="pill pill-danger">{t('admin.member.flagged')}: {message.flagReason || t('admin.member.security')}</span>}</div>)}</div>
+    <div className="list-stack mt">{data.messages.map((message) => <div className="admin-message-log" key={message.id}><div><b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b><span>{formatAdminDate(message.at)} - {adminStatus(message.type)}</span></div><div className="admin-message-context"><Icon name={message.context?.type === 'operation' ? 'sync' : message.context?.type === 'trip' ? 'plane' : 'chat'} size={14} /><b>{message.context?.label || conversationContextLabel(message.context?.type)}</b></div><div className="admin-message-route"><span>{t('admin.member.from')}: <b>{message.from?.name || message.from?.id || t('admin.member.unknownAccount')}</b></span><span>{t('admin.member.to')}: <b>{message.to?.map((recipient) => recipient.name || recipient.id).join(', ') || t('admin.member.recipientMissing')}</b></span></div>{message.text && <p>{message.text}</p>}{message.location && <small><Icon name="mapPin" size={13} />{message.location.labelKey ? t(message.location.labelKey) : message.location.label || t('messages.location')}</small>}{message.flagged && <span className="pill pill-danger">{t('admin.member.flagged')}: {message.flagReason || t('admin.member.security')}</span>}</div>)}</div>
     {data.messagePage.hasMore && <button className="btn btn-sm mt" onClick={() => load(data.messagePage.nextCursor)}>{t('admin.member.loadPrevious')}</button>}
   </section>;
 }

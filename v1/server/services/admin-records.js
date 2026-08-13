@@ -179,6 +179,28 @@ export function createAdminRecordService({
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
     );
+    const tripsById = new Map([
+      ...(db.trips || []).map((trip) => [trip.id, trip]),
+      ...(relationalRecords?.trips || []).map((trip) => [trip.id, trip]),
+    ]);
+    const transactionsById = new Map(
+      transactions.map((transaction) => [transaction.id, transaction]),
+    );
+    const conversationContext = (conversation) => {
+      if (conversation?.context) return conversation.context;
+      const operation = transactionsById.get(conversation?.operationId);
+      const trip = tripsById.get(
+        conversation?.tripId || operation?.tripId,
+      );
+      const from = trip?.from || operation?.from || null;
+      const to = trip?.to || operation?.to || null;
+      return {
+        type: operation ? 'operation' : trip ? 'trip' : 'direct',
+        from,
+        to,
+        label: from && to ? `${from} -> ${to}` : null,
+      };
+    };
     const kycRecords = (await kycRepository.listForUser(user.id))
       .sort((a, b) => b.submittedAt - a.submittedAt);
     const kyc = await Promise.all(kycRecords.map(async (submission) => ({
@@ -217,6 +239,7 @@ export function createAdminRecordService({
         return {
           id: message.id,
           conversationId: message.conversationId,
+          context: conversationContext(conversation),
           from: caseParticipant(caseUser(message.from)),
           to: recipientIds
             .map((id) => caseParticipant(caseUser(id)))
@@ -274,6 +297,7 @@ export function createAdminRecordService({
         lastMessageAt: conversation.lastMessageAt || null,
         tripId: conversation.tripId || null,
         operationId: conversation.operationId || null,
+        context: conversationContext(conversation),
         participants: conversation.participantIds
           .map((id) => caseParticipant(caseUser(id))),
         reports: conversation.reports || [],

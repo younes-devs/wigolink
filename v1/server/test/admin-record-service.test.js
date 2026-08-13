@@ -232,8 +232,22 @@ test('dossier admin transmet le curseur de messages et expose la page suivante',
     async loadMessageArchive(options) {
       calls.push(options);
       return {
-        conversations: [],
-        messages: [],
+        conversations: [{
+          id: 'conv-route',
+          participantIds: ['u-1'],
+          context: {
+            type: 'trip',
+            from: 'Oujda',
+            to: 'Paris',
+            label: 'Oujda -> Paris',
+          },
+        }],
+        messages: [{
+          id: 'message-route',
+          conversationId: 'conv-route',
+          from: 'u-1',
+          at: 100,
+        }],
         total: null,
         conversationTotal: null,
         hasMore: true,
@@ -255,6 +269,10 @@ test('dossier admin transmet le curseur de messages et expose la page suivante',
   assert.equal(result.body.caseFile.messagePage.offset, null);
   assert.equal(result.body.caseFile.messagePage.hasMore, true);
   assert.equal(result.body.caseFile.messagePage.nextCursor, 'next-page');
+  assert.equal(
+    result.body.caseFile.messages[0].context.label,
+    'Oujda -> Paris',
+  );
 });
 
 test('file KYC calcule SLA et détail auditable', async () => {

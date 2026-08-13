@@ -210,6 +210,8 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
         conversation: row.conversation,
         message_count: 3,
         reports: [{ id: 'cr-1', reason: 'Signalement conserve' }],
+        trip: row.trip,
+        operation: null,
       }] };
     },
   };
@@ -221,12 +223,19 @@ test('messagerie relationnelle : archive admin inclut les messages masques et le
 
   assert.equal(archive.conversations[0].messageCount, 3);
   assert.equal(archive.conversations[0].reports[0].id, 'cr-1');
+  assert.deepEqual(archive.conversations[0].context, {
+    type: 'trip',
+    from: 'Oujda',
+    to: 'Bruxelles',
+    label: 'Oujda -> Bruxelles',
+  });
   assert.equal(archive.messages[0].hiddenForParticipants, true);
   assert.equal(archive.total, 3);
   assert.equal(archive.conversationTotal, 1);
   assert.match(calls[0].sql, /order by m\.at desc, m\.id desc/);
   assert.match(calls[1].sql, /conversation_total/);
   assert.match(calls[2].sql, /wigolink_conversation_reports/);
+  assert.match(calls[2].sql, /wigolink_trips/);
   assert.deepEqual(calls[2].params, [['conv-1']]);
 });
 
