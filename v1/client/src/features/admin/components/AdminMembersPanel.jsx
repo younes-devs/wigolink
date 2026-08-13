@@ -222,16 +222,61 @@ function MemberSecuritySection({ disputes = [] }) {
 }
 
 function AuditHistory({ logs }) {
+  const [category, setCategory] = useState('all');
+  const [query, setQuery] = useState('');
+  const [period, setPeriod] = useState('all');
+  const [actorType, setActorType] = useState('all');
+  const categories = ['all', 'account', 'security', 'trips', 'operations', 'payments', 'administration'];
+  const counts = Object.fromEntries(categories.map((item) => [item, item === 'all' ? logs.length : logs.filter((log) => auditCategory(log) === item).length]));
+  const cutoff = period === 'all' ? 0 : Date.now() - Number(period) * 24 * 60 * 60 * 1000;
+  const needle = query.trim().toLocaleLowerCase();
+  const visibleLogs = logs.filter((log) => {
+    if (category !== 'all' && auditCategory(log) !== category) return false;
+    if (cutoff && Number(log.at || 0) < cutoff) return false;
+    if (actorType !== 'all' && auditActorType(log) !== actorType) return false;
+    if (!needle) return true;
+    return [log.action, auditAction(log.action), log.actor?.name, auditCategoryLabel(auditCategory(log))]
+      .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle);
+  });
   return <section className="card">
     <h2><Icon name="clock" size={18} />{t('admin.member.changeHistory')}</h2>
+    <div className="admin-audit-categories" role="tablist" aria-label={t('admin.member.historyCategories')}>
+      {categories.map((item) => <button type="button" role="tab" aria-selected={category === item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)} key={item}><span>{auditCategoryLabel(item)}</span><small>{counts[item]}</small></button>)}
+    </div>
+    <div className="admin-audit-filters">
+      <label className="admin-audit-search"><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('admin.member.historySearch')} aria-label={t('admin.member.historySearch')} /></label>
+      <select value={period} onChange={(event) => setPeriod(event.target.value)} aria-label={t('admin.member.historyPeriod')}><option value="all">{t('admin.member.historyAllDates')}</option><option value="7">{t('admin.member.historyLastDays', { count: 7 })}</option><option value="30">{t('admin.member.historyLastDays', { count: 30 })}</option><option value="90">{t('admin.member.historyLastDays', { count: 90 })}</option></select>
+      <select value={actorType} onChange={(event) => setActorType(event.target.value)} aria-label={t('admin.member.historyAuthor')}><option value="all">{t('admin.member.historyAllAuthors')}</option><option value="user">{t('admin.member.historyUser')}</option><option value="system">{t('admin.member.historySystem')}</option><option value="admin">{t('admin.member.historyAdmin')}</option></select>
+    </div>
     <div className="list-stack mt">
-      {logs.length === 0 ? <p className="muted">{t('admin.member.noAudit')}</p> : logs.map((log) => {
+      {visibleLogs.length === 0 ? <p className="muted admin-audit-no-result">{t(logs.length === 0 ? 'admin.member.noAudit' : 'admin.member.historyNoResult')}</p> : visibleLogs.map((log) => {
         const changes = log.meta?.changes || [];
         return <div className="admin-audit-log" key={log.id}>
-          <div className="admin-audit-head"><div><b>{auditAction(log.action)}</b><span>{formatAdminDate(log.at)} - {log.actor?.name || log.actorId || t('admin.system')}</span></div></div>
+          <div className="admin-audit-head"><div><b>{auditAction(log.action)}</b><span>{formatAdminDate(log.at)} - {log.actor?.name || t('admin.system')}</span></div><span className="pill pill-gray">{auditCategoryLabel(auditCategory(log))}</span></div>
           {changes.length > 0 ? <div className="admin-audit-changes">{changes.map((change, index) => <div className="admin-audit-change" key={`${change.field}-${index}`}><b>{auditField(change.field)}</b><span><small>{t('admin.audit.before')}</small>{auditValue(change.before)}</span><Icon name="arrowRight" size={14} /><span><small>{t('admin.audit.after')}</small>{auditValue(change.after)}</span></div>)}</div> : <p className="muted admin-audit-empty">{t('admin.member.noChanges')}</p>}
         </div>;
       })}
     </div>
   </section>;
+}
+
+function auditCategory(log) {
+  const action = String(log.action || '').toLowerCase();
+  const target = String(log.targetType || '').toLowerCase();
+  if (/^(profile\.|settings\.|support\.)/.test(action) || target === 'support_request') return 'account';
+  if (/^(kyc\.|user\.safety|conversation\.(block|unblock)|user\.(block|unblock)|message\.safety)/.test(action) || target === 'kyc_submission') return 'security';
+  if (/^(trip\.|listing\.|review\.listing)/.test(action) || ['trip', 'listing'].includes(target)) return 'trips';
+  if (/^(operation[._]|review\.dispute)/.test(action) || ['transaction', 'dispute'].includes(target)) return action.startsWith('stripe_') || action.startsWith('manual_payout') ? 'payments' : 'operations';
+  if (/^(stripe_|manual_payout|payment\.)/.test(action) || target === 'payment') return 'payments';
+  return 'administration';
+}
+
+function auditActorType(log) {
+  if (log.actor?.isAdmin) return 'admin';
+  if (!log.actorId || ['system', 'stripe'].includes(String(log.actorId).toLowerCase())) return 'system';
+  return 'user';
+}
+
+function auditCategoryLabel(category) {
+  return t(`admin.member.historyCategory.${category}`);
 }

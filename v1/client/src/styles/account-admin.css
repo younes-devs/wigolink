@@ -920,6 +920,18 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .admin-operation-photo-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .admin-operation-photo-state { display: grid; place-items: center; align-content: center; gap: 4px; padding: 6px; color: var(--ink-soft); font-size: 10px; text-align: center; }
 .admin-operation-empty { padding: 18px 0; text-align: center; }
+.admin-audit-categories { display: flex; gap: 7px; margin-top: 14px; padding-bottom: 3px; overflow-x: auto; scrollbar-width: thin; }
+.admin-audit-categories button { flex: 0 0 auto; min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--hairline); border-radius: 7px; background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.admin-audit-categories button:hover, .admin-audit-categories button.active { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+.admin-audit-categories small { min-width: 21px; padding: 2px 5px; border-radius: 999px; background: var(--surface-soft); color: currentColor; font-size: 10px; text-align: center; }
+.admin-audit-filters { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(150px, auto) minmax(160px, auto); gap: 9px; margin-top: 12px; }
+.admin-audit-filters select, .admin-audit-search { min-width: 0; min-height: 42px; border: 1px solid var(--hairline); border-radius: 7px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; }
+.admin-audit-filters select { padding: 0 32px 0 11px; }
+.admin-audit-search { display: flex; align-items: center; gap: 8px; padding: 0 11px; }
+.admin-audit-search > .icon { flex: 0 0 auto; color: var(--ink-faint); }
+.admin-audit-search input { width: 100%; min-width: 0; min-height: 40px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 12px; }
+.admin-audit-head > .pill { flex: 0 0 auto; font-size: 10px; }
+.admin-audit-no-result { padding: 20px 0; text-align: center; }
 .admin-access-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -941,6 +953,8 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .admin-operation-parties { grid-template-columns: minmax(0, 1fr); }
   .admin-operation-parties > .icon { justify-self: center; transform: rotate(90deg); }
   .admin-operation-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-audit-search { grid-column: 1 / -1; }
   .admin-action small { white-space: normal; line-height: 1.35; }
   .admin-members-card, .admin-access-card { padding: 14px 12px; }
   .admin-members-head { grid-template-columns: minmax(0, 1fr); gap: 12px; }
