@@ -155,7 +155,11 @@ test('dossier membre conserve preuves, participants et compte supprimé', async 
     selfiePhoto: 'selfie',
     idFrontPhoto: 'front',
   }];
-  const auditLogs = [{ id: 'log-1', memberId: 'u-1' }];
+  const auditLogs = [
+    { id: 'log-1', memberId: 'u-1', action: 'profile.update' },
+    { id: 'log-read', memberId: 'u-1', action: 'admin.member_case.view' },
+    { id: 'log-payout', memberId: 'u-1', action: 'manual_payout_queue_viewed' },
+  ];
   const { service } = createHarness({
     users,
     conversations,
@@ -180,7 +184,7 @@ test('dossier membre conserve preuves, participants et compte supprimé', async 
   assert.equal(record.messagePage.offset, 0);
   assert.equal(record.messagePage.limit, 10);
   assert.equal(record.kyc[0].selfiePhoto, 'selfie');
-  assert.deepEqual(record.auditLogs, auditLogs);
+  assert.deepEqual(record.auditLogs, [auditLogs[0]]);
   assert.equal((await service.caseFile('missing')).status, 404);
 });
 

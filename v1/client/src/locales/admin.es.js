@@ -111,6 +111,7 @@ export default {
   "admin.audit.listingUpdate": "Envío modificado",
   "admin.audit.listingCancel": "Envío cancelado",
   "admin.audit.conversationDelete": "Conversación eliminada de la mensajería",
+  "admin.audit.administrativeEvent": "Evento administrativo",
   "admin.access.title": "Acceso de administrador",
   "admin.access.activeCount": "{count} administradores activos",
   "admin.access.granted": "Acceso de administrador concedido",

@@ -16,7 +16,11 @@ export function auditAction(action) {
     'listing.cancel': 'admin.audit.listingCancel',
     'conversation.delete': 'admin.audit.conversationDelete',
   };
-  return keys[action] ? t(keys[action]) : adminStatus(action);
+  if (keys[action]) return t(keys[action]);
+  const translatedStatus = adminStatus(action);
+  return translatedStatus === action
+    ? t('admin.audit.administrativeEvent')
+    : translatedStatus;
 }
 
 export function auditField(field) {
@@ -38,11 +42,21 @@ export function auditValue(value) {
 }
 
 export function formatAdminDate(value) {
-  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(adminDate(value)) : '—';
 }
 
 export function formatAdminShortDate(value) {
-  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+  return value ? new Intl.DateTimeFormat(dateLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(adminDate(value)) : '—';
+}
+
+function adminDate(value) {
+  const numericValue = typeof value === 'string' && /^\d+$/.test(value.trim())
+    ? Number(value)
+    : value;
+  const timestamp = typeof numericValue === 'number' && numericValue < 1e12
+    ? numericValue * 1000
+    : numericValue;
+  return new Date(timestamp);
 }
 
 export function formatPercent(value) {

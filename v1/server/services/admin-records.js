@@ -1,3 +1,9 @@
+const MEMBER_HISTORY_HIDDEN_ACTIONS = new Set([
+  'admin.member_case.view',
+  'manual_payout_countries_viewed',
+  'manual_payout_queue_viewed',
+]);
+
 export function createAdminRecordService({
   db,
   findUser,
@@ -193,10 +199,9 @@ export function createAdminRecordService({
           && !submission.idFrontPhoto
           && !submission.idBackPhoto,
       })));
-    const auditLogs = await auditLogsRepository.listForMember(
-      user.id,
-      { limit: 500 },
-    );
+    const auditLogs = (
+      await auditLogsRepository.listForMember(user.id, { limit: 500 })
+    ).filter((log) => !MEMBER_HISTORY_HIDDEN_ACTIONS.has(log.action));
     const messages = (
       relationalArchive
         ? allMessages

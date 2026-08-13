@@ -173,7 +173,7 @@ function AuditHistory({ logs }) {
       {logs.length === 0 ? <p className="muted">{t('admin.member.noAudit')}</p> : logs.map((log) => {
         const changes = log.meta?.changes || [];
         return <div className="admin-audit-log" key={log.id}>
-          <div className="admin-audit-head"><div><b>{auditAction(log.action)}</b><span>{formatAdminDate(log.at)} - {log.actor?.name || log.actorId || t('admin.system')}</span></div><span className="pill pill-gray">{log.targetType || 'system'}</span></div>
+          <div className="admin-audit-head"><div><b>{auditAction(log.action)}</b><span>{formatAdminDate(log.at)} - {log.actor?.name || log.actorId || t('admin.system')}</span></div></div>
           {changes.length > 0 ? <div className="admin-audit-changes">{changes.map((change, index) => <div className="admin-audit-change" key={`${change.field}-${index}`}><b>{auditField(change.field)}</b><span><small>{t('admin.audit.before')}</small>{auditValue(change.before)}</span><Icon name="arrowRight" size={14} /><span><small>{t('admin.audit.after')}</small>{auditValue(change.after)}</span></div>)}</div> : <p className="muted admin-audit-empty">{t('admin.member.noChanges')}</p>}
         </div>;
       })}

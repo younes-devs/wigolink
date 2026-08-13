@@ -110,6 +110,7 @@ export default {
   'admin.audit.listingUpdate': 'تم تعديل الإرسال',
   'admin.audit.listingCancel': 'تم إلغاء الإرسال',
   'admin.audit.conversationDelete': 'تمت إزالة المحادثة من الرسائل',
+  'admin.audit.administrativeEvent': 'حدث إداري',
   'admin.access.title': 'صلاحيات الإدارة',
   'admin.access.activeCount': '{count} مشرف نشط',
   'admin.access.granted': 'مُنحت صلاحيات الإدارة',

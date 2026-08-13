@@ -110,6 +110,7 @@ export default {
   'admin.audit.listingUpdate': 'Envoi modifié',
   'admin.audit.listingCancel': 'Envoi annulé',
   'admin.audit.conversationDelete': 'Conversation retirée de la messagerie',
+  'admin.audit.administrativeEvent': 'Événement administratif',
   'admin.access.title': 'Accès administrateur',
   'admin.access.activeCount': '{count} administrateur(s) actif(s)',
   'admin.access.granted': 'Accès administrateur accordé',
