@@ -146,12 +146,28 @@ export function createAdminRecordService({
           (message) => conversationIds.has(message.conversationId),
         )
         .sort((a, b) => b.at - a.at);
+    const transactions = (relationalRecords?.transactions || db.transactions)
+      .filter(
+        (transaction) => [
+          transaction.senderId,
+          transaction.travelerId,
+          transaction.recipientId,
+        ].includes(user.id),
+      )
+      .sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+      );
     const relatedUserIds = new Set([user.id]);
     for (const conversation of conversations) {
       for (const id of conversation.participantIds || []) relatedUserIds.add(id);
     }
     for (const message of allMessages) {
       if (message.from) relatedUserIds.add(message.from);
+    }
+    for (const transaction of transactions) {
+      if (transaction.senderId) relatedUserIds.add(transaction.senderId);
+      if (transaction.travelerId) relatedUserIds.add(transaction.travelerId);
+      if (transaction.recipientId) relatedUserIds.add(transaction.recipientId);
     }
     const relatedUsers = loadUsersByIds
       ? await loadUsersByIds([...relatedUserIds])
@@ -165,17 +181,6 @@ export function createAdminRecordService({
     const messageTotal = relationalArchive
       ? relationalArchive.total
       : allMessages.length;
-    const transactions = (relationalRecords?.transactions || db.transactions)
-      .filter(
-        (transaction) => [
-          transaction.senderId,
-          transaction.travelerId,
-          transaction.recipientId,
-        ].includes(user.id),
-      )
-      .sort(
-        (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
-      );
     const transactionIds = new Set(
       transactions.map((transaction) => transaction.id),
     );
@@ -287,7 +292,38 @@ export function createAdminRecordService({
         .sort(
           (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
         ),
-      transactions,
+      transactions: transactions.map((transaction) => {
+        const trip = tripsById.get(transaction.tripId);
+        const from = trip?.from || transaction.from || null;
+        const to = trip?.to || transaction.to || null;
+        return {
+          id: transaction.id,
+          title: from && to ? `${from} -> ${to}` : transaction.title || null,
+          from,
+          to,
+          tripId: transaction.tripId || null,
+          shipmentType: transaction.shipmentType || 'parcel',
+          documentCount: transaction.documentCount || null,
+          weightKg: Number(transaction.weightKg || 0),
+          price: Number(transaction.price || 0),
+          currency: transaction.currency || 'EUR',
+          status: transaction.status || null,
+          operationStatus: transaction.operationStatus || null,
+          createdAt: transaction.createdAt || null,
+          updatedAt: transaction.updatedAt || null,
+          completedAt: transaction.completedAt || transaction.deliveredAt || transaction.cancelledAt || null,
+          sender: caseParticipant(caseUser(transaction.senderId)),
+          traveler: caseParticipant(caseUser(transaction.travelerId)),
+          parcelPhotos: transaction.shipmentType === 'parcel'
+            ? (transaction.parcelPhotos || []).map((photo) => ({
+              id: photo.id,
+              mime: photo.mime || null,
+              size: Number(photo.size || 0),
+              url: `/operations/${encodeURIComponent(transaction.id)}/parcel-photos/${encodeURIComponent(photo.id)}`,
+            }))
+            : [],
+        };
+      }),
       disputes: (relationalRecords?.disputes || db.disputes)
         .filter((dispute) => transactionIds.has(dispute.txId))
         .sort((a, b) => b.createdAt - a.createdAt),

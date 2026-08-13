@@ -896,6 +896,30 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
 .admin-payment-history-row span, .admin-payment-history-row b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-payment-history-row span { color: var(--ink-soft); font-size: 11px; }
 .admin-payment-history-row b { margin-top: 3px; font-size: 13px; }
+.admin-operation-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-top: 14px; padding: 4px; border-radius: 8px; background: var(--surface-soft); }
+.admin-operation-tabs button { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 750; cursor: pointer; }
+.admin-operation-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.admin-operation-tabs small { min-width: 23px; padding: 2px 6px; border-radius: 999px; background: var(--hairline); color: var(--ink-soft); font-size: 11px; }
+.admin-member-operation-card { min-width: 0; display: grid; gap: 13px; padding: 15px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); }
+.admin-member-operation-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.admin-member-operation-card h3 { margin: 0; overflow-wrap: anywhere; font-size: 16px; }
+.admin-member-operation-card header p { margin: 3px 0 0; color: var(--ink-soft); font-size: 12px; }
+.admin-operation-parties { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); align-items: center; gap: 10px; }
+.admin-operation-parties > div { min-width: 0; display: grid; gap: 2px; padding: 10px; border-radius: 7px; background: var(--surface-soft); }
+.admin-operation-parties span, .admin-operation-parties small { overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-operation-parties b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-operation-parties > .icon { color: var(--ink-faint); }
+.admin-operation-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--ink-soft); font-size: 12px; }
+.admin-operation-summary span, .admin-operation-photos > b, .admin-operation-photos > p { display: flex; align-items: center; gap: 6px; }
+.admin-operation-summary b { color: var(--ink); }
+.admin-operation-photos { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.admin-operation-photos > b { font-size: 13px; }
+.admin-operation-photos > p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+.admin-operation-photo-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.admin-operation-photo-grid a, .admin-operation-photo-state { min-width: 0; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--hairline); border-radius: 7px; background: var(--surface-soft); }
+.admin-operation-photo-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.admin-operation-photo-state { display: grid; place-items: center; align-content: center; gap: 4px; padding: 6px; color: var(--ink-soft); font-size: 10px; text-align: center; }
+.admin-operation-empty { padding: 18px 0; text-align: center; }
 .admin-access-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -914,6 +938,9 @@ ul.checklist { padding-left: 18px; font-size: 13.5px; line-height: 1.75; color: 
   .admin-primary-tabs button { min-width: 0; padding-inline: 7px; }
   .admin-action-grid, .admin-case-nav, .admin-case-facts { grid-template-columns: minmax(0, 1fr); }
   .admin-payment-history-row { grid-template-columns: minmax(0, 1fr); }
+  .admin-operation-parties { grid-template-columns: minmax(0, 1fr); }
+  .admin-operation-parties > .icon { justify-self: center; transform: rotate(90deg); }
+  .admin-operation-photo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .admin-action small { white-space: normal; line-height: 1.35; }
   .admin-members-card, .admin-access-card { padding: 14px 12px; }
   .admin-members-head { grid-template-columns: minmax(0, 1fr); gap: 12px; }

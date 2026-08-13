@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api } from '../../../api';
+import { api, apiBlob } from '../../../api';
 import { Icon } from '../../../Icons.jsx';
 import { SkeletonCard } from '../../../Skeleton.jsx';
 import { t } from '../../../i18n.js';
@@ -152,13 +152,67 @@ function MemberMessagesSection({ data, load }) {
 }
 
 function MemberPaymentsSection({ transactions }) {
-  return <section className="card"><h2><Icon name="euro" size={18} />{t('admin.member.operations')}</h2>
-    <div className="list-stack mt">{transactions.length === 0 ? <p className="muted">{t('admin.ops.noReview')}</p> : transactions.map((transaction) => <div className="admin-payment-history-row" key={transaction.id}>
-      <div><span>{t('admin.member.operations')}</span><b>{formatAdminDate(transaction.createdAt)}</b></div>
-      <div><span>{t('admin.status.pending')}</span><b>{adminStatus(transaction.status)}</b></div>
-      <div><span>{t('admin.stat.escrow')}</span><b>{adminStatus(transaction.escrow?.state || 'pending')}</b></div>
-    </div>)}</div>
+  const [view, setView] = useState('active');
+  const active = transactions.filter((transaction) => !isTerminalOperation(transaction));
+  const history = transactions.filter(isTerminalOperation);
+  const visible = view === 'active' ? active : history;
+  return <section className="card admin-member-operations"><h2><Icon name="repeat" size={18} />{t('admin.member.operations')}</h2>
+    <div className="admin-operation-tabs" role="tablist" aria-label={t('admin.member.operations')}>
+      <button type="button" role="tab" aria-selected={view === 'active'} className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>{t('admin.member.operationsActive')}<small>{active.length}</small></button>
+      <button type="button" role="tab" aria-selected={view === 'history'} className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>{t('admin.member.operationsHistory')}<small>{history.length}</small></button>
+    </div>
+    <div className="list-stack mt">{visible.length === 0 ? <p className="muted admin-operation-empty">{t(view === 'active' ? 'admin.member.noActiveOperations' : 'admin.member.noPastOperations')}</p> : visible.map((transaction) => <MemberOperationCard transaction={transaction} key={transaction.id} />)}</div>
   </section>;
+}
+
+function MemberOperationCard({ transaction }) {
+  const cancelled = ['cancelled', 'refused', 'rejected', 'refunded'].includes(transaction.status);
+  const status = cancelled ? t('admin.member.operationCancelled') : operationStage(transaction.operationStatus, transaction.status);
+  const shipment = transaction.shipmentType === 'document'
+    ? t('admin.member.operationDocuments', { count: transaction.documentCount || 0 })
+    : t('admin.member.operationParcel', { weight: transaction.weightKg || 0 });
+  return <article className="admin-member-operation-card">
+    <header><div><h3>{transaction.title || t('admin.member.operationUntitled')}</h3><p>{formatAdminDate(transaction.createdAt)}</p></div><span className={`pill ${isTerminalOperation(transaction) ? 'pill-gray' : 'pill-saffron'}`}>{status}</span></header>
+    <div className="admin-operation-parties"><OperationParty label={t('admin.member.sender')} participant={transaction.sender} /><Icon name="arrowRight" size={18} /><OperationParty label={t('admin.member.traveler')} participant={transaction.traveler} /></div>
+    <div className="admin-operation-summary"><span><Icon name={transaction.shipmentType === 'document' ? 'fileText' : 'package'} size={15} />{shipment}</span><span><Icon name="euro" size={15} />{new Intl.NumberFormat(undefined, { style: 'currency', currency: transaction.currency || 'EUR' }).format(transaction.price || 0)}</span><span><Icon name="clock" size={15} />{t('admin.member.currentStage')}: <b>{status}</b></span></div>
+    {transaction.shipmentType === 'parcel' && <AdminParcelPhotos transaction={transaction} />}
+  </article>;
+}
+
+function OperationParty({ label, participant }) {
+  return <div><span>{label}</span><b title={participant?.name || participant?.email}>{participant?.name || t('admin.member.unknownAccount')}</b><small title={participant?.email}>{participant?.email || '—'}</small></div>;
+}
+
+function AdminParcelPhotos({ transaction }) {
+  const photos = transaction.parcelPhotos || [];
+  return <div className="admin-operation-photos"><b><Icon name="camera" size={15} />{t('admin.member.parcelPhotos')}</b>{photos.length > 0 ? <div className="admin-operation-photo-grid">{photos.map((photo, index) => <AdminPrivateParcelPhoto key={photo.id} photo={photo} index={index} />)}</div> : <p><Icon name="clock" size={15} />{t(isTerminalOperation(transaction) ? 'admin.member.parcelPhotosExpired' : 'admin.member.parcelPhotosMissing')}</p>}</div>;
+}
+
+function AdminPrivateParcelPhoto({ photo, index }) {
+  const [source, setSource] = useState('');
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    apiBlob(String(photo.url || '').replace(/^\/api(?=\/)/, '')).then((blob) => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(blob);
+      setSource(objectUrl);
+    }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [photo.url]);
+  if (failed) return <div className="admin-operation-photo-state"><Icon name="alert" size={17} /><span>{t('admin.member.photoUnavailable')}</span></div>;
+  if (!source) return <div className="admin-operation-photo-state"><span className="spinner" /></div>;
+  return <a href={source} target="_blank" rel="noreferrer"><img src={source} alt={t('admin.member.parcelPhotoAlt', { number: index + 1 })} loading="lazy" decoding="async" /></a>;
+}
+
+function isTerminalOperation(transaction) {
+  return transaction.operationStatus === 'termine' || ['completed', 'released', 'refunded', 'cancelled', 'refused', 'rejected'].includes(transaction.status);
+}
+
+function operationStage(operationStatus, status) {
+  const key = { attente_confirmation: 'operations.status.awaitingConfirmation', paiement_requis: 'operations.status.paymentRequired', paye: 'operations.status.paid', collecte_prevue: 'operations.status.pickupPlanned', en_transport: 'operations.status.inTransit', livraison_prevue: 'operations.status.deliveryPlanned', litige: 'operations.status.dispute', termine: 'operations.status.completed' }[operationStatus];
+  return key ? t(key) : adminStatus(status);
 }
 
 function MemberSecuritySection({ disputes = [] }) {

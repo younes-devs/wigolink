@@ -189,11 +189,7 @@ test('dossier membre conserve preuves, participants et compte supprimé', async 
 });
 
 test('dossier admin prefere les trajets et operations relationnels', async () => {
-  const users = [{
-    id: 'u-1',
-    name: 'Alice',
-    email: 'alice@example.test',
-  }];
+  const users = [{ id: 'u-1', name: 'Alice', email: 'alice@example.test' }, { id: 'u-2', name: 'Bob', email: 'bob@example.test' }];
   const { service } = createHarness({
     users,
     transactions: [{ id: 'tx-stale', senderId: 'u-1' }],
@@ -202,7 +198,11 @@ test('dossier admin prefere les trajets et operations relationnels', async () =>
       return {
         trips: [{ id: 't-sql', travelerId: 'u-1' }],
         listings: [],
-        transactions: [{ id: 'tx-sql', senderId: 'u-1' }],
+        transactions: [{
+          id: 'tx-sql', senderId: 'u-1', travelerId: 'u-2', tripId: 't-sql',
+          operationStatus: 'en_transport', shipmentType: 'parcel', weightKg: 2,
+          parcelPhotos: [{ id: 'photo-1', storagePath: 'private/path.jpg', mime: 'image/jpeg', size: 42 }],
+        }],
         disputes: [{ id: 'd-sql', txId: 'tx-sql', createdAt: 5 }],
         notifications: [{ id: 'n-sql', userId: 'u-1', at: 6 }],
       };
@@ -214,6 +214,12 @@ test('dossier admin prefere les trajets et operations relationnels', async () =>
     result.body.caseFile.transactions.map(({ id }) => id),
     ['tx-sql'],
   );
+  assert.equal(result.body.caseFile.transactions[0].sender.name, 'Alice');
+  assert.equal(result.body.caseFile.transactions[0].traveler.name, 'Bob');
+  assert.equal(result.body.caseFile.transactions[0].title, null);
+  assert.equal(result.body.caseFile.transactions[0].operationStatus, 'en_transport');
+  assert.equal(result.body.caseFile.transactions[0].parcelPhotos[0].storagePath, undefined);
+  assert.equal(result.body.caseFile.transactions[0].parcelPhotos[0].url, '/operations/tx-sql/parcel-photos/photo-1');
   assert.deepEqual(
     result.body.caseFile.trips.map(({ id }) => id),
     ['t-sql'],
