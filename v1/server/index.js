@@ -167,6 +167,7 @@ import { createConversationMessageService } from './services/conversation-messag
 import { createMessageMediaService } from './services/message-media.js';
 import { createKycMediaService } from './services/kyc-media.js';
 import { createProfileMediaService } from './services/profile-media.js';
+import { createPublicProfileMediaRouter } from './routes/public-profile-media.js';
 import { hydrateTripProfilePhotos } from './services/profile-photo-recovery.js';
 import { createParcelMediaService } from './services/parcel-media.js';
 import { createMemberMediaUploadService } from './services/member-media-uploads.js';
@@ -562,6 +563,11 @@ app.use('/api', createRelationalReadsRouter({
       message: String(error?.message || 'unknown_error').slice(0, 300),
     }),
   }),
+}));
+
+app.use('/api', createPublicProfileMediaRouter({
+  getPool: databasePool,
+  profileMedia,
 }));
 
 app.use('/api', createRelationalNavigationRouter({

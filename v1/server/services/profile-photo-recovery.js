@@ -31,11 +31,20 @@ export async function hydrateTripProfilePhotos({
   await Promise.all(travelers.map(async (traveler) => {
     try {
       const legacyUrl = String(legacyUrls.get(traveler.id) || '').trim();
-      const photoUrl = legacyUrl.startsWith('data:image/')
-        ? await profileMedia.storeDataUrl({ userId: traveler.id, dataUrl: legacyUrl })
-        : legacyUrl.startsWith('https://')
-          ? legacyUrl
-          : await profileMedia.recoverPublicUrl({ userId: traveler.id });
+      let photoUrl;
+      try {
+        photoUrl = legacyUrl.startsWith('data:image/')
+          ? await profileMedia.storeDataUrl({ userId: traveler.id, dataUrl: legacyUrl })
+          : legacyUrl.startsWith('https://')
+            ? legacyUrl
+            : await profileMedia.recoverPublicUrl({ userId: traveler.id });
+      } catch (error) {
+        if (legacyUrl.startsWith('data:image/')) {
+          photoUrl = `/api/public/profile-photos/${encodeURIComponent(traveler.id)}`;
+        } else {
+          throw error;
+        }
+      }
       if (!photoUrl) return;
       // The public response must not depend on the legacy-to-relational backfill.
       // A persistence failure should not hide an avatar that was already found.
