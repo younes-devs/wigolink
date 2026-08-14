@@ -3,6 +3,7 @@ import {
   alternateLinks, INDEXABLE_ROBOTS, localizedUrl, seoCopy, SITE_ORIGIN, SOCIAL_IMAGE,
 } from '../../shared/seo-metadata.js';
 import { listSeoLandings } from '../../shared/seo-landings.js';
+import { getSeoLandingContent } from '../../shared/seo-landing-content.js';
 
 let templatePromise;
 
@@ -70,9 +71,17 @@ function renderPageContent({ locale, page, trips, trip, landing }) {
     return `<main data-seo-prerender="trips"><h1>${escapeHtml(copy.feedHeading)}</h1><p>${escapeHtml(copy.feedIntro)}</p><ul>${links}</ul><nav aria-label="Guides"><ul>${guides}</ul></nav></main>`;
   }
   if (page === 'landing' && landing) {
+    const content = getSeoLandingContent(locale);
     const steps = landing.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('');
     const faqs = landing.faqs.map(([question, answer]) => (
       `<section><h3>${escapeHtml(question)}</h3><p>${escapeHtml(answer)}</p></section>`
+    )).join('');
+    const audience = content.audience.map(([title, text]) => (
+      `<article><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></article>`
+    )).join('');
+    const preparation = content.preparation.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    const related = content.related.map(([label, href]) => (
+      `<li><a href="/${escapeAttribute(locale)}${escapeAttribute(href)}">${escapeHtml(label)}</a></li>`
     )).join('');
     return `<main data-seo-prerender="landing">
       <p>${escapeHtml(landing.eyebrow)}</p>
@@ -81,7 +90,11 @@ function renderPageContent({ locale, page, trips, trip, landing }) {
       <p><a href="/${escapeAttribute(locale)}/trajets">${escapeHtml(landing.cta)}</a></p>
       <h2>${escapeHtml(landing.howTitle)}</h2><ol>${steps}</ol>
       <h2>${escapeHtml(landing.detailsTitle)}</h2><p>${escapeHtml(landing.details)}</p>
+      <h2>${escapeHtml(content.audienceTitle)}</h2><div>${audience}</div>
+      <h2>${escapeHtml(content.preparationTitle)}</h2><ul>${preparation}</ul>
+      <h2>${escapeHtml(content.trustTitle)}</h2><p>${escapeHtml(content.trust)}</p>
       <h2>${escapeHtml(landing.faqTitle)}</h2>${faqs}
+      <h2>${escapeHtml(content.relatedTitle)}</h2><nav><ul>${related}</ul></nav>
       <p><a href="/${escapeAttribute(locale)}/trajets">${escapeHtml(landing.cta)}</a></p>
     </main>`;
   }

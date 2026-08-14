@@ -18,6 +18,18 @@
 .seo-landing-faq summary{cursor:pointer;font-size:18px;font-weight:750}
 .seo-landing-faq p{max-width:760px;padding-top:12px}
 .seo-landing-footer{padding:34px 0;text-align:center}
+.seo-landing-audience{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.seo-landing-panel{padding:22px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--surface) 86%,transparent)}
+.seo-landing-panel h3{margin:0 0 10px;font-size:19px}
+.seo-landing-panel p{margin:0;color:var(--muted);font-size:16px;line-height:1.55}
+.seo-landing-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px;margin:0;padding:0;list-style:none}
+.seo-landing-checklist li{position:relative;padding-left:28px;color:var(--muted);font-size:17px;line-height:1.55}
+.seo-landing-checklist li::before{content:'✓';position:absolute;left:0;color:var(--accent);font-weight:800}
+.seo-landing-trust p{max-width:820px;margin:0;color:var(--muted);font-size:18px;line-height:1.65}
+.seo-landing-footer h2{margin:0 0 18px;font-size:24px}
+.seo-landing-related{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:28px}
+.seo-landing-related a{display:inline-flex;align-items:center;gap:8px;padding:12px 15px;border:1px solid var(--line);border-radius:8px;color:var(--text);text-decoration:none}
+.seo-landing-related a:hover{border-color:var(--accent);color:var(--accent)}
 
 @media(max-width:700px){
   .seo-landing{padding:8px 4px 96px}
@@ -28,4 +40,8 @@
   .seo-landing-section{padding:28px 0}
   .seo-landing-section h2{font-size:24px}
   .seo-landing-steps{grid-template-columns:1fr;gap:22px}
+  .seo-landing-audience,.seo-landing-checklist{grid-template-columns:1fr}
+  .seo-landing-panel{padding:18px}
+  .seo-landing-related{align-items:stretch;flex-direction:column}
+  .seo-landing-related a{justify-content:space-between}
 }
