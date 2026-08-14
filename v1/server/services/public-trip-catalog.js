@@ -49,15 +49,12 @@ function publicTraveler(traveler) {
     ratingCount: traveler.ratingCount,
     completed: traveler.completed,
     badges: traveler.badges,
-    photoUrl: publicPhotoUrl(traveler.photoUrl, traveler.id),
+    photoUrl: publicPhotoUrl(traveler.photoUrl),
   };
 }
 
-function publicPhotoUrl(value, userId) {
+function publicPhotoUrl(value) {
   const url = String(value || '').trim();
   if (url.startsWith('https://') || url.startsWith('/assets/') || url.startsWith('/api/public/profile-photos/')) return url;
-  if (/^u-[a-z0-9-]+$/i.test(String(userId || '').trim())) {
-    return `/api/public/profile-photos/${encodeURIComponent(String(userId).trim())}`;
-  }
   return null;
 }
