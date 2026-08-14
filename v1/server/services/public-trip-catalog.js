@@ -55,6 +55,6 @@ function publicTraveler(traveler) {
 
 function publicPhotoUrl(value) {
   const url = String(value || '').trim();
-  if (url.startsWith('https://') || url.startsWith('/assets/')) return url;
+  if (url.startsWith('https://') || url.startsWith('/assets/') || url.startsWith('/api/public/profile-photos/')) return url;
   return null;
 }
