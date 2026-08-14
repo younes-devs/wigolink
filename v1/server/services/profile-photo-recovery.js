@@ -37,8 +37,11 @@ export async function hydrateTripProfilePhotos({
           ? legacyUrl
           : await profileMedia.recoverPublicUrl({ userId: traveler.id });
       if (!photoUrl) return;
-      await persistUser({ ...traveler, photoUrl }, { ...traveler });
+      // The public response must not depend on the legacy-to-relational backfill.
+      // A persistence failure should not hide an avatar that was already found.
+      const previousTraveler = { ...traveler };
       traveler.photoUrl = photoUrl;
+      await persistUser({ ...traveler, photoUrl }, previousTraveler);
     } catch (error) {
       onError(error, traveler.id);
     }

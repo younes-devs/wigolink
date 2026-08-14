@@ -42,3 +42,20 @@ test('retrouve un fichier storage orphelin si l ancien etat ne contient rien', a
 
   assert.equal(result.body.trip.traveler.photoUrl, 'https://cdn.test/u-2.webp');
 });
+
+test('conserve la photo publique meme si le backfill relationnel echoue', async () => {
+  const result = {
+    trips: [{ traveler: { id: 'u-3', name: 'Nora', photoUrl: null } }],
+  };
+  await hydrateTripProfilePhotos({
+    result,
+    pool: { async query() { return { rows: [] }; } },
+    profileMedia: {
+      async storeDataUrl() { return null; },
+      async recoverPublicUrl() { return 'https://cdn.test/u-3.webp'; },
+    },
+    async persistUser() { throw new Error('backfill indisponible'); },
+  });
+
+  assert.equal(result.trips[0].traveler.photoUrl, 'https://cdn.test/u-3.webp');
+});
