@@ -6,6 +6,13 @@ import { syncThemeColor } from './theme.js';
 import { localeFromPath, localizePath } from '../../shared/locale-routing.js';
 import './styles.css';
 
+// Capacitor peut exposer une largeur CSS de tablette sur certains Android.
+// On garde donc un signal explicite pour appliquer la composition mobile,
+// indépendamment de la largeur virtuelle du WebView.
+const isNativeMobile = Boolean(window.Capacitor)
+  || /Android.*(wv|Version\/)|; wv\)/i.test(window.navigator.userAgent || '');
+if (isNativeMobile) document.documentElement.dataset.platform = 'native';
+
 const requestedPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 const pathLocale = localeFromPath(window.location.pathname);
 const canonicalPath = localizePath(requestedPath, pathLocale || getLang());

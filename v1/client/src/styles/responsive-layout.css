@@ -463,3 +463,115 @@
   }
   .compose-count { display: none; }
 }
+
+/* Native mobile shell -----------------------------------------------------
+   Android WebViews can report 720px or more even on a phone.  The rules
+   above are intentionally kept for the web breakpoints; this layer pins the
+   native app to the mobile composition and also covers narrow tablets. */
+@media (max-width: 899px), (min-width: 900px) and (pointer: coarse) {
+  #root { display: block; min-width: 0; }
+  .phone {
+    width: 100%; max-width: none; min-width: 0; margin: 0;
+    box-shadow: none;
+  }
+  .main-wrap { display: block; min-width: 0; }
+  .content {
+    width: 100%; max-width: none; min-width: 0;
+    padding: 16px 14px calc(116px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+  }
+  .app-header { padding: 14px 16px 12px; }
+  .bottom-nav {
+    left: 50%; right: auto; top: auto; bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100% - 20px); max-width: 620px; height: auto;
+    flex-direction: row; padding: 5px; border-radius: 18px;
+  }
+  .bottom-nav a {
+    flex: 1 1 0; min-width: 0; min-height: 48px; padding: 7px 3px;
+    flex-direction: column; justify-content: center; gap: 3px; font-size: 11px;
+  }
+  .bottom-nav-label { max-width: 100%; }
+
+  /* Every primary screen becomes one readable column on mobile. */
+  .simple-hero, .trip-detail-main, .operation-detail-head, .operation-card,
+  .finance-hero, .support-hero, .shipment-card-head, .list-row {
+    min-width: 0; flex-wrap: wrap;
+  }
+  .card-grid, .trip-post-list, .ops-grid, .ops-task-grid,
+  .finance-action-list, .support-links, .support-action-list, .support-guide {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .btn { min-width: 0; max-width: 100%; }
+  .row { flex-wrap: wrap; }
+  .row > * { min-width: min(100%, 240px); }
+
+  /* Inbox: no desktop two-column assumptions, no clipped actions. */
+  .messages-shell, .messages-inbox {
+    width: 100%; max-width: none; min-width: 0;
+  }
+  .messages-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start; gap: 8px;
+  }
+  .messages-head > :last-child { grid-column: 2; grid-row: 1; }
+  .message-search { width: 100%; min-width: 0; }
+  .message-filters { max-width: 100%; overflow-x: auto; }
+  .conversation-list { width: 100%; min-width: 0; }
+  .conversation-row { min-width: 0; grid-template-columns: minmax(0, 1fr) auto; }
+  .conversation-row-main { min-width: 0; max-width: 100%; }
+  .conversation-copy, .conversation-top, .conversation-meta { min-width: 0; }
+  .conversation-top b, .conversation-meta span, .conversation-row p { max-width: 100%; }
+  .conversation-side { min-width: 42px; }
+
+  /* Conversation: fixed header/composer, only the thread scrolls. */
+  .phone:has(.conversation-detail) .app-header,
+  .phone:has(.conversation-detail) .bottom-nav { display: none; }
+  .phone:has(.conversation-detail) .content {
+    width: 100%; max-width: none; height: 100dvh; min-height: 0;
+    padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+  .conversation-detail {
+    width: 100%; max-width: none; height: 100%; min-height: 0;
+    display: flex; overflow: hidden; gap: 6px;
+  }
+  .conversation-header { flex: 0 0 auto; min-width: 0; }
+  .conversation-contact, .conversation-title { min-width: 0; }
+  .conversation-title b, .conversation-title > span { max-width: 100%; }
+  .message-thread {
+    flex: 1 1 auto; min-height: 0; min-width: 0; width: 100%;
+    overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+  }
+  .message-line, .message-stack, .message-bubble { min-width: 0; max-width: 100%; }
+  .message-stack { max-width: min(84%, 520px); }
+  .message-compose { flex: 0 0 auto; width: 100%; min-width: 0; }
+  .message-compose textarea { min-width: 0; width: 100%; }
+
+  /* Full-screen workflows keep the user focused and never inherit desktop
+     side margins or a bottom navigation overlay. */
+  .phone:has(.trip-publish-wizard) .content,
+  .phone:has(.trip-owner-form) .content,
+  .phone:has(.operation-simple-page) .content,
+  .phone:has(.kyc-page) .content {
+    width: 100%; max-width: none; margin: 0; padding-inline: 14px;
+  }
+  .phone:has(.trip-publish-wizard) .app-header,
+  .phone:has(.trip-publish-wizard) .bottom-nav,
+  .phone:has(.trip-owner-form) .app-header,
+  .phone:has(.trip-owner-form) .bottom-nav,
+  .phone:has(.operation-simple-page) .app-header,
+  .phone:has(.operation-simple-page) .bottom-nav,
+  .phone:has(.kyc-page) .app-header,
+  .phone:has(.kyc-page) .bottom-nav { display: none; }
+}
+
+@media (min-width: 900px) and (pointer: coarse) {
+  /* Native mode wins even when Android reports a wide CSS viewport. */
+  .phone { margin-left: 0; }
+  .app-header { position: sticky; width: auto; }
+  .content:has(.trip-feed-page), .content:has(.messages-shell) {
+    max-width: none; flex-basis: auto; padding-inline: 14px;
+  }
+}
+
+html[data-platform="native"] .phone { margin-left: 0; max-width: none; }
