@@ -1,7 +1,21 @@
 import { t } from '../i18n.js';
 
 let token = localStorage.getItem('wigolink_token') || null;
-const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+
+// Capacitor serves the bundled web app from https://localhost. In that
+// environment, /api would point back to the WebView instead of Wigolink's
+// production API. Keep browser development on the Vite proxy while making
+// native builds use the real server.
+function getApiBase() {
+  const configured = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (configured) return configured.replace(/\/$/, '');
+
+  const isNative = Boolean(
+    typeof window !== 'undefined'
+      && window.Capacitor?.isNativePlatform?.(),
+  );
+  return (isNative ? 'https://wigolink.com/api' : '/api').replace(/\/$/, '');
+}
 
 export function setToken(t) {
   token = t;
@@ -16,7 +30,7 @@ export function getToken() {
 export async function api(path, opts = {}) {
   let res;
   try {
-    res = await fetch(`${apiBase}${path}`, {
+    res = await fetch(`${getApiBase()}${path}`, {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +58,7 @@ export async function api(path, opts = {}) {
 export async function apiBlob(path) {
   let response;
   try {
-    response = await fetch(`${apiBase}${path}`, {
+    response = await fetch(`${getApiBase()}${path}`, {
       headers: {
         'Accept-Language': document.documentElement.lang || 'fr',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

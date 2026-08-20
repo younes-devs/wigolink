@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wigolink</string>
+    <string name="title_activity_main">Wigolink</string>
+    <string name="package_name">com.wigolink.app</string>
+    <string name="custom_url_scheme">com.wigolink.app</string>
+</resources>
