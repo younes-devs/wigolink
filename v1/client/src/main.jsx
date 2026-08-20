@@ -9,8 +9,10 @@ import './styles.css';
 // Capacitor peut exposer une largeur CSS de tablette sur certains Android.
 // On garde donc un signal explicite pour appliquer la composition mobile,
 // indépendamment de la largeur virtuelle du WebView.
+const userAgent = window.navigator.userAgent || '';
 const isNativeMobile = Boolean(window.Capacitor)
-  || /Android.*(wv|Version\/)|; wv\)/i.test(window.navigator.userAgent || '');
+  || /Android|iPhone|iPad|iPod/i.test(userAgent)
+  || /; wv\)/i.test(userAgent);
 if (isNativeMobile) document.documentElement.dataset.platform = 'native';
 
 const requestedPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
