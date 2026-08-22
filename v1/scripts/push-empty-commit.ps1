@@ -36,11 +36,14 @@ try {
         Stop-WithMessage "Le depot doit etre sur la branche main. Branche actuelle : $branch"
     }
 
-    $changes = & $git status --porcelain
+    # Un push vide ne doit jamais embarquer les fichiers de travail non suivis
+    # (notamment le projet Android en cours). On bloque uniquement les fichiers
+    # deja suivis qui ont ete modifies ou stages.
+    $trackedChanges = (& $git status --porcelain --untracked-files=no)
     if ($LASTEXITCODE -ne 0) {
         Stop-WithMessage "Impossible de verifier l'etat du depot."
     }
-    if ($changes) {
+    if ($trackedChanges) {
         Stop-WithMessage "Des fichiers sont modifies. Aucun fichier n'a ete touche. Demandez a Codex de synchroniser le depot, puis recommencez."
     }
 
